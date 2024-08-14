@@ -89,6 +89,14 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
     return Eigen::numext::bit_cast<Eigen::half>(static_cast<uint16_t>(x));
   });
 }
+
+// Overload for complex.
+template <typename T>
+static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
+                                  std::complex<T>* dest) {
+  std::copy(src.begin(), src.end(), reinterpret_cast<T*>(dest));
+}
+
 // Overload for Eigen::bfloat16.
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>& src,
                                   Eigen::bfloat16* dest) {
@@ -99,13 +107,6 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   std::transform(src.begin(), src.end(), dest, [](int x) -> Eigen::bfloat16 {
     return Eigen::numext::bit_cast<Eigen::bfloat16>(static_cast<uint16_t>(x));
   });
-}
-
-// Overload for complex.
-template <typename T>
-static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
-                                  std::complex<T>* dest) {
-  std::copy(src.begin(), src.end(), reinterpret_cast<T*>(dest));
 }
 
 // Overload for string.
@@ -197,14 +198,6 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<Eigen::half>().data());
       return tensor;
     }
-    case v0::Array::kBfloat16List: {
-      tensorflow::Tensor tensor(
-          tensorflow::DataTypeToEnum<Eigen::bfloat16>::value,
-          TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
-      CopyFromRepeatedField(array_pb.bfloat16_list().value(),
-                            tensor.flat<Eigen::bfloat16>().data());
-      return tensor;
-    }
     case v0::Array::kFloat32List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<float>::value,
@@ -235,6 +228,14 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
       CopyFromRepeatedField(array_pb.complex128_list().value(),
                             tensor.flat<tensorflow::complex128>().data());
+      return tensor;
+    }
+    case v0::Array::kBfloat16List: {
+      tensorflow::Tensor tensor(
+          tensorflow::DataTypeToEnum<Eigen::bfloat16>::value,
+          TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
+      CopyFromRepeatedField(array_pb.bfloat16_list().value(),
+                            tensor.flat<Eigen::bfloat16>().data());
       return tensor;
     }
     case v0::Array::kStringList: {

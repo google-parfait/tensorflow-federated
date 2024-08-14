@@ -120,19 +120,6 @@ class FromProtoTest(parameterized.TestCase):
           np.float16(1.0),
       ),
       (
-          'bfloat16',
-          array_pb2.Array(
-              dtype=data_type_pb2.DataType.DT_BFLOAT16,
-              shape=array_pb2.ArrayShape(dim=[]),
-              bfloat16_list=array_pb2.Array.IntList(
-                  value=[
-                      np.asarray(1.0, ml_dtypes.bfloat16).view(np.uint16).item()
-                  ]
-              ),
-          ),
-          ml_dtypes.bfloat16(1.0),
-      ),
-      (
           'float32',
           array_pb2.Array(
               dtype=data_type_pb2.DataType.DT_FLOAT,
@@ -167,6 +154,19 @@ class FromProtoTest(parameterized.TestCase):
               complex128_list=array_pb2.Array.DoubleList(value=[1.0, 1.0]),
           ),
           np.complex128(1.0 + 1.0j),
+      ),
+      (
+          'bfloat16',
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_BFLOAT16,
+              shape=array_pb2.ArrayShape(dim=[]),
+              bfloat16_list=array_pb2.Array.IntList(
+                  value=[
+                      np.asarray(1.0, ml_dtypes.bfloat16).view(np.uint16).item()
+                  ]
+              ),
+          ),
+          ml_dtypes.bfloat16(1.0),
       ),
       (
           'str',
@@ -669,23 +669,6 @@ class ToProtoTest(parameterized.TestCase):
           ),
       ),
       (
-          'bfloat16',
-          # Note: we must not use Python `float` here because ml_dtypes.bfloat16
-          # is declared as kind `V` (void) not `f` (float) to prevent numpy from
-          # trying to equate float16 and bfloat16 (which are not compatible).
-          ml_dtypes.bfloat16(1.0),
-          ml_dtypes.bfloat16,
-          array_pb2.Array(
-              dtype=data_type_pb2.DataType.DT_BFLOAT16,
-              shape=array_pb2.ArrayShape(dim=[]),
-              bfloat16_list=array_pb2.Array.IntList(
-                  value=[
-                      np.asarray(1.0, ml_dtypes.bfloat16).view(np.uint16).item()
-                  ]
-              ),
-          ),
-      ),
-      (
           'str',
           'abc',
           np.str_,
@@ -723,6 +706,23 @@ class ToProtoTest(parameterized.TestCase):
               dtype=data_type_pb2.DataType.DT_INT32,
               shape=array_pb2.ArrayShape(dim=[]),
               int32_list=array_pb2.Array.IntList(value=[1]),
+          ),
+      ),
+      (
+          'generic_bfloat16',
+          # Note: we must not use Python `float` here because ml_dtypes.bfloat16
+          # is declared as kind `V` (void) not `f` (float) to prevent numpy from
+          # trying to equate float16 and bfloat16 (which are not compatible).
+          ml_dtypes.bfloat16(1.0),
+          ml_dtypes.bfloat16,
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_BFLOAT16,
+              shape=array_pb2.ArrayShape(dim=[]),
+              bfloat16_list=array_pb2.Array.IntList(
+                  value=[
+                      np.asarray(1.0, ml_dtypes.bfloat16).view(np.uint16).item()
+                  ]
+              ),
           ),
       ),
       (

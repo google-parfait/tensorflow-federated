@@ -48,12 +48,12 @@ class ArrayShapeTest(parameterized.TestCase):
       ('uint16', np.uint16),
       ('uint32', np.uint32),
       ('uint64', np.uint64),
-      ('bfloat16', ml_dtypes.bfloat16),
       ('float16', np.float16),
       ('float32', np.float32),
       ('float64', np.float64),
       ('complex64', np.complex64),
       ('complex128', np.complex128),
+      ('bfloat16', ml_dtypes.bfloat16),
       ('str', np.str_),
   )
   def test_is_valid_dtype_returns_true(self, dtype):

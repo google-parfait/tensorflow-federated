@@ -121,7 +121,14 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   });
 }
 
-// Overload for Eigen::bflot16.
+// Overload for complex.
+template <typename T>
+static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
+                                  std::complex<T>* dest) {
+  std::copy(src.begin(), src.end(), reinterpret_cast<T*>(dest));
+}
+
+// Overload for Eigen::bfloat16.
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>& src,
                                   Eigen::bfloat16* dest) {
   // Values of dtype ml_dtypes.bfloat16 are packed to and unpacked from a
@@ -131,13 +138,6 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   std::transform(src.begin(), src.end(), dest, [](int x) -> Eigen::bfloat16 {
     return Eigen::numext::bit_cast<Eigen::bfloat16>(static_cast<uint16_t>(x));
   });
-}
-
-// Overload for complex.
-template <typename T>
-static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
-                                  std::complex<T>* dest) {
-  std::copy(src.begin(), src.end(), reinterpret_cast<T*>(dest));
 }
 
 absl::StatusOr<xla::Literal> LiteralFromArray(const v0::Array& array_pb) {
@@ -212,13 +212,6 @@ absl::StatusOr<xla::Literal> LiteralFromArray(const v0::Array& array_pb) {
                             literal.data<xla::half>().begin());
       return literal;
     }
-    case v0::Array::kBfloat16List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_BFLOAT16, array_pb.shape())));
-      CopyFromRepeatedField(array_pb.bfloat16_list().value(),
-                            literal.data<xla::bfloat16>().begin());
-      return literal;
-    }
     case v0::Array::kFloat32List: {
       xla::Literal literal(TFF_TRY(
           ShapeFromArrayShape(v0::DataType::DT_FLOAT, array_pb.shape())));
@@ -245,6 +238,13 @@ absl::StatusOr<xla::Literal> LiteralFromArray(const v0::Array& array_pb) {
           ShapeFromArrayShape(v0::DataType::DT_COMPLEX128, array_pb.shape())));
       CopyFromRepeatedField(array_pb.complex128_list().value(),
                             literal.data<xla::complex128>().begin());
+      return literal;
+    }
+    case v0::Array::kBfloat16List: {
+      xla::Literal literal(TFF_TRY(
+          ShapeFromArrayShape(v0::DataType::DT_BFLOAT16, array_pb.shape())));
+      CopyFromRepeatedField(array_pb.bfloat16_list().value(),
+                            literal.data<xla::bfloat16>().begin());
       return literal;
     }
     default:

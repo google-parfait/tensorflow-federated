@@ -68,13 +68,6 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
     # compatibility with how other external environments (e.g., TensorFlow, JAX)
     # represent values of `np.float16`.
     value = np.asarray(value, np.uint16).view(np.float16).tolist()
-  elif dtype is ml_dtypes.bfloat16:
-    value = array_pb.bfloat16_list.value
-    # Values of dtype `ml_dtypes.bfloat16` are packed to and unpacked from a
-    # protobuf field of type `int32` using the following logic in order to
-    # maintain compatibility with how other external environments (e.g.,
-    # TensorFlow, JAX) represent values of `ml_dtypes.bfloat16`.
-    value = np.asarray(value, np.uint16).view(ml_dtypes.bfloat16).tolist()
   elif dtype is np.float32:
     value = array_pb.float32_list.value
   elif dtype is np.float64:
@@ -95,6 +88,13 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
       )
     value = iter(array_pb.complex128_list.value)
     value = [complex(real, imag) for real, imag in zip(value, value)]
+  elif dtype is ml_dtypes.bfloat16:
+    value = array_pb.bfloat16_list.value
+    # Values of dtype `ml_dtypes.bfloat16` are packed to and unpacked from a
+    # protobuf field of type `int32` using the following logic in order to
+    # maintain compatibility with how other external environments (e.g.,
+    # TensorFlow, JAX) represent values of `ml_dtypes.bfloat16`.
+    value = np.asarray(value, np.uint16).view(ml_dtypes.bfloat16).tolist()
   elif dtype is np.str_:
     value = array_pb.string_list.value
   else:

@@ -124,30 +124,6 @@ inline absl::StatusOr<v0::Array> CreateArray(
   return array_pb;
 }
 
-// Overload for Eigen::bfloat16.
-inline absl::StatusOr<v0::Array> CreateArray(
-    v0::DataType dtype, v0::ArrayShape shape_pb,
-    std::initializer_list<const Eigen::bfloat16> values) {
-  v0::Array array_pb;
-  array_pb.set_dtype(dtype);
-  array_pb.mutable_shape()->Swap(&shape_pb);
-  switch (dtype) {
-    case v0::DataType::DT_BFLOAT16: {
-      auto size = values.size();
-      array_pb.mutable_bfloat16_list()->mutable_value()->Reserve(size);
-      for (auto element : values) {
-        array_pb.mutable_bfloat16_list()->mutable_value()->AddAlreadyReserved(
-            Eigen::numext::bit_cast<uint16_t>(element));
-      }
-      break;
-    }
-    default:
-      return absl::UnimplementedError(
-          absl::StrCat("Unexpected DataType found:", dtype));
-  }
-  return array_pb;
-}
-
 // Overload for complex.
 template <typename T>
 inline absl::StatusOr<v0::Array> CreateArray(
@@ -166,6 +142,30 @@ inline absl::StatusOr<v0::Array> CreateArray(
     case v0::DataType::DT_COMPLEX128: {
       array_pb.mutable_complex128_list()->mutable_value()->Assign(
           begin, begin + values.size() * 2);
+      break;
+    }
+    default:
+      return absl::UnimplementedError(
+          absl::StrCat("Unexpected DataType found:", dtype));
+  }
+  return array_pb;
+}
+
+// Overload for Eigen::bfloat16.
+inline absl::StatusOr<v0::Array> CreateArray(
+    v0::DataType dtype, v0::ArrayShape shape_pb,
+    std::initializer_list<const Eigen::bfloat16> values) {
+  v0::Array array_pb;
+  array_pb.set_dtype(dtype);
+  array_pb.mutable_shape()->Swap(&shape_pb);
+  switch (dtype) {
+    case v0::DataType::DT_BFLOAT16: {
+      auto size = values.size();
+      array_pb.mutable_bfloat16_list()->mutable_value()->Reserve(size);
+      for (auto element : values) {
+        array_pb.mutable_bfloat16_list()->mutable_value()->AddAlreadyReserved(
+            Eigen::numext::bit_cast<uint16_t>(element));
+      }
       break;
     }
     default:
