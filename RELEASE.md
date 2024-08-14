@@ -42,6 +42,10 @@ and this project adheres to
 *   Allow `tff.learning.programs.train_model` to accept a `should_discard_round`
     function to decide whether a round should be discarded and retried.
 
+### Removed
+
+*   `tff.structure.to_container_recursive`, this should not be used externally.
+
 ## Release 0.84.0
 
 ### Added

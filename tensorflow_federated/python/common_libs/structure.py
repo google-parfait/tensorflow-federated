@@ -306,7 +306,7 @@ def to_odict(
     return collections.OrderedDict(elements)
 
   if recursive:
-    return to_container_recursive(struct, _to_odict)
+    return _to_container_recursive(struct, _to_odict)
   else:
     return _to_odict(to_elements(struct))
 
@@ -348,7 +348,7 @@ def to_odict_or_tuple(
       return tuple(value for _, value in elements)
 
   if recursive:
-    return to_container_recursive(struct, _to_odict_or_tuple)
+    return _to_container_recursive(struct, _to_odict_or_tuple)
   else:
     return _to_odict_or_tuple(to_elements(struct))
 
@@ -584,7 +584,7 @@ def from_container(value: object, recursive=False) -> Struct:
   return _convert(value, recursive, must_be_container=True)
 
 
-def to_container_recursive(
+def _to_container_recursive(
     value: Struct[_T],
     container_fn: Callable[[list[tuple[Optional[str], _T]]], _U],
 ) -> _U:
@@ -610,7 +610,7 @@ def to_container_recursive(
 
   def recurse(v):
     if isinstance(v, Struct):
-      return to_container_recursive(v, container_fn)
+      return _to_container_recursive(v, container_fn)
     else:
       return v
 
