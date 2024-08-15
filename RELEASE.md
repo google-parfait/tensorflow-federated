@@ -8,6 +8,12 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   `tff.tensorflow.transform_args` and `tff.tnesorflow.transform_result`, these
+    functions are intended to be used when instantiating and execution context
+    in a TensorFlow environment.
+
 ## Release 0.85.0
 
 ### Added

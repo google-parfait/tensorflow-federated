@@ -29,7 +29,11 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 
 def _create_test_context():
   factory = executor_factory.local_cpp_executor_factory()
-  context = async_execution_context.AsyncExecutionContext(factory)
+  context = async_execution_context.AsyncExecutionContext(
+      executor_fn=factory,
+      transform_args=tensorflow_computation.transform_args,
+      transform_result=tensorflow_computation.transform_result,
+  )
   return mergeable_comp_execution_context.MergeableCompExecutionContext(
       [context]
   )

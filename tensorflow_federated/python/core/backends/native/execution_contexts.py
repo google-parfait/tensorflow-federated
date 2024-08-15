@@ -18,6 +18,7 @@ from typing import Optional
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -103,7 +104,10 @@ def create_async_local_cpp_execution_context(
       stream_structs=stream_structs,
   )
   return async_execution_context.AsyncExecutionContext(
-      executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
+      executor_fn=factory,
+      compiler_fn=compiler.desugar_and_transform_to_native,
+      transform_args=tensorflow_computation.transform_args,
+      transform_result=tensorflow_computation.transform_result,
   )
 
 
@@ -150,7 +154,10 @@ def create_sync_local_cpp_execution_context(
       stream_structs=stream_structs,
   )
   return sync_execution_context.SyncExecutionContext(
-      executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
+      executor_fn=factory,
+      compiler_fn=compiler.desugar_and_transform_to_native,
+      transform_args=tensorflow_computation.transform_args,
+      transform_result=tensorflow_computation.transform_result,
   )
 
 
