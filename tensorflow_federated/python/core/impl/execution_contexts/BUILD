@@ -85,6 +85,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",

@@ -25,7 +25,6 @@ from tensorflow_federated.python.core.backends.mapreduce import intrinsics as ma
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
-from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -344,6 +343,4 @@ def replace_secure_intrinsics_with_bodies(comp):
   return computation_impl.ConcreteComputation(
       computation_proto=replaced_intrinsic_bodies.proto,
       context_stack=context_stack_impl.context_stack,
-      transform_args=tensorflow_computation.transform_args,
-      transform_result=tensorflow_computation.transform_result,
   )

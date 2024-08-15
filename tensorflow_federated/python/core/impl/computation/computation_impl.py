@@ -13,7 +13,6 @@
 # limitations under the License.
 """Defines the implementation of the base Computation interface."""
 
-from collections.abc import Callable
 from typing import Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -90,8 +89,6 @@ class ConcreteComputation(computation_base.Computation):
       computation_proto: pb.Computation,
       context_stack: context_stack_base.ContextStack,
       annotated_type: Optional[computation_types.FunctionType] = None,
-      transform_args: Optional[Callable[[object], object]] = None,
-      transform_result: Optional[Callable[[object], object]] = None,
   ):
     """Constructs a new instance of ConcreteComputation from the computation_proto.
 
@@ -101,10 +98,6 @@ class ConcreteComputation(computation_base.Computation):
       context_stack: The context stack to use.
       annotated_type: Optional, type information with additional annotations
         that replaces the information in `computation_proto.type`.
-      transform_args: An `Optional` `Callable` used to transform the args before
-        they are passed to the computation.
-      transform_result: An `Optional` `Callable` used to transform the result
-        before it is returned.
 
     Raises:
       TypeError: If `annotated_type` is not `None` and is not compatible with
@@ -135,8 +128,6 @@ class ConcreteComputation(computation_base.Computation):
     self._type_signature = type_spec
     self._context_stack = context_stack
     self._computation_proto = computation_proto
-    self._transform_args = transform_args
-    self._transform_result = transform_result
 
   def __eq__(self, other: object) -> bool:
     if self is other:
@@ -148,14 +139,6 @@ class ConcreteComputation(computation_base.Computation):
   @property
   def type_signature(self) -> computation_types.FunctionType:
     return self._type_signature
-
-  @property
-  def transform_args(self):
-    return self._transform_args
-
-  @property
-  def transform_result(self):
-    return self._transform_result
 
   def __call__(self, *args, **kwargs):
     arg = function_utils.pack_args(self._type_signature.parameter, args, kwargs)

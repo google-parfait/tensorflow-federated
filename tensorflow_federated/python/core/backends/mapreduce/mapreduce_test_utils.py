@@ -93,8 +93,6 @@ def _make_map_reduce_form_example(
     return computation_impl.ConcreteComputation(
         computation_proto=transformed_comp.proto,
         context_stack=context_stack_impl.context_stack,
-        transform_args=comp.transform_args,
-        transform_result=comp.transform_result,
     )
 
   return MapReduceFormExample(

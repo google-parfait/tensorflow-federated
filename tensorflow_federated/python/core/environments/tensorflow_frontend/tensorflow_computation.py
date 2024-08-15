@@ -84,8 +84,6 @@ def _tf_wrapper_fn(
       computation_proto=comp_pb,
       context_stack=context_stack,
       annotated_type=extra_type_spec,
-      transform_args=transform_args,
-      transform_result=transform_result,
   )
 
 

@@ -149,8 +149,6 @@ def get_state_initialization_computation(
   return computation_impl.ConcreteComputation(
       computation_proto=initialize_tree.proto,
       context_stack=context_stack_impl.context_stack,
-      transform_args=initialize_computation.transform_args,
-      transform_result=initialize_computation.transform_result,
   )
 
 
@@ -1029,8 +1027,6 @@ def get_broadcast_form_for_computation(
     return computation_impl.ConcreteComputation(
         computation_proto=proto,
         context_stack=context_stack_impl.context_stack,
-        transform_args=comp.transform_args,
-        transform_result=comp.transform_result,
     )
 
   compute_server_context, client_processing = (
@@ -1117,8 +1113,6 @@ def get_map_reduce_form_for_computation(
     return computation_impl.ConcreteComputation(
         computation_proto=proto,
         context_stack=context_stack_impl.context_stack,
-        transform_args=comp.transform_args,
-        transform_result=comp.transform_result,
     )
 
   blocks = (
@@ -1454,8 +1448,6 @@ def get_distribute_aggregate_form_for_computation(
     return computation_impl.ConcreteComputation(
         computation_proto=proto,
         context_stack=context_stack_impl.context_stack,
-        transform_args=comp.transform_args,
-        transform_result=comp.transform_result,
     )
 
   comps = [_create_comp(bb.proto) for bb in blocks]

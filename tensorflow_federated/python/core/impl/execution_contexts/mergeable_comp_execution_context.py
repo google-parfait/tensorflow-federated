@@ -14,12 +14,13 @@
 """Execution context for single-aggregation computations."""
 
 import asyncio
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 import functools
 import math
 from typing import Generic, Optional, TypeVar, Union
 
 import attrs
+import tree
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -27,6 +28,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
@@ -645,6 +647,8 @@ class MergeableCompExecutionContext(
       self,
       async_contexts: Sequence[context_base.AsyncContext],
       compiler_fn: Optional[Callable[[_Computation], MergeableCompForm]] = None,
+      transform_args: Optional[Callable[[object], object]] = None,
+      transform_result: Optional[Callable[[object], object]] = None,
       num_subrounds: Optional[int] = None,
   ):
     """Initializes a MergeableCompExecutionContext.
@@ -657,6 +661,10 @@ class MergeableCompExecutionContext(
         `tff.framework.ConcreteComputation` and returns an instance of
         `MergeableCompForm`. If not provided, this context will only execute
         instances of `MergeableCompForm` directly.
+      transform_args: An `Optional` `Callable` used to transform the args before
+        they are passed to the computation.
+      transform_result: An `Optional` `Callable` used to transform the result
+        before it is returned.
       num_subrounds: An optional integer, specifying total the number of
         subrounds desired. If unspecified, the length of `async_contexts` will
         determine the number of subrounds. If more subrounds are requested than
@@ -666,6 +674,8 @@ class MergeableCompExecutionContext(
     for ctx in async_contexts:
       py_typecheck.check_type(ctx, context_base.AsyncContext)
     self._async_execution_contexts = async_contexts
+    self._transform_args = transform_args
+    self._transform_result = transform_result
     self._num_subrounds = (
         num_subrounds
         if num_subrounds is not None
@@ -684,6 +694,37 @@ class MergeableCompExecutionContext(
     py_typecheck.check_type(
         comp, (MergeableCompForm, computation_base.Computation)
     )
+
+    if arg is not None and self._transform_args is not None:
+      # `transform_args` is not intended to handle `tff.structure.Struct`.
+      # Normalize to a Python structure to make it simpler to handle; `args` is
+      # sometimes a `tff.structure.Struct` and sometimes it is not, other times
+      # it is a Python structure that contains a `tff.structure.Struct`.
+      def _to_python(obj):
+        if isinstance(obj, structure.Struct):
+          return structure.to_odict_or_tuple(obj)
+        else:
+          return None
+
+      if isinstance(arg, structure.Struct):
+        args, kwargs = function_utils.unpack_args_from_struct(arg)
+        args = tree.traverse(_to_python, args)
+        args = self._transform_args(args)
+        if not isinstance(args, Sequence):
+          raise ValueError(
+              f'Expected `args` to be a `Sequence`, found {type(args)}'
+          )
+        kwargs = tree.traverse(_to_python, kwargs)
+        kwargs = self._transform_args(kwargs)
+        if not isinstance(kwargs, Mapping):
+          raise ValueError(
+              f'Expected `kwargs` to be a `Mapping`, found {type(kwargs)}'
+          )
+        arg = function_utils.pack_args_into_struct(args, kwargs)
+      else:
+        arg = tree.traverse(_to_python, arg)
+        arg = self._transform_args(arg)
+
     if isinstance(comp, computation_base.Computation):
       if self._compiler_pipeline is None:
         raise ValueError(
@@ -706,7 +747,7 @@ class MergeableCompExecutionContext(
           self._num_subrounds,
       )
 
-    return type_conversions.type_to_py_container(
+    result = type_conversions.type_to_py_container(
         self._async_runner.run_coro_and_return_result(
             _invoke_mergeable_comp_form(
                 comp, arg, self._async_execution_contexts
@@ -714,3 +755,7 @@ class MergeableCompExecutionContext(
         ),
         comp.after_merge.type_signature.result,  # pytype: disable=attribute-error
     )
+
+    if self._transform_result is not None:
+      result = self._transform_result(result)
+    return result

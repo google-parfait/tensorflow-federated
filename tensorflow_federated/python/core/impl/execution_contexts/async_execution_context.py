@@ -14,7 +14,7 @@
 """A context for execution based on an embedded executor instance."""
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 import contextlib
 from typing import Generic, Optional, TypeVar
 
@@ -154,6 +154,8 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
       executor_fn: executor_factory.ExecutorFactory,
       compiler_fn: Optional[Callable[[_Computation], object]] = None,
       *,
+      transform_args: Optional[Callable[[object], object]] = None,
+      transform_result: Optional[Callable[[object], object]] = None,
       cardinality_inference_fn: cardinalities_utils.CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities,
   ):
     """Initializes an execution context.
@@ -161,6 +163,10 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
     Args:
       executor_fn: Instance of `executor_factory.ExecutorFactory`.
       compiler_fn: A Python function that will be used to compile a computation.
+      transform_args: An `Optional` `Callable` used to transform the args before
+        they are passed to the computation.
+      transform_result: An `Optional` `Callable` used to transform the result
+        before it is returned.
       cardinality_inference_fn: A Python function specifying how to infer
         cardinalities from arguments (and their associated types). The value
         returned by this function will be passed to the `create_executor` method
@@ -173,6 +179,8 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
       self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
     else:
       self._compiler_pipeline = None
+    self._transform_args = transform_args
+    self._transform_result = transform_result
     self._cardinality_inference_fn = cardinality_inference_fn
 
   @contextlib.contextmanager
@@ -205,7 +213,7 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
           f'Expected a `tff.FunctionType`, found {comp.type_signature}.'
       )
 
-    if arg is not None and comp.transform_args is not None:
+    if arg is not None and self._transform_args is not None:
       # `transform_args` is not intended to handle `tff.structure.Struct`.
       # Normalize to a Python structure to make it simpler to handle; `args` is
       # sometimes a `tff.structure.Struct` and sometimes it is not, other times
@@ -219,13 +227,21 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
       if isinstance(arg, structure.Struct):
         args, kwargs = function_utils.unpack_args_from_struct(arg)
         args = tree.traverse(_to_python, args)
-        args = comp.transform_args(args)
+        args = self._transform_args(args)
+        if not isinstance(args, Sequence):
+          raise ValueError(
+              f'Expected `args` to be a `Sequence`, found {type(args)}'
+          )
         kwargs = tree.traverse(_to_python, kwargs)
-        kwargs = comp.transform_args(kwargs)
+        kwargs = self._transform_args(kwargs)
+        if not isinstance(kwargs, Mapping):
+          raise ValueError(
+              f'Expected `kwargs` to be a `Mapping`, found {type(kwargs)}'
+          )
         arg = function_utils.pack_args_into_struct(args, kwargs)
       else:
         arg = tree.traverse(_to_python, arg)
-        arg = comp.transform_args(arg)
+        arg = self._transform_args(arg)
 
     # Save the type signature before compiling. Compilation currently loses
     # container types, so we must remember them here so that they can be
@@ -257,6 +273,6 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
             _invoke(executor, comp, arg, result_type)
         )
 
-        if comp.transform_result is not None:
-          result = comp.transform_result(result)
+        if self._transform_result is not None:
+          result = self._transform_result(result)
         return result

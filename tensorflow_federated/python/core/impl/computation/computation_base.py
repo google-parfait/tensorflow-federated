@@ -14,8 +14,6 @@
 """Defines the abstract interface for classes that represent computations."""
 
 import abc
-from collections.abc import Callable
-from typing import Optional
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
@@ -29,16 +27,6 @@ class Computation(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def type_signature(self) -> computation_types.FunctionType:
     """Returns the TFF type of this object."""
     raise NotImplementedError
-
-  @property
-  def transform_args(self) -> Optional[Callable[[object], object]]:
-    """A Callable used to transform the arguments to the computation."""
-    return None
-
-  @property
-  def transform_result(self) -> Optional[Callable[[object], object]]:
-    """A Callable used to transform the result of the computation."""
-    return None
 
   @abc.abstractmethod
   def __call__(self, *args, **kwargs):
