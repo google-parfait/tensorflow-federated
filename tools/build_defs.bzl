@@ -14,6 +14,7 @@
 """TensorFlow Federated build macros and rules."""
 
 load("@rules_python//python:defs.bzl", "py_test")
+load("@org_tensorflow//tensorflow:tensorflow.bzl", "tf_copts")
 
 def if_static(extra, framework_shared_object = []):  # buildifier: disable=unused-variable
     return_value = {
@@ -68,12 +69,14 @@ def tff_cc_cpu_gpu_test(name, tags = [], **kwargs):
     """
     native.cc_test(
         name = name + "_cpu",
+        copts = tf_copts(),
         tags = tags,
         **kwargs
     )
     native.cc_test(
         name = name + "_gpu",
         tags = tags + ["requires-gpu-nvidia"],
+        copts = tf_copts(),
         **kwargs
     )
     native.test_suite(
@@ -82,4 +85,55 @@ def tff_cc_cpu_gpu_test(name, tags = [], **kwargs):
             name + "_cpu",
             name + "_gpu",
         ],
+    )
+
+def tff_cc_library(name, tags = [], **kwargs):
+    """A version of `cc_library` that adds default copts.
+
+    It accepts all `cc_library` arguments.
+
+    Args:
+      name: A unique name for this target.
+      tags: List of arbitrary text tags.
+      **kwargs: `cc_library` keyword arguments.
+    """
+    native.cc_library(
+        name = name,
+        copts = tf_copts(),
+        tags = tags,
+        **kwargs
+    )
+
+def tff_cc_binary(name, tags = [], **kwargs):
+    """A version of `cc_binary` that adds default copts.
+
+    It accepts all `cc_binary` arguments.
+
+    Args:
+      name: A unique name for this target.
+      tags: List of arbitrary text tags.
+      **kwargs: `cc_binary` keyword arguments.
+    """
+    native.cc_binary(
+        name = name,
+        copts = tf_copts(),
+        tags = tags,
+        **kwargs
+    )
+
+def tff_cc_test(name, tags = [], **kwargs):
+    """A version of `cc_test` that adds default copts.
+
+    It accepts all `cc_test` arguments.
+
+    Args:
+      name: A unique name for this target.
+      tags: List of arbitrary text tags.
+      **kwargs: `cc_test` keyword arguments.
+    """
+    native.cc_test(
+        name = name,
+        copts = tf_copts(),
+        tags = tags,
+        **kwargs
     )

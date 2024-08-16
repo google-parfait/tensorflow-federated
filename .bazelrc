@@ -149,4 +149,4 @@ build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1
 # Default startup
 startup --host_jvm_args=-Dbazel.DigestFunction=SHA256
 
-build --define=build_with_onednn_v2=true
+build --copt=-DDENABLE_ONEDNN_V3

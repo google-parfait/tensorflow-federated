@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//tools:build_defs.bzl", "tff_cc_library", "tff_cc_test")
+
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = ["//visibility:public"],
 )
 
-cc_library(
+tff_cc_library(
     name = "latency_aggregator",
     hdrs = ["latency_aggregator.h"],
     deps = [
@@ -27,7 +29,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "latency_aggregator_test",
     srcs = ["latency_aggregator_test.cc"],
     deps = [
@@ -39,7 +41,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "cancelable_callback",
     srcs = ["cancelable_callback.cc"],
     hdrs = ["cancelable_callback.h"],
@@ -51,7 +53,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "cancelable_callback_test",
     srcs = ["cancelable_callback_test.cc"],
     deps = [
@@ -64,7 +66,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "simple_aggregation",
     srcs = ["simple_aggregation_protocol.cc"],
     hdrs = ["simple_aggregation_protocol.h"],
@@ -96,7 +98,7 @@ cc_library(
     alwayslink = 1,
 )
 
-cc_test(
+tff_cc_test(
     name = "simple_aggregation_test",
     srcs = ["simple_aggregation_protocol_test.cc"],
     deps = [
