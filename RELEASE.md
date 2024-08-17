@@ -14,6 +14,11 @@ and this project adheres to
     functions are intended to be used when instantiating and execution context
     in a TensorFlow environment.
 
+### Changed
+
+*   Replaced the `tensor` on the `Value` protobuf with an `array` field and
+    updated the serialization logic to use this new field.
+
 ## Release 0.85.0
 
 ### Added

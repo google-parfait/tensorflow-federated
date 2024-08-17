@@ -218,10 +218,7 @@ class FunctionalModel:
       sample_weight: Optional[Any] = None,
   ) -> GenericMetricsState:
     return self._update_metrics_state(
-        state,
-        labels=labels,
-        batch_output=batch_output,
-        sample_weight=sample_weight,
+        state, labels, batch_output, sample_weight
     )
 
   @tf.function

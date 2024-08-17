@@ -290,6 +290,69 @@ def to_proto(
     raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
 
 
+def from_proto_content(array_pb: array_pb2.Array) -> Array:
+  """Returns an `Array` for the `array_pb`."""
+  dtype = dtype_utils.from_proto(array_pb.dtype)
+  shape = array_shape.from_proto(array_pb.shape)
+
+  if dtype is not np.str_:
+    value = np.frombuffer(array_pb.content, dtype)
+  else:
+    raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
+
+  # `Array` is a `Union` of native Python types and numpy types. However, the
+  # protobuf representation of `Array` contains additional information like
+  # dtype and shape. This information is lost when returning native Python types
+  # making it impossible to infer the original dtype later. Therefore, a numpy
+  # value should almost always be returned from this function. String values are
+  # an exception to this because it's not possible to represent null-terminated
+  # scalar strings using numpy and this is ok because string types can only be
+  # inferred as string types.
+  if not array_shape.is_shape_scalar(shape):
+    value = value.reshape(shape)
+  else:
+    value = value.item()
+    value = dtype(value)
+
+  return value
+
+
+def to_proto_content(
+    value: Array, *, dtype_hint: Optional[type[np.generic]] = None
+) -> array_pb2.Array:
+  """Returns an `Array` for the `value`."""
+
+  if dtype_hint is not None:
+    if not dtype_utils.is_valid_dtype(dtype_hint):
+      raise ValueError(
+          f'Expected `dtype_hint` to be a valid dtype, found {dtype_hint}.'
+      )
+    if not is_compatible_dtype(value, dtype_hint):
+      raise ValueError(f'Expected {value} to be compatible with {dtype_hint}.')
+    dtype = dtype_hint
+  else:
+    if isinstance(value, (np.ndarray, np.generic)):
+      dtype = value.dtype.type
+      # If the value has a dtype of `np.bytes_` or `np.object_`, the serialized
+      # dtype should still be a `np.str_`.
+      if np.issubdtype(dtype, np.bytes_) or np.issubdtype(dtype, np.object_):
+        dtype = np.str_
+    else:
+      dtype = dtype_utils.infer_dtype(value)
+
+  # Normalize to a numpy value.
+  if dtype is not np.str_:
+    value = np.asarray(value, dtype)
+  else:
+    raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
+
+  dtype_pb = dtype_utils.to_proto(dtype)
+  shape_pb = array_shape.to_proto(value.shape)
+  content = value.tobytes()
+
+  return array_pb2.Array(dtype=dtype_pb, shape=shape_pb, content=content)
+
+
 def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
   """Returns `True` if `value` is compatible with `dtype`, otherwise `False`.
 

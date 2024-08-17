@@ -21,45 +21,48 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
+#include "tensorflow_federated/proto/v0/array.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
-namespace tf = ::tensorflow;
-
-absl::Status SerializeTensorValue(const tf::Tensor tensor,
+absl::Status SerializeTensorValue(const tensorflow::Tensor tensor,
                                   v0::Value* value_pb) {
-  tf::TensorProto tensor_proto;
-  if (tensor.dtype() == tf::DT_STRING) {
-    // For some reason, strings don't work with AsProtoTensorContent()?
-    // >>> ValueError: cannot create an OBJECT array from memory buffer
-    tensor.AsProtoField(&tensor_proto);
+  // Repeated fields are used for strings and constants to maintain
+  // compatibility with TensorFlow.
+  v0::Array array_pb;
+  if ((tensor.shape().dims() == 0 && !tensor.shape().unknown_rank()) ||
+      tensor.dtype() == tensorflow::DataType::DT_STRING) {
+    array_pb = TFF_TRY(ArrayFromTensor(tensor));
   } else {
-    tensor.AsProtoTensorContent(&tensor_proto);
+    array_pb = TFF_TRY(ArrayContentFromTensor(tensor));
   }
-  value_pb->mutable_tensor()->PackFrom(tensor_proto);
+  value_pb->mutable_array()->Swap(&array_pb);
   return absl::OkStatus();
 }
 
-absl::StatusOr<tf::Tensor> DeserializeTensorValue(const v0::Value& value_pb) {
-  if (!value_pb.has_tensor()) {
-    LOG(ERROR) << "Attempted to deserialize non-Tensor value to a Tensor";
+absl::StatusOr<tensorflow::Tensor> DeserializeTensorValue(
+    const v0::Value& value_pb) {
+  if (!value_pb.has_array()) {
+    LOG(ERROR) << "Attempted to deserialize non-Array value to a Tensor";
     LOG(ERROR) << "Value proto: " << value_pb.ShortDebugString();
     return absl::InvalidArgumentError(
-        "value_pb must have a `tensor` oneof field to be deserializable to a "
+        "value_pb must have an `array` oneof field to be deserializable to a "
         "Tensor");
   }
-  tensorflow::TensorProto tensor_proto;
-  value_pb.tensor().UnpackTo(&tensor_proto);
-  tensorflow::Tensor tensor;
-  if (!tensor.FromProto(tensor_proto)) {
-    LOG(ERROR) << "Failed to deserialize tensor value contents to tensor";
-    LOG(ERROR) << "Value proto: " << value_pb.ShortDebugString();
-    return absl::InvalidArgumentError(
-        "Seriailzed tensor Value proto could not be parsed into Tensor "
-        "object.");
+
+  // Repeated fields are used for strings and constants to maintain
+  // compatibility with TensorFlow.
+  if ((value_pb.array().shape().dim().empty() &&
+       !value_pb.array().shape().unknown_rank()) ||
+      value_pb.array().dtype() == v0::DataType::DT_STRING) {
+    return TensorFromArray(value_pb.array());
+  } else {
+    return TensorFromArrayContent(value_pb.array());
   }
-  return tensor;
 }
 
 }  // namespace tensorflow_federated
