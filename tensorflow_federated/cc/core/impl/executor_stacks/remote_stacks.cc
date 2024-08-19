@@ -17,6 +17,7 @@ limitations under the License
 #include <algorithm>
 #include <chrono>  // NOLINT
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -86,9 +87,11 @@ std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels_(
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
-    const CardinalityMap& cardinalities) {
-  auto rre_tf_leaf_executor = []() {
-    return CreateReferenceResolvingExecutor(CreateTensorFlowExecutor());
+    const CardinalityMap& cardinalities,
+    int32_t max_concurrent_computation_calls) {
+  auto rre_tf_leaf_executor = [max_concurrent_computation_calls]() {
+    return CreateReferenceResolvingExecutor(
+        CreateTensorFlowExecutor(max_concurrent_computation_calls));
   };
   ComposingChildFn composing_child_factory =
       [](std::shared_ptr<grpc::ChannelInterface> channel,

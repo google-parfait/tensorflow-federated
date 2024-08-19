@@ -16,6 +16,7 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -52,9 +53,13 @@ using ComposingExecutorFn = std::function<std::shared_ptr<Executor>(
 //
 // This method may block on an RPC call to each channel in order to verify that
 // it is healthy.
+//
+// The `max_concurrent_computation_calls` argument will limit the parallelism
+// of the local (SERVER placement) executor.
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
-    const CardinalityMap& cardinalities);
+    const CardinalityMap& cardinalities,
+    int32_t max_concurrent_computation_calls = -1);
 
 // Creates an executor stack with StreamingRemoteExecutors, otherwise the same
 // as `CreateRemoteExecutorStack` above.

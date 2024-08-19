@@ -188,6 +188,7 @@ def remote_cpp_executor_factory(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
     stream_structs: bool = False,
+    max_concurrent_computation_calls: int = -1,
 ) -> executor_factory.ExecutorFactory:
   """ExecutorFactory backed by C++ Executor bindings."""
   _check_num_clients_is_valid(default_num_clients)
@@ -204,7 +205,7 @@ def remote_cpp_executor_factory(
         )
       else:
         return executor_stack_bindings.create_remote_executor_stack(
-            channels, cardinalities
+            channels, cardinalities, max_concurrent_computation_calls
         )
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)

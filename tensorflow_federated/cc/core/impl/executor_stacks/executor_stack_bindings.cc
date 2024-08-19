@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -35,7 +36,7 @@ PYBIND11_MODULE(executor_stack_bindings, m) {
   m.def("create_remote_executor_stack",
         py::overload_cast<
             const std::vector<std::shared_ptr<grpc::ChannelInterface>>&,
-            const CardinalityMap&>(&CreateRemoteExecutorStack),
+            const CardinalityMap&, int32_t>(&CreateRemoteExecutorStack),
         "Creates a C++ remote execution stack.");
 
   m.def("create_streaming_remote_executor_stack",
