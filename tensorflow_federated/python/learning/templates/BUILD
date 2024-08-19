@@ -49,6 +49,7 @@ py_library(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -66,6 +67,9 @@ py_test(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -99,6 +103,8 @@ py_test(
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/models:model_weights",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -157,6 +163,9 @@ py_test(
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -190,6 +199,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -224,6 +236,8 @@ py_test(
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/models:model_weights",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -246,6 +260,8 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -275,6 +291,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -299,6 +318,7 @@ py_library(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -326,6 +346,9 @@ py_test(
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -350,6 +373,8 @@ py_library(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -375,6 +400,9 @@ py_test(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -395,5 +423,7 @@ py_test(
         ":type_checks",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )

@@ -24,12 +24,17 @@ py_library(
 py_library(
     name = "graph_utils",
     srcs = ["graph_utils.py"],
+    deps = ["//third_party/tensorflow"],
 )
 
 py_test(
     name = "graph_utils_test",
     srcs = ["graph_utils_test.py"],
-    deps = [":graph_utils"],
+    deps = [
+        ":graph_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_library(
@@ -37,6 +42,7 @@ py_library(
     srcs = ["serialization_utils.py"],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//third_party/tensorflow",
         "@com_google_protobuf//:protobuf_python",
     ],
 )
@@ -47,7 +53,9 @@ py_test(
     srcs = ["serialization_utils_test.py"],
     deps = [
         ":serialization_utils",
+        "//third_party/tensorflow",
         "@com_google_protobuf//:protobuf_python",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -55,4 +63,5 @@ py_library(
     name = "tensorflow_test_utils",
     testonly = True,
     srcs = ["tensorflow_test_utils.py"],
+    deps = ["//third_party/tensorflow"],
 )

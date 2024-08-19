@@ -1,0 +1,462 @@
+diff --git src/python/grpcio/grpc/_cython/_cygrpc/aio/callback_common.pxd.pxi src/python/grpcio/grpc/_cython/_cygrpc/aio/callback_common.pxd.pxi
+index e5620cd166..7bb2bd71de 100644
+--- src/python/grpcio/grpc/_cython/_cygrpc/aio/callback_common.pxd.pxi
++++ src/python/grpcio/grpc/_cython/_cygrpc/aio/callback_common.pxd.pxi
+@@ -48,7 +48,7 @@ cdef class CallbackWrapper:
+     @staticmethod
+     cdef void functor_run(
+             grpc_experimental_completion_queue_functor* functor,
+-            int succeed)
++            int succeed) noexcept
+ 
+     cdef grpc_experimental_completion_queue_functor *c_functor(self)
+ 
+diff --git src/python/grpcio/grpc/_cython/_cygrpc/aio/callback_common.pyx.pxi src/python/grpcio/grpc/_cython/_cygrpc/aio/callback_common.pyx.pxi
+index 86fc91e76a..475bc5520d 100644
+--- src/python/grpcio/grpc/_cython/_cygrpc/aio/callback_common.pyx.pxi
++++ src/python/grpcio/grpc/_cython/_cygrpc/aio/callback_common.pyx.pxi
+@@ -50,7 +50,7 @@ cdef class CallbackWrapper:
+     @staticmethod
+     cdef void functor_run(
+             grpc_experimental_completion_queue_functor* functor,
+-            int success):
++            int success) noexcept:
+         cdef CallbackContext *context = <CallbackContext *>functor
+         cdef object waiter = <object>context.waiter
+         if not waiter.cancelled():
+diff --git src/python/grpcio/grpc/_cython/_cygrpc/aio/iomgr/iomgr.pyx.pxi src/python/grpcio/grpc/_cython/_cygrpc/aio/iomgr/iomgr.pyx.pxi
+index f5b62af528..d84b7e0ab0 100644
+--- src/python/grpcio/grpc/_cython/_cygrpc/aio/iomgr/iomgr.pyx.pxi
++++ src/python/grpcio/grpc/_cython/_cygrpc/aio/iomgr/iomgr.pyx.pxi
+@@ -33,14 +33,14 @@ cdef bint so_reuse_port
+ 
+ cdef grpc_error* asyncio_socket_init(
+         grpc_custom_socket* grpc_socket,
+-        int domain) with gil:
++        int domain) noexcept with gil:
+     socket = _AsyncioSocket.create(grpc_socket, None, None)
+     Py_INCREF(socket)
+     grpc_socket.impl = <void*>socket
+     return <grpc_error*>0
+ 
+ 
+-cdef void asyncio_socket_destroy(grpc_custom_socket* grpc_socket) with gil:
++cdef void asyncio_socket_destroy(grpc_custom_socket* grpc_socket) noexcept with gil:
+     Py_DECREF(<_AsyncioSocket>grpc_socket.impl)
+ 
+ 
+@@ -48,7 +48,7 @@ cdef void asyncio_socket_connect(
+         grpc_custom_socket* grpc_socket,
+         const grpc_sockaddr* addr,
+         size_t addr_len,
+-        grpc_custom_connect_callback connect_cb) with gil:
++        grpc_custom_connect_callback connect_cb) noexcept with gil:
+     host, port = sockaddr_to_tuple(addr, addr_len)
+     socket = <_AsyncioSocket>grpc_socket.impl
+     socket.connect(host, port, connect_cb)
+@@ -56,13 +56,13 @@ cdef void asyncio_socket_connect(
+ 
+ cdef void asyncio_socket_close(
+         grpc_custom_socket* grpc_socket,
+-        grpc_custom_close_callback close_cb) with gil:
++        grpc_custom_close_callback close_cb) noexcept with gil:
+     socket = (<_AsyncioSocket>grpc_socket.impl)
+     socket.close()
+     close_cb(grpc_socket)
+ 
+ 
+-cdef void asyncio_socket_shutdown(grpc_custom_socket* grpc_socket) with gil:
++cdef void asyncio_socket_shutdown(grpc_custom_socket* grpc_socket) noexcept with gil:
+     socket = (<_AsyncioSocket>grpc_socket.impl)
+     socket.close()
+ 
+@@ -70,7 +70,7 @@ cdef void asyncio_socket_shutdown(grpc_custom_socket* grpc_socket) with gil:
+ cdef void asyncio_socket_write(
+         grpc_custom_socket* grpc_socket,
+         grpc_slice_buffer* slice_buffer,
+-        grpc_custom_write_callback write_cb) with gil:
++        grpc_custom_write_callback write_cb) noexcept with gil:
+     socket = (<_AsyncioSocket>grpc_socket.impl)
+     socket.write(slice_buffer, write_cb)
+ 
+@@ -79,7 +79,7 @@ cdef void asyncio_socket_read(
+         grpc_custom_socket* grpc_socket,
+         char* buffer_,
+         size_t length,
+-        grpc_custom_read_callback read_cb) with gil:
++        grpc_custom_read_callback read_cb) noexcept with gil:
+     socket = (<_AsyncioSocket>grpc_socket.impl)
+     socket.read(buffer_, length, read_cb)
+ 
+@@ -87,7 +87,7 @@ cdef void asyncio_socket_read(
+ cdef grpc_error* asyncio_socket_getpeername(
+         grpc_custom_socket* grpc_socket,
+         const grpc_sockaddr* addr,
+-        int* length) with gil:
++        int* length) noexcept with gil:
+     peer = (<_AsyncioSocket>grpc_socket.impl).peername()
+ 
+     cdef grpc_resolved_address c_addr
+@@ -102,7 +102,7 @@ cdef grpc_error* asyncio_socket_getpeername(
+ cdef grpc_error* asyncio_socket_getsockname(
+         grpc_custom_socket* grpc_socket,
+         const grpc_sockaddr* addr,
+-        int* length) with gil:
++        int* length) noexcept with gil:
+     """Supplies sock_addr in add_socket_to_server."""
+     cdef grpc_resolved_address c_addr
+     socket = (<_AsyncioSocket>grpc_socket.impl)
+@@ -118,7 +118,7 @@ cdef grpc_error* asyncio_socket_getsockname(
+     return grpc_error_none()
+ 
+ 
+-cdef grpc_error* asyncio_socket_listen(grpc_custom_socket* grpc_socket) with gil:
++cdef grpc_error* asyncio_socket_listen(grpc_custom_socket* grpc_socket) noexcept with gil:
+     (<_AsyncioSocket>grpc_socket.impl).listen()
+     return grpc_error_none()
+ 
+@@ -137,7 +137,7 @@ def _asyncio_apply_socket_options(object s, int flags):
+ cdef grpc_error* asyncio_socket_bind(
+         grpc_custom_socket* grpc_socket,
+         const grpc_sockaddr* addr,
+-        size_t len, int flags) with gil:
++        size_t len, int flags) noexcept with gil:
+     host, port = sockaddr_to_tuple(addr, len)
+     try:
+         ip = ipaddress.ip_address(host)
+@@ -162,14 +162,14 @@ cdef grpc_error* asyncio_socket_bind(
+ cdef void asyncio_socket_accept(
+         grpc_custom_socket* grpc_socket,
+         grpc_custom_socket* grpc_socket_client,
+-        grpc_custom_accept_callback accept_cb) with gil:
++        grpc_custom_accept_callback accept_cb) noexcept with gil:
+     (<_AsyncioSocket>grpc_socket.impl).accept(grpc_socket_client, accept_cb)
+ 
+ 
+ cdef grpc_error* asyncio_resolve(
+         char* host,
+         char* port,
+-        grpc_resolved_addresses** res) with gil:
++        grpc_resolved_addresses** res) noexcept with gil:
+     result = native_socket.getaddrinfo(host, port)
+     res[0] = tuples_to_resolvaddr(result)
+ 
+@@ -177,17 +177,17 @@ cdef grpc_error* asyncio_resolve(
+ cdef void asyncio_resolve_async(
+         grpc_custom_resolver* grpc_resolver,
+         char* host,
+-        char* port) with gil:
++        char* port) noexcept with gil:
+     resolver = _AsyncioResolver.create(grpc_resolver)
+     resolver.resolve(host, port)
+ 
+ 
+-cdef void asyncio_timer_start(grpc_custom_timer* grpc_timer) with gil:
++cdef void asyncio_timer_start(grpc_custom_timer* grpc_timer) noexcept with gil:
+     timer = _AsyncioTimer.create(grpc_timer, grpc_timer.timeout_ms / 1000.0)
+     grpc_timer.timer = <void*>timer
+ 
+ 
+-cdef void asyncio_timer_stop(grpc_custom_timer* grpc_timer) with gil:
++cdef void asyncio_timer_stop(grpc_custom_timer* grpc_timer) noexcept with gil:
+     # TODO(https://github.com/grpc/grpc/issues/22278) remove this if condition
+     if grpc_timer.timer == NULL:
+         return
+@@ -196,19 +196,19 @@ cdef void asyncio_timer_stop(grpc_custom_timer* grpc_timer) with gil:
+         timer.stop()
+ 
+ 
+-cdef void asyncio_init_loop() with gil:
++cdef void asyncio_init_loop() noexcept with gil:
+     pass
+ 
+ 
+-cdef void asyncio_destroy_loop() with gil:
++cdef void asyncio_destroy_loop() noexcept with gil:
+     pass
+ 
+ 
+-cdef void asyncio_kick_loop() with gil:
++cdef void asyncio_kick_loop() noexcept with gil:
+     pass
+ 
+ 
+-cdef void asyncio_run_loop(size_t timeout_ms) with gil:
++cdef void asyncio_run_loop(size_t timeout_ms) noexcept with gil:
+     pass
+ 
+ 
+diff --git src/python/grpcio/grpc/_cython/_cygrpc/credentials.pyx.pxi src/python/grpcio/grpc/_cython/_cygrpc/credentials.pyx.pxi
+index 24d1e2a3b7..641568b75a 100644
+--- src/python/grpcio/grpc/_cython/_cygrpc/credentials.pyx.pxi
++++ src/python/grpcio/grpc/_cython/_cygrpc/credentials.pyx.pxi
+@@ -293,7 +293,7 @@ def server_credentials_ssl_dynamic_cert_config(initial_cert_config,
+   return credentials
+ 
+ cdef grpc_ssl_certificate_config_reload_status _server_cert_config_fetcher_wrapper(
+-        void* user_data, grpc_ssl_server_certificate_config **config) with gil:
++        void* user_data, grpc_ssl_server_certificate_config **config) noexcept with gil:
+   # This is a credentials.ServerCertificateConfig
+   cdef ServerCertificateConfig cert_config = None
+   if not user_data:
+diff --git src/python/grpcio/grpc/_cython/_cygrpc/fork_posix.pxd.pxi src/python/grpcio/grpc/_cython/_cygrpc/fork_posix.pxd.pxi
+index a925bdd2e6..09ff7d4604 100644
+--- src/python/grpcio/grpc/_cython/_cygrpc/fork_posix.pxd.pxi
++++ src/python/grpcio/grpc/_cython/_cygrpc/fork_posix.pxd.pxi
+@@ -15,15 +15,15 @@
+ 
+ cdef extern from "pthread.h" nogil:
+     int pthread_atfork(
+-        void (*prepare)() nogil,
+-        void (*parent)() nogil,
+-        void (*child)() nogil)
++        void (*prepare)() noexcept nogil,
++        void (*parent)() noexcept nogil,
++        void (*child)() noexcept nogil)
+ 
+ 
+-cdef void __prefork() nogil
++cdef void __prefork() noexcept nogil
+ 
+ 
+-cdef void __postfork_parent() nogil
++cdef void __postfork_parent() noexcept nogil
+ 
+ 
+-cdef void __postfork_child() nogil
++cdef void __postfork_child() noexcept nogil
+diff --git src/python/grpcio/grpc/_cython/_cygrpc/fork_posix.pyx.pxi src/python/grpcio/grpc/_cython/_cygrpc/fork_posix.pyx.pxi
+index 55c8673dd4..0ef3a5fdb1 100644
+--- src/python/grpcio/grpc/_cython/_cygrpc/fork_posix.pyx.pxi
++++ src/python/grpcio/grpc/_cython/_cygrpc/fork_posix.pyx.pxi
+@@ -34,7 +34,7 @@ _GRPC_ENABLE_FORK_SUPPORT = (
+ 
+ _fork_handler_failed = False
+ 
+-cdef void __prefork() nogil:
++cdef void __prefork() noexcept nogil:
+     with gil:
+         global _fork_handler_failed
+         _fork_handler_failed = False
+@@ -48,14 +48,14 @@ cdef void __prefork() nogil:
+             _fork_handler_failed = True
+ 
+ 
+-cdef void __postfork_parent() nogil:
++cdef void __postfork_parent() noexcept nogil:
+     with gil:
+         with _fork_state.fork_in_progress_condition:
+             _fork_state.fork_in_progress = False
+             _fork_state.fork_in_progress_condition.notify_all()
+ 
+ 
+-cdef void __postfork_child() nogil:
++cdef void __postfork_child() noexcept nogil:
+     with gil:
+         try:
+             if _fork_handler_failed:
+diff --git src/python/grpcio/grpc/_cython/_cygrpc/grpc_gevent.pyx.pxi src/python/grpcio/grpc/_cython/_cygrpc/grpc_gevent.pyx.pxi
+index 05e185ddd4..7b9521def7 100644
+--- src/python/grpcio/grpc/_cython/_cygrpc/grpc_gevent.pyx.pxi
++++ src/python/grpcio/grpc/_cython/_cygrpc/grpc_gevent.pyx.pxi
+@@ -41,7 +41,7 @@ cdef class SocketWrapper:
+   def __dealloc__(self):
+     grpc_shutdown_blocking()
+ 
+-cdef grpc_error* socket_init(grpc_custom_socket* socket, int domain) with gil:
++cdef grpc_error* socket_init(grpc_custom_socket* socket, int domain) noexcept with gil:
+   sw = SocketWrapper()
+   sw.c_socket = socket
+   sw.sockopts = []
+@@ -69,7 +69,7 @@ def socket_connect_async(socket_wrapper, addr_tuple):
+ 
+ cdef void socket_connect(grpc_custom_socket* socket, const grpc_sockaddr* addr,
+                          size_t addr_len,
+-                         grpc_custom_connect_callback cb) with gil:
++                         grpc_custom_connect_callback cb) noexcept with gil:
+   py_socket = None
+   socket_wrapper = <SocketWrapper>socket.impl
+   socket_wrapper.connect_cb = cb
+@@ -82,10 +82,10 @@ cdef void socket_connect(grpc_custom_socket* socket, const grpc_sockaddr* addr,
+   socket_wrapper.socket = py_socket
+   _spawn_greenlet(socket_connect_async, socket_wrapper, addr_tuple)
+ 
+-cdef void socket_destroy(grpc_custom_socket* socket) with gil:
++cdef void socket_destroy(grpc_custom_socket* socket) noexcept with gil:
+   cpython.Py_DECREF(<SocketWrapper>socket.impl)
+ 
+-cdef void socket_shutdown(grpc_custom_socket* socket) with gil:
++cdef void socket_shutdown(grpc_custom_socket* socket) noexcept with gil:
+   try:
+     (<SocketWrapper>socket.impl).socket.shutdown(gevent_socket.SHUT_RDWR)
+   except IOError as io_error:
+@@ -93,7 +93,7 @@ cdef void socket_shutdown(grpc_custom_socket* socket) with gil:
+       raise io_error
+ 
+ cdef void socket_close(grpc_custom_socket* socket,
+-                       grpc_custom_close_callback cb) with gil:
++                       grpc_custom_close_callback cb) noexcept with gil:
+   socket_wrapper = (<SocketWrapper>socket.impl)
+   if socket_wrapper.socket is not None:
+     socket_wrapper.socket.close()
+@@ -133,7 +133,7 @@ def socket_write_async(socket_wrapper, write_bytes):
+   socket_write_async_cython(socket_wrapper, write_bytes)
+ 
+ cdef void socket_write(grpc_custom_socket* socket, grpc_slice_buffer* buffer,
+-                       grpc_custom_write_callback cb) with gil:
++                       grpc_custom_write_callback cb) noexcept with gil:
+   cdef char* start
+   sw = <SocketWrapper>socket.impl
+   sw.write_cb = cb
+@@ -161,7 +161,7 @@ def socket_read_async(socket_wrapper):
+   socket_read_async_cython(socket_wrapper)
+ 
+ cdef void socket_read(grpc_custom_socket* socket, char* buffer,
+-                      size_t length, grpc_custom_read_callback cb) with gil:
++                      size_t length, grpc_custom_read_callback cb) noexcept with gil:
+   sw = <SocketWrapper>socket.impl
+   sw.read_cb = cb
+   sw.c_buffer = buffer
+@@ -170,7 +170,7 @@ cdef void socket_read(grpc_custom_socket* socket, char* buffer,
+ 
+ cdef grpc_error* socket_getpeername(grpc_custom_socket* socket,
+                                     const grpc_sockaddr* addr,
+-                                    int* length) with gil:
++                                    int* length) noexcept with gil:
+   cdef char* src_buf
+   peer = (<SocketWrapper>socket.impl).socket.getpeername()
+ 
+@@ -183,7 +183,7 @@ cdef grpc_error* socket_getpeername(grpc_custom_socket* socket,
+ 
+ cdef grpc_error* socket_getsockname(grpc_custom_socket* socket,
+                                     const grpc_sockaddr* addr,
+-                                    int* length) with gil:
++                                    int* length) noexcept with gil:
+   cdef char* src_buf
+   cdef grpc_resolved_address c_addr
+   if (<SocketWrapper>socket.impl).socket is None:
+@@ -202,7 +202,7 @@ def applysockopts(s):
+ 
+ cdef grpc_error* socket_bind(grpc_custom_socket* socket,
+                              const grpc_sockaddr* addr,
+-                             size_t len, int flags) with gil:
++                             size_t len, int flags) noexcept with gil:
+   addr_tuple = sockaddr_to_tuple(addr, len)
+   try:
+     try:
+@@ -219,7 +219,7 @@ cdef grpc_error* socket_bind(grpc_custom_socket* socket,
+   else:
+     return grpc_error_none()
+ 
+-cdef grpc_error* socket_listen(grpc_custom_socket* socket) with gil:
++cdef grpc_error* socket_listen(grpc_custom_socket* socket) noexcept with gil:
+   (<SocketWrapper>socket.impl).socket.listen(50)
+   return grpc_error_none()
+ 
+@@ -249,7 +249,7 @@ def socket_accept_async(s):
+   accept_callback_cython(s)
+ 
+ cdef void socket_accept(grpc_custom_socket* socket, grpc_custom_socket* client,
+-                        grpc_custom_accept_callback cb) with gil:
++                        grpc_custom_accept_callback cb) noexcept with gil:
+   sw = <SocketWrapper>socket.impl
+   sw.accepting_socket = client
+   sw.accept_cb = cb
+@@ -283,7 +283,7 @@ cdef socket_resolve_async_cython(ResolveWrapper resolve_wrapper):
+ def socket_resolve_async_python(resolve_wrapper):
+   socket_resolve_async_cython(resolve_wrapper)
+ 
+-cdef void socket_resolve_async(grpc_custom_resolver* r, char* host, char* port) with gil:
++cdef void socket_resolve_async(grpc_custom_resolver* r, char* host, char* port) noexcept with gil:
+   rw = ResolveWrapper()
+   rw.c_resolver = r
+   rw.c_host = host
+@@ -291,7 +291,7 @@ cdef void socket_resolve_async(grpc_custom_resolver* r, char* host, char* port)
+   _spawn_greenlet(socket_resolve_async_python, rw)
+ 
+ cdef grpc_error* socket_resolve(char* host, char* port,
+-                                grpc_resolved_addresses** res) with gil:
++                                grpc_resolved_addresses** res) noexcept with gil:
+     try:
+       result = gevent_socket.getaddrinfo(host, port)
+       res[0] = tuples_to_resolvaddr(result)
+@@ -325,13 +325,13 @@ cdef class TimerWrapper:
+   def __dealloc__(self):
+     grpc_shutdown_blocking()
+ 
+-cdef void timer_start(grpc_custom_timer* t) with gil:
++cdef void timer_start(grpc_custom_timer* t) noexcept with gil:
+   timer = TimerWrapper(t.timeout_ms / 1000.0)
+   timer.c_timer = t
+   t.timer = <void*>timer
+   timer.start()
+ 
+-cdef void timer_stop(grpc_custom_timer* t) with gil:
++cdef void timer_stop(grpc_custom_timer* t) noexcept with gil:
+   time_wrapper = <object>t.timer
+   time_wrapper.stop()
+ 
+@@ -339,16 +339,16 @@ cdef void timer_stop(grpc_custom_timer* t) with gil:
+ ### pollset implementation ###
+ ###############################
+ 
+-cdef void init_loop() with gil:
++cdef void init_loop() noexcept with gil:
+   pass
+ 
+-cdef void destroy_loop() with gil:
++cdef void destroy_loop() noexcept with gil:
+   g_pool.join()
+ 
+-cdef void kick_loop() with gil:
++cdef void kick_loop() noexcept with gil:
+   g_event.set()
+ 
+-cdef void run_loop(size_t timeout_ms) with gil:
++cdef void run_loop(size_t timeout_ms) noexcept with gil:
+     timeout = timeout_ms / 1000.0
+     if timeout_ms > 0:
+       g_event.wait(timeout)
+diff --git src/python/grpcio/grpc/_cython/_cygrpc/vtable.pxd.pxi src/python/grpcio/grpc/_cython/_cygrpc/vtable.pxd.pxi
+index c96e5cb669..3dfd7e5ff1 100644
+--- src/python/grpcio/grpc/_cython/_cygrpc/vtable.pxd.pxi
++++ src/python/grpcio/grpc/_cython/_cygrpc/vtable.pxd.pxi
+@@ -13,11 +13,11 @@
+ # limitations under the License.
+ 
+ 
+-cdef void* _copy_pointer(void* pointer)
++cdef void* _copy_pointer(void* pointer) noexcept
+ 
+-cdef void _destroy_pointer(void* pointer)
++cdef void _destroy_pointer(void* pointer) noexcept
+ 
+-cdef int _compare_pointer(void* first_pointer, void* second_pointer)
++cdef int _compare_pointer(void* first_pointer, void* second_pointer) noexcept
+ 
+ 
+ cdef grpc_arg_pointer_vtable default_vtable
+diff --git src/python/grpcio/grpc/_cython/_cygrpc/vtable.pyx.pxi src/python/grpcio/grpc/_cython/_cygrpc/vtable.pyx.pxi
+index da4b81bd97..f59410073b 100644
+--- src/python/grpcio/grpc/_cython/_cygrpc/vtable.pyx.pxi
++++ src/python/grpcio/grpc/_cython/_cygrpc/vtable.pyx.pxi
+@@ -13,16 +13,16 @@
+ # limitations under the License.
+ 
+ # TODO(https://github.com/grpc/grpc/issues/15662): Reform this.
+-cdef void* _copy_pointer(void* pointer):
++cdef void* _copy_pointer(void* pointer) noexcept:
+   return pointer
+ 
+ 
+ # TODO(https://github.com/grpc/grpc/issues/15662): Reform this.
+-cdef void _destroy_pointer(void* pointer):
++cdef void _destroy_pointer(void* pointer) noexcept:
+   pass
+ 
+ 
+-cdef int _compare_pointer(void* first_pointer, void* second_pointer):
++cdef int _compare_pointer(void* first_pointer, void* second_pointer) noexcept:
+   if first_pointer < second_pointer:
+     return -1
+   elif first_pointer > second_pointer:

@@ -25,7 +25,10 @@ py_library(
 py_library(
     name = "image_classification_preprocessing",
     srcs = ["image_classification_preprocessing.py"],
-    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
+    deps = [
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//third_party/tensorflow",
+    ],
 )
 
 py_test(
@@ -36,6 +39,8 @@ py_test(
         ":image_classification_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -52,6 +57,7 @@ py_library(
         "//tensorflow_federated/python/simulation/datasets:cifar100",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/models:resnet_models",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -64,5 +70,7 @@ py_test(
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/models:resnet_models",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )

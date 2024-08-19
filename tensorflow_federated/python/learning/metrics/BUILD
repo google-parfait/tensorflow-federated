@@ -40,7 +40,6 @@ py_library(
         ":aggregation_utils",
         ":types",
         "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/aggregators:quantile_estimation",
         "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -53,6 +52,9 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//third_party/tensorflow",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -63,7 +65,6 @@ py_test(
     deps = [
         ":sum_aggregation_factory",
         "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/aggregators:quantile_estimation",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -71,6 +72,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/test:static_assert",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -95,6 +99,9 @@ py_test(
         ":keras_finalizer",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -128,24 +135,39 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/test:static_assert",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
 py_library(
     name = "counters",
     srcs = ["counters.py"],
+    deps = [
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
+    ],
 )
 
 py_test(
     name = "counters_test",
     srcs = ["counters_test.py"],
-    deps = [":counters"],
+    deps = [
+        ":counters",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+    ],
 )
 
 py_library(
     name = "keras_finalizer",
     srcs = ["keras_finalizer.py"],
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//third_party/tensorflow",
+    ],
 )
 
 py_test(
@@ -156,13 +178,19 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
 py_library(
     name = "keras_utils",
     srcs = ["keras_utils.py"],
-    deps = ["//tensorflow_federated/python/core/environments/tensorflow_frontend:variable_utils"],
+    deps = [
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:variable_utils",
+        "//third_party/tensorflow",
+    ],
 )
 
 py_test(
@@ -171,6 +199,9 @@ py_test(
     deps = [
         ":counters",
         ":keras_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -183,6 +214,9 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 

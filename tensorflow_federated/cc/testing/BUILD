@@ -1,3 +1,5 @@
+load("//tools:build_defs.bzl", "tff_cc_library")
+
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
@@ -16,7 +18,7 @@ package_group(
 
 licenses(["notice"])
 
-cc_library(
+tff_cc_library(
     name = "oss_test_main",
     testonly = 1,
     srcs = ["oss_test_main.cc"],
@@ -27,7 +29,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "protobuf_matchers",
     testonly = True,
     hdrs = ["protobuf_matchers.h"],
@@ -39,7 +41,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "status_matchers",
     testonly = True,
     srcs = ["status_matchers.cc"],

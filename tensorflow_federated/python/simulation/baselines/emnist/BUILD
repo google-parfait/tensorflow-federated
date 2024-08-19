@@ -38,6 +38,7 @@ py_library(
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:emnist",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -49,6 +50,8 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -65,6 +68,7 @@ py_library(
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:emnist",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -77,24 +81,33 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
 py_library(
     name = "emnist_models",
     srcs = ["emnist_models.py"],
+    deps = ["//third_party/tensorflow"],
 )
 
 py_test(
     name = "emnist_models_test",
     srcs = ["emnist_models_test.py"],
-    deps = [":emnist_models"],
+    deps = [
+        ":emnist_models",
+        "//third_party/tensorflow",
+    ],
 )
 
 py_library(
     name = "emnist_preprocessing",
     srcs = ["emnist_preprocessing.py"],
-    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
+    deps = [
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//third_party/tensorflow",
+    ],
 )
 
 py_test(
@@ -105,5 +118,7 @@ py_test(
         ":emnist_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )

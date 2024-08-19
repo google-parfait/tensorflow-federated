@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//tools:build_defs.bzl", "tff_cc_library")
+
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = ["//visibility:public"],
 )
 
-cc_library(
+tff_cc_library(
     name = "testing",
     testonly = True,
     srcs = ["testing.cc"],
@@ -49,7 +51,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "mocks",
     testonly = True,
     hdrs = ["mocks.h"],
@@ -65,7 +67,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "parse_text_proto",
     testonly = True,
     hdrs = ["parse_text_proto.h"],
@@ -75,7 +77,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "test_data",
     testonly = True,
     hdrs = ["test_data.h"],

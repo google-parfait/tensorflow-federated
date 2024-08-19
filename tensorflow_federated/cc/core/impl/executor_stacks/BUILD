@@ -1,4 +1,5 @@
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("//tools:build_defs.bzl", "tff_cc_library", "tff_cc_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -33,7 +34,7 @@ pybind_extension(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "local_stacks",
     srcs = ["local_stacks.cc"],
     hdrs = ["local_stacks.h"],
@@ -49,7 +50,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "local_stacks_test",
     srcs = ["local_stacks_test.cc"],
     deps = [
@@ -63,7 +64,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "remote_stacks",
     srcs = ["remote_stacks.cc"],
     hdrs = ["remote_stacks.h"],
@@ -87,7 +88,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "remote_stacks_test",
     srcs = ["remote_stacks_test.cc"],
     deps = [

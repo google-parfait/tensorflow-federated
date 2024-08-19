@@ -27,19 +27,19 @@ py_library(
     deps = [
         ":count_distinct",
         ":data_processing",
-        ":differential_privacy",
         ":histogram_processing",
         "//tensorflow_federated/python/analytics/heavy_hitters",
         "//tensorflow_federated/python/analytics/heavy_hitters/iblt:iblt_factory",
-        "//tensorflow_federated/python/analytics/hierarchical_histogram:hierarchical_histogram_decoder",
-        "//tensorflow_federated/python/analytics/hierarchical_histogram:hierarchical_histogram_lib",
     ],
 )
 
 py_library(
     name = "data_processing",
     srcs = ["data_processing.py"],
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//third_party/tensorflow",
+    ],
 )
 
 py_test(
@@ -48,6 +48,8 @@ py_test(
     deps = [
         ":data_processing",
         ":histogram_test_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -55,11 +57,13 @@ py_library(
     name = "histogram_test_utils",
     testonly = True,
     srcs = ["histogram_test_utils.py"],
+    deps = ["//third_party/tensorflow"],
 )
 
 py_library(
     name = "histogram_processing",
     srcs = ["histogram_processing.py"],
+    deps = ["//third_party/tensorflow"],
 )
 
 py_test(
@@ -68,6 +72,8 @@ py_test(
     deps = [
         ":histogram_processing",
         ":histogram_test_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -86,13 +92,18 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )
 
 py_test(
     name = "differential_privacy_test",
     srcs = ["differential_privacy_test.py"],
-    deps = [":differential_privacy"],
+    deps = [
+        ":differential_privacy",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_test(
@@ -102,5 +113,8 @@ py_test(
         ":count_distinct",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )

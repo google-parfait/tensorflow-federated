@@ -37,6 +37,9 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/tensorflow_libs:graph_utils",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
+        "//third_party/tensorflow",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -53,5 +56,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )

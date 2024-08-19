@@ -58,6 +58,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/learning/templates:model_delta_client_work",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -76,6 +78,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -107,6 +111,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/learning/templates:model_delta_client_work",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -124,6 +130,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -150,6 +158,9 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/learning/templates:proximal_client_work",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -171,6 +182,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "//tensorflow_federated/python/learning/templates:distributors",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -201,6 +214,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -232,6 +247,11 @@ py_test(
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
+        "//third_party/tensorflow",
+        "//third_party/tensorflow_privacy",
+        "@pypi_absl_py//:pkg",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -258,6 +278,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -280,6 +301,10 @@ py_test(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -309,6 +334,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -328,6 +355,9 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -349,6 +379,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -360,6 +392,9 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -393,6 +428,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -436,6 +473,9 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/templates:client_works",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -463,6 +503,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -493,6 +534,9 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -512,6 +556,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -527,5 +572,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )

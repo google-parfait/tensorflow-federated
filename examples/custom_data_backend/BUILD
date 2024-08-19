@@ -1,6 +1,8 @@
+load("//tools:build_defs.bzl", "tff_cc_library")
+
 licenses(["notice"])
 
-cc_library(
+tff_cc_library(
     name = "data_backend_example_cc",
     srcs = ["data_backend_example.cc"],
     hdrs = ["data_backend_example.h"],

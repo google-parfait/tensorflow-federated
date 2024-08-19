@@ -33,16 +33,17 @@ limitations under the License
 #include "absl/types/span.h"
 #include "tensorflow/compiler/tf2xla/literal_util.h"
 #include "tensorflow/compiler/tf2xla/type_util.h"
-#include "tensorflow/compiler/xla/client/client.h"
-#include "tensorflow/compiler/xla/client/client_library.h"
-#include "tensorflow/compiler/xla/client/xla_computation.h"
-#include "tensorflow/compiler/xla/literal.h"
-#include "tensorflow/compiler/xla/service/hlo.pb.h"
-#include "tensorflow/compiler/xla/service/service.h"
-#include "tensorflow/compiler/xla/shape.h"
-#include "tensorflow/compiler/xla/stream_executor/platform.h"
-#include "tensorflow/compiler/xla/xla.pb.h"
-#include "tensorflow/compiler/xla/xla_data.pb.h"
+#include "xla/client/client.h"
+#include "xla/client/client_library.h"
+#include "xla/client/xla_computation.h"
+#include "xla/literal.h"
+#include "xla/service/hlo.pb.h"
+#include "xla/service/service.h"
+#include "xla/shape.h"
+#include "xla/stream_executor/platform.h"
+#include "xla/stream_executor/platform_manager.h"
+#include "xla/xla.pb.h"
+#include "xla/xla_data.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
@@ -54,15 +55,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/xla_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
-
-// clang-format off
-// In TF 2.17 MultiPlatformManager was renamed to PlatformManager. Remove
-// this code when the OSS build gets updated to TF 2.17+.
-#include "tensorflow/compiler/xla/stream_executor/multi_platform_manager.h"
-namespace stream_executor {
-using PlatformManager = MultiPlatformManager;
-} // namespace stream_executor
-// clang-format on
 
 namespace tensorflow_federated {
 
@@ -695,8 +687,8 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
 };
 
 absl::StatusOr<xla::Client*> GetXLAClient(std::string_view platform_name) {
-  absl::StatusOr<xla::se::Platform*> platform =
-      xla::se::PlatformManager::PlatformWithName(platform_name);
+  absl::StatusOr<stream_executor::Platform*> platform =
+      stream_executor::PlatformManager::PlatformWithName(platform_name);
   if (!platform.ok()) {
     return absl::InternalError(
         absl::StrCat("Failed to find specified platform ", platform_name,
