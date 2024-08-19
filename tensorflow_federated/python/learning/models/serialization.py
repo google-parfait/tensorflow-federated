@@ -22,8 +22,7 @@ from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.computation import computation_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -122,12 +121,8 @@ class _LoadedSavedModel(variable.VariableModel):
 
   def metric_finalizers(self):
     def deserialize_metric_finalizer(finalizer):
-      computation_proto = computation_pb2.Computation.FromString(
-          finalizer.read_value().numpy()
-      )
-      return computation_impl.ConcreteComputation(
-          computation_proto=computation_proto,
-          context_stack=context_stack_impl.context_stack,
+      return computation_serialization.deserialize_computation(
+          computation_pb2.Computation.FromString(finalizer.read_value().numpy())
       )
 
     return collections.OrderedDict(
@@ -338,11 +333,10 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
     finalizer_computation = tensorflow_computation.tf_computation(
         finalizer, metric_type
     )
-    computation_proto = computation_impl.ConcreteComputation.get_proto(
-        finalizer_computation
-    )
     return tf.Variable(
-        computation_proto.SerializeToString(deterministic=True),
+        computation_serialization.serialize_computation(
+            finalizer_computation
+        ).SerializeToString(deterministic=True),
         trainable=False,
     )
 

@@ -16,13 +16,10 @@ limitations under the License
 #include "tensorflow_federated/examples/custom_data_backend/data_backend_example.h"
 
 #include <string>
-#include <utility>
 
 #include "google/protobuf/any.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
 
 namespace tensorflow_federated_examples {
 
@@ -41,8 +38,9 @@ static constexpr int32_t INT_VALUE = 55;
 
 // Packs `tensor` into `value_out`.
 void PackTensorInto(const tensorflow::Tensor& tensor, Value& value_out) {
-  *value_out.mutable_array() =
-      std::move(tensorflow_federated::ArrayFromTensor(tensor)).value();
+  tensorflow::TensorProto tensor_proto;
+  tensor.AsProtoField(&tensor_proto);
+  value_out.mutable_tensor()->PackFrom(tensor_proto);
 }
 
 }  // namespace

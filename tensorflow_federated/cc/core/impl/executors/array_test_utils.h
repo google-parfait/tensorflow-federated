@@ -19,8 +19,6 @@ limitations under the License
 #include <complex>
 #include <cstdint>
 #include <initializer_list>
-#include <string>
-#include <string_view>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -194,16 +192,6 @@ inline absl::StatusOr<v0::Array> CreateArray(
       return absl::UnimplementedError(
           absl::StrCat("Unexpected DataType found:", dtype));
   }
-  return array_pb;
-}
-
-inline absl::StatusOr<v0::Array> CreateArrayContent(v0::DataType dtype,
-                                                    v0::ArrayShape shape_pb,
-                                                    std::string_view content) {
-  v0::Array array_pb;
-  array_pb.set_dtype(dtype);
-  array_pb.mutable_shape()->Swap(&shape_pb);
-  *array_pb.mutable_content() = content;
   return array_pb;
 }
 

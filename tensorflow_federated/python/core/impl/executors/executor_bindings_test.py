@@ -13,11 +13,64 @@
 # limitations under the License.
 
 from absl.testing import absltest
+from absl.testing import parameterized
+import numpy as np
 import portpicker
+import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_test_utils_bindings
 from tensorflow_federated.python.core.impl.types import placements
+
+
+def _to_python_value(value):
+  def _fn(obj):
+    if isinstance(obj, np.ndarray):
+      return obj.tolist()
+    else:
+      return None
+
+  return tree.traverse(_fn, value)
+
+
+class SerializeTensorTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('scalar_int32', 1, np.int32),
+      ('scalar_float64', 2.0, np.float64),
+      ('scalar_string', b'abc', np.str_),
+      ('tensor_int32', [1, 2, 3], np.int32),
+      ('tensor_float64', [2.0, 4.0, 6.0], np.float64),
+      ('tensor_string', [[b'abc', b'xyz']], np.str_),
+  )
+  def test_serialize(self, input_value, dtype):
+    serialized_value = executor_bindings.serialize_tensor_value(
+        tf.convert_to_tensor(input_value, dtype)
+    )
+    tensor_proto = tf.make_tensor_proto(values=0)
+    self.assertTrue(serialized_value.tensor.Unpack(tensor_proto))
+    actual_value = tf.make_ndarray(tensor_proto)
+    actual_value = _to_python_value(actual_value)
+    self.assertEqual(actual_value, input_value)
+
+  @parameterized.named_parameters(
+      ('scalar_int32', 1, np.int32),
+      ('scalar_float64', 2.0, np.float64),
+      ('scalar_string', b'abc', np.str_),
+      ('tensor_int32', [1, 2, 3], np.int32),
+      ('tensor_float64', [2.0, 4.0, 6.0], np.float64),
+      ('tensor_string', [[b'abc', b'xyz']], np.str_),
+  )
+  def test_roundtrip(self, input_value, dtype):
+    serialized_value = executor_bindings.serialize_tensor_value(
+        tf.convert_to_tensor(input_value, dtype)
+    )
+    deserialized_value = executor_bindings.deserialize_tensor_value(
+        serialized_value
+    )
+    deserialized_value = _to_python_value(deserialized_value)
+    self.assertEqual(deserialized_value, input_value)
 
 
 class ReferenceResolvingExecutorBindingsTest(absltest.TestCase):

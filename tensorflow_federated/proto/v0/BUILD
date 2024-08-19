@@ -71,7 +71,6 @@ proto_library(
     name = "executor_proto",
     srcs = ["executor.proto"],
     deps = [
-        ":array_proto",
         ":computation_proto",
         "@com_google_protobuf//:any_proto",
     ],
