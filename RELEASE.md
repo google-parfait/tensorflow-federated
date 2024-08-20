@@ -10,7 +10,7 @@ and this project adheres to
 
 ### Added
 
-*   `tff.tensorflow.transform_args` and `tff.tnesorflow.transform_result`, these
+*   `tff.tensorflow.transform_args` and `tff.tensorflow.transform_result`, these
     functions are intended to be used when instantiating and execution context
     in a TensorFlow environment.
 
