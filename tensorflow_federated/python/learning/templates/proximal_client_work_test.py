@@ -52,16 +52,6 @@ class ProximalClientWorkComputationTest(
           sgdm.build_sgdm(1.0),
           client_weight_lib.ClientWeighting.NUM_EXAMPLES,
       ),
-      (
-          'keras_uniform',
-          lambda: tf.keras.optimizers.SGD(1.0),
-          client_weight_lib.ClientWeighting.UNIFORM,
-      ),
-      (
-          'keras_num_examples',
-          lambda: tf.keras.optimizers.SGD(1.0),
-          client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-      ),
   )
   def test_type_properties(self, optimizer, weighting):
     model_fn = model_examples.LinearRegression
@@ -125,15 +115,6 @@ class ProximalClientWorkComputationTest(
         client_work_process.next.type_signature
     )
 
-  def test_created_keras_optimizer_raises(self):
-    with self.assertRaises(TypeError):
-      proximal_client_work.build_model_delta_client_work(
-          model_examples.LinearRegression,
-          tf.keras.optimizers.SGD(1.0),
-          client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-          delta_l2_regularizer=0.1,
-      )
-
   def test_created_model_raises(self):
     with self.assertRaises(TypeError):
       proximal_client_work.build_model_delta_client_work(
@@ -185,97 +166,41 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
   """Tests of the client work of FedProx using a common model and data."""
 
   @parameterized.named_parameters(
-      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
-      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES),
-  )
-  def test_keras_tff_client_work_equal(self, weighting):
-    dataset = create_test_dataset()
-    client_update_keras = (
-        proximal_client_work.build_model_delta_update_with_keras_optimizer(
-            model_fn=create_model,
-            weighting=weighting,
-            delta_l2_regularizer=0.1,
-            loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
-        )
-    )
-    client_update_tff = (
-        proximal_client_work.build_model_delta_update_with_tff_optimizer(
-            model_fn=create_model,
-            weighting=weighting,
-            delta_l2_regularizer=0.1,
-            loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
-        )
-    )
-    keras_result = client_update_keras(
-        tf.keras.optimizers.SGD(learning_rate=0.1),
-        create_test_initial_weights(),
-        dataset,
-    )
-    tff_result = client_update_tff(
-        sgdm.build_sgdm(learning_rate=0.1),
-        create_test_initial_weights(),
-        dataset,
-    )
-    self.assertAllClose(keras_result[0].update, tff_result[0].update)
-    self.assertEqual(keras_result[0].update_weight, tff_result[0].update_weight)
-    self.assertAllClose(keras_result[1], tff_result[1])
-
-  @parameterized.named_parameters(
       (
           'dataset_reduce_noclip_uniform',
           loop_builder.LoopImplementation.DATASET_REDUCE,
-          {},
           0.1,
           client_weight_lib.ClientWeighting.UNIFORM,
       ),
       (
           'dataset_reduce_noclip_num_examples',
           loop_builder.LoopImplementation.DATASET_REDUCE,
-          {},
           0.1,
           client_weight_lib.ClientWeighting.NUM_EXAMPLES,
       ),
       (
           'dataset_iterator_noclip_uniform',
           loop_builder.LoopImplementation.DATASET_ITERATOR,
-          {},
           0.1,
           client_weight_lib.ClientWeighting.UNIFORM,
       ),
       (
           'dataset_iterator_noclip_num_examples',
           loop_builder.LoopImplementation.DATASET_ITERATOR,
-          {},
           0.1,
           client_weight_lib.ClientWeighting.NUM_EXAMPLES,
       ),
-      (
-          'dataset_reduce_clipnorm',
-          loop_builder.LoopImplementation.DATASET_REDUCE,
-          {'clipnorm': 0.2},
-          0.05,
-          client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-      ),
-      (
-          'dataset_reduce_clipvalue',
-          loop_builder.LoopImplementation.DATASET_REDUCE,
-          {'clipvalue': 0.1},
-          0.02,
-          client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-      ),
   )
-  def test_client_tf(
-      self, loop_implementation, optimizer_kwargs, expected_norm, weighting
-  ):
+  def test_client_tf(self, loop_implementation, expected_norm, weighting):
     client_tf = (
-        proximal_client_work.build_model_delta_update_with_keras_optimizer(
+        proximal_client_work.build_model_delta_update_with_tff_optimizer(
             model_fn=create_model,
             weighting=weighting,
             delta_l2_regularizer=0.1,
             loop_implementation=loop_implementation,
         )
     )
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs)
+    optimizer = sgdm.build_sgdm(learning_rate=0.1)
     dataset = create_test_dataset()
     client_result, model_output = self.evaluate(
         client_tf(optimizer, create_test_initial_weights(), dataset)
@@ -294,14 +219,14 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
     client_tf = (
-        proximal_client_work.build_model_delta_update_with_keras_optimizer(
+        proximal_client_work.build_model_delta_update_with_tff_optimizer(
             model_fn=create_model,
             weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
             delta_l2_regularizer=0.1,
             loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
         )
     )
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
+    optimizer = sgdm.build_sgdm(learning_rate=0.1)
     dataset = create_test_dataset()
     init_weights = create_test_initial_weights()
     init_weights.trainable[1] = bad_value
@@ -362,26 +287,22 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
     client_tf = (
-        proximal_client_work.build_model_delta_update_with_keras_optimizer(
+        proximal_client_work.build_model_delta_update_with_tff_optimizer(
             model_fn=create_model,
             weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
             delta_l2_regularizer=0.1,
             loop_implementation=loop_implementation,
         )
     )
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
+    optimizer = sgdm.build_sgdm(learning_rate=0.1)
     dataset = create_test_dataset()
     client_tf(optimizer, create_test_initial_weights(), dataset)
     mock_method.assert_called_once_with(loop_implementation=loop_implementation)
 
-  @parameterized.named_parameters(
-      ('tff_optimizer', sgdm.build_sgdm(1.0)),
-      ('keras_optimizer', lambda: tf.keras.optimizers.SGD(1.0)),
-  )
-  def test_delta_regularizer_yields_smaller_model_delta(self, optimizer):
+  def test_delta_regularizer_yields_smaller_model_delta(self):
     small_delta_process = proximal_client_work.build_model_delta_client_work(
         create_model,
-        optimizer,
+        sgdm.build_sgdm(1.0),
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
         delta_l2_regularizer=0.01,
         loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
@@ -419,8 +340,6 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('tff_simple', sgdm.build_sgdm(1.0)),
       ('tff_momentum', sgdm.build_sgdm(1.0, momentum=0.9)),
-      ('keras_simple', lambda: tf.keras.optimizers.SGD(1.0)),
-      ('keras_momentum', lambda: tf.keras.optimizers.SGD(1.0, momentum=0.9)),
   )
   def test_execution_with_optimizer(self, optimizer):
     client_work_process = proximal_client_work.build_model_delta_client_work(

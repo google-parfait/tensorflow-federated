@@ -45,6 +45,7 @@ and this project adheres to
 *   Removed various stale tutorials.
 *   Removed `structure` from `tff.program.SavedModelFileReleaseManager`'s
     `get_value` method parameters.
+*   Removed support for `tf.keras.optimizers` in `tff.learning`.
 
 ## Release 0.86.0
 

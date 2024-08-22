@@ -606,7 +606,7 @@ class KerasIntegrationTest(parameterized.TestCase):
       return tff_model
 
     trainer = tff.learning.algorithms.build_weighted_fed_avg(
-        model_fn, client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1)
+        model_fn, client_optimizer_fn=tff.learning.optimizers.build_sgdm(0.1)
     )
 
     state = trainer.initialize()

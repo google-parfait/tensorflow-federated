@@ -26,7 +26,6 @@ then (2) with the reconstructed local variables.
 """
 
 import collections
-import functools
 from typing import Any, Optional
 
 import tensorflow as tf
@@ -45,6 +44,8 @@ from tensorflow_federated.python.learning.metrics import keras_finalizer as metr
 from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.models import reconstruction_model
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
+from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
+from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
@@ -60,8 +61,8 @@ def build_fed_recon_eval(
     *,  # Callers pass below args by name.
     loss_fn: fed_recon.LossFn,
     metrics_fn: Optional[fed_recon.MetricsFn] = None,
-    reconstruction_optimizer_fn: fed_recon.OptimizerFn = functools.partial(
-        tf.keras.optimizers.SGD, learning_rate=0.1
+    reconstruction_optimizer_fn: optimizer_base.Optimizer = sgdm.build_sgdm(
+        learning_rate=0.1
     ),
     dataset_split_fn: Optional[
         reconstruction_model.ReconstructionDatasetSplitFn
@@ -100,8 +101,7 @@ def build_fed_recon_eval(
       during the evaluation stage. Final metric values are the example-weighted
       mean of metric values across batches (and across clients). If None, no
       metrics are applied.
-    reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a
-      no-arg function that returns a `tf.keras.optimizers.Optimizer` used to
+    reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer` used to
       reconstruct the local variables with the global ones frozen.
     dataset_split_fn: A `tff.learning.models.ReconstructionDatasetSplitFn`
       taking in a single TF dataset and producing two TF datasets. The first is

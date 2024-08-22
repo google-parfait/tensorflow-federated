@@ -46,17 +46,13 @@ from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.learning.templates import model_delta_client_work
 
-TFFOrKerasOptimizer = Union[
-    optimizer_base.Optimizer, tf.keras.optimizers.Optimizer
-]
-
 
 def build_scheduled_client_work(
     model_fn: Union[
         Callable[[], variable.VariableModel], functional.FunctionalModel
     ],
     learning_rate_fn: Callable[[int], float],
-    optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
+    optimizer_fn: Callable[[float], optimizer_base.Optimizer],
     metrics_aggregator: types.MetricsAggregatorType,
     loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
@@ -79,8 +75,6 @@ def build_scheduled_client_work(
       client work will call `optimizer_fn(learning_rate_fn(round_num))` where
       `round_num` is the integer round number.
     optimizer_fn: A callable accepting a float learning rate, and returning a
-      `tff.learning.optimizers.Optimizer` or a `tf.keras.Optimizer`. If
-      `model_fn` is a `FunctionalModel`, must be a
       `tff.learning.optimizers.Optimizer`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
@@ -109,9 +103,6 @@ def build_scheduled_client_work(
     else:
       whimsy_model = model_fn()
       weights_type = model_weights.weights_type_from_model(whimsy_model)
-      metrics_aggregation_fn = metrics_aggregator(
-          whimsy_model.metric_finalizers(),
-      )
       metrics_aggregation_fn = metrics_aggregator(
           whimsy_model.metric_finalizers(),
       )
@@ -200,12 +191,8 @@ def build_weighted_fed_avg_with_optimizer_schedule(
         Callable[[], variable.VariableModel], functional.FunctionalModel
     ],
     client_learning_rate_fn: Callable[[int], float],
-    client_optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
-    server_optimizer_fn: Union[
-        optimizer_base.Optimizer,
-        Callable[[], tf.keras.optimizers.Optimizer],
-        None,
-    ] = None,
+    client_optimizer_fn: Callable[[float], optimizer_base.Optimizer],
+    server_optimizer_fn: Optional[optimizer_base.Optimizer] = None,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
@@ -256,7 +243,7 @@ def build_weighted_fed_avg_with_optimizer_schedule(
   thoughout local training. The aggregate model delta is applied at the server
   using a server optimizer.
 
-  Note: the default server optimizer function is `tf.keras.optimizers.SGD`
+  Note: the default server optimizer function is SGD
   with a learning rate of 1.0, which corresponds to adding the model delta to
   the current server model. This recovers the original FedAvg algorithm in
   [McMahan et al., 2017](https://arxiv.org/abs/1602.05629). More
@@ -278,9 +265,8 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       called on the resulting process. Also note that this function must be
       serializable by TFF.
     client_optimizer_fn: A callable accepting a float learning rate, and
-      returning a `tff.learning.optimizers.Optimizer` or a `tf.keras.Optimizer`.
-    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, a no-arg
-      callable that returns a `tf.keras.Optimizer`, or None. By default, this
+      returning a `tff.learning.optimizers.Optimizer.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`. By default, this
       uses `tff.learning.optimizers.build_sgdm` with a learning rate of 1.0.
     model_distributor: An optional `DistributionProcess` that distributes the
       model weights on the server to the clients. If set to `None`, the

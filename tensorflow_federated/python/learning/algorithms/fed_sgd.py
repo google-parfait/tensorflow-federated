@@ -45,6 +45,7 @@ from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
+from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
@@ -379,16 +380,14 @@ def _build_functional_fed_sgd_client_work(
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
 
-DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
+DEFAULT_SERVER_OPTIMIZER_FN = sgdm.build_sgdm(learning_rate=0.1)
 
 
 def build_fed_sgd(
     model_fn: Union[
         Callable[[], variable.VariableModel], functional.FunctionalModel
     ],
-    server_optimizer_fn: Union[
-        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
-    ] = DEFAULT_SERVER_OPTIMIZER_FN,
+    server_optimizer_fn: optimizer_base.Optimizer = DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
@@ -425,8 +424,7 @@ def build_fed_sgd(
   a distributor. Each client sums the gradients for each batch in its local
   dataset (without updating its model) to calculate, and averages the gradients
   based on their number of examples. These average gradients are then aggregated
-  at the server, and are applied at the server using a
-  `tf.keras.optimizers.Optimizer`.
+  at the server, and are applied at the server using an optimizer.
 
   This implements the original FedSGD algorithm in [McMahan et al.,
   2017](https://arxiv.org/abs/1602.05629).
@@ -439,9 +437,8 @@ def build_fed_sgd(
       The model must be constructed entirely from scratch on each invocation,
       returning the same pre-constructed model each call will result in an
       error.
-    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      callable that returns a `tf.keras.Optimizer`. The optimizer is used to
-      apply client updates to the server model.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer` used to apply
+      client updates to the server model.
     model_distributor: An optional `DistributionProcess` that distributes the
       model weights on the server to the clients. If set to `None`, the
       distributor is constructed via `distributors.build_broadcast_process`.

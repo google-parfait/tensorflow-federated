@@ -16,7 +16,6 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.core.test import static_assert
@@ -34,7 +33,6 @@ class FedAvgTest(parameterized.TestCase):
 
   @parameterized.product(
       optimizer_fn=[
-          tf.keras.optimizers.SGD,
           sgdm.build_sgdm(learning_rate=0.1),
       ],
       aggregation_factory=[
@@ -94,11 +92,11 @@ class FedAvgTest(parameterized.TestCase):
   def test_raises_on_callable_non_model_fn(self):
     with self.assertRaisesRegex(TypeError, 'callable returned type:'):
       fed_avg.build_weighted_fed_avg(
-          model_fn=lambda: 0, client_optimizer_fn=tf.keras.optimizers.SGD
+          model_fn=lambda: 0, client_optimizer_fn=sgdm.build_sgdm()
       )
     with self.assertRaisesRegex(TypeError, 'callable returned type:'):
       fed_avg.build_unweighted_fed_avg(
-          model_fn=lambda: 0, client_optimizer_fn=tf.keras.optimizers.SGD
+          model_fn=lambda: 0, client_optimizer_fn=sgdm.build_sgdm()
       )
 
   def test_raises_on_invalid_client_weighting(self):
@@ -131,7 +129,7 @@ class FedAvgTest(parameterized.TestCase):
     model_fn = model_examples.LinearRegression
     learning_process = fed_avg.build_weighted_fed_avg(
         model_fn,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
+        client_optimizer_fn=sgdm.build_sgdm(),
         model_aggregator=model_update_aggregator.secure_aggregator(
             weighted=True
         ),
@@ -145,7 +143,7 @@ class FedAvgTest(parameterized.TestCase):
     model_fn = model_examples.LinearRegression
     learning_process = fed_avg.build_unweighted_fed_avg(
         model_fn,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
+        client_optimizer_fn=sgdm.build_sgdm(),
         model_aggregator=model_update_aggregator.secure_aggregator(
             weighted=False
         ),
@@ -168,27 +166,6 @@ class FunctionalFedAvgTest(parameterized.TestCase):
       constructor(
           model_fn=0, client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1)
       )
-
-  @parameterized.named_parameters(
-      ('weighted', fed_avg.build_weighted_fed_avg),
-      ('unweighted', fed_avg.build_unweighted_fed_avg),
-  )
-  def test_raises_on_non_tff_optimizer(self, constructor):
-    model = test_models.build_functional_linear_regression()
-    with self.subTest('client_optimizer'):
-      with self.assertRaisesRegex(TypeError, 'client_optimizer_fn'):
-        constructor(
-            model_fn=model,
-            client_optimizer_fn=tf.keras.optimizers.SGD,
-            server_optimizer_fn=sgdm.build_sgdm(),
-        )
-    with self.subTest('server_optimizer'):
-      with self.assertRaisesRegex(TypeError, 'server_optimizer_fn'):
-        constructor(
-            model_fn=model,
-            client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1),
-            server_optimizer_fn=tf.keras.optimizers.SGD,
-        )
 
   @parameterized.named_parameters(
       ('weighted', fed_avg.build_weighted_fed_avg),

@@ -47,7 +47,6 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:tensor_utils",
         "//tensorflow_federated/python/learning/models:model_weights",
-        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
     ],
 )

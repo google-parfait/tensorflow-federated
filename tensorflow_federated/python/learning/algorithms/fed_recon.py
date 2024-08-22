@@ -43,7 +43,6 @@ Federated Reconstruction: Partially Local Federated Learning
 
 import collections
 from collections.abc import Callable
-import functools
 from typing import Any, Optional, Union
 
 import numpy as np
@@ -67,6 +66,7 @@ from tensorflow_federated.python.learning.metrics import keras_finalizer as metr
 from tensorflow_federated.python.learning.models import reconstruction_model
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
+from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
@@ -82,9 +82,6 @@ LossFn = Callable[[], tf.keras.losses.Loss]
 MetricsFn = Callable[[], list[tf.keras.metrics.Metric]]
 MetricFinalizersType = collections.OrderedDict[str, Callable[[Any], Any]]
 ModelFn = Callable[[], ReconstructionModel]
-OptimizerFn = Union[
-    Callable[[], tf.keras.optimizers.Optimizer], optimizer_base.Optimizer
-]
 
 
 # TODO: b/230109170 - re-enable pylint after fixing bug.
@@ -94,8 +91,8 @@ def _build_reconstruction_client_work(
     *,  # Callers should use keyword args for below.
     loss_fn: LossFn,
     metrics_fn: Optional[MetricsFn],
-    client_optimizer_fn: OptimizerFn,
-    reconstruction_optimizer_fn: OptimizerFn,
+    client_optimizer_fn: optimizer_base.Optimizer,
+    reconstruction_optimizer_fn: optimizer_base.Optimizer,
     dataset_split_fn: reconstruction_model.ReconstructionDatasetSplitFn,
     client_weighting: client_weight_lib.ClientWeightType,
     metrics_aggregator: Callable[
@@ -119,11 +116,9 @@ def _build_reconstruction_client_work(
       by the metric, and are aggregated across clients as in
       `federated_aggregate_keras_metric`. If None, no metrics are applied.
       Metrics are not computed on reconstruction batches.
-    client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      function that returns a `tf.keras.optimizers.Optimizer` for training the
+    client_optimizer_fn: A `tff.learning.optimizers.Optimizer` for training the
       model weights on the client post-reconstruction.
-    reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a
-      no-arg function that returns a `tf.keras.optimizers.Optimizer` for
+    reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer` for
       reconstructing the local variables with global variables frozen. This
       optimizer is used before the one given by `client_optimizer_fn`.
     dataset_split_fn: A `tff.learning.models.ReconstructionDatasetSplitFn`
@@ -384,14 +379,14 @@ def build_fed_recon(
     *,  # Callers pass below args by name.
     loss_fn: LossFn,
     metrics_fn: Optional[MetricsFn] = None,
-    server_optimizer_fn: OptimizerFn = functools.partial(
-        tf.keras.optimizers.SGD, 1.0
+    server_optimizer_fn: optimizer_base.Optimizer = sgdm.build_sgdm(
+        learning_rate=1.0
     ),
-    client_optimizer_fn: OptimizerFn = functools.partial(
-        tf.keras.optimizers.SGD, 0.1
+    client_optimizer_fn: optimizer_base.Optimizer = sgdm.build_sgdm(
+        learning_rate=0.1
     ),
-    reconstruction_optimizer_fn: OptimizerFn = functools.partial(
-        tf.keras.optimizers.SGD, 0.1
+    reconstruction_optimizer_fn: optimizer_base.Optimizer = sgdm.build_sgdm(
+        learning_rate=0.1
     ),
     dataset_split_fn: Optional[
         reconstruction_model.ReconstructionDatasetSplitFn
@@ -429,14 +424,11 @@ def build_fed_recon(
       by the metric, and are aggregated across clients as in
       `federated_aggregate_keras_metric`. If None, no metrics are applied.
       Metrics are not computed on reconstruction batches.
-    server_optimizer_fn:  A `tff.learning.optimizers.Optimizer`, or a no-arg
-      function that returns a `tf.keras.optimizers.Optimizer` for applying
+    server_optimizer_fn:  A `tff.learning.optimizers.Optimizer`for applying
       updates to the global model on the server.
-    client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      function that returns a `tf.keras.optimizers.Optimizer` for local client
+    client_optimizer_fn: A `tff.learning.optimizers.Optimizer` for local client
       training after reconstruction.
-    reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a
-      no-arg function that returns a `tf.keras.optimizers.Optimizer` used to
+    reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer` used to
       reconstruct the local variables, with the global ones frozen, or the first
       stage described above.
     dataset_split_fn: A `tff.learning.models.ReconstructionDatasetSplitFn`

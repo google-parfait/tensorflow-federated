@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import tensor_utils
 from tensorflow_federated.python.learning.models import model_weights
-from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import finalizers
 
@@ -99,73 +98,8 @@ def _build_tff_optimizer_initialize_and_next(
   return init_fn, next_fn
 
 
-def _build_keras_optimizer_initialize_and_next(
-    model_weights_type: computation_types.Type,
-    optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
-    should_reject_update: Callable[
-        [Any, Any], tuple[Union[bool, tf.Tensor], Optional[_MeasurementsType]]
-    ],
-):
-  """Creates finalizer initialize and next functions for Keras optimizers."""
-
-  @tensorflow_computation.tf_computation
-  def init_fn():
-    tensor_specs = type_conversions.type_to_tf_tensor_specs(
-        model_weights_type.trainable  # pytype: disable=attribute-error
-    )
-    model_variables = tf.nest.map_structure(
-        lambda s: tf.Variable(initial_value=tf.zeros(s.shape, s.dtype)),
-        tensor_specs,
-    )
-    optimizer = keras_optimizer.build_or_verify_tff_optimizer(
-        optimizer_fn, model_variables, disjoint_init_and_next=True
-    )
-    return optimizer.initialize(tensor_specs)
-
-  optimizer_state_type = init_fn.type_signature.result
-
-  @tensorflow_computation.tf_computation(
-      optimizer_state_type,
-      model_weights_type.trainable,  # pytype: disable=attribute-error
-      model_weights_type.trainable,  # pytype: disable=attribute-error
-  )
-  @tf.function
-  def next_fn(optimizer_state, trainable_weights, update):
-    with tf.init_scope():
-      # Create a structure of variables that the server optimizer can update.
-      trainable_variables = tf.nest.map_structure(
-          lambda t: tf.Variable(initial_value=tf.zeros(t.shape, t.dtype)),
-          trainable_weights,
-      )
-      optimizer = keras_optimizer.build_or_verify_tff_optimizer(
-          optimizer_fn, trainable_variables, disjoint_init_and_next=True
-      )
-
-    tf.nest.map_structure(
-        lambda a, b: a.assign(b), trainable_variables, trainable_weights
-    )
-    new_state, updated_weights = optimizer.next(
-        optimizer_state, trainable_variables, update
-    )
-    # Keras optimizers mutate model variables in with the `next` step above, so
-    # we skip calling the assignment for those optimizers.
-    if not isinstance(optimizer, keras_optimizer.KerasOptimizer):
-      tf.nest.map_structure(
-          lambda a, b: a.assign(b), trainable_variables, updated_weights
-      )
-    should_reject, measurements = should_reject_update(new_state, update)
-    if should_reject:
-      # Do nothing if the update should be rejected.
-      return optimizer_state, trainable_weights, measurements
-    return new_state, trainable_variables, measurements
-
-  return init_fn, next_fn
-
-
 def build_apply_optimizer_finalizer(
-    optimizer_fn: Union[
-        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
-    ],
+    optimizer_fn: optimizer_base.Optimizer,
     model_weights_type: computation_types.StructType,
     should_reject_update: Callable[
         [Any, Any], tuple[Union[bool, tf.Tensor], Optional[_MeasurementsType]]
@@ -185,9 +119,8 @@ def build_apply_optimizer_finalizer(
   returns empty measurements.
 
   Args:
-    optimizer_fn: A `tff.learning.optimizers.Optimizer` or a no-arg function
-      that returns a `tf.keras.optimizers.Optimizer`. This optimizer is used to
-      apply client updates to the server model.
+    optimizer_fn: A `tff.learning.optimizers.Optimizer`. This optimizer is used
+      to apply client updates to the server model.
     model_weights_type: A non-federated `tff.Type` of the model weights to be
       optimized, which must have a `tff.learning.models.ModelWeights` container.
     should_reject_update: A callable that takes the optimizer state and the
@@ -207,21 +140,6 @@ def build_apply_optimizer_finalizer(
     `tff.learning.model.sModelWeights`
       Python container, or contains a `tff.types.FederatedType`.
   """
-  if not isinstance(optimizer_fn, optimizer_base.Optimizer):
-    if not callable(optimizer_fn) or not isinstance(
-        optimizer_fn(),
-        (
-            tf.keras.optimizers.Optimizer,
-            tf.keras.optimizers.legacy.Optimizer,
-            tf.keras.optimizers.experimental.Optimizer,
-        ),
-    ):
-      raise TypeError(
-          'The optimizer_fn must be a `tff.learning.optimizers.Optimizer`, or '
-          'a no-arg callable returning a `tf.keras.optimizers.Optimizer`. Got: '
-          f'{type(optimizer_fn)=}'
-      )
-
   if (
       not isinstance(model_weights_type, computation_types.StructWithPythonType)
       or model_weights_type.python_container != model_weights.ModelWeights
@@ -233,14 +151,9 @@ def build_apply_optimizer_finalizer(
         f'tff.types.FederatedType, but found: {model_weights_type}'
     )
 
-  if isinstance(optimizer_fn, optimizer_base.Optimizer):
-    init_tf, next_tf = _build_tff_optimizer_initialize_and_next(
-        model_weights_type, optimizer_fn, should_reject_update
-    )
-  else:
-    init_tf, next_tf = _build_keras_optimizer_initialize_and_next(
-        model_weights_type, optimizer_fn, should_reject_update
-    )
+  init_tf, next_tf = _build_tff_optimizer_initialize_and_next(
+      model_weights_type, optimizer_fn, should_reject_update
+  )
 
   @federated_computation.federated_computation
   def init_fn():
