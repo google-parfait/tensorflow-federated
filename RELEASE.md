@@ -20,6 +20,8 @@ and this project adheres to
 
 *   Replaced the `tensor` on the `Value` protobuf with an `array` field and
     updated the serialization logic to use this new field.
+*   `tff.program.FileProgramStateManager` to be able to keep program states at a
+    specified interval (every k states).
 
 ## Release 0.85.0
 

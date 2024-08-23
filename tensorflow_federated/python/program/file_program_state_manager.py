@@ -69,6 +69,7 @@ class FileProgramStateManager(
       prefix: str = 'program_state_',
       keep_total: int = 5,
       keep_first: bool = True,
+      keep_every_k: int = 1,
   ):
     """Returns an initialized `tff.program.ProgramStateManager`.
 
@@ -77,7 +78,9 @@ class FileProgramStateManager(
         does not exist it will be created.
       prefix: A string to use as the prefix for filenames.
       keep_total: An integer representing the total number of program states to
-        keep. If the value is zero or smaller, all program states will be kept.
+        keep. If the value is zero or smaller, there will be no limitation on
+        how many program states to keep; if keep_every_k is 1, then all states
+        will be kept.
       keep_first: A boolean indicating if the first program state should be
         kept, irrespective of whether it is the oldest program state or not.
         This is desirable in settings where you would like to ensure full
@@ -85,6 +88,10 @@ class FileProgramStateManager(
         weights or optimizer states are initialized randomly. By loading from
         the initial program state, one can avoid re-initializing and obtaining
         different results.
+      keep_every_k: An integer representing how often program states should be
+        kept. The latest version will always be kept. Defaults to 1. Even when
+        keep_total is zero or negative, this setting will still be applied. To
+        keep all states, set this to 1.
 
     Raises:
       ValueError: If `root_dir` is an empty string.
@@ -102,6 +109,7 @@ class FileProgramStateManager(
     self._prefix = prefix
     self._keep_total = keep_total
     self._keep_first = keep_first
+    self._keep_every_k = keep_every_k
 
   async def get_versions(self) -> Optional[list[int]]:
     """Returns a list of saved versions or `None`.
@@ -228,13 +236,27 @@ class FileProgramStateManager(
 
   async def _remove_old_program_state(self) -> None:
     """Removes old program state."""
-    if self._keep_total <= 0:
+    if self._keep_every_k == 1 and self._keep_total <= 0:
       return
     versions = await self.get_versions()
-    if versions is not None and len(versions) > self._keep_total:
-      start = 1 if self._keep_first else 0
-      stop = len(versions) - (self._keep_total - start)
-      await asyncio.gather(*[self._remove(v) for v in versions[start:stop]])
+    if versions is not None:
+      versions_to_keep = []
+      index = 0
+      while index < len(versions):
+        if (
+            versions[index] % self._keep_every_k == 0
+            or index == len(versions) - 1
+            or (self._keep_first and index == 0)
+        ):
+          versions_to_keep.append(versions[index])
+        index += 1
+      if self._keep_total > 0 and len(versions_to_keep) > self._keep_total:
+        start = 1 if self._keep_first else 0
+        stop = len(versions_to_keep) - (self._keep_total - start)
+        del versions_to_keep[start:stop]
+      await asyncio.gather(
+          *[self._remove(v) for v in versions if v not in versions_to_keep]
+      )
 
   async def remove_all(self) -> None:
     """Removes all program states."""

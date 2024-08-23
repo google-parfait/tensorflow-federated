@@ -613,7 +613,7 @@ class FileProgramStateManagerRemoveTest(
 
 
 class FileProgramStateManagerRemoveOldProgramStateTest(
-    absltest.TestCase, unittest.IsolatedAsyncioTestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   async def test_does_not_remove_program_state_with_keep_total_0(self):
@@ -683,6 +683,71 @@ class FileProgramStateManagerRemoveOldProgramStateTest(
     await program_state_mngr._remove_old_program_state()
 
     self.assertCountEqual(os.listdir(root_dir), ['program_state_9'])
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='keep_first_true',
+          keep_total=3,
+          keep_first=True,
+          keep_every_k=3,
+          expected_remaining_states=[
+              'program_state_0',
+              'program_state_6',
+              'program_state_9',
+          ],
+      ),
+      dict(
+          testcase_name='keep_first_false',
+          keep_total=3,
+          keep_first=False,
+          keep_every_k=3,
+          expected_remaining_states=[
+              'program_state_3',
+              'program_state_6',
+              'program_state_9',
+          ],
+      ),
+      dict(
+          testcase_name='unlimited_total',
+          keep_total=0,
+          keep_first=True,
+          keep_every_k=3,
+          expected_remaining_states=[
+              'program_state_0',
+              'program_state_3',
+              'program_state_6',
+              'program_state_9',
+          ],
+      ),
+      dict(
+          testcase_name='total_has_not_reached',
+          keep_total=5,
+          keep_first=True,
+          keep_every_k=3,
+          expected_remaining_states=[
+              'program_state_0',
+              'program_state_3',
+              'program_state_6',
+              'program_state_9',
+          ],
+      ),
+  )
+  async def test_keeps_every_k_program_states(
+      self, keep_total, keep_first, keep_every_k, expected_remaining_states
+  ):
+    root_dir = self.create_tempdir()
+    for version in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir,
+        keep_total=keep_total,
+        keep_first=keep_first,
+        keep_every_k=keep_every_k,
+    )
+
+    await program_state_mngr._remove_old_program_state()
+
+    self.assertCountEqual(os.listdir(root_dir), expected_remaining_states)
 
 
 class FileProgramStateManagerRemoveAllTest(
