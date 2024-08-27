@@ -453,14 +453,14 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_OneKey) {
       Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"}))
           .value();
   Tensor value1 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 8})).value();
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
   auto acc_status = agg->Accumulate({&key1, &value1});
   TFF_EXPECT_OK(acc_status);
   Tensor key2 =
       Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"a"}))
           .value();
   Tensor value2 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({-3})).value();
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({3})).value();
   acc_status = agg->Accumulate({&key2, &value2});
   TFF_EXPECT_OK(acc_status);
 
@@ -491,7 +491,7 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
   Tensor key1b =
       Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
   Tensor value1 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 8})).value();
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
   auto acc_status = agg->Accumulate({&key1a, &key1b, &value1});
   TFF_EXPECT_OK(acc_status);
   Tensor key2a =
@@ -500,7 +500,7 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
   Tensor key2b =
       Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
   Tensor value2 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({-3, -3})).value();
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({3, 3})).value();
   acc_status = agg->Accumulate({&key2a, &key2b, &value2});
   TFF_EXPECT_OK(acc_status);
 
@@ -518,9 +518,9 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
   // second key: numbers cycle as 0, 0, 0, 1, 1, 1, 2, 2, 2
   EXPECT_THAT(report[1], IsTensor<int64_t>({9}, {0, 0, 0, 1, 1, 1, 2, 2, 2}));
 
-  // Report should map a0 to -3, c1 to 1, a2 to 5 = 8-3, and all else to 0.
+  // Report should map a0 to 3, c1 to 1, a2 to 5 = 2+3, and all else to 0.
   // (a0 is the composite key at index 0, c1 is at index 5, a2 is at index 6)
-  EXPECT_THAT(report[2], IsTensor<int64_t>({9}, {-3, 0, 0, 0, 0, 1, 5, 0, 0}));
+  EXPECT_THAT(report[2], IsTensor<int64_t>({9}, {3, 0, 0, 0, 0, 1, 5, 0, 0}));
 }
 
 // Same as above except we do not output the key that takes numerical values.
@@ -543,7 +543,7 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
   Tensor key1b =
       Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
   Tensor value1 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 8})).value();
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
   auto acc_status = agg->Accumulate({&key1a, &key1b, &value1});
   TFF_EXPECT_OK(acc_status);
   Tensor key2a =
@@ -552,7 +552,7 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
   Tensor key2b =
       Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
   Tensor value2 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({-3, -3})).value();
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({3, 3})).value();
   acc_status = agg->Accumulate({&key2a, &key2b, &value2});
   TFF_EXPECT_OK(acc_status);
 
@@ -567,9 +567,9 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
   EXPECT_THAT(report[0], IsTensor<string_view>({9}, {"a", "b", "c", "a", "b",
                                                      "c", "a", "b", "c"}));
 
-  // Report should map a0 to -3, c1 to 1, a2 to 5 = 8-3, and all else to 0.
+  // Report should map a0 to 3, c1 to 1, a2 to 5 = 2+3, and all else to 0.
   // (a0 is the composite key at index 0, c1 is at index 5, a2 is at index 6)
-  EXPECT_THAT(report[1], IsTensor<int64_t>({9}, {-3, 0, 0, 0, 0, 1, 5, 0, 0}));
+  EXPECT_THAT(report[1], IsTensor<int64_t>({9}, {3, 0, 0, 0, 0, 1, 5, 0, 0}));
 }
 
 // Third: Check that noise is added. the noised sum should not be the same as

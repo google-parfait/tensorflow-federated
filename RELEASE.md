@@ -8,6 +8,12 @@ and this project adheres to
 
 ## Unreleased
 
+### Changed
+
+*   The behavior of `DPGroupingFederatedSum::Clamp`: it now sets negatives to 0.
+    Associated test code has been updated. Reason: sensitivity calculation for
+    DP noise was calibrated for non-negative values.
+
 ## Release 0.86.0
 
 ### Added

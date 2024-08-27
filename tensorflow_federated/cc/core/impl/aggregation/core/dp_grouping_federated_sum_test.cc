@@ -220,6 +220,34 @@ TEST(DPGroupingFederatedSumTest, ZeroVectorsCanBeAccumulated) {
                            {0, 0, 0});
 }
 
+// Test that clamp will set negative values to 0
+TEST(DPGroupingFederatedSumTest, NegativeValuesAreClampedToZero) {
+  Tensor ordinals =
+      Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({0, 1, 2, 1}))
+          .value();
+
+  Tensor neg_vector_64 =
+      Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({-1, -1, -1, -1}))
+          .value();
+  MatchSum<int64_t, int64_t>(1000, 3, -1, {{&ordinals, &neg_vector_64}},
+                             {0, 0, 0});
+  Tensor neg_vector_32 =
+      Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({-1, -1, -1, -1}))
+          .value();
+  MatchSum<int32_t, int64_t>(1000, 3, -1, {{&ordinals, &neg_vector_32}},
+                             {0, 0, 0});
+
+  Tensor neg_vector_f =
+      Tensor::Create(DT_FLOAT, {4}, CreateTestData<float>({-1, -1, -1, -1}))
+          .value();
+  MatchSum<float, double>(1000, 3, -1, {{&ordinals, &neg_vector_f}}, {0, 0, 0});
+  Tensor neg_vector_d =
+      Tensor::Create(DT_DOUBLE, {4}, CreateTestData<double>({-1, -1, -1, -1}))
+          .value();
+  MatchSum<double, double>(1000, 3, -1, {{&ordinals, &neg_vector_d}},
+                           {0, 0, 0});
+}
+
 // The fixture below contains data of varying types that we will re-use.
 class ContributionBoundingTester : public testing::Test {
  protected:
@@ -228,51 +256,49 @@ class ContributionBoundingTester : public testing::Test {
       Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({0, 1, 2, 1}))
           .value();
   Tensor alice_32_ =
-      Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({3, 7, 4, -2}))
+      Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({3, 4, 4, 1}))
           .value();
   Tensor alice_64_ =
-      Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({3, 7, 4, -2}))
+      Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({3, 4, 4, 1}))
           .value();
   // float ver.: (.3, .5, .4, 0) with L2 norm sqrt(0.5)
   Tensor alice_f_ =
-      Tensor::Create(DT_FLOAT, {4}, CreateTestData<float>({.3, .7, .4, -.2}))
+      Tensor::Create(DT_FLOAT, {4}, CreateTestData<float>({.3, .4, .4, .1}))
           .value();
   Tensor alice_d_ =
-      Tensor::Create(DT_DOUBLE, {4}, CreateTestData<double>({.3, .7, .4, -.2}))
+      Tensor::Create(DT_DOUBLE, {4}, CreateTestData<double>({.3, .4, .4, .1}))
           .value();
 
-  // Bob's local histogram is (0, -10, 9, 0) w/ L1 norm 19 and L2 norm sqrt(181)
+  // Bob's local histogram is (0, 10, 9, 0) w/ L1 norm 19 and L2 norm sqrt(181)
   Tensor bob_ordinals_ =
       Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({2, 1, 1})).value();
   Tensor bob_32_ =
-      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({9, -12, 2}))
-          .value();
+      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({9, 8, 2})).value();
   Tensor bob_64_ =
-      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({9, -12, 2}))
-          .value();
-  // float ver.: (0, -1.0, 0.9, 0) with L2 norm sqrt(1.81)
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({9, 8, 2})).value();
+  // float ver.: (0, 1.0, 0.9, 0) with L2 norm sqrt(1.81)
   Tensor bob_f_ =
-      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({.9, -1.2, .2}))
+      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({.9, 0.8, .2}))
           .value();
   Tensor bob_d_ =
-      Tensor::Create(DT_DOUBLE, {3}, CreateTestData<double>({.9, -1.2, .2}))
+      Tensor::Create(DT_DOUBLE, {3}, CreateTestData<double>({.9, 0.8, .2}))
           .value();
 
-  // Cindy's local histogram is (5, -5, 0, 11) w/ L1 norm 21 & L2 norm sqrt(171)
+  // Cindy's local histogram is (5, 5, 0, 11) w/ L1 norm 21 & L2 norm sqrt(171)
   Tensor cindy_ordinals_ =
       Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({3, 1, 0})).value();
   Tensor cindy_32_ =
-      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({11, -5, 5}))
+      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({11, 5, 5}))
           .value();
   Tensor cindy_64_ =
-      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({11, -5, 5}))
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({11, 5, 5}))
           .value();
-  // float ver.: (.5, -.5, 0, 1.1) with L2 norm sqrt(1.71)
+  // float ver.: (.5, .5, 0, 1.1) with L2 norm sqrt(1.71)
   Tensor cindy_f_ =
-      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, -.5, .5}))
+      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, .5, .5}))
           .value();
   Tensor cindy_d_ =
-      Tensor::Create(DT_DOUBLE, {3}, CreateTestData<double>({1.1, -.5, .5}))
+      Tensor::Create(DT_DOUBLE, {3}, CreateTestData<double>({1.1, .5, .5}))
           .value();
 };
 
@@ -283,52 +309,52 @@ TEST_F(ContributionBoundingTester, LooseBoundsDoNothing) {
                              {{&alice_ordinals_, &alice_32_},
                               {&bob_ordinals_, &bob_32_},
                               {&cindy_ordinals_, &cindy_32_}},
-                             {8, -10, 13, 11});
+                             {8, 20, 13, 11});
   MatchSum<int64_t, int64_t>(1000, 1000, 1000,
                              {{&alice_ordinals_, &alice_64_},
                               {&bob_ordinals_, &bob_64_},
                               {&cindy_ordinals_, &cindy_64_}},
-                             {8, -10, 13, 11});
+                             {8, 20, 13, 11});
   MatchSum<float, double>(1000, 1000, 1000,
                           {{&alice_ordinals_, &alice_f_},
                            {&bob_ordinals_, &bob_f_},
                            {&cindy_ordinals_, &cindy_f_}},
-                          {.8, -1.0, 1.3, 1.1});
+                          {.8, 2.0, 1.3, 1.1});
   MatchSum<double, double>(1000, 1000, 1000,
                            {{&alice_ordinals_, &alice_d_},
                             {&bob_ordinals_, &bob_d_},
                             {&cindy_ordinals_, &cindy_d_}},
-                           {.8, -1.0, 1.3, 1.1});
+                           {.8, 2.0, 1.3, 1.1});
 }
 
 // If we give DPGFS nontrivial linfinity bounds, data will be clamped.
 TEST_F(ContributionBoundingTester, LinfinityBoundingSucceeds) {
   // If we clamp to 9, then
   // (3, 5, 4, 0) is unchanged
-  // (0, -10, 9, 0) becomes (0, -9, 9, 0)
-  // (5, -5, 0, 11) becomes (5, -5, 0, 9)
-  // for a new sum of 8, -9, 13, 9
+  // (0, 10, 9, 0) becomes (0, 9, 9, 0)
+  // (5, 5, 0, 11) becomes (5, 5, 0, 9)
+  // for a new sum of 8, 19, 13, 9
 
   MatchSum<int32_t, int64_t>(9, -1, -1,
                              {{&alice_ordinals_, &alice_32_},
                               {&bob_ordinals_, &bob_32_},
                               {&cindy_ordinals_, &cindy_32_}},
-                             {8, -9, 13, 9});
+                             {8, 19, 13, 9});
   MatchSum<int64_t, int64_t>(9, -1, -1,
                              {{&alice_ordinals_, &alice_64_},
                               {&bob_ordinals_, &bob_64_},
                               {&cindy_ordinals_, &cindy_64_}},
-                             {8, -9, 13, 9});
+                             {8, 19, 13, 9});
   MatchSum<float, double>(.9, -1, -1,
                           {{&alice_ordinals_, &alice_f_},
                            {&bob_ordinals_, &bob_f_},
                            {&cindy_ordinals_, &cindy_f_}},
-                          {.8, -.9, 1.3, .9});
+                          {.8, 1.9, 1.3, .9});
   MatchSum<double, double>(.9, -1, -1,
                            {{&alice_ordinals_, &alice_d_},
                             {&bob_ordinals_, &bob_d_},
                             {&cindy_ordinals_, &cindy_d_}},
-                           {.8, -.9, 1.3, .9});
+                           {.8, 1.9, 1.3, .9});
 }
 
 TEST_F(ContributionBoundingTester, L1BoundingSucceeds) {
@@ -338,14 +364,14 @@ TEST_F(ContributionBoundingTester, L1BoundingSucceeds) {
                              {3, 5, 4});
   MatchSum<int64_t, int64_t>(100, 20, -1, {{&alice_ordinals_, &alice_64_}},
                              {3, 5, 4});
-  // (0, -10, 9, 0) with L1 norm 19 is unchanged
+  // (0, 10, 9, 0) with L1 norm 19 is unchanged
   MatchSum<int32_t, int64_t>(100, 20, -1, {{&bob_ordinals_, &bob_32_}},
-                             {0, -10, 9});
+                             {0, 10, 9});
   MatchSum<int64_t, int64_t>(100, 20, -1, {{&bob_ordinals_, &bob_64_}},
-                             {0, -10, 9});
-  // (5, -5, 0, 11) with L1 norm 21 becomes (5 * 20/21, -5*20/21, 0, 11 * 20/21)
+                             {0, 10, 9});
+  // (5, 5, 0, 11) with L1 norm 21 becomes (5 * 20/21, 5*20/21, 0, 11 * 20/21)
   auto cindy_expected_int = {static_cast<int64_t>(5 * 20.0 / 21.0),
-                             static_cast<int64_t>(-5 * 20.0 / 21.0),
+                             static_cast<int64_t>(5 * 20.0 / 21.0),
                              static_cast<int64_t>(0 * 20.0 / 21.0),
                              static_cast<int64_t>(11 * 20.0 / 21.0)};
   MatchSum<int32_t, int64_t>(100, 20, -1, {{&cindy_ordinals_, &cindy_32_}},
@@ -358,10 +384,9 @@ TEST_F(ContributionBoundingTester, L1BoundingSucceeds) {
                           {.3, .5, .4});
   MatchSum<double, double>(100, 2, -1, {{&alice_ordinals_, &alice_d_}},
                            {.3, .5, .4});
-  MatchSum<float, double>(100, 2, -1, {{&bob_ordinals_, &bob_f_}}, {0, -1, .9});
-  MatchSum<double, double>(100, 2, -1, {{&bob_ordinals_, &bob_d_}},
-                           {0, -1, .9});
-  auto cindy_expected_double = {.5 * 2.0 / 2.1, -.5 * 2.0 / 2.1, 0.0,
+  MatchSum<float, double>(100, 2, -1, {{&bob_ordinals_, &bob_f_}}, {0, 1, .9});
+  MatchSum<double, double>(100, 2, -1, {{&bob_ordinals_, &bob_d_}}, {0, 1, .9});
+  auto cindy_expected_double = {.5 * 2.0 / 2.1, .5 * 2.0 / 2.1, 0.0,
                                 1.1 * 2 / 2.1};
   MatchSum<float, double>(100, 2, -1, {{&cindy_ordinals_, &cindy_f_}},
                           cindy_expected_double);
@@ -376,20 +401,19 @@ TEST_F(ContributionBoundingTester, L2BoundingSucceeds) {
                              {3, 5, 4});
   MatchSum<int64_t, int64_t>(100, -1, 12, {{&alice_ordinals_, &alice_64_}},
                              {3, 5, 4});
-  // (0, -10, 9, 0) with L2 norm sqrt(181)
-  //  becomes (0, -10*12/sqrt(181), 9 * 12/sqrt(181), 0)
+  // (0, 10, 9, 0) with L2 norm sqrt(181)
+  //  becomes (0, 10*12/sqrt(181), 9 * 12/sqrt(181), 0)
   int64_t zero_int = 0;
-  auto bob_expected_int = {zero_int, static_cast<int64_t>(-10 * 12 / sqrt(181)),
+  auto bob_expected_int = {zero_int, static_cast<int64_t>(10 * 12 / sqrt(181)),
                            static_cast<int64_t>(9 * 12 / sqrt(181))};
   MatchSum<int32_t, int64_t>(100, -1, 12, {{&bob_ordinals_, &bob_32_}},
                              bob_expected_int);
   MatchSum<int64_t, int64_t>(100, -1, 12, {{&bob_ordinals_, &bob_64_}},
                              bob_expected_int);
-  // (5, -5, 0, 11) with L2 norm sqrt(171)
-  //  becomes (5 * 12/sqrt(171), -5 * 12/sqrt(171), 0, 11 * 12/sqrt(171))
+  // (5, 5, 0, 11) with L2 norm sqrt(171)
+  //  becomes (5 * 12/sqrt(171), 5 * 12/sqrt(171), 0, 11 * 12/sqrt(171))
   auto cindy_expected_int = {static_cast<int64_t>(5 * 12 / sqrt(171)),
-                             static_cast<int64_t>(-5 * 12 / sqrt(171)),
-                             zero_int,
+                             static_cast<int64_t>(5 * 12 / sqrt(171)), zero_int,
                              static_cast<int64_t>(11 * 12 / sqrt(171))};
   MatchSum<int32_t, int64_t>(100, -1, 12, {{&cindy_ordinals_, &cindy_32_}},
                              cindy_expected_int);
@@ -405,7 +429,7 @@ TEST_F(ContributionBoundingTester, L2BoundingSucceeds) {
 
   double bob_l2 = sqrt((-1.0 * -1.0) + (0.9 * 0.9));
   auto bob_expected_double = {zero_double,
-                              static_cast<double>(-1.0 * 1.2 / bob_l2),
+                              static_cast<double>(1.0 * 1.2 / bob_l2),
                               static_cast<double>(.9 * 1.2 / bob_l2)};
   MatchSum<float, double>(100, -1, 1.2, {{&bob_ordinals_, &bob_f_}},
                           bob_expected_double);
@@ -414,7 +438,7 @@ TEST_F(ContributionBoundingTester, L2BoundingSucceeds) {
 
   double cindy_l2 = sqrt((.5 * .5) + (-.5 * -.5) + (1.1 * 1.1));
   auto cindy_expected_double = {static_cast<double>(.5 * 1.2 / cindy_l2),
-                                static_cast<double>(-.5 * 1.2 / cindy_l2),
+                                static_cast<double>(.5 * 1.2 / cindy_l2),
                                 zero_double,
                                 static_cast<double>(1.1 * 1.2 / cindy_l2)};
   MatchSum<float, double>(100, -1, 1.2, {{&cindy_ordinals_, &cindy_f_}},
@@ -430,20 +454,20 @@ TEST_F(ContributionBoundingTester, AllBoundingSucceeds) {
                              {3, 5, 4});
   MatchSum<int64_t, int64_t>(10, 20, 12, {{&alice_ordinals_, &alice_64_}},
                              {3, 5, 4});
-  // (0, -10, 9, 0) with L1 & L2 norms 19 & sqrt(181) is scaled by 12/sqrt(181)
+  // (0, 10, 9, 0) with L1 & L2 norms 19 & sqrt(181) is scaled by 12/sqrt(181)
   double scale = 12.0 / sqrt(181);
   int64_t zero_int = 0;
-  auto bob_expected_int = {zero_int, static_cast<int64_t>(-10 * scale),
+  auto bob_expected_int = {zero_int, static_cast<int64_t>(10 * scale),
                            static_cast<int64_t>(9 * scale)};
   MatchSum<int32_t, int64_t>(10, 20, 12, {{&bob_ordinals_, &bob_32_}},
                              bob_expected_int);
   MatchSum<int64_t, int64_t>(10, 20, 12, {{&bob_ordinals_, &bob_64_}},
                              bob_expected_int);
-  // (5, -5, 0, 11) becomes (5, -5, 0, 10) with L1 & L2 norms 21 & sqrt(150)
+  // (5, 5, 0, 11) becomes (5, 5, 0, 10) with L1 & L2 norms 21 & sqrt(150)
   // which gets scaled by min(20/21, 12/sqrt(150))
   scale = std::min(20.0 / 21.0, 12.0 / sqrt(150));
   auto cindy_expected_int = {static_cast<int64_t>(5 * scale),
-                             static_cast<int64_t>(-5 * scale), zero_int,
+                             static_cast<int64_t>(5 * scale), zero_int,
                              static_cast<int64_t>(10 * scale)};
   MatchSum<int32_t, int64_t>(10, 20, 12, {{&cindy_ordinals_, &cindy_32_}},
                              cindy_expected_int);
@@ -458,17 +482,17 @@ TEST_F(ContributionBoundingTester, AllBoundingSucceeds) {
   double zero_double = 0.0;
   double bob_l2 = sqrt((-1.0 * -1.0) + (0.9 * 0.9));
   scale = 1.2 / bob_l2;
-  auto bob_expected_double = {zero_double, static_cast<double>(-1.0 * scale),
+  auto bob_expected_double = {zero_double, static_cast<double>(1.0 * scale),
                               static_cast<double>(.9 * scale)};
   MatchSum<float, double>(1.0, 2.0, 1.2, {{&bob_ordinals_, &bob_f_}},
                           bob_expected_double);
   MatchSum<double, double>(1.0, 2.0, 1.2, {{&bob_ordinals_, &bob_d_}},
                            bob_expected_double);
-  double cindy_l1 = .5 - .5 + 1.0;
+  double cindy_l1 = .5 + .5 + 1.0;
   double cindy_l2 = sqrt((.5 * .5) + (-.5 * -.5) + (1.0 * 1.0));
   scale = std::min(2.0 / cindy_l1, 1.2 / cindy_l2);
   auto cindy_expected_double = {static_cast<double>(.5 * scale),
-                                static_cast<double>(-.5 * scale), zero_double,
+                                static_cast<double>(.5 * scale), zero_double,
                                 static_cast<double>(1.0 * scale)};
   MatchSum<float, double>(1.0, 2.0, 1.2, {{&cindy_ordinals_, &cindy_f_}},
                           cindy_expected_double);
@@ -585,29 +609,30 @@ TEST_P(DPGroupingFederatedSumTest, ScalarMergeIgnoresNormBounding) {
 // Test merge w/ vector input
 TEST_P(DPGroupingFederatedSumTest, VectorMergeSucceeds) {
   auto aggregator1 = CreateTensorAggregator(CreateDefaultIntrinsic()).value();
+  // Alice has (3, 5, 4, 0)
   Tensor alice_ordinal =
       Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({0, 1, 2, 1}))
           .value();
   Tensor alice_values =
-      Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({3, 7, 4, -2}))
+      Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({3, 4, 4, 1}))
           .value();
+  // Bob has (0, 14, 9, 0)
   Tensor bob_ordinal =
       Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({2, 1, 1})).value();
   Tensor bob_values =
-      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({9, -12, 2}))
-          .value();
-  // After accumulating Alice's data: [3, 5, 4]
+      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({9, 8, 2})).value();
+  // Aggregator 1 after accumulating Alice's data: [3, 5, 4]
   EXPECT_THAT(aggregator1->Accumulate({&alice_ordinal, &alice_values}), IsOk());
-  // After accumulating Bob's data: [3, -5, 13]
+  // After accumulating Bob's data: [3, 15, 13]
   EXPECT_THAT(aggregator1->Accumulate({&bob_ordinal, &bob_values}), IsOk());
 
   auto aggregator2 = CreateTensorAggregator(CreateDefaultIntrinsic()).value();
   Tensor cindy_ordinal =
       Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({3, 1, 0})).value();
   Tensor cindy_values =
-      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({11, -5, 5}))
+      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({11, 5, 5}))
           .value();
-  // After accumulating Cindy's data: [5, -5, 0, 11]
+  // Aggregator 2 after accumulating Cindy's data: [5, 5, 0, 11]
   EXPECT_THAT(aggregator2->Accumulate({&cindy_ordinal, &cindy_values}), IsOk());
 
   if (GetParam()) {
@@ -631,6 +656,11 @@ TEST_P(DPGroupingFederatedSumTest, VectorMergeSucceeds) {
   auto ordinals_for_merge =
       Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({1, 4, 2, 0}))
           .value();
+  // (1, 4, 2, 0) means
+  // item 0 in aggregator2 (5) is added to item 1 in aggregator1 (15),
+  // item 1 in aggregator2 (5) is added to item 4 in aggregator1 (0),
+  // item 2 in aggregator2 (0) is added to item 2 in aggregator1 (13),
+  // item 3 in aggregator2 (11) is added to item 0 in aggregator1 (3).
   EXPECT_THAT((dynamic_cast<OneDimGroupingAggregator<int32_t, int64_t>*>(
                    aggregator1.get()))
                   ->MergeTensors({&ordinals_for_merge, &aggregator2_result},
@@ -642,7 +672,7 @@ TEST_P(DPGroupingFederatedSumTest, VectorMergeSucceeds) {
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
   EXPECT_THAT(result.value().size(), Eq(1));
-  std::initializer_list<int64_t> expected_sum = {14, 0, 13, 0, -5};
+  std::initializer_list<int64_t> expected_sum = {14, 20, 13, 0, 5};
   EXPECT_THAT(result.value()[0], IsTensor({5}, expected_sum));
 }
 

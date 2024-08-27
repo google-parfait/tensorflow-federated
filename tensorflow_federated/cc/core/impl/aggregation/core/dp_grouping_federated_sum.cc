@@ -68,10 +68,12 @@ class DPGroupingFederatedSum final
 
  private:
   // The following method clamps the input value to the linfinity bound if given
+  // TODO: b/354733266 - When the intrinsic is updated to have min- and max-
+  // contributions, clamp to that range instead of [0, linfinity_bound_].
   inline InputT Clamp(const InputT& input_value) {
     return (linfinity_bound_ <= 0)
                ? input_value
-               : std::min(std::max(input_value, -linfinity_bound_),
+               : std::min(std::max(input_value, static_cast<InputT>(0)),
                           linfinity_bound_);
   }
 
