@@ -47,7 +47,7 @@ TENSOR_SERIALIZATION_TEST_PARAMS = [
 ]
 
 
-class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
+class ValueSerializationTest(parameterized.TestCase):
 
   @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
   def test_serialize_deserialize_tensor_value_without_hint(
@@ -60,7 +60,10 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_identical(type_spec, serialize_type_spec)
     self.assertEqual(y.dtype, serialize_type_spec.dtype)
-    self.assertAllEqual(x, y)
+    if isinstance(y, (np.ndarray, np.generic)):
+      np.testing.assert_array_equal(y, x)
+    else:
+      self.assertEqual(y, x)
 
   def test_serialize_deserialize_tensor_value_unknown_shape_without_hint(self):
     x = np.asarray([1.0, 2.0], np.float32)
@@ -72,7 +75,10 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_type_assignable_from(serialize_type_spec, type_spec)
     self.assertEqual(y.dtype, serialize_type_spec.dtype)
-    self.assertAllEqual(x, y)
+    if isinstance(y, (np.ndarray, np.generic)):
+      np.testing.assert_array_equal(y, x, strict=True)
+    else:
+      self.assertEqual(y, x)
 
   @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
   def test_serialize_deserialize_tensor_value_with_hint(
@@ -89,7 +95,10 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
         deserialize_type_spec, serialize_type_spec
     )
     self.assertEqual(y.dtype, serialize_type_spec.dtype)
-    self.assertAllEqual(x, y)
+    if isinstance(y, (np.ndarray, np.generic)):
+      np.testing.assert_array_equal(y, x)
+    else:
+      self.assertEqual(y, x)
 
   @parameterized.named_parameters(
       ('str', 'abc', TensorType(np.str_), b'abc'),
@@ -159,7 +168,10 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     )
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_identical(type_spec, TensorType(np.int32, [3]))
-    self.assertAllEqual(x, y)
+    if isinstance(y, (np.ndarray, np.generic)):
+      np.testing.assert_array_equal(y, x, strict=True)
+    else:
+      self.assertEqual(y, x)
 
   def test_serialize_struct_with_type_element_mismatch(self):
     x = {'a': 1}
@@ -246,14 +258,16 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
         ds_repr, sequence_type
     )
     self.assertEqual(value_type, sequence_type)
-    y, type_spec = value_serialization.deserialize_value(value_proto)
+    y, type_spec = value_serialization.deserialize_value(
+        value_proto, sequence_type
+    )
     type_test_utils.assert_types_equivalent(type_spec, sequence_type)
     actual_values = list(y)
     expected_values = [
-        test_tuple_type(a=x * 2, b=x, c=x - 1.0) for x in range(5)
+        collections.OrderedDict(a=x * 2, b=x, c=x - 1.0) for x in range(5)
     ]
     for actual, expected in zip(actual_values, expected_values):
-      self.assertAllClose(actual, expected)
+      self.assertEqual(actual, expected)
 
   def test_serialize_deserialize_sequence_of_scalars_graph_mode(self):
     with tf.Graph().as_default():
@@ -345,7 +359,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     expected_values = [_build_expected_structure(x) for x in range(5)]
     for actual, expected in zip(actual_values, expected_values):
       self.assertEqual(type(actual), type(expected))
-      self.assertAllClose(actual, expected)
+      self.assertEqual(actual, expected)
 
   def test_serialize_deserialize_tensor_value_with_bad_shape(self):
     value = np.array([10, 20, 30], np.int32)
