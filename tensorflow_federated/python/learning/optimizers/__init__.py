@@ -16,6 +16,7 @@
 from tensorflow_federated.python.learning.optimizers.adafactor import build_adafactor
 from tensorflow_federated.python.learning.optimizers.adagrad import build_adagrad
 from tensorflow_federated.python.learning.optimizers.adam import build_adam
+from tensorflow_federated.python.learning.optimizers.adamw import build_adamw
 from tensorflow_federated.python.learning.optimizers.optimizer import check_weights_gradients_match
 from tensorflow_federated.python.learning.optimizers.optimizer import handle_indexed_slices_gradients
 from tensorflow_federated.python.learning.optimizers.optimizer import LEARNING_RATE_KEY

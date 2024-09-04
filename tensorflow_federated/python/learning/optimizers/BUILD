@@ -82,6 +82,7 @@ py_library(
         ":adafactor",
         ":adagrad",
         ":adam",
+        ":adamw",
         ":optimizer",
         ":rmsprop",
         ":scheduling",
