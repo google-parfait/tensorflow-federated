@@ -23,7 +23,6 @@ from tensorflow_federated.python import program
 from tensorflow_federated.python import simulation
 from tensorflow_federated.python.common_libs import deprecation as _deprecation
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import tracing as profiler
 from tensorflow_federated.python.core import backends
 from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import templates
