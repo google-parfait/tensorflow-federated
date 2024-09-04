@@ -219,6 +219,15 @@ py_library(
     ],
 )
 
+py_library(
+    name = "adamw",
+    srcs = ["adamw.py"],
+    deps = [
+        ":optimizer",
+        "//tensorflow_federated/python/common_libs:structure",
+    ],
+)
+
 py_test(
     name = "yogi_test",
     srcs = ["yogi_test.py"],
@@ -226,5 +235,15 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":yogi",
+    ],
+)
+
+py_test(
+    name = "adamw_test",
+    srcs = ["adamw_test.py"],
+    deps = [
+        ":adamw",
+        ":optimizer",
+        ":optimizer_test_utils",
     ],
 )

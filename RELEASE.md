@@ -8,6 +8,10 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   Added an implementation of AdamW to `tff.learning.optimizers`.
+
 ### Changed
 
 *   The behavior of `DPGroupingFederatedSum::Clamp`: it now sets negatives to 0.
