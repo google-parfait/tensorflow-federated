@@ -20,6 +20,7 @@ and this project adheres to
 
 ### Removed
 
+*   `tff.jax_computation`, use `tff.jax.computation` instead.
 *   `tff.profiler`, this API is not used.
 
 ## Release 0.86.0

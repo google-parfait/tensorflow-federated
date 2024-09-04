@@ -21,7 +21,6 @@ from tensorflow_federated.python import analytics
 from tensorflow_federated.python import learning
 from tensorflow_federated.python import program
 from tensorflow_federated.python import simulation
-from tensorflow_federated.python.common_libs import deprecation as _deprecation
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core import backends
 from tensorflow_federated.python.core import framework
@@ -67,15 +66,6 @@ from tensorflow_federated.version import __version__
 
 if sys.version_info < (3, 9):
   raise RuntimeError('TFF only supports Python versions 3.9 or later.')
-
-# TODO: b/305743962 - Remove deprecated API.
-jax_computation = _deprecation.deprecated(
-    '`tff.jax_computation` is deprecated, use `tff.jax.computation` instead.'
-)(jax.computation)
-tf_computation = _deprecation.deprecated(
-    '`tff.tf_computation` is deprecated, use `tff.tensorflow.computation`'
-    ' instead.'
-)(tensorflow.computation)
 
 # Initialize a default execution context. This is implicitly executed the
 # first time a module in the `core` package is imported.

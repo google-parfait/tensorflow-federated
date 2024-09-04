@@ -15,7 +15,6 @@ py_library(
         ":version",
         "//tensorflow_federated/python/aggregators",
         "//tensorflow_federated/python/analytics",
-        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/backends",
         "//tensorflow_federated/python/core/environments/jax",
