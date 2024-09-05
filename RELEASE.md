@@ -21,6 +21,8 @@ and this project adheres to
 *   The behavior of `DPGroupingFederatedSum::Clamp`: it now sets negatives to 0.
     Associated test code has been updated. Reason: sensitivity calculation for
     DP noise was calibrated for non-negative values.
+*   Change tutorials to use `tff.learning.optimizers` in conjunction with
+    `tff.learning` computations.
 
 ### Fixed
 
@@ -31,6 +33,7 @@ and this project adheres to
 
 *   `tff.jax_computation`, use `tff.jax.computation` instead.
 *   `tff.profiler`, this API is not used.
+*   Removed various stale tutorials.
 
 ## Release 0.86.0
 

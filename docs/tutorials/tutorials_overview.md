@@ -43,9 +43,6 @@ will need to use a
 *   [Composing Learning Algorithms](composing_learning_algorithms.ipynb) shows
     how to use the TFF Learning API to easily implement new federated learning
     algorithms, especially variants of Federated Averaging.
-*   [Custom Federated Algorithm with TFF Optimizers](custom_federated_algorithm_with_tff_optimizers.ipynb)
-    shows how to use `tff.learning.optimizers` to build a custom iterative
-    process for Federated Averaging.
 *   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core](custom_federated_algorithms_1.ipynb)
     and
     [Part 2: Implementing Federated Averaging](custom_federated_algorithms_2.ipynb)
@@ -68,7 +65,7 @@ will need to use a
 **Intermediate and advanced tutorials**
 
 *   [Random noise generation](random_noise_generation.ipynb) points out some
-    subtlities with using randomness in decentralized computations, and proposes
+    subtleties with using randomness in decentralized computations, and proposes
     best practices and recommend patterns.
 
 *   [Sending Different Data To Particular Clients With tff.federated_select](federated_select.ipynb)
@@ -81,16 +78,6 @@ will need to use a
     updates a small part of the model, using `tff.federated_select` and sparse
     aggregation.
 
-*   [TFF for Federated Learning Research: Model and Update Compression](tff_for_federated_learning_research_compression.ipynb)
-    demonstrates how custom aggregations building on the
-    [tensor_encoding API](https://github.com/tensorflow/model-optimization/tree/master/tensorflow_model_optimization/python/core/internal/tensor_encoding)
-    can be used in TFF.
-
 *   [Federated Learning with Differential Privacy in TFF](federated_learning_with_differential_privacy.ipynb)
     demonstrates how to use TFF to train models with user-level differential
     privacy.
-
-*   [Support for JAX in TFF](../tutorials/jax_support.ipynb) shows how
-    [JAX](https://github.com/google/jax) computations can be used in TFF,
-    demonstrating how TFF is designed to be able to interoperate with other
-    frontend and backend ML frameworks.
