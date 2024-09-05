@@ -105,6 +105,22 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
         lambda w: self.assertTrue(all(tf.math.is_finite(w))), weights
     )
 
+  @parameterized.named_parameters(
+      ('scalar_spec', _SCALAR_SPEC),
+      ('struct_spec', _STRUCT_SPEC),
+      ('nested_spec', _NESTED_SPEC),
+  )
+  def test_skips_none_gradients(self, spec):
+    weights = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
+    gradients = tf.nest.map_structure(lambda s: None, spec)
+    optimizer = sgdm.build_sgdm(learning_rate=0.01, momentum=0.5)
+
+    state = optimizer.initialize(spec)
+    updated_state, updated_weights = optimizer.next(state, weights, gradients)
+
+    tf.nest.map_structure(self.assertAllEqual, weights, updated_weights)
+    tf.nest.map_structure(self.assertAllEqual, state, updated_state)
+
   def test_executes_with_indexed_slices(self):
     # TF can represent gradients as tf.IndexedSlices. This test makes sure this
     # case is supported by the optimizer.

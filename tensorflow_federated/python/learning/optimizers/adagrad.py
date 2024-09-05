@@ -19,6 +19,7 @@ from typing import Any, TypeVar
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.learning.optimizers import nest_utils
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 _EPSILON_KEY = 'epsilon'
@@ -77,16 +78,16 @@ class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         weights, preconditioner, 'preconditioner'
     )
 
-    updated_preconditioner = tf.nest.map_structure(
-        lambda a, g: a + tf.math.square(g), preconditioner, gradients
-    )
-    updated_weights = tf.nest.map_structure(
-        lambda w, g, a: w - lr * g / tf.math.sqrt(a + epsilon),
-        weights,
-        gradients,
-        updated_preconditioner,
-    )
+    def _adagrad_update(w, p, g):
+      if g is None:
+        return w, p
+      p = p + tf.math.square(g)
+      w = w - lr * g / tf.math.sqrt(p + epsilon)
+      return w, p
 
+    updated_weights, updated_preconditioner = nest_utils.map_at_leaves(
+        _adagrad_update, weights, preconditioner, gradients
+    )
     updated_state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, lr),
         (_EPSILON_KEY, epsilon),

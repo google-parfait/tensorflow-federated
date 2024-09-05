@@ -19,6 +19,7 @@ from typing import Any, TypeVar
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.learning.optimizers import nest_utils
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 _BETA_1_KEY = 'beta_1'
@@ -113,25 +114,24 @@ class _AdamW(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         weights, preconditioner, 'preconditioner'
     )
 
-    updated_accumulator = tf.nest.map_structure(
-        lambda a, g: a + (g - a) * (1 - beta_1), accumulator, gradients
-    )
-    updated_preconditioner = tf.nest.map_structure(
-        lambda s, g: s + (tf.math.square(g) - s) * (1 - beta_2),
-        preconditioner,
-        gradients,
-    )
     normalization = tf.math.sqrt(
         (1 - tf.math.pow(beta_2, tf.cast(step, tf.float32)))
     ) / (1 - tf.math.pow(beta_1, tf.cast(step, tf.float32)))
-    updated_weights = tf.nest.map_structure(
-        lambda w, g, a, s: w
-        - lr
-        * (normalization * a / (tf.math.sqrt(s) + epsilon) + weight_decay * w),
-        weights,
-        gradients,
-        updated_accumulator,
-        updated_preconditioner,
+
+    def _adamw_update(w, a, p, g):
+      if g is None:
+        return w, a, p
+      a = a + (g - a) * (1 - beta_1)
+      p = p + (tf.math.square(g) - p) * (1 - beta_2)
+      w = w - lr * (
+          normalization * a / (tf.math.sqrt(p) + epsilon) + weight_decay * w
+      )
+      return w, a, p
+
+    updated_weights, updated_accumulator, updated_preconditioner = (
+        nest_utils.map_at_leaves(
+            _adamw_update, weights, accumulator, preconditioner, gradients
+        )
     )
 
     updated_state = collections.OrderedDict([

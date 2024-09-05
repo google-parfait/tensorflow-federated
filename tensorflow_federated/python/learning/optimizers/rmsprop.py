@@ -19,6 +19,7 @@ from typing import Any, TypeVar
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.learning.optimizers import nest_utils
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 _DECAY_KEY = 'decay'
@@ -81,18 +82,16 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         weights, preconditioner, 'preconditioner'
     )
 
-    updated_preconditioner = tf.nest.map_structure(
-        lambda p, g: p + (tf.math.square(g) - p) * (1 - decay),
-        preconditioner,
-        gradients,
-    )
-    updated_weights = tf.nest.map_structure(
-        lambda w, g, p: w - lr * g / (tf.math.sqrt(p) + epsilon),
-        weights,
-        gradients,
-        updated_preconditioner,
-    )
+    def _rmsprop_update(w, p, g):
+      if g is None:
+        return w, p
+      p = p + (tf.math.square(g) - p) * (1 - decay)
+      w = w - lr * g / (tf.math.sqrt(p) + epsilon)
+      return w, p
 
+    updated_weights, updated_preconditioner = nest_utils.map_at_leaves(
+        _rmsprop_update, weights, preconditioner, gradients
+    )
     updated_state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, lr),
         (_DECAY_KEY, decay),

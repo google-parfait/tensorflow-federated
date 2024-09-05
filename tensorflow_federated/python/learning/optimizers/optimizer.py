@@ -123,19 +123,25 @@ class Optimizer(abc.ABC, Generic[State, Weights, Hparams]):
     return state
 
 
-def _check_shape_dtype_match(x: tf.Tensor, y: tf.Tensor) -> None:
+def _check_shape_dtype_match(x: tf.Tensor, y: Union[tf.Tensor, None]) -> None:
+  if y is None:
+    return
   if not x.shape.is_compatible_with(y.shape) or x.dtype != y.dtype:
     raise TypeError('Provided tensors do not have the same shapes and dtypes.')
 
 
 def check_weights_gradients_match(
-    weights: _Structure[tf.Tensor], gradients: _Structure[tf.Tensor]
+    weights: _Structure[tf.Tensor],
+    gradients: _Structure[Union[tf.Tensor, None]],
 ) -> None:
-  """Checks that weights and gradients match.
+  """Checks that weights and non-none gradients match.
 
   This check is meant to be used in the `next` method of implemented
   `tff.learning.optimizers.Optimizer` to check whether the provided weights and
   gradients match, and provide easy and more informative error message.
+
+  To match behavior of `tf.keras.optimizers`, this check will only be applied
+  to gradient leaves that are not `None`.
 
   Args:
     weights: A structure of tensors.
@@ -143,7 +149,8 @@ def check_weights_gradients_match(
 
   Raises:
     ValueError: If `weights` and `gradients` do not have the same structure, or
-      if the tensors in the structures do not have the same shapes and dtypes.
+      if the tensors in the structures do not have the same shapes and dtypes,
+      at some leaf where `gradients` is not `None`.
   """
   try:
     tf.nest.assert_same_structure(weights, gradients, check_types=True)

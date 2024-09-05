@@ -19,6 +19,7 @@ from typing import Any, Optional, TypeVar
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.learning.optimizers import nest_utils
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 _MOMENTUM_KEY = 'momentum'
@@ -72,8 +73,14 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     lr = state[optimizer.LEARNING_RATE_KEY]
 
     if _MOMENTUM_KEY not in state:
-      updated_weights = tf.nest.map_structure(
-          lambda w, g: w - lr * g, weights, gradients
+
+      def _sgd_update(w, g):
+        if g is None:
+          return w
+        return w - lr * g
+
+      updated_weights = nest_utils.map_at_leaves(
+          _sgd_update, weights, gradients
       )
       updated_state = collections.OrderedDict(
           [(optimizer.LEARNING_RATE_KEY, lr)]
@@ -82,11 +89,16 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       momentum = state[_MOMENTUM_KEY]
       accumulator = state[_ACCUMULATOR_KEY]
       optimizer.check_weights_state_match(weights, accumulator, 'accumulator')
-      updated_accumulator = tf.nest.map_structure(
-          lambda a, g: momentum * a + g, accumulator, gradients
-      )
-      updated_weights = tf.nest.map_structure(
-          lambda w, m: w - lr * m, weights, updated_accumulator
+
+      def _sgdm_update(w, a, g):
+        if g is None:
+          return w, a
+        a = momentum * a + g
+        w = w - lr * a
+        return w, a
+
+      updated_weights, updated_accumulator = nest_utils.map_at_leaves(
+          _sgdm_update, weights, accumulator, gradients
       )
       updated_state = collections.OrderedDict([
           (optimizer.LEARNING_RATE_KEY, lr),

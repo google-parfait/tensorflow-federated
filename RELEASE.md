@@ -14,9 +14,18 @@ and this project adheres to
 
 ### Changed
 
+*   Support `None` gradients in `tff.learning.optimizers`. This mimics the
+    behavior of `tf.keras.optimizers` - gradients that are `None` will be
+    skipped, and their corresponding optimizer output (e.g. momentum and
+    weights) will not be updated.
 *   The behavior of `DPGroupingFederatedSum::Clamp`: it now sets negatives to 0.
     Associated test code has been updated. Reason: sensitivity calculation for
     DP noise was calibrated for non-negative values.
+
+### Fixed
+
+*   A bug where `tff.learning.optimizers.build_adafactor(...)` would update its
+    step counter twice upon every invocation of `.next()`.
 
 ### Removed
 

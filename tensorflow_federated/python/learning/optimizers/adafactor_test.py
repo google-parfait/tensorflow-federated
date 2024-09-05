@@ -46,10 +46,36 @@ _TEST_PARAMETERS = (
         clip_threshold=0.5,
         relative_step=False,
     ),
+    # In this test case, we use a large learning rate, to ensure that the actual
+    # learning rates used are those from the adafactor learning rate schedule.
+    # If the learning rate is small and the step number is small, the
+    # constructor learning rate will be used instead of the adafactor learning
+    # rate schedule (ie. the latter wont' have kicked in yet).
+    dict(
+        testcase_name='use_decayed_lr',
+        learning_rate=10.0,
+        beta_2_decay=0.8,
+        epsilon_1=1e-30,
+        epsilon_2=1e-3,
+        clip_threshold=1.0,
+    ),
 )
 
 
 class AdafactorTest(parameterized.TestCase, tf.test.TestCase):
+
+  def test_skips_none_gradients(self):
+    spec = [tf.TensorSpec([2], tf.float32), tf.TensorSpec([3], tf.float32)]
+    weights = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
+    gradients = tf.nest.map_structure(lambda s: None, spec)
+    optimizer = adafactor.build_adafactor(0.01)
+
+    state = optimizer.initialize(spec)
+    updated_state, updated_weights = optimizer.next(state, weights, gradients)
+    state['steps'] += 1
+
+    tf.nest.map_structure(self.assertAllEqual, weights, updated_weights)
+    tf.nest.map_structure(self.assertAllEqual, state, updated_state)
 
   def test_initialization_and_step_in_eager_mode(self):
     optimizer = adafactor.build_adafactor(learning_rate=0.003)
@@ -150,8 +176,10 @@ class AdafactorTest(parameterized.TestCase, tf.test.TestCase):
     tff_weights = tf.zeros(shape=test_shape)
     keras_optimizer = tf.keras.optimizers.Adafactor(**optimizer_kwargs)
     keras_variable = tf.Variable(initial_value=tff_weights, dtype=tf.float32)
-    gradient = tf.ones_like(tff_weights) * -0.1
-    for _ in range(10):
+    for i in range(10):
+      # We change the gradient across rounds so that the Adafactor variables
+      # will also change over rounds.
+      gradient = tf.ones_like(tff_weights) * -0.1 * i
       tff_state, tff_weights = tff_optimizer.next(
           state=tff_state, weights=tff_weights, gradients=gradient
       )

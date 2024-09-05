@@ -75,6 +75,11 @@ class OptimizerChecksTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'foo'):
       optimizer.check_weights_state_match(weights, state, name='foo')
 
+  def test_only_check_non_none_gradients(self):
+    weights = [tf.zeros([2]), tf.zeros([3])]
+    gradients = [None, tf.zeros([3])]
+    optimizer.check_weights_gradients_match(weights, gradients)
+
   def test_handle_indexed_slices_single_value(self):
     gradients = tf.IndexedSlices(
         values=tf.constant([[0.0, 1.0], [1.0, 3.0]]),

@@ -131,8 +131,12 @@ class _AdafactorOptimizer(
       return tf.math.sqrt(tf.math.reduce_mean(tf.math.square(t)))
 
     def update(
-        state: _AdaFactorMoment, weight: tf.Tensor, gradient: tf.Tensor
+        state: _AdaFactorMoment,
+        weight: tf.Tensor,
+        gradient: Union[tf.Tensor, None],
     ) -> tuple[_AdaFactorMoment, tf.Tensor]:
+      if gradient is None:
+        return state, weight
       alpha_t = tf.math.maximum(epsilon_2, _rms(weight)) * rho_t
       regulated_gradient_squared = tf.math.square(gradient) + epsilon_1
       beta_2_t = 1.0 - tf.math.pow(local_step, beta_2_decay)
@@ -171,7 +175,7 @@ class _AdafactorOptimizer(
     new_weights = tf.nest.pack_sequence_as(weights, new_weights)
 
     return {
-        'steps': local_step + 1,
+        'steps': local_step,
         'moments': new_moments,
         'hparams': hparams,
     }, new_weights

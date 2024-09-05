@@ -19,6 +19,7 @@ from typing import Any, TypeVar
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.learning.optimizers import nest_utils
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 
@@ -115,32 +116,27 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     optimizer.check_weights_state_match(
         weights, preconditioner, 'preconditioner'
     )
-
-    updated_accumulator = tf.nest.map_structure(
-        lambda a, g: a + (g - a) * (1 - beta_1), accumulator, gradients
-    )
-
-    def preconditioner_update(s, g):
-      g2 = tf.math.square(g)
-      sign = tf.sign(g2 - s)
-      return s + (1 - beta_2) * sign * g2
-
-    updated_preconditioner = tf.nest.map_structure(
-        preconditioner_update, preconditioner, gradients
-    )
     normalized_lr = (
         lr
         * tf.math.sqrt((1 - tf.math.pow(beta_2, tf.cast(step, tf.float32))))
         / (1 - tf.math.pow(beta_1, tf.cast(step, tf.float32)))
     )
-    updated_weights = tf.nest.map_structure(
-        lambda w, g, a, s: w - normalized_lr * a / (tf.math.sqrt(s) + epsilon),
-        weights,
-        gradients,
-        updated_accumulator,
-        updated_preconditioner,
-    )
 
+    def _yogi_update(w, a, p, g):
+      if g is None:
+        return w, a, p
+      a = a + (g - a) * (1 - beta_1)
+      g2 = tf.math.square(g)
+      sign = tf.sign(g2 - p)
+      p = p + (1 - beta_2) * sign * g2
+      w = w - normalized_lr * a / (tf.math.sqrt(p) + epsilon)
+      return w, a, p
+
+    updated_weights, updated_accumulator, updated_preconditioner = (
+        nest_utils.map_at_leaves(
+            _yogi_update, weights, accumulator, preconditioner, gradients
+        )
+    )
     updated_state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, lr),
         (_BETA_1_KEY, beta_1),
