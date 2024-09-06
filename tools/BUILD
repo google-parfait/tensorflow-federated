@@ -19,12 +19,19 @@ bzl_library(
     visibility = [
         "//tensorflow_federated:__subpackages__",  # Scheuklappen: keep
     ],
-    deps = ["@rules_python//python:defs.bzl"],
+    deps = [
+        "//third_party/tensorflow:tensorflow_bzl",
+        "@rules_python//python:defs.bzl",
+    ],
 )
 
 py_binary(
     name = "build_docs",
     srcs = ["build_docs.py"],
+    deps = [
+        "//third_party/py/tensorflow_docs/api_generator",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 filegroup(

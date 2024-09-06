@@ -35,6 +35,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//third_party/tensorflow",
+        "@pypi_dm_tree//:pkg",
     ],
 )
 
@@ -50,6 +52,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -65,6 +70,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//third_party/tensorflow",
+        "@pypi_dm_tree//:pkg",
     ],
 )
 
@@ -80,6 +87,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -97,6 +107,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -111,12 +122,19 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
 py_library(
     name = "variable_utils",
     srcs = ["variable_utils.py"],
+    deps = [
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
+    ],
 )
 
 py_test(
@@ -124,5 +142,9 @@ py_test(
     size = "small",
     timeout = "moderate",
     srcs = ["variable_utils_test.py"],
-    deps = [":variable_utils"],
+    deps = [
+        ":variable_utils",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+    ],
 )

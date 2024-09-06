@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//tools:build_defs.bzl", "tff_cc_library", "tff_cc_test")
+
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = ["//visibility:public"],
 )
 
-cc_library(
+tff_cc_library(
     name = "converters",
     srcs = ["converters.cc"],
     hdrs = ["converters.h"],
@@ -29,14 +31,14 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@local_tsl//tsl/platform:refcount",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/platform:tstring",
-        "@org_tensorflow//tensorflow/tsl/platform:refcount",
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "converters_test",
     srcs = ["converters_test.cc"],
     deps = [
@@ -56,7 +58,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "checkpoint_reader",
     srcs = ["checkpoint_reader.cc"],
     hdrs = ["checkpoint_reader.h"],
@@ -76,7 +78,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "checkpoint_reader_test",
     srcs = ["checkpoint_reader_test.cc"],
     deps = [
@@ -90,7 +92,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "checkpoint_writer",
     srcs = ["checkpoint_writer.cc"],
     hdrs = ["checkpoint_writer.h"],
@@ -103,7 +105,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "checkpoint_writer_test",
     srcs = ["checkpoint_writer_test.cc"],
     deps = [
@@ -116,7 +118,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "tensorflow_checkpoint_builder_factory",
     srcs = ["tensorflow_checkpoint_builder_factory.cc"],
     hdrs = ["tensorflow_checkpoint_builder_factory.h"],
@@ -130,12 +132,12 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+        "@local_tsl//tsl/platform:env",
         "@org_tensorflow//tensorflow/core/platform:env",
-        "@org_tensorflow//tensorflow/tsl/platform:env",
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "tensorflow_checkpoint_builder_factory_test",
     srcs = ["tensorflow_checkpoint_builder_factory_test.cc"],
     deps = [
@@ -151,7 +153,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "tensorflow_checkpoint_parser_factory",
     srcs = ["tensorflow_checkpoint_parser_factory.cc"],
     hdrs = ["tensorflow_checkpoint_parser_factory.h"],
@@ -165,12 +167,12 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+        "@local_tsl//tsl/platform:env",
         "@org_tensorflow//tensorflow/core/platform:env",
-        "@org_tensorflow//tensorflow/tsl/platform:env",
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "tensorflow_checkpoint_parser_factory_test",
     srcs = ["tensorflow_checkpoint_parser_factory_test.cc"],
     deps = [

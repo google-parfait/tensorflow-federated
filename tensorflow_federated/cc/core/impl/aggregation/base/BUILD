@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//tools:build_defs.bzl", "tff_cc_library", "tff_cc_test")
+
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = ["//tensorflow_federated/cc/core/impl/aggregation:__subpackages__"],
 )
 
-cc_library(
+tff_cc_library(
     name = "base",
     srcs = [
         "base_name.cc",
@@ -41,7 +43,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "monitoring_test",
     size = "small",
     srcs = ["monitoring_test.cc"],
@@ -51,7 +53,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "platform_test",
     size = "small",
     srcs = ["platform_test.cc"],
@@ -63,7 +65,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "scheduler",
     srcs = ["scheduler.cc"],
     hdrs = ["scheduler.h"],
@@ -74,7 +76,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "scheduler_test",
     size = "small",
     srcs = ["scheduler_test.cc"],
@@ -86,7 +88,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "move_to_lambda_test",
     size = "small",
     srcs = ["move_to_lambda_test.cc"],
@@ -97,12 +99,12 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "unique_value",
     hdrs = ["unique_value.h"],
 )
 
-cc_test(
+tff_cc_test(
     name = "unique_value_test",
     srcs = ["unique_value_test.cc"],
     deps = [
@@ -112,7 +114,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "clock",
     srcs = ["clock.cc"],
     hdrs = ["clock.h"],
@@ -125,7 +127,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "simulated_clock",
     testonly = 1,
     srcs = ["simulated_clock.cc"],
@@ -138,7 +140,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "simulated_clock_test",
     srcs = ["simulated_clock_test.cc"],
     deps = [

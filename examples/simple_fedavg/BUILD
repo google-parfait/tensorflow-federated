@@ -13,13 +13,21 @@ py_binary(
     deps = [
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
 py_library(
     name = "simple_fedavg_tf",
     srcs = ["simple_fedavg_tf.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "//third_party/tensorflow",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
+    ],
 )
 
 py_library(
@@ -28,6 +36,7 @@ py_library(
     deps = [
         ":simple_fedavg_tf",
         "//tensorflow_federated",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -41,5 +50,9 @@ py_test(
         ":simple_fedavg_tf",
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )

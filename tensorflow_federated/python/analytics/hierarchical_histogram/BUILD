@@ -27,11 +27,13 @@ py_library(
 py_library(
     name = "hierarchical_histogram_factory",
     srcs = ["hierarchical_histogram_factory.py"],
+    tags = ["nokokoro"],
     deps = [
         ":clipping_factory",
         "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/aggregators:sum_factory",
+        "//third_party/tensorflow_privacy",
     ],
 )
 
@@ -40,6 +42,7 @@ py_test(
     timeout = "long",
     srcs = ["hierarchical_histogram_factory_test.py"],
     shard_count = 4,
+    tags = ["nokokoro"],
     deps = [
         ":build_tree_from_leaf",
         ":hierarchical_histogram_factory",
@@ -50,12 +53,16 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
 py_library(
     name = "hierarchical_histogram_lib",
     srcs = ["hierarchical_histogram_lib.py"],
+    tags = ["nokokoro"],
     deps = [
         ":clipping_factory",
         ":hierarchical_histogram_factory",
@@ -65,6 +72,9 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "//third_party/tensorflow",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -72,17 +82,25 @@ py_test(
     name = "hierarchical_histogram_lib_test",
     srcs = ["hierarchical_histogram_lib_test.py"],
     shard_count = 6,
+    tags = ["nokokoro"],
     deps = [
         ":hierarchical_histogram_lib",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/test:static_assert",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
 py_library(
     name = "hierarchical_histogram_decoder",
     srcs = ["hierarchical_histogram_decoder.py"],
-    deps = [":build_tree_from_leaf"],
+    deps = [
+        ":build_tree_from_leaf",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
+    ],
 )
 
 py_test(
@@ -91,18 +109,26 @@ py_test(
     deps = [
         ":build_tree_from_leaf",
         ":hierarchical_histogram_decoder",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
 py_library(
     name = "build_tree_from_leaf",
     srcs = ["build_tree_from_leaf.py"],
+    deps = ["@pypi_numpy//:pkg"],
 )
 
 py_test(
     name = "build_tree_from_leaf_test",
     srcs = ["build_tree_from_leaf_test.py"],
-    deps = [":build_tree_from_leaf"],
+    deps = [
+        ":build_tree_from_leaf",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_library(
@@ -118,6 +144,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -132,5 +160,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )

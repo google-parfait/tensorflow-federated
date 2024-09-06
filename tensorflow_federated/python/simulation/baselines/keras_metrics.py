@@ -31,7 +31,7 @@ class NumTokensCounter(tf.keras.metrics.Metric):
   """A `tf.keras.metrics.Metric` that counts tokens seen after masking."""
 
   def __init__(self, masked_tokens=None, name='num_tokens', dtype=tf.int64):
-    super().__init__(name, dtype)
+    super().__init__(name=name, dtype=dtype)
     self._sum = self.add_weight(name='sum', initializer='zeros', dtype=dtype)
     self._masked_tokens = masked_tokens or []
 

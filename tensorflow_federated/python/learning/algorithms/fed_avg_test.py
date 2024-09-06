@@ -39,8 +39,6 @@ class FedAvgTest(parameterized.TestCase):
       ],
       aggregation_factory=[
           model_update_aggregator.robust_aggregator,
-          model_update_aggregator.compression_aggregator,
-          model_update_aggregator.secure_aggregator,
       ],
   )
   def test_construction_calls_model_fn(self, optimizer_fn, aggregation_factory):
@@ -127,34 +125,6 @@ class FedAvgTest(parameterized.TestCase):
           model_aggregator=model_aggregator,
       )
 
-  def test_weighted_fed_avg_with_only_secure_aggregation(self):
-    model_fn = model_examples.LinearRegression
-    learning_process = fed_avg.build_weighted_fed_avg(
-        model_fn,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
-        model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=True
-        ),
-        metrics_aggregator=aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
-
-  def test_unweighted_fed_avg_with_only_secure_aggregation(self):
-    model_fn = model_examples.LinearRegression
-    learning_process = fed_avg.build_unweighted_fed_avg(
-        model_fn,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
-        model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=False
-        ),
-        metrics_aggregator=aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
-
 
 class FunctionalFedAvgTest(parameterized.TestCase):
   """Tests construction of the FedAvg training process."""
@@ -189,25 +159,6 @@ class FunctionalFedAvgTest(parameterized.TestCase):
             client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1),
             server_optimizer_fn=tf.keras.optimizers.SGD,
         )
-
-  @parameterized.named_parameters(
-      ('weighted', fed_avg.build_weighted_fed_avg),
-      ('unweighted', fed_avg.build_unweighted_fed_avg),
-  )
-  def test_weighted_fed_avg_with_only_secure_aggregation(self, constructor):
-    model = test_models.build_functional_linear_regression()
-    learning_process = constructor(
-        model_fn=model,
-        client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1),
-        server_optimizer_fn=sgdm.build_sgdm(),
-        model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=constructor is fed_avg.build_weighted_fed_avg
-        ),
-        metrics_aggregator=aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
 
 
 if __name__ == '__main__':

@@ -14,6 +14,7 @@
 
 load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+load("//tools:build_defs.bzl", "tff_cc_binary", "tff_cc_library", "tff_cc_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -55,7 +56,7 @@ cc_proto_library(
     deps = [":agg_core_proto"],
 )
 
-cc_library(
+tff_cc_library(
     name = "tensor",
     srcs = [
         "datatype.cc",
@@ -86,7 +87,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "aggregator",
     srcs = [
         "tensor_aggregator.cc",
@@ -112,14 +113,14 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "intrinsic",
     hdrs = ["intrinsic.h"],
     visibility = ["//visibility:public"],
     deps = [":tensor"],
 )
 
-cc_library(
+tff_cc_library(
     name = "dp_noise_mechanisms",
     srcs = ["dp_noise_mechanisms.cc"],
     hdrs = [
@@ -134,7 +135,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "dp_noise_mechanisms_test",
     srcs = ["dp_noise_mechanisms_test.cc"],
     deps = [
@@ -147,7 +148,7 @@ cc_test(
 )
 
 # TODO: b/352020454 - Create one library per cc & hh pair. Make them aggregation_cores deps.
-cc_library(
+tff_cc_library(
     name = "aggregation_cores",
     srcs = [
         "composite_key_combiner.cc",
@@ -194,7 +195,7 @@ cc_library(
     alwayslink = 1,
 )
 
-cc_test(
+tff_cc_test(
     name = "tensor_test",
     srcs = [
         "tensor_data_test.cc",
@@ -214,7 +215,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "agg_vector_test",
     srcs = ["agg_vector_test.cc"],
     deps = [
@@ -224,7 +225,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "aggregator_test",
     srcs = ["agg_vector_aggregator_test.cc"],
     deps = [
@@ -240,7 +241,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "tensor_aggregator_registry_test",
     srcs = ["tensor_aggregator_registry_test.cc"],
     deps = [
@@ -252,7 +253,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "mutable_string_data",
     hdrs = ["mutable_string_data.h"],
     visibility = ["//visibility:public"],
@@ -262,17 +263,17 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "fedsql_constants",
     hdrs = ["fedsql_constants.h"],
 )
 
-cc_library(
+tff_cc_library(
     name = "dp_fedsql_constants",
     hdrs = ["dp_fedsql_constants.h"],
 )
 
-cc_test(
+tff_cc_test(
     name = "federated_mean_test",
     srcs = ["federated_mean_test.cc"],
     deps = [
@@ -289,7 +290,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "federated_sum_test",
     srcs = ["federated_sum_test.cc"],
     deps = [
@@ -306,7 +307,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "input_tensor_list_test",
     srcs = ["input_tensor_list_test.cc"],
     deps = [
@@ -316,7 +317,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "composite_key_combiner_test",
     srcs = ["composite_key_combiner_test.cc"],
     deps = [
@@ -332,7 +333,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "dp_composite_key_combiner_test",
     srcs = ["dp_composite_key_combiner_test.cc"],
     deps = [
@@ -349,7 +350,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "mutable_vector_data_test",
     srcs = ["mutable_vector_data_test.cc"],
     deps = [
@@ -359,7 +360,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "vector_string_data_test",
     srcs = [
         "vector_string_data.h",
@@ -372,7 +373,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "mutable_string_data_test",
     srcs = ["mutable_string_data_test.cc"],
     deps = [
@@ -384,7 +385,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "one_dim_grouping_aggregator_test",
     srcs = ["one_dim_grouping_aggregator_test.cc"],
     deps = [
@@ -399,7 +400,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "group_by_aggregator_test",
     srcs = ["group_by_aggregator_test.cc"],
     deps = [
@@ -416,7 +417,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "dp_open_domain_histogram_test",
     srcs = ["dp_open_domain_histogram_test.cc"],
     deps = [
@@ -434,7 +435,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "dp_closed_domain_histogram_test",
     srcs = ["dp_closed_domain_histogram_test.cc"],
     deps = [
@@ -453,7 +454,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "grouping_federated_sum_test",
     srcs = ["grouping_federated_sum_test.cc"],
     deps = [
@@ -469,7 +470,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "dp_grouping_federated_sum_test",
     srcs = ["dp_grouping_federated_sum_test.cc"],
     deps = [
@@ -488,7 +489,7 @@ cc_test(
     ],
 )
 
-cc_binary(
+tff_cc_binary(
     name = "federated_sum_bench",
     testonly = 1,
     srcs = ["federated_sum_bench.cc"],
@@ -502,7 +503,7 @@ cc_binary(
     ],
 )
 
-cc_binary(
+tff_cc_binary(
     name = "group_by_bench",
     testonly = 1,
     srcs = ["group_by_bench.cc"],

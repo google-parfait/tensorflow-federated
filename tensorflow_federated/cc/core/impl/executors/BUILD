@@ -1,6 +1,6 @@
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_binary")
-load("//tools:build_defs.bzl", "tff_cc_cpu_gpu_test")
+load("//tools:build_defs.bzl", "tff_cc_cpu_gpu_test", "tff_cc_library", "tff_cc_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -21,14 +21,14 @@ package_group(
 
 licenses(["notice"])
 
-cc_library(
+tff_cc_library(
     name = "array_shape_test_utils",
     testonly = True,
     hdrs = ["array_shape_test_utils.h"],
     deps = ["//tensorflow_federated/proto/v0:array_cc_proto"],
 )
 
-cc_library(
+tff_cc_library(
     name = "array_test_utils",
     testonly = True,
     hdrs = ["array_test_utils.h"],
@@ -42,7 +42,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "cardinalities",
     srcs = ["cardinalities.cc"],
     hdrs = ["cardinalities.h"],
@@ -54,7 +54,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "composing_executor",
     srcs = ["composing_executor.cc"],
     hdrs = ["composing_executor.h"],
@@ -81,7 +81,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "composing_executor_test",
     srcs = ["composing_executor_test.cc"],
     deps = [
@@ -104,13 +104,13 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "computations",
     hdrs = ["computations.h"],
     deps = ["//tensorflow_federated/proto/v0:computation_cc_proto"],
 )
 
-cc_library(
+tff_cc_library(
     name = "data_backend",
     hdrs = ["data_backend.h"],
     visibility = ["//visibility:public"],
@@ -123,7 +123,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "data_executor",
     srcs = ["data_executor.cc"],
     hdrs = ["data_executor.h"],
@@ -137,7 +137,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "data_executor_test",
     srcs = ["data_executor_test.cc"],
     deps = [
@@ -155,7 +155,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "dataset_conversions",
     srcs = ["dataset_conversions.cc"],
     hdrs = ["dataset_conversions.h"],
@@ -168,7 +168,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "dataset_conversions_test",
     srcs = ["dataset_conversions_test.cc"],
     deps = [
@@ -187,7 +187,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "dataset_from_tensor_structures",
     srcs = ["dataset_from_tensor_structures.cc"],
     hdrs = ["dataset_from_tensor_structures.h"],
@@ -208,7 +208,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "dataset_from_tensor_structures_test",
     srcs = ["dataset_from_tensor_structures_test.cc"],
     args = [
@@ -233,7 +233,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "eager_computation",
     srcs = ["eager_computation.cc"],
     hdrs = ["eager_computation.h"],
@@ -291,7 +291,7 @@ tff_cc_cpu_gpu_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "executor",
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
@@ -341,14 +341,13 @@ pybind_extension(
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core/platform:status",
         "@org_tensorflow//tensorflow/core/platform:strcat",
-        "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_headers",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
         "@pybind11_protobuf//pybind11_protobuf:native_proto_caster",
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "executor_service",
     srcs = ["executor_service.cc"],
     hdrs = ["executor_service.h"],
@@ -371,7 +370,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "executor_service_test",
     srcs = ["executor_service_test.cc"],
     deps = [
@@ -393,7 +392,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "executor_test_base",
     testonly = True,
     srcs = [],
@@ -418,7 +417,7 @@ pybind_extension(
     deps = [":mock_executor"],
 )
 
-cc_library(
+tff_cc_library(
     name = "federated_intrinsics",
     srcs = ["federated_intrinsics.cc"],
     hdrs = ["federated_intrinsics.h"],
@@ -429,7 +428,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "federating_executor",
     srcs = ["federating_executor.cc"],
     hdrs = ["federating_executor.h"],
@@ -458,7 +457,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "federating_executor_test",
     srcs = ["federating_executor_test.cc"],
     deps = [
@@ -494,6 +493,10 @@ py_binary(
     name = "make_reduce_lambda_test_graph",
     testonly = True,
     srcs = ["make_reduce_lambda_test_graph.py"],
+    deps = [
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 genrule(
@@ -511,9 +514,13 @@ py_binary(
     name = "make_structural_reduce_test_graph",
     testonly = True,
     srcs = ["make_structural_reduce_test_graph.py"],
+    deps = [
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
-cc_library(
+tff_cc_library(
     name = "mock_data_backend",
     testonly = True,
     hdrs = ["mock_data_backend.h"],
@@ -527,7 +534,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "mock_executor",
     testonly = True,
     srcs = ["mock_executor.cc"],
@@ -544,7 +551,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "mock_grpc",
     testonly = True,
     hdrs = ["mock_grpc.h"],
@@ -552,13 +559,12 @@ cc_library(
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_github_grpc_grpc//:grpc++",
-        "@com_github_grpc_grpc//:grpc_security_base",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "reference_resolving_executor",
     srcs = ["reference_resolving_executor.cc"],
     hdrs = ["reference_resolving_executor.h"],
@@ -576,7 +582,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "reference_resolving_executor_test",
     timeout = "short",
     srcs = ["reference_resolving_executor_test.cc"],
@@ -607,7 +613,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "remote_executor",
     srcs = ["remote_executor.cc"],
     hdrs = ["remote_executor.h"],
@@ -630,7 +636,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "remote_executor_test",
     timeout = "short",
     srcs = ["remote_executor_test.cc"],
@@ -656,7 +662,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "sequence_executor",
     srcs = ["sequence_executor.cc"],
     hdrs = ["sequence_executor.h"],
@@ -682,7 +688,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "sequence_executor_test",
     timeout = "short",
     srcs = ["sequence_executor_test.cc"],
@@ -706,7 +712,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "sequence_intrinsics",
     srcs = ["sequence_intrinsics.cc"],
     hdrs = ["sequence_intrinsics.h"],
@@ -717,7 +723,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "session_provider",
     srcs = ["session_provider.cc"],
     hdrs = ["session_provider.h"],
@@ -739,7 +745,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "session_provider_test",
     srcs = ["session_provider_test.cc"],
     deps = [
@@ -750,7 +756,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "status_conversion",
     srcs = ["status_conversion.cc"],
     hdrs = ["status_conversion.h"],
@@ -760,7 +766,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "status_macros",
     hdrs = ["status_macros.h"],
     visibility = ["//visibility:public"],
@@ -771,7 +777,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "streaming_remote_executor",
     srcs = ["streaming_remote_executor.cc"],
     hdrs = ["streaming_remote_executor.h"],
@@ -796,7 +802,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "streaming_remote_executor_test",
     timeout = "short",
     srcs = ["streaming_remote_executor_test.cc"],
@@ -830,7 +836,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "struct_traversal_order",
     hdrs = ["struct_traversal_order.h"],
     deps = [
@@ -841,7 +847,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "struct_traversal_order_test",
     srcs = ["struct_traversal_order_test.cc"],
     deps = [
@@ -853,7 +859,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "tensor_serialization",
     srcs = ["tensor_serialization.cc"],
     hdrs = ["tensor_serialization.h"],
@@ -871,7 +877,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "tensorflow_executor",
     srcs = ["tensorflow_executor.cc"],
     hdrs = ["tensorflow_executor.h"],
@@ -947,7 +953,7 @@ tff_cc_cpu_gpu_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "tensorflow_utils",
     srcs = ["tensorflow_utils.cc"],
     hdrs = ["tensorflow_utils.h"],
@@ -969,7 +975,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "tensorflow_utils_test",
     srcs = ["tensorflow_utils_test.cc"],
     deps = [
@@ -992,7 +998,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "threading",
     srcs = ["threading.cc"],
     hdrs = ["threading.h"],
@@ -1009,7 +1015,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "threading_test",
     timeout = "short",
     srcs = ["threading_test.cc"],
@@ -1024,7 +1030,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "type_test_utils",
     testonly = True,
     hdrs = ["type_test_utils.h"],
@@ -1035,7 +1041,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "type_utils",
     srcs = ["type_utils.cc"],
     hdrs = ["type_utils.h"],
@@ -1052,7 +1058,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "value_test_utils",
     testonly = True,
     hdrs = ["value_test_utils.h"],
@@ -1085,7 +1091,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "value_validation",
     srcs = ["value_validation.cc"],
     hdrs = ["value_validation.h"],
@@ -1100,7 +1106,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "value_validation_test",
     timeout = "short",
     srcs = ["value_validation_test.cc"],
@@ -1116,7 +1122,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "xla_executor",
     srcs = ["xla_executor.cc"],
     hdrs = ["xla_executor.h"],
@@ -1132,20 +1138,20 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+        "@local_xla//xla:literal",
+        "@local_xla//xla:shape_util",
+        "@local_xla//xla:xla_data_proto_cc",
+        "@local_xla//xla:xla_proto_cc",
+        "@local_xla//xla/client",
+        "@local_xla//xla/client:client_library",
+        "@local_xla//xla/client:xla_computation",
+        "@local_xla//xla/service",
+        "@local_xla//xla/service:hlo_proto_cc",
+        "@local_xla//xla/stream_executor",
+        "@local_xla//xla/stream_executor:platform_manager",
+        "@local_xla//xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/compiler/jit:xla_cpu_jit",  # buildcleaner: keep # Linking in this dependency ensures that XLA can compile its code for the CPU host.
         "@org_tensorflow//tensorflow/compiler/tf2xla:common",
-        "@org_tensorflow//tensorflow/compiler/xla:literal",
-        "@org_tensorflow//tensorflow/compiler/xla:shape_util",
-        "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
-        "@org_tensorflow//tensorflow/compiler/xla:xla_proto_cc",
-        "@org_tensorflow//tensorflow/compiler/xla/client",
-        "@org_tensorflow//tensorflow/compiler/xla/client:client_library",
-        "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
-        "@org_tensorflow//tensorflow/compiler/xla/service",
-        "@org_tensorflow//tensorflow/compiler/xla/service:hlo_proto_cc",
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor",
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor:multi_platform_manager",
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
     ],
@@ -1174,20 +1180,20 @@ tff_cc_cpu_gpu_test(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@local_xla//xla:shape_util",
+        "@local_xla//xla:xla_data_proto_cc",
+        "@local_xla//xla/client:xla_builder",
+        "@local_xla//xla/client:xla_computation",
+        "@local_xla//xla/service:platform_util",
+        "@local_xla//xla/stream_executor",
         "@org_tensorflow//tensorflow/compiler/tf2xla:common",
-        "@org_tensorflow//tensorflow/compiler/xla:shape_util",
-        "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
-        "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
-        "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
-        "@org_tensorflow//tensorflow/compiler/xla/service:platform_util",
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/platform:statusor",
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "xla_executor_gpu_test",
     srcs = ["xla_executor_test.cc"],
     args = ["--tff_xla_executor_test_platform=CUDA"],
@@ -1211,22 +1217,22 @@ cc_test(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@local_xla//xla:shape_util",
+        "@local_xla//xla:xla_data_proto_cc",
+        "@local_xla//xla/client:xla_builder",
+        "@local_xla//xla/client:xla_computation",
+        "@local_xla//xla/service:platform_util",
+        "@local_xla//xla/stream_executor",
+        "@local_xla//xla/stream_executor/cuda:cuda_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on GPU.
         "@org_tensorflow//tensorflow/compiler/jit:xla_gpu_jit",  # buildcleaner: keep # Linking in this dependency ensures that XLA can compile its code for the GPU.
         "@org_tensorflow//tensorflow/compiler/tf2xla:common",
-        "@org_tensorflow//tensorflow/compiler/xla:shape_util",
-        "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
-        "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
-        "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
-        "@org_tensorflow//tensorflow/compiler/xla/service:platform_util",
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor",
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor/cuda:cuda_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on GPU.
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/platform:statusor",
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "xla_utils",
     srcs = ["xla_utils.cc"],
     hdrs = ["xla_utils.h"],
@@ -1238,14 +1244,14 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@org_tensorflow//tensorflow/compiler/xla:literal",
-        "@org_tensorflow//tensorflow/compiler/xla:shape_util",
-        "@org_tensorflow//tensorflow/compiler/xla:types",
-        "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
+        "@local_xla//xla:literal",
+        "@local_xla//xla:shape_util",
+        "@local_xla//xla:types",
+        "@local_xla//xla:xla_data_proto_cc",
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "xla_utils_test",
     srcs = ["xla_utils_test.cc"],
     deps = [
@@ -1260,10 +1266,10 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@eigen_archive//:eigen3",
-        "@org_tensorflow//tensorflow/compiler/xla:literal",
-        "@org_tensorflow//tensorflow/compiler/xla:literal_util",
-        "@org_tensorflow//tensorflow/compiler/xla:shape_util",
-        "@org_tensorflow//tensorflow/compiler/xla:types",
-        "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
+        "@local_xla//xla:literal",
+        "@local_xla//xla:literal_util",
+        "@local_xla//xla:shape_util",
+        "@local_xla//xla:types",
+        "@local_xla//xla:xla_data_proto_cc",
     ],
 )

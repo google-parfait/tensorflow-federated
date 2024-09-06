@@ -1,0 +1,28 @@
+diff --git bazel/grpc_extra_deps.bzl bazel/grpc_extra_deps.bzl
+index 4c1dfad2e8..40bc00c184 100644
+--- bazel/grpc_extra_deps.bzl
++++ bazel/grpc_extra_deps.bzl
+@@ -1,11 +1,11 @@
+ """Loads the dependencies necessary for the external repositories defined in grpc_deps.bzl."""
+
++load("@build_bazel_apple_support//lib:repositories.bzl", "apple_support_dependencies")
++load("@build_bazel_rules_apple//apple:repositories.bzl", "apple_rules_dependencies")
+ load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+-load("@upb//bazel:workspace_deps.bzl", "upb_deps")
+ load("@envoy_api//bazel:repositories.bzl", "api_dependencies")
+ load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+-load("@build_bazel_rules_apple//apple:repositories.bzl", "apple_rules_dependencies")
+-load("@build_bazel_apple_support//lib:repositories.bzl", "apple_support_dependencies")
++load("@upb//bazel:workspace_deps.bzl", "upb_deps")
+
+ def grpc_extra_deps():
+     """Loads the extra dependencies.
+@@ -33,7 +33,7 @@ def grpc_extra_deps():
+     api_dependencies()
+
+     go_rules_dependencies()
+-    go_register_toolchains()
++    go_register_toolchains(version = "1.18.4")
+
+     apple_rules_dependencies()
+

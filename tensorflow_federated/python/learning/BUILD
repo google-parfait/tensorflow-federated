@@ -44,29 +44,33 @@ py_library(
 py_library(
     name = "client_weight_lib",
     srcs = ["client_weight_lib.py"],
+    deps = ["//third_party/tensorflow"],
 )
 
 py_library(
     name = "loop_builder",
     srcs = ["loop_builder.py"],
+    deps = ["//third_party/tensorflow"],
 )
 
 py_cpu_gpu_test(
     name = "loop_builder_test",
     srcs = ["loop_builder_test.py"],
-    deps = [":loop_builder"],
+    deps = [
+        ":loop_builder",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+    ],
 )
 
 py_library(
     name = "model_update_aggregator",
     srcs = ["model_update_aggregator.py"],
     deps = [
-        "//tensorflow_federated/python/aggregators:differential_privacy",
-        "//tensorflow_federated/python/aggregators:distributed_dp",
         "//tensorflow_federated/python/aggregators:encoded",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
-        "//tensorflow_federated/python/aggregators:quantile_estimation",
         "//tensorflow_federated/python/aggregators:robust",
         "//tensorflow_federated/python/aggregators:secure",
     ],
@@ -89,6 +93,8 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/test:static_assert",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -101,6 +107,7 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//third_party/tensorflow",
     ],
 )
 
@@ -114,18 +121,28 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//third_party/tensorflow",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
 py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//third_party/tensorflow",
+    ],
 )
 
 py_test(
     name = "tensor_utils_test",
     size = "small",
     srcs = ["tensor_utils_test.py"],
-    deps = [":tensor_utils"],
+    deps = [
+        ":tensor_utils",
+        "//third_party/tensorflow",
+        "@pypi_numpy//:pkg",
+    ],
 )

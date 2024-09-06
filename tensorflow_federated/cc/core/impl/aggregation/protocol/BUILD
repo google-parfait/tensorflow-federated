@@ -14,6 +14,7 @@
 
 load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+load("//tools:build_defs.bzl", "tff_cc_library", "tff_cc_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -62,7 +63,7 @@ py_proto_library(
     deps = [":configuration_proto"],
 )
 
-cc_library(
+tff_cc_library(
     name = "aggregation_protocol",
     hdrs = ["aggregation_protocol.h"],
     deps = [
@@ -73,7 +74,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "resource_resolver",
     hdrs = ["resource_resolver.h"],
     deps = [
@@ -82,7 +83,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "checkpoint_builder",
     hdrs = ["checkpoint_builder.h"],
     deps = [
@@ -93,7 +94,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "checkpoint_parser",
     hdrs = ["checkpoint_parser.h"],
     deps = [
@@ -103,7 +104,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "checkpoint_aggregator",
     srcs = ["checkpoint_aggregator.cc"],
     hdrs = ["checkpoint_aggregator.h"],
@@ -129,7 +130,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "checkpoint_aggregator_test",
     srcs = ["checkpoint_aggregator_test.cc"],
     deps = [
@@ -153,7 +154,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "config_converter",
     srcs = ["config_converter.cc"],
     hdrs = ["config_converter.h"],
@@ -172,7 +173,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "federated_compute_checkpoint_builder",
     srcs = ["federated_compute_checkpoint_builder.cc"],
     hdrs = ["federated_compute_checkpoint_builder.h"],
@@ -188,7 +189,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "federated_compute_checkpoint_builder_test",
     srcs = ["federated_compute_checkpoint_builder_test.cc"],
     deps = [
@@ -206,7 +207,7 @@ cc_test(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "federated_compute_checkpoint_parser",
     srcs = ["federated_compute_checkpoint_parser.cc"],
     hdrs = ["federated_compute_checkpoint_parser.h"],
@@ -226,12 +227,12 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "checkpoint_header",
     hdrs = ["checkpoint_header.h"],
 )
 
-cc_test(
+tff_cc_test(
     name = "federated_compute_checkpoint_parser_test",
     srcs = ["federated_compute_checkpoint_parser_test.cc"],
     deps = [
@@ -249,7 +250,7 @@ cc_test(
     ],
 )
 
-cc_test(
+tff_cc_test(
     name = "config_converter_test",
     srcs = ["config_converter_test.cc"],
     deps = [
