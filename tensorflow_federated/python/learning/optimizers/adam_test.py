@@ -55,9 +55,7 @@ class AdamTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     for _ in range(4):
       state, weights = optimizer.next(state, weights, gradients)
       history.append(weights)
-    self.assertAllClose(
-        [[1.0], [0.9000007], [0.8000017], [0.700002], [0.600003]], history
-    )
+    self.assertAllClose([[1.0], [0.9], [0.8], [0.7], [0.6]], history)
 
   @parameterized.named_parameters(
       ('scalar_spec', _SCALAR_SPEC),
@@ -142,8 +140,8 @@ class AdamTest(optimizer_test_utils.TestCase, parameterized.TestCase):
           genarator.normal(shape=s.shape, dtype=s.dtype) for s in weight_spec
       ]
 
-    intial_weight = random_vector()
-    model_variables_fn = lambda: [tf.Variable(v) for v in intial_weight]
+    initial_weight = random_vector()
+    model_variables_fn = lambda: [tf.Variable(v) for v in initial_weight]
     gradients = [random_vector() for _ in range(steps)]
     tff_optimizer_fn = lambda: adam.build_adam(0.01, 0.9, 0.999)
     keras_optimizer_fn = lambda: tf.keras.optimizers.Adam(0.01, 0.9, 0.999)
@@ -224,6 +222,23 @@ class AdamTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     hparams = optimizer.get_hparams(state)
     updated_state = optimizer.set_hparams(state, hparams)
     self.assertEqual(state, updated_state)
+
+  def test_lr_with_different_weight_dtypes(self):
+    weights = (
+        tf.constant([0.1], dtype=tf.float32),
+        tf.constant(1.0, dtype=tf.float64),
+        tf.constant([10.0, 10.0], dtype=tf.bfloat16),
+    )
+    adam_optimizer = adam.build_adam(
+        learning_rate=tf.constant(0.1, dtype=tf.float32),
+        beta_1=tf.constant(0.1, dtype=tf.float32),
+        beta_2=tf.constant(0.1, dtype=tf.float32),
+        epsilon=tf.constant(0.1, dtype=tf.float64),
+    )
+    state = adam_optimizer.initialize(weights)
+    adam_optimizer.next(
+        state, weights, tf.nest.map_structure(tf.zeros_like, weights)
+    )
 
 
 if __name__ == '__main__':

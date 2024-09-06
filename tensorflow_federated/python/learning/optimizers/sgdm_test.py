@@ -43,7 +43,7 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     optimizer = sgdm.build_sgdm(0.01, momentum=momentum_value)
     state = optimizer.initialize(_SCALAR_SPEC)
     hparams = optimizer.get_hparams(state)
-    # Whether we specify None momentum or momentum 0.0, we shouldnt track the
+    # Whether we specify None momentum or momentum 0.0, we shouldn't track the
     # extra accumulator state. The implementation of next checks for the
     # presence or absence of momentum key--it should not be there in either
     # case.
@@ -177,8 +177,8 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
           genarator.normal(shape=s.shape, dtype=s.dtype) for s in weight_spec
       ]
 
-    intial_weight = random_vector()
-    model_variables_fn = lambda: [tf.Variable(v) for v in intial_weight]
+    initial_weight = random_vector()
+    model_variables_fn = lambda: [tf.Variable(v) for v in initial_weight]
     gradients = [random_vector() for _ in range(steps)]
     tff_optimizer_fn = lambda: sgdm.build_sgdm(learning_rate, momentum)
 
@@ -305,6 +305,20 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     hparams = optimizer.get_hparams(state)
     updated_state = optimizer.set_hparams(state, hparams)
     self.assertEqual(state, updated_state)
+
+  def test_lr_with_different_weight_dtypes(self):
+    weights = (
+        tf.constant([0.1], dtype=tf.float32),
+        tf.constant(1.0, dtype=tf.float64),
+        tf.constant([10.0, 10.0], dtype=tf.bfloat16),
+    )
+    sgdm_optimizer = sgdm.build_sgdm(
+        learning_rate=tf.constant(0.1, dtype=tf.float32)
+    )
+    state = sgdm_optimizer.initialize(weights)
+    sgdm_optimizer.next(
+        state, weights, tf.nest.map_structure(tf.zeros_like, weights)
+    )
 
 
 if __name__ == '__main__':

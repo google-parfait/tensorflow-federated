@@ -26,8 +26,10 @@ and this project adheres to
 
 ### Fixed
 
-*   A bug where `tff.learning.optimizers.build_adafactor(...)` would update its
-    step counter twice upon every invocation of `.next()`.
+*   A bug where `tff.learning.optimizers.build_adafactor` would update its step
+    counter twice upon every invocation of `.next()`.
+*   A bug where tensor learning rates for `tff.learning.optimizers.build_sgdm`
+    would fail with mixed dtype gradients.
 
 ### Removed
 
