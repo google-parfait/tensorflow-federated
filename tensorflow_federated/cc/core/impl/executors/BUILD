@@ -29,6 +29,12 @@ cc_library(
 )
 
 cc_library(
+    name = "array_shape_utils",
+    hdrs = ["array_shape_utils.h"],
+    deps = ["//tensorflow_federated/proto/v0:array_cc_proto"],
+)
+
+cc_library(
     name = "array_test_utils",
     testonly = True,
     hdrs = ["array_test_utils.h"],
@@ -156,38 +162,6 @@ cc_test(
 )
 
 cc_library(
-    name = "dataset_conversions",
-    srcs = ["dataset_conversions.cc"],
-    hdrs = ["dataset_conversions.h"],
-    deps = [
-        "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@org_tensorflow//tensorflow/core/data:standalone",
-    ],
-)
-
-cc_test(
-    name = "dataset_conversions_test",
-    srcs = ["dataset_conversions_test.cc"],
-    deps = [
-        ":dataset_conversions",
-        ":value_test_utils",
-        "//tensorflow_federated/cc/testing:oss_test_main",
-        "//tensorflow_federated/cc/testing:protobuf_matchers",
-        "//tensorflow_federated/cc/testing:status_matchers",
-        "@com_google_absl//absl/status",
-        "@org_tensorflow//tensorflow/cc:cc_ops",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:portable_gif_internal",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core:tensorflow",
-        "@org_tensorflow//tensorflow/core/data:standalone",
-    ],
-)
-
-cc_library(
     name = "dataset_from_tensor_structures",
     srcs = ["dataset_from_tensor_structures.cc"],
     hdrs = ["dataset_from_tensor_structures.h"],
@@ -230,6 +204,45 @@ cc_test(
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
         "@org_tensorflow//tensorflow/core/platform:status",
+    ],
+)
+
+cc_library(
+    name = "dataset_utils",
+    srcs = ["dataset_utils.cc"],
+    hdrs = ["dataset_utils.h"],
+    deps = [
+        ":array_shape_utils",
+        ":dataset_from_tensor_structures",
+        ":status_macros",
+        ":tensorflow_utils",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:data_type_cc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:portable_gif_internal",
+        "@org_tensorflow//tensorflow/core/data:standalone",
+    ],
+)
+
+cc_test(
+    name = "dataset_utils_test",
+    srcs = ["dataset_utils_test.cc"],
+    deps = [
+        ":dataset_utils",
+        ":value_test_utils",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:protobuf_matchers",
+        "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/status",
+        "@org_tensorflow//tensorflow/cc:cc_ops",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@org_tensorflow//tensorflow/core/data:standalone",
     ],
 )
 
@@ -661,7 +674,7 @@ cc_library(
     srcs = ["sequence_executor.cc"],
     hdrs = ["sequence_executor.h"],
     deps = [
-        ":dataset_conversions",
+        ":dataset_utils",
         ":executor",
         ":sequence_intrinsics",
         ":status_macros",
@@ -701,7 +714,6 @@ cc_test(
         "//tensorflow_federated/cc/testing:status_matchers",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "@com_google_absl//absl/status",
-        "@org_tensorflow//tensorflow/core:portable_gif_internal",
         "@org_tensorflow//tensorflow/core:tensorflow",
     ],
 )
@@ -858,6 +870,7 @@ cc_library(
     srcs = ["tensor_serialization.cc"],
     hdrs = ["tensor_serialization.h"],
     deps = [
+        ":array_shape_utils",
         ":status_macros",
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:array_cc_proto",
@@ -878,6 +891,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":dataset_from_tensor_structures",
+        ":dataset_utils",
         ":executor",
         ":session_provider",
         ":status_macros",
@@ -899,8 +913,9 @@ cc_library(
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/common_runtime:core",
         "@org_tensorflow//tensorflow/core/common_runtime:session",
+        "@org_tensorflow//tensorflow/core/data:standalone",
         "@org_tensorflow//tensorflow/core/platform:macros",
-        "@org_tensorflow//tensorflow/core/platform:tstring",
+        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 
@@ -943,7 +958,6 @@ tff_cc_cpu_gpu_test(
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
         "@org_tensorflow//tensorflow/core/platform:status",
-        "@org_tensorflow//tensorflow/core/platform:tstring",
     ],
 )
 
@@ -1059,7 +1073,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
-        ":dataset_conversions",
+        ":dataset_utils",
         ":status_macros",
         ":tensor_serialization",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
@@ -1072,16 +1086,11 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest",
-        "@org_tensorflow//tensorflow/cc:client_session",
-        "@org_tensorflow//tensorflow/cc:const_op",
         "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
-        "@org_tensorflow//tensorflow/cc:ops",
-        "@org_tensorflow//tensorflow/cc:scope",
         "@org_tensorflow//tensorflow/core:core_cpu_base",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/data:standalone",
-        "@org_tensorflow//tensorflow/core/platform:tstring",
     ],
 )
 

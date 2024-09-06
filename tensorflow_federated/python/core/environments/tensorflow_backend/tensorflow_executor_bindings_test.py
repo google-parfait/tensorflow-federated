@@ -136,29 +136,35 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     # Note: functions are not materializable, no addition assertions.
 
   @parameterized.named_parameters(
-      ('range', lambda: tf.data.Dataset.range(5)),
-      ('shuffled_range', lambda: tf.data.Dataset.range(5).shuffle(3)),
+      ('range', lambda: tf.data.Dataset.range(5), 10),
+      ('shuffled_range', lambda: tf.data.Dataset.range(5).shuffle(3), 10),
       (
           'mapped_with_resource_range',
           lambda: tf.data.Dataset.range(5).map(_test_map_integers),
+          10,
       ),
-      ('mapped_range', lambda: tf.data.Dataset.range(5).map(lambda x: x)),
+      ('mapped_range', lambda: tf.data.Dataset.range(5).map(lambda x: x), 10),
       (
           'batched_range',
-          lambda: tf.data.Dataset.range(5).batch(2, drop_remainder=False),
+          lambda: tf.data.Dataset.range(5).batch(2, drop_remainder=True),
+          6,
       ),
       (
           'tensor_slices',
           lambda: tf.data.Dataset.from_tensor_slices(list(range(5))),
+          10,
       ),
   )
-  def test_create_value_sequence(self, dataset_factory):
+  def test_create_value_sequence_with_reduce_sum(
+      self, dataset_factory, expected_result
+  ):
     dataset = dataset_factory()
+    sequence = list(dataset.as_numpy_iterator())
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
     element_type = computation_types.tensorflow_to_type(dataset.element_spec)
     sequence_type = computation_types.SequenceType(element_type)
     arg_value_pb, _ = value_serialization.serialize_value(
-        dataset, sequence_type
+        sequence, sequence_type
     )
     arg = executor.create_value(arg_value_pb)
 
@@ -181,20 +187,18 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         result_type_spec,
         computation_types.TensorType(sequence_type.element.dtype),
     )
-    self.assertEqual(result, sum(range(5)))
+    self.assertEqual(result, expected_result)
 
   def test_create_tuple_of_value_sequence(self):
-    datasets = (tf.data.Dataset.range(5), tf.data.Dataset.range(5))
+    sequences = ([0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
-    element_type = computation_types.tensorflow_to_type(
-        datasets[0].element_spec
-    )
+    element_type = computation_types.TensorType(np.int32)
     struct_of_sequence_type = computation_types.StructType([
         computation_types.SequenceType(element_type),
         computation_types.SequenceType(element_type),
     ])
     arg_value_pb, _ = value_serialization.serialize_value(
-        datasets, struct_of_sequence_type
+        sequences, struct_of_sequence_type
     )
     arg = executor.create_value(arg_value_pb)
 

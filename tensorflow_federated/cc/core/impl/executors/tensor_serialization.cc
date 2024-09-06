@@ -21,6 +21,7 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow_federated/cc/core/impl/executors/array_shape_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 #include "tensorflow_federated/proto/v0/array.pb.h"
@@ -56,8 +57,7 @@ absl::StatusOr<tensorflow::Tensor> DeserializeTensorValue(
 
   // Repeated fields are used for strings and constants to maintain
   // compatibility with TensorFlow.
-  if ((value_pb.array().shape().dim().empty() &&
-       !value_pb.array().shape().unknown_rank()) ||
+  if (tensorflow_federated::IsScalar(value_pb.array().shape()) ||
       value_pb.array().dtype() == v0::DataType::DT_STRING) {
     return TensorFromArray(value_pb.array());
   } else {

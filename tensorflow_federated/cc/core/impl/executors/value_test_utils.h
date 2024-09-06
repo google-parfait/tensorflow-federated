@@ -16,6 +16,8 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_VALUE_TEST_UTILS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_VALUE_TEST_UTILS_H_
 
+#include <sys/types.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -32,20 +34,13 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
-#include "tensorflow/cc/client/client_session.h"
-#include "tensorflow/cc/framework/ops.h"
-#include "tensorflow/cc/framework/scope.h"
-#include "tensorflow/cc/ops/const_op.h"
-#include "tensorflow/cc/ops/dataset_ops_internal.h"
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
-#include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
+#include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
@@ -127,81 +122,54 @@ inline v0::Value StructV(const absl::Span<const v0::Value> elements) {
   return value_proto;
 }
 
-// Returns the string representation of a TensorFlow GraphDef representing a
-// dataset of `int64_t`s from `start` to `stop`, stepping by `step`.
-inline tensorflow::tstring CreateSerializedRangeDatasetGraphDef(int64_t start,
-                                                                int64_t stop,
-                                                                int64_t step) {
-  tensorflow::Scope root = tensorflow::Scope::NewRootScope();
-  tensorflow::ops::internal::RangeDataset dataset(
-      root, /*start=*/tensorflow::ops::Const(root, start),
-      /*stop=*/tensorflow::ops::Const(root, stop),
-      /*step=*/tensorflow::ops::Const(root, step),
-      /*output_types=*/{tensorflow::DT_INT64},
-      /*output_shapes=*/{tensorflow::TensorShape({})});
-  tensorflow::ops::internal::DatasetToGraphV2 graph_def_tensor(root, dataset);
-  tensorflow::ClientSession session(root);
-  std::vector<tensorflow::Tensor> outputs;
-  auto status = session.Run(/*fetch_outputs=*/{graph_def_tensor}, &outputs);
-  tensorflow::tstring graph_def = outputs[0].flat<tensorflow::tstring>()(0);
-  return graph_def;
-}
-
-// Returns the string representation of a TensorFlow GraphDef representing a
-// dataset returning structures of tensors. TF data datasets in C++ can't
-// natively yield structures, rather flat versions--so we only accept a
-// num_elements argument, which determines the number of range datasets that are
-// zipped together.
-inline tensorflow::tstring CreateSerializedZippedRangeDatasetGraphDef(
-    int64_t start, int64_t stop, int64_t step, uint32_t num_elements) {
-  tensorflow::Scope root = tensorflow::Scope::NewRootScope();
-  std::vector<::tensorflow::Output> datasets_to_zip;
-  std::vector<tensorflow::DataType> output_types;
-  std::vector<tensorflow::PartialTensorShape> output_shapes;
-
-  for (int i = 0; i < num_elements; i++) {
-    // We place unique elements in the datasets to ensure it's possible to write
-    // assertions on the order of traversal.
-    datasets_to_zip.emplace_back(
-        tensorflow::ops::internal::RangeDataset(
-            root, /*start=*/tensorflow::ops::Const(root, start + i * stop),
-            /*stop=*/tensorflow::ops::Const(root, stop + i * stop),
-            /*step=*/tensorflow::ops::Const(root, step),
-            /*output_types=*/{tensorflow::DT_INT64},
-            /*output_shapes=*/{tensorflow::TensorShape({})})
-            .handle);
-    output_types.emplace_back(tensorflow::DT_INT64);
-    output_shapes.emplace_back(tensorflow::TensorShape({}));
-  }
-  auto zipdataset = tensorflow::ops::internal::ZipDataset(
-      root,
-      /*input_datasets=*/tensorflow::InputList(datasets_to_zip), output_types,
-      output_shapes);
-  tensorflow::ops::internal::DatasetToGraphV2 graph_def_tensor(root,
-                                                               zipdataset);
-  tensorflow::ClientSession session(root);
-  std::vector<tensorflow::Tensor> outputs;
-  auto status = session.Run(/*fetch_outputs=*/{graph_def_tensor}, &outputs);
-  tensorflow::tstring graph_def = outputs[0].flat<tensorflow::tstring>()(0);
-  return graph_def;
-}
-
 // Returns a value representing a sequence of `int64_t`s from `start` to `stop`,
 // stepping by `step`.
 inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
-  tensorflow::tstring sequence_graph =
-      CreateSerializedRangeDatasetGraphDef(start, stop, step);
-  v0::Value value_proto;
-  v0::Value::Sequence* sequence_pb = value_proto.mutable_sequence();
-  *sequence_pb->mutable_serialized_graph_def() =
-      std::string(sequence_graph.data(), sequence_graph.size());
+  v0::Value value_pb;
+  v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
 
-  v0::TensorType tensor_type;
-  tensor_type.set_dtype(v0::DataType::DT_INT64);
-  tensor_type.add_dims(1);
-  *sequence_pb->mutable_element_type()->mutable_tensor() = tensor_type;
+  for (int i = start; i < stop; i += step) {
+    v0::Value::Sequence::Element* element_pb = sequence_pb->add_element();
+    v0::Array* array_pb = element_pb->add_flat_value();
+    array_pb->set_dtype(v0::DT_INT64);
+    array_pb->mutable_shape()->mutable_dim()->Clear();
+    array_pb->mutable_int64_list()->add_value(i);
+  }
 
-  return value_proto;
+  v0::TensorType* tensor_type_pb =
+      sequence_pb->mutable_element_type()->mutable_tensor();
+  tensor_type_pb->set_dtype(v0::DataType::DT_INT64);
+  tensor_type_pb->add_dims(1);
+
+  return value_pb;
+}
+
+// Returns a value representing a sequence of `int64_t`s elements.
+inline v0::Value SequenceV(std::vector<std::vector<int64_t>> elements) {
+  v0::Value value_pb;
+  v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
+
+  for (const std::vector<int64_t>& flat_values : elements) {
+    v0::Value::Sequence::Element* element_pb = sequence_pb->add_element();
+    for (const int64_t value : flat_values) {
+      v0::Array* array_pb = element_pb->add_flat_value();
+      array_pb->set_dtype(v0::DT_INT64);
+      array_pb->mutable_shape()->mutable_dim()->Clear();
+      array_pb->mutable_int64_list()->add_value(value);
+    }
+  }
+
+  v0::StructType* struct_type_pb =
+      sequence_pb->mutable_element_type()->mutable_struct_();
+  for (int i = 0; i < elements[0].size(); i++) {
+    v0::StructType::Element* element_pb = struct_type_pb->add_element();
+    v0::TensorType* tensor_type_pb =
+        element_pb->mutable_value()->mutable_tensor();
+    tensor_type_pb->set_dtype(v0::DataType::DT_INT64);
+    tensor_type_pb->add_dims(1);
+  }
+
+  return value_pb;
 }
 
 inline v0::Type MakeInt64ScalarType() {
@@ -213,9 +181,9 @@ inline v0::Type MakeInt64ScalarType() {
 }
 
 inline absl::StatusOr<std::vector<std::vector<tensorflow::Tensor>>>
-SequenceValueToList(const v0::Value::Sequence& sequence) {
+SequenceValueToList(const tensorflow::Tensor& graph_def_tensor) {
   std::unique_ptr<tensorflow::data::standalone::Dataset> dataset =
-      TFF_TRY(SequenceValueToDataset(sequence));
+      TFF_TRY(DatasetFromGraphDefTensor(graph_def_tensor));
   std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
   absl::Status status = dataset->MakeIterator(&iterator);
   if (!status.ok()) {

@@ -1,4 +1,4 @@
-/* Copyright 2021, The TensorFlow Federated Authors.
+/* Copyright 2024, The TensorFlow Federated Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,18 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_DATASET_CONVERSIONS_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_DATASET_CONVERSIONS_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_ARRAY_SHAPE_UTILS_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_ARRAY_SHAPE_UTILS_H_
 
-#include <memory>
-
-#include "absl/status/statusor.h"
-#include "tensorflow/core/data/standalone.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
+#include "tensorflow_federated/proto/v0/array.pb.h"
 
 namespace tensorflow_federated {
-absl::StatusOr<std::unique_ptr<tensorflow::data::standalone::Dataset>>
-SequenceValueToDataset(const v0::Value::Sequence& sequence_pb);
+
+inline bool IsScalar(const v0::ArrayShape& shape) {
+  return shape.dim().empty() && !shape.unknown_rank();
 }
 
-#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_DATASET_CONVERSIONS_H_
+}  // namespace tensorflow_federated
+
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_ARRAY_SHAPE_UTILS_H_

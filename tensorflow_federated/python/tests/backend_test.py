@@ -84,18 +84,15 @@ class DatasetManipulationTest(parameterized.TestCase):
 
     input_data = tf.data.Dataset.range(10)
     ds = passthru_dataset(input_data)
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, list)
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_dataset_concat_aggregation(self):
     element_type = tff.TensorType(np.float32, [2])
 
     @tff.tensorflow.computation
-    def create_empty_ds():
-      empty_tensor = tf.zeros(
-          shape=(0,) + element_type.shape, dtype=element_type.dtype
-      )
-      return tf.data.Dataset.from_tensor_slices(empty_tensor)
+    def create_dataset():
+      return tf.data.Dataset.from_tensor_slices([[0.0, 0.0]])
 
     @tff.tensorflow.computation
     def concat_datasets(ds1, ds2):
@@ -111,7 +108,7 @@ class DatasetManipulationTest(parameterized.TestCase):
     def do_a_federated_aggregate(client_ds):
       return tff.federated_aggregate(
           value=client_ds,
-          zero=create_empty_ds(),
+          zero=create_dataset(),
           accumulate=concat_datasets,
           merge=concat_datasets,
           report=identity,
@@ -119,7 +116,7 @@ class DatasetManipulationTest(parameterized.TestCase):
 
     input_data = tf.data.Dataset.from_tensor_slices([[0.1, 0.2]])
     ds = do_a_federated_aggregate([input_data])
-    self.assertIsInstance(ds, tf.data.Dataset)
+    self.assertIsInstance(ds, list)
 
 
 class TemperatureSensorExampleTest(parameterized.TestCase):
@@ -356,10 +353,8 @@ class FederatedComputationTest(parameterized.TestCase):
         ['zero', 'one', 'two', 'three', 'four'],
         [[0, 1, 2], [1, 2, 3], [2, 3, 4]],
     )
-    self.assertIsInstance(result, list)
-    list_result = [list(ds.as_numpy_iterator()) for ds in result]
     self.assertEqual(
-        list_result,
+        result,
         [
             [b'zero', b'one', b'two'],
             [b'one', b'two', b'three'],
@@ -387,7 +382,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     ds = tf.data.Dataset.from_tensor_slices(vocab)
     result = take_two(ds)
-    self.assertCountEqual([x.numpy() for x in result], [0, 1])
+    self.assertCountEqual(result, [0, 1])
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_twice_used_variable_keeps_separate_state(self):
@@ -474,34 +469,6 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     result = foo()
     self.assertEqual(result, 10)
-
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
-  def test_takes_infinite_dataset(self):
-
-    @tff.tensorflow.computation
-    def foo(ds):
-      return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
-
-    ds = tf.data.Dataset.range(10).repeat()
-    actual_result = foo(ds)
-
-    expected_result = ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
-    self.assertEqual(actual_result, expected_result)
-
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
-  def test_returns_infinite_dataset(self):
-
-    @tff.tensorflow.computation
-    def foo():
-      return tf.data.Dataset.range(10).repeat()
-
-    actual_result = foo()
-
-    expected_result = tf.data.Dataset.range(10).repeat()
-    self.assertEqual(
-        actual_result.take(100).reduce(np.int64(0), lambda x, y: x + y),
-        expected_result.take(100).reduce(np.int64(0), lambda x, y: x + y),
-    )
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_result_with_typed_fn(self):

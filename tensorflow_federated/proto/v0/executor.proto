@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package tensorflow_federated.v0;
 
-import "google/protobuf/any.proto";
 import "tensorflow_federated/proto/v0/array.proto";
 import "tensorflow_federated/proto/v0/computation.proto";
 
@@ -146,23 +145,19 @@ message Value {
   }
 
   // A representation of a sequence value.
-  // This message holds its type annotation because the underlying serialization
-  // provided by TensorFlow does not preserve the ordering of keys for sequences
-  // of `StructType`.
   message Sequence {
-    // The serialized representation of this sequence.
-    oneof value {
-      // The bytes of a zip file over the files produced by a
-      // `tf.saved_model.save()` operation, intended to be used with a
-      // corresponding `tf.saved_model.load()` op.
-      bytes zipped_saved_model = 1 [deprecated = true];
-      // The result of the `DatasetToGraphV2` op called on a Dataset's variant
-      // tensor.
-      bytes serialized_graph_def = 3;
-    }
     // The TensorFlow Federated `Type` of the elements in this
     // sequence.
     tensorflow_federated.v0.Type element_type = 2;
+
+    // A representation of a sequence of values.
+    message Element {
+      repeated Array flat_value = 1;
+    }
+    repeated Element element = 4;
+
+    reserved 1;  // bytes zipped_saved_model
+    reserved 3;  // bytes serialized_graph_def
   }
 
   // A representation of a federated value.
