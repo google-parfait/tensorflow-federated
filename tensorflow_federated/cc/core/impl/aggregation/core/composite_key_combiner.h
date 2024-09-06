@@ -46,11 +46,12 @@ namespace aggregation {
 // different types, but the CompositeKeyCombiner will only produce composite
 // keys including types that it can represent as a uint64_t.
 //
-// Using a FixedArray rather than a string for allocating the data buffer used
-// to store the composite key ensures that the pointers to elements in the
-// composite key are properly aligned for storing items of `sizeof(uint64_t)`
-// bytes.
-using CompositeKey = absl::FixedArray<uint64_t>;
+// Using FixedArray<uint64_t> for the composite key ensures that pointers to
+// elements in the composite key are properly aligned for storing items of
+// `sizeof(uint64_t)` bytes.
+// The composite key has inlined storage for 4 elements, more can be allocated
+// dynamically if needed.
+using CompositeKey = absl::FixedArray<uint64_t, 4>;
 
 // CompositeKeyOrderedVector is a vector of pointers to the data in the unique
 // CompositeKeys that are created by the CompositeKeyCombiner. The pointers are
