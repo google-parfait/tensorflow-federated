@@ -145,8 +145,8 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
           genarator.normal(shape=s.shape, dtype=s.dtype) for s in weight_spec
       ]
 
-    intial_weight = random_vector()
-    model_variables_fn = lambda: [tf.Variable(v) for v in intial_weight]
+    initial_weight = random_vector()
+    model_variables_fn = lambda: [tf.Variable(v) for v in initial_weight]
     gradients = [random_vector() for _ in range(steps)]
     tff_optimizer_fn = lambda: adagrad.build_adagrad(0.01)
     keras_optimizer_fn = lambda: tf.keras.optimizers.Adagrad(0.01)
@@ -226,6 +226,22 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     hparams = optimizer.get_hparams(state)
     updated_state = optimizer.set_hparams(state, hparams)
     self.assertEqual(state, updated_state)
+
+  def test_lr_with_different_weight_dtypes(self):
+    weights = (
+        tf.constant([0.1], dtype=tf.float32),
+        tf.constant(1.0, dtype=tf.float64),
+        tf.constant([10.0, 10.0], dtype=tf.bfloat16),
+    )
+    adagrad_optimizer = adagrad.build_adagrad(
+        learning_rate=tf.constant(0.1, dtype=tf.float32),
+        initial_preconditioner_value=tf.constant(0.1, dtype=tf.float32),
+        epsilon=tf.constant(0.1, dtype=tf.float64),
+    )
+    state = adagrad_optimizer.initialize(weights)
+    adagrad_optimizer.next(
+        state, weights, tf.nest.map_structure(tf.zeros_like, weights)
+    )
 
 
 if __name__ == '__main__':

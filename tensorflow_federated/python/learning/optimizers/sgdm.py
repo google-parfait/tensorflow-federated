@@ -26,7 +26,7 @@ _MOMENTUM_KEY = 'momentum'
 _ACCUMULATOR_KEY = 'accumulator'
 
 State = TypeVar('State', bound=collections.OrderedDict[str, Any])
-Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, float])
+Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, Any])
 
 
 class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
@@ -38,14 +38,16 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       momentum: Optional[optimizer.Float] = None,
   ):
     """Initializes SGD optimizer."""
-    if learning_rate < 0.0:
+    if not tf.is_symbolic_tensor(learning_rate) and learning_rate < 0.0:
       raise ValueError(
           f'SGD `learning_rate` must be nonnegative, found {learning_rate}.'
       )
     if momentum:
       # We should only track momentum as a hparam in the case that it is both
       # specified and nonzero.
-      if momentum < 0.0 or momentum > 1.0:
+      if not tf.is_symbolic_tensor(momentum) and (
+          momentum < 0.0 or momentum > 1.0
+      ):
         raise ValueError(
             'SGD `momentum` must be `None` or in the range [0, 1], found '
             f'{momentum}.'
@@ -77,7 +79,7 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       def _sgd_update(w, g):
         if g is None:
           return w
-        return w - lr * g
+        return w - tf.cast(lr, dtype=g.dtype) * g
 
       updated_weights = nest_utils.map_at_leaves(
           _sgd_update, weights, gradients
@@ -111,11 +113,6 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     return collections.OrderedDict([(k, state[k]) for k in self._hparams_keys])
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
-    # TODO: b/245962555 - Find an alternative to `update_struct` if it
-    # interferes with typing guarantees.
-    # We use `tff.structure.update_struct` (rather than something like
-    # `copy.deepcopy`) to ensure that this can be called within a
-    # `tff.Computation`.
     return structure.update_struct(state, **hparams)
 
 
