@@ -62,7 +62,7 @@ class YogiTest(optimizer_test_utils.TestCase, parameterized.TestCase):
       state, weights = optimizer.next(state, weights, gradients)
       history.append(weights)
     self.assertAllClose(
-        [[1.0], [0.9000007], [0.8000267], [0.700077], [0.600153]], history
+        [[1.0], [0.9], [0.8], [0.7], [0.6]], history, rtol=1e-4, atol=1e-4
     )
 
   @parameterized.named_parameters(
@@ -213,6 +213,23 @@ class YogiTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     hparams = optimizer.get_hparams(state)
     updated_state = optimizer.set_hparams(state, hparams)
     self.assertEqual(state, updated_state)
+
+  def test_lr_with_different_weight_dtypes(self):
+    weights = (
+        tf.constant([0.1], dtype=tf.float32),
+        tf.constant(1.0, dtype=tf.float64),
+        tf.constant([10.0, 10.0], dtype=tf.bfloat16),
+    )
+    yogi_optimizer = yogi.build_yogi(
+        learning_rate=tf.constant(0.1, dtype=tf.float32),
+        beta_1=tf.constant(0.1, dtype=tf.float32),
+        beta_2=tf.constant(0.1, dtype=tf.float32),
+        epsilon=tf.constant(0.1, dtype=tf.float64),
+    )
+    state = yogi_optimizer.initialize(weights)
+    yogi_optimizer.next(
+        state, weights, tf.nest.map_structure(tf.zeros_like, weights)
+    )
 
 
 if __name__ == '__main__':

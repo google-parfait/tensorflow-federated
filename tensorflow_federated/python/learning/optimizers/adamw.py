@@ -53,19 +53,19 @@ class _AdamW(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       weight_decay: optimizer.Float = 0.004,  # tf.keras default
   ):
     """Initializes AdamW optimizer."""
-    if learning_rate < 0.0:
+    if not tf.is_symbolic_tensor(learning_rate) and learning_rate < 0.0:
       raise ValueError(
           f'AdamW `learning_rate` must be nonnegative, found {learning_rate}.'
       )
-    if beta_1 < 0.0 or beta_1 > 1.0:
+    if not tf.is_symbolic_tensor(beta_1) and (beta_1 < 0.0 or beta_1 > 1.0):
       raise ValueError(
           f'AdamW `beta_1` must be in the range [0.0, 1.0], found {beta_1}.'
       )
-    if beta_2 < 0.0 or beta_2 > 1.0:
+    if not tf.is_symbolic_tensor(beta_2) and (beta_2 < 0.0 or beta_2 > 1.0):
       raise ValueError(
           f'AdamW `beta_2` must be in the range [0.0, 1.0], found {beta_2}.'
       )
-    if epsilon < 0.0:
+    if not tf.is_symbolic_tensor(epsilon) and epsilon < 0.0:
       raise ValueError(f'AdamW `epsilon` must be nonnegative, found {epsilon}.')
     if weight_decay < 0.0:
       raise ValueError(
@@ -114,17 +114,25 @@ class _AdamW(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         weights, preconditioner, 'preconditioner'
     )
 
-    normalization = tf.math.sqrt(
-        (1 - tf.math.pow(beta_2, tf.cast(step, tf.float32)))
-    ) / (1 - tf.math.pow(beta_1, tf.cast(step, tf.float32)))
+    if tf.is_tensor(beta_1):
+      casted_step = tf.cast(step, beta_1.dtype)
+    else:
+      casted_step = step
+
+    normalization = tf.math.sqrt((1.0 - tf.math.pow(beta_2, casted_step))) / (
+        1.0 - tf.math.pow(beta_1, casted_step)
+    )
 
     def _adamw_update(w, a, p, g):
       if g is None:
         return w, a, p
-      a = a + (g - a) * (1 - beta_1)
-      p = p + (tf.math.square(g) - p) * (1 - beta_2)
-      w = w - lr * (
-          normalization * a / (tf.math.sqrt(p) + epsilon) + weight_decay * w
+      a = a + (g - a) * (1.0 - tf.cast(beta_1, g.dtype))
+      p = p + (tf.math.square(g) - p) * (1.0 - tf.cast(beta_2, g.dtype))
+      w = w - tf.cast(lr, g.dtype) * (
+          tf.cast(normalization, g.dtype)
+          * a
+          / (tf.math.sqrt(p) + tf.cast(epsilon, g.dtype))
+          + weight_decay * w
       )
       return w, a, p
 

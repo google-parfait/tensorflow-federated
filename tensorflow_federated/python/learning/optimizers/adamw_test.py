@@ -235,6 +235,23 @@ class AdamTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     updated_state = optimizer.set_hparams(state, hparams)
     self.assertEqual(state, updated_state)
 
+  def test_lr_with_different_weight_dtypes(self):
+    weights = (
+        tf.constant([0.1], dtype=tf.float32),
+        tf.constant(1.0, dtype=tf.float64),
+        tf.constant([10.0, 10.0], dtype=tf.bfloat16),
+    )
+    adamw_optimizer = adamw.build_adamw(
+        learning_rate=tf.constant(0.1, dtype=tf.float32),
+        beta_1=tf.constant(0.1, dtype=tf.float32),
+        beta_2=tf.constant(0.1, dtype=tf.float32),
+        epsilon=tf.constant(0.1, dtype=tf.float64),
+    )
+    state = adamw_optimizer.initialize(weights)
+    adamw_optimizer.next(
+        state, weights, tf.nest.map_structure(tf.zeros_like, weights)
+    )
+
 
 if __name__ == '__main__':
   tf.test.main()

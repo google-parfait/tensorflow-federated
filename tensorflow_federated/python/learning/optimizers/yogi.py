@@ -52,19 +52,19 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       initial_preconditioner_value=1e-6,
   ):
     """Initializes Yogi optimizer."""
-    if learning_rate < 0.0:
+    if not tf.is_symbolic_tensor(learning_rate) and learning_rate < 0.0:
       raise ValueError(
           f'Yogi `learning_rate` must be nonnegative, found {learning_rate}.'
       )
-    if beta_1 < 0.0 or beta_1 > 1.0:
+    if not tf.is_symbolic_tensor(beta_1) and (beta_1 < 0.0 or beta_1 > 1.0):
       raise ValueError(
           f'Yogi `beta_1` must be in the range [0, 1], found {beta_1}.'
       )
-    if beta_2 < 0.0 or beta_2 > 1.0:
+    if not tf.is_symbolic_tensor(beta_2) and (beta_2 < 0.0 or beta_2 > 1.0):
       raise ValueError(
           f'Yogi `beta_2` must be in the range [0, 1], found {beta_2}.'
       )
-    if epsilon < 0.0:
+    if not tf.is_symbolic_tensor(epsilon) and epsilon < 0.0:
       raise ValueError(f'Yogi `epsilon` must be nonnegative, found {epsilon}.')
     if initial_preconditioner_value < 0.0:
       raise ValueError(
@@ -84,7 +84,9 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 
     def _get_tensor_preconditioner(tensor_spec: tf.TensorSpec) -> tf.Tensor:
       tensor_preconditioner = tf.ones(tensor_spec.shape, tensor_spec.dtype)
-      return tensor_preconditioner * self._initial_preconditioner_value
+      return tensor_preconditioner * tf.cast(
+          self._initial_preconditioner_value, tensor_spec.dtype
+      )
 
     initial_preconditioner = tf.nest.map_structure(
         _get_tensor_preconditioner, specs
@@ -118,18 +120,20 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     )
     normalized_lr = (
         lr
-        * tf.math.sqrt((1 - tf.math.pow(beta_2, tf.cast(step, tf.float32))))
-        / (1 - tf.math.pow(beta_1, tf.cast(step, tf.float32)))
+        * tf.math.sqrt((1.0 - tf.math.pow(beta_2, tf.cast(step, tf.float32))))
+        / (1.0 - tf.math.pow(beta_1, tf.cast(step, tf.float32)))
     )
 
     def _yogi_update(w, a, p, g):
       if g is None:
         return w, a, p
-      a = a + (g - a) * (1 - beta_1)
+      a = a + (g - a) * (1.0 - tf.cast(beta_1, g.dtype))
       g2 = tf.math.square(g)
       sign = tf.sign(g2 - p)
-      p = p + (1 - beta_2) * sign * g2
-      w = w - normalized_lr * a / (tf.math.sqrt(p) + epsilon)
+      p = p + (1 - tf.cast(beta_2, g.dtype)) * sign * g2
+      w = w - tf.cast(normalized_lr, g.dtype) * a / (
+          tf.math.sqrt(p) + tf.cast(epsilon, g.dtype)
+      )
       return w, a, p
 
     updated_weights, updated_accumulator, updated_preconditioner = (
