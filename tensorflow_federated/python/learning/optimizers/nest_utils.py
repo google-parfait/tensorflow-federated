@@ -42,6 +42,16 @@ def map_at_leaves(f, *args) -> ...:
   if len(args) > 1:
     for arg in args[1:]:
       tf.nest.assert_same_structure(args[0], arg)
+
+  if not tf.nest.flatten(args[0]):
+    # In the event that all leavesare empty, no need to do flattening and
+    # transposition. We simply return the (empty) structures.
+    # If there is only one arg, return it. Otherwise return a tuple.
+    if len(args) == 1:
+      return args[0]
+    else:
+      return args
+
   flat_args = [tf.nest.flatten(arg) for arg in args]
   # Apply the function to each set of corresponding flattened elements.
   # We have to tuplify the result of fun if it returns a singleton.

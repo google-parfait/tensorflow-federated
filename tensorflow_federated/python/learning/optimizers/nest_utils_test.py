@@ -33,10 +33,41 @@ class MapAtLeavesTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       nest_utils.map_at_leaves(f, x, y)
 
+  def test_identity_on_single_empty_input(self):
+    f = lambda x: x
+    result = nest_utils.map_at_leaves(f, [])
+    self.assertEqual(result, [])
+
+  def test_identity_on_multi_empty_input(self):
+    f = lambda x, y: (x, y)
+    result = nest_utils.map_at_leaves(f, [], [])
+    self.assertEqual(result, ([], []))
+
+  def test_identity_on_single_nested_empty_input(self):
+    f = lambda x: x
+    empty_struct = [[], [[], ()], {}]
+    result = nest_utils.map_at_leaves(f, empty_struct)
+    self.assertEqual(result, empty_struct)
+
+  def test_constant_fn_on_empty_input(self):
+    f = lambda x: 1.0
+    result = nest_utils.map_at_leaves(f, [])
+    self.assertEqual(result, [])
+
+  def test_constant_fn_on_multi_empty_input(self):
+    f = lambda x, y: 1.0
+    result = nest_utils.map_at_leaves(f, [], [])
+    self.assertEqual(result, ([], []))
+
   def test_scalar_single_arg_single_out(self):
     f = lambda a: 2 * a
     result = nest_utils.map_at_leaves(f, 3.0)
     self.assertEqual(result, 6.0)
+
+  def test_single_arg_numpy_array(self):
+    f = lambda a: 2 * a
+    result = nest_utils.map_at_leaves(f, np.float32([1.0, 3.0, 5.0]))
+    self.assertAllEqual(result, np.float32([2.0, 6.0, 10.0]))
 
   def test_scalar_single_arg_multi_out(self):
     f = lambda a: (2 * a, 3 * a)
