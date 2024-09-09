@@ -146,50 +146,202 @@ cc_test(
     ],
 )
 
-# TODO: b/352020454 - Create one library per cc & hh pair. Make them aggregation_cores deps.
 cc_library(
-    name = "aggregation_cores",
-    srcs = [
-        "composite_key_combiner.cc",
-        "dp_closed_domain_histogram.cc",
-        "dp_composite_key_combiner.cc",
-        "dp_group_by_factory.cc",
-        "dp_grouping_federated_sum.cc",
-        "dp_open_domain_histogram.cc",
-        "federated_mean.cc",
-        "federated_sum.cc",
-        "group_by_aggregator.cc",
-        "grouping_federated_sum.cc",
-        "one_dim_grouping_aggregator.cc",
-    ],
+    name = "composite_key_combiner",
+    srcs = ["composite_key_combiner.cc"],
     hdrs = [
         "composite_key_combiner.h",
-        "dp_closed_domain_histogram.h",
+        "tensor_aggregator.h",
+    ],
+    deps = [
+        ":aggregator",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:fixed_array",
+        "@com_google_absl//absl/container:node_hash_map",
+    ],
+)
+
+cc_library(
+    name = "dp_composite_key_combiner",
+    srcs = ["dp_composite_key_combiner.cc"],
+    hdrs = [
         "dp_composite_key_combiner.h",
-        "dp_group_by_factory.h",
-        "dp_open_domain_histogram.h",
-        "group_by_aggregator.h",
+    ],
+    deps = [
+        ":composite_key_combiner",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:fixed_array",
+        "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/random",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "one_dim_grouping_aggregator",
+    srcs = ["one_dim_grouping_aggregator.cc"],
+    hdrs = [
         "one_dim_grouping_aggregator.h",
     ],
     deps = [
         ":agg_core_cc_proto",
         ":aggregator",
-        ":dp_fedsql_constants",
-        ":dp_noise_mechanisms",
+        ":intrinsic",
+        ":tensor",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+    ],
+)
+
+cc_library(
+    name = "grouping_federated_sum",
+    srcs = ["grouping_federated_sum.cc"],
+    deps = [
+        ":agg_core_cc_proto",
+        ":aggregator",
+        ":intrinsic",
+        ":one_dim_grouping_aggregator",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "group_by_aggregator",
+    srcs = ["group_by_aggregator.cc"],
+    hdrs = [
+        "group_by_aggregator.h",
+    ],
+    deps = [
+        ":agg_core_cc_proto",
+        ":aggregator",
+        ":composite_key_combiner",
         ":fedsql_constants",
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
-        "@com_google_absl//absl/container:fixed_array",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/container:node_hash_map",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/random",
         "@com_google_absl//absl/strings",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "dp_group_by_factory",
+    srcs = ["dp_group_by_factory.cc"],
+    hdrs = [
+        "dp_group_by_factory.h",
+    ],
+    deps = [
+        ":agg_core_cc_proto",
+        ":aggregator",
+        ":dp_closed_domain_histogram",
+        ":dp_composite_key_combiner",
+        ":dp_fedsql_constants",
+        ":dp_open_domain_histogram",
+        ":group_by_aggregator",
+        ":intrinsic",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "dp_grouping_federated_sum",
+    srcs = ["dp_grouping_federated_sum.cc"],
+    deps = [
+        ":agg_core_cc_proto",
+        ":aggregator",
+        ":dp_fedsql_constants",
+        ":intrinsic",
+        ":one_dim_grouping_aggregator",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:check",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "dp_open_domain_histogram",
+    srcs = ["dp_open_domain_histogram.cc"],
+    hdrs = [
+        "dp_open_domain_histogram.h",
+    ],
+    deps = [
+        ":agg_core_cc_proto",
+        ":aggregator",
+        ":composite_key_combiner",
+        ":dp_composite_key_combiner",
+        ":dp_fedsql_constants",
+        ":dp_noise_mechanisms",
+        ":group_by_aggregator",
+        ":intrinsic",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "dp_closed_domain_histogram",
+    srcs = ["dp_closed_domain_histogram.cc"],
+    hdrs = [
+        "dp_closed_domain_histogram.h",
+    ],
+    deps = [
+        ":agg_core_cc_proto",
+        ":aggregator",
+        ":composite_key_combiner",
+        ":dp_composite_key_combiner",
+        ":dp_fedsql_constants",
+        ":dp_noise_mechanisms",
+        ":group_by_aggregator",
+        ":intrinsic",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:fixed_array",
         "@com_google_cc_differential_privacy//algorithms:numerical-mechanisms",
+    ],
+)
+
+cc_library(
+    name = "aggregation_cores",
+    srcs = [
+        "federated_mean.cc",
+        "federated_sum.cc",
+    ],
+    deps = [
+        ":agg_core_cc_proto",
+        ":aggregator",
+        ":composite_key_combiner",
+        ":dp_closed_domain_histogram",
+        ":dp_composite_key_combiner",
+        ":dp_fedsql_constants",
+        ":dp_group_by_factory",
+        ":dp_grouping_federated_sum",
+        ":dp_noise_mechanisms",
+        ":dp_open_domain_histogram",
+        ":fedsql_constants",
+        ":group_by_aggregator",
+        ":grouping_federated_sum",
+        ":intrinsic",
+        ":one_dim_grouping_aggregator",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
     ],
     alwayslink = 1,
 )
@@ -320,8 +472,7 @@ cc_test(
     name = "composite_key_combiner_test",
     srcs = ["composite_key_combiner_test.cc"],
     deps = [
-        ":aggregation_cores",
-        ":aggregator",
+        ":composite_key_combiner",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -336,8 +487,8 @@ cc_test(
     name = "dp_composite_key_combiner_test",
     srcs = ["dp_composite_key_combiner_test.cc"],
     deps = [
-        ":aggregation_cores",
         ":aggregator",
+        ":dp_composite_key_combiner",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -389,7 +540,7 @@ cc_test(
     srcs = ["one_dim_grouping_aggregator_test.cc"],
     deps = [
         ":agg_core_cc_proto",
-        ":aggregation_cores",
+        ":one_dim_grouping_aggregator",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
@@ -403,8 +554,9 @@ cc_test(
     name = "group_by_aggregator_test",
     srcs = ["group_by_aggregator_test.cc"],
     deps = [
-        ":aggregation_cores",
         ":aggregator",
+        ":group_by_aggregator",
+        ":grouping_federated_sum",
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
@@ -420,9 +572,10 @@ cc_test(
     name = "dp_open_domain_histogram_test",
     srcs = ["dp_open_domain_histogram_test.cc"],
     deps = [
-        ":aggregation_cores",
         ":aggregator",
         ":dp_fedsql_constants",
+        ":dp_group_by_factory",
+        ":dp_grouping_federated_sum",
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
@@ -438,9 +591,12 @@ cc_test(
     name = "dp_closed_domain_histogram_test",
     srcs = ["dp_closed_domain_histogram_test.cc"],
     deps = [
-        ":aggregation_cores",
         ":aggregator",
+        ":dp_closed_domain_histogram",
+        ":dp_composite_key_combiner",
         ":dp_fedsql_constants",
+        ":dp_group_by_factory",
+        ":dp_grouping_federated_sum",
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
@@ -457,8 +613,8 @@ cc_test(
     name = "grouping_federated_sum_test",
     srcs = ["grouping_federated_sum_test.cc"],
     deps = [
-        ":aggregation_cores",
         ":aggregator",
+        ":grouping_federated_sum",
         ":intrinsic",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -473,9 +629,9 @@ cc_test(
     name = "dp_grouping_federated_sum_test",
     srcs = ["dp_grouping_federated_sum_test.cc"],
     deps = [
-        ":aggregation_cores",
         ":aggregator",
         ":dp_fedsql_constants",
+        ":dp_grouping_federated_sum",
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
@@ -508,8 +664,9 @@ cc_binary(
     srcs = ["group_by_bench.cc"],
     linkstatic = 1,
     deps = [
-        ":aggregation_cores",
         ":aggregator",
+        ":group_by_aggregator",
+        ":grouping_federated_sum",
         ":intrinsic",
         ":mutable_string_data",
         ":tensor",
