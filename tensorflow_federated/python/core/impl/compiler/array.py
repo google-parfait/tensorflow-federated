@@ -364,7 +364,7 @@ def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
 
   Args:
     value: The value to check.
-    dtype: The scalar `np.generic` to check against.
+    dtype: The dtype to check against.
   """
   if isinstance(value, (np.ndarray, np.generic)):
     value_dtype = value.dtype.type
@@ -405,25 +405,7 @@ def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
     # more information.
     return np.can_cast(value.dtype, dtype)
   elif isinstance(value, (int, float, complex)):
-
-    def _can_cast(
-        obj: Union[bool, int, float, complex, str, bytes],
-        dtype: type[np.generic],
-    ) -> bool:
-      # `np.can_cast` does not support Python scalars (since version 2.0).
-      # Casting the value to a numpy value and testing for an overflow is
-      # equivalent to testing the Python value.
-      numpy_version = tuple(int(x) for x in np.__version__.split('.'))
-      if numpy_version >= (2, 0):
-        try:
-          np.asarray(obj, dtype=dtype)
-          return True
-        except OverflowError:
-          return False
-      else:
-        return np.can_cast(obj, dtype)
-
-    return _can_cast(value, dtype)
+    return dtype_utils.can_cast(value, dtype)
   else:
     return False
 

@@ -20,7 +20,7 @@ import numpy as np
 from tensorflow_federated.python.core.impl.types import dtype_utils
 
 
-class ArrayShapeTest(parameterized.TestCase):
+class DtypeUtilsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('none', None),
@@ -65,6 +65,37 @@ class ArrayShapeTest(parameterized.TestCase):
   )
   def test_is_valid_dtype_returns_false(self, dtype):
     self.assertFalse(dtype_utils.is_valid_dtype(dtype))
+
+  @parameterized.named_parameters(
+      ('bool', True, np.bool_),
+      ('int8', 1, np.int8),
+      ('int16', 1, np.int16),
+      ('int32', 1, np.int32),
+      ('int64', 1, np.int64),
+      ('uint8', 1, np.uint8),
+      ('uint16', 1, np.uint16),
+      ('uint32', 1, np.uint32),
+      ('uint64', 1, np.uint64),
+      ('float16', 1.0, np.float16),
+      ('float32', 1.0, np.float32),
+      ('float64', 1.0, np.float64),
+      ('complex64', complex(1.0, 1.0), np.complex64),
+      ('complex128', complex(1.0, 1.0), np.complex128),
+      ('str', 'a', np.str_),
+      ('bytes', b'a', np.bytes_),
+  )
+  def test_can_cast_returns_true(self, value, dtype):
+    result = dtype_utils.can_cast(value, dtype)
+    self.assertTrue(result)
+
+  @parameterized.named_parameters(
+      ('int64', np.iinfo(np.int64).max, np.int32),
+      ('float64', float(np.finfo(np.float64).max), np.float32),
+      ('complex64', complex(np.finfo(np.float64).max, 1), np.complex64),
+  )
+  def test_can_cast_returns_false(self, value, dtype):
+    result = dtype_utils.can_cast(value, dtype)
+    self.assertFalse(result)
 
   @parameterized.named_parameters(
       ('bool', True, np.bool_),

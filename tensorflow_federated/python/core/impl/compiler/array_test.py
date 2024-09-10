@@ -1515,8 +1515,8 @@ class IsCompatibleDtypeTest(parameterized.TestCase):
       ('scalar_incompatible_dtype_size_int', np.iinfo(np.int64).max, np.int32),
       (
           'scalar_incompatible_dtype_size_float',
-          np.finfo(np.float64).max,
-          np.int32,
+          float(np.finfo(np.float64).max),
+          np.float32,
       ),
       (
           'scalar_incompatible_dtype_size_complex_real',

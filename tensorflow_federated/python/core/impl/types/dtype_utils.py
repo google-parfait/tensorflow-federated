@@ -14,6 +14,7 @@
 
 from collections.abc import Mapping
 from typing import Union
+import warnings
 
 import ml_dtypes
 import numpy as np
@@ -86,6 +87,39 @@ def is_valid_dtype(dtype: type[np.generic]) -> bool:
   return dtype in _DTYPE_TO_PROTO
 
 
+def can_cast(
+    value: Union[bool, int, float, complex, str, bytes],
+    dtype: type[np.generic],
+) -> bool:
+  """Returns `True` if `value` can be cast to `dtype`, otherwise `False`.
+
+  This function is intended to be used to determine if the size of the `dtype`
+  is capable of holding the `value`. This is useful, for example, when trying to
+  infer the dtype of the `value`. This function is not intended to be used to
+  determine if you **should** cast a the `value` to `dtype`.
+
+  Args:
+    value: The value to check.
+    dtype: The dtype to check against.
+  """
+
+  # `np.can_cast` does not support Python scalars (since version 2.0). Casting
+  # the value to a numpy value and testing for an overflow is equivalent to
+  # testing the Python value.
+  numpy_version = tuple(int(x) for x in np.__version__.split('.'))
+  if numpy_version >= (2, 0):
+    # When encountering an overflow, numpy issues a `RuntimeWarning` for
+    # floating dtypes and raises an `OverflowError` for integer dtypes.
+    with warnings.catch_warnings(action='error', category=RuntimeWarning):
+      try:
+        np.asarray(value, dtype=dtype)
+        return True
+      except (OverflowError, RuntimeWarning):
+        return False
+  else:
+    return np.can_cast(value, dtype)
+
+
 def infer_dtype(
     obj: Union[bool, int, float, complex, str, bytes],
 ) -> type[np.generic]:
@@ -100,27 +134,9 @@ def infer_dtype(
   if isinstance(obj, bool):
     return np.bool_
   elif isinstance(obj, int):
-
-    def _can_cast(
-        obj: Union[bool, int, float, complex, str, bytes],
-        dtype: type[np.generic],
-    ) -> bool:
-      # `np.can_cast` does not support Python scalars (since version 2.0).
-      # Casting the value to a numpy value and testing for an overflow is
-      # equivalent to testing the Python value.
-      numpy_version = tuple(int(x) for x in np.__version__.split('.'))
-      if numpy_version >= (2, 0):
-        try:
-          np.asarray(obj, dtype=dtype)
-          return True
-        except OverflowError:
-          return False
-      else:
-        return np.can_cast(obj, dtype)
-
-    if _can_cast(obj, np.int32):
+    if can_cast(obj, np.int32):
       return np.int32
-    elif _can_cast(obj, np.int64):
+    elif can_cast(obj, np.int64):
       return np.int64
     else:
       raise ValueError(
