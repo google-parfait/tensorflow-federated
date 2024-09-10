@@ -81,8 +81,10 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
           return w
         return w - tf.cast(lr, dtype=g.dtype) * g
 
-      updated_weights = nest_utils.map_at_leaves(
-          _sgd_update, weights, gradients
+      updated_weights = tf.nest.map_structure(
+          _sgd_update,
+          weights,
+          gradients,
       )
       updated_state = collections.OrderedDict(
           [(optimizer.LEARNING_RATE_KEY, lr)]
@@ -100,7 +102,13 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         return w, a
 
       updated_weights, updated_accumulator = nest_utils.map_at_leaves(
-          _sgdm_update, weights, accumulator, gradients
+          _sgdm_update,
+          weights,
+          accumulator,
+          gradients,
+          # We have to tell `map_at_leaves` how many outputs to yield in case
+          # `weights` has no leaves.
+          num_outputs=2,
       )
       updated_state = collections.OrderedDict([
           (optimizer.LEARNING_RATE_KEY, lr),

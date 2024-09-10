@@ -138,7 +138,14 @@ class _AdamW(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 
     updated_weights, updated_accumulator, updated_preconditioner = (
         nest_utils.map_at_leaves(
-            _adamw_update, weights, accumulator, preconditioner, gradients
+            _adamw_update,
+            weights,
+            accumulator,
+            preconditioner,
+            gradients,
+            # We have to tell `map_at_leaves` how many outputs to yield in case
+            # `weights` has no leaves.
+            num_outputs=3,
         )
     )
 
