@@ -23,7 +23,7 @@ def _tuplify(x):
     return (x,)
 
 
-def map_at_leaves(f, *args) -> ...:
+def map_at_leaves(f, *args, num_outputs: int = 0) -> ...:
   """Applies a function leaf-wise to arguments of matching nested structure.
 
   For example, if `f(X, Y, Z) -> A, B` then for some nested structure
@@ -34,6 +34,9 @@ def map_at_leaves(f, *args) -> ...:
   Args:
     f: A callable.
     *args: Some number of args of matching nested structure.
+    num_outputs: An optional integer specifying the number of outputs. This is
+      only used when the leaf structure of each member of *args is empty and
+      therefore the number of outputs must be inferred.
 
   Returns:
     Some number of structures, matching the nested structure of each member of
@@ -45,12 +48,21 @@ def map_at_leaves(f, *args) -> ...:
 
   if not tf.nest.flatten(args[0]):
     # In the event that all leavesare empty, no need to do flattening and
-    # transposition. We simply return the (empty) structures.
-    # If there is only one arg, return it. Otherwise return a tuple.
-    if len(args) == 1:
+    # transposition. We simply return the (empty) structures. We will return
+    # `num_outputs` structures matching `args[0]`.;
+    if num_outputs < 1:
+      raise ValueError(
+          f'Found empty arguments of structure {args[0]}, but `num_outputs` was'
+          f' set to non-positive value {num_outputs}. The behavior of'
+          ' `map_at_leaves` is undefined in such settings. If intending to use'
+          ' with empty structures, please specify `num_outputs`.'
+      )
+    # If there is only one output, return an empty structure. Otherwise return a
+    # tuple.
+    if num_outputs == 1:
       return args[0]
     else:
-      return args
+      return (args[0],) * num_outputs
 
   flat_args = [tf.nest.flatten(arg) for arg in args]
   # Apply the function to each set of corresponding flattened elements.

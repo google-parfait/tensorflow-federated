@@ -80,6 +80,22 @@ class AdamTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     tf.nest.map_structure(self.assertAllEqual, weights, updated_weights)
     tf.nest.map_structure(self.assertAllEqual, state, updated_state)
 
+  @parameterized.named_parameters(
+      ('empty_list', []),
+      ('empty_dict', {}),
+      ('empty_nested_structure', [([], []), {}]),
+  )
+  def test_behavior_on_empty_tree(self, structure):
+    weights = gradients = structure
+    optimizer = adamw.build_adamw(0.01)
+
+    state = optimizer.initialize(weights)
+    updated_state, updated_weights = optimizer.next(state, weights, gradients)
+    state[adamw._STEP_KEY] += 1
+
+    self.assertEqual(updated_state, state)
+    self.assertEqual(updated_weights, weights)
+
   def test_executes_with_indexed_slices(self):
     # TF can represent gradients as tf.IndexedSlices. This test makes sure this
     # case is supported by the optimizer.

@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.optimizers import nest_utils
 
 
-class MapAtLeavesTest(tf.test.TestCase):
+class MapAtLeavesTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_raises_on_mismatched_leaves(self):
     f = lambda a, b: a + b
@@ -33,31 +34,30 @@ class MapAtLeavesTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       nest_utils.map_at_leaves(f, x, y)
 
-  def test_identity_on_single_empty_input(self):
+  def test_raises_on_empty_input_without_num_outputs(self):
     f = lambda x: x
-    result = nest_utils.map_at_leaves(f, [])
-    self.assertEqual(result, [])
+    with self.assertRaises(ValueError):
+      nest_utils.map_at_leaves(f, [])
 
-  def test_identity_on_multi_empty_input(self):
-    f = lambda x, y: (x, y)
-    result = nest_utils.map_at_leaves(f, [], [])
-    self.assertEqual(result, ([], []))
-
-  def test_identity_on_single_nested_empty_input(self):
+  @parameterized.named_parameters(
+      ('empty_list_1_input_1_output', [], 1, 1),
+      ('empty_list_2_inputs_1_output', [], 1, 1),
+      ('empty_list_1_input_2_outputs', [], 1, 2),
+      ('empty_list_2_inputs_3_outputs', [], 1, 3),
+      ('empty_nested_struct_1_input_1_output', [[], [[], ()], {}], 1, 1),
+      ('empty_nested_struct_2_inputs_1_output', [[], [[], ()], {}], 1, 1),
+      ('empty_nested_struct_1_input_2_outputs', [[], [[], ()], {}], 1, 2),
+      ('empty_nested_struct_2_inputs_3_outputs', [[], [[], ()], {}], 2, 3),
+  )
+  def test_single_empty_input(self, arg_structure, num_inputs, num_outputs):
     f = lambda x: x
-    empty_struct = [[], [[], ()], {}]
-    result = nest_utils.map_at_leaves(f, empty_struct)
-    self.assertEqual(result, empty_struct)
-
-  def test_constant_fn_on_empty_input(self):
-    f = lambda x: 1.0
-    result = nest_utils.map_at_leaves(f, [])
-    self.assertEqual(result, [])
-
-  def test_constant_fn_on_multi_empty_input(self):
-    f = lambda x, y: 1.0
-    result = nest_utils.map_at_leaves(f, [], [])
-    self.assertEqual(result, ([], []))
+    args = (arg_structure,) * num_inputs
+    result = nest_utils.map_at_leaves(f, *args, num_outputs=num_outputs)
+    if num_outputs == 1:
+      expected_result = arg_structure
+    else:
+      expected_result = (arg_structure,) * num_outputs
+    self.assertEqual(result, expected_result)
 
   def test_scalar_single_arg_single_out(self):
     f = lambda a: 2 * a

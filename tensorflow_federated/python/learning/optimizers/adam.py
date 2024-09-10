@@ -129,6 +129,9 @@ class _Adam(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
             accumulator,
             preconditioner,
             gradients,
+            # We have to tell `map_at_leaves` how many outputs to yield in case
+            # `weights` has no leaves.
+            num_outputs=3,
         )
     )
 

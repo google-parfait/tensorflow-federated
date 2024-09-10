@@ -162,17 +162,21 @@ class _AdafactorOptimizer(
       new_weight = weight + -alpha_t * u_t_hat
       return new_moment, new_weight
 
-    new_moments, new_weights = zip(
-        *tuple(
-            update(moment, weight, gradient)
-            for moment, weight, gradient in zip(
-                state['moments'],
-                tf.nest.flatten(weights),
-                tf.nest.flatten(gradients),
-            )
-        )
-    )
-    new_weights = tf.nest.pack_sequence_as(weights, new_weights)
+    if not tf.nest.flatten(weights):
+      new_moments = state['moments']
+      new_weights = weights
+    else:
+      new_moments, new_weights = zip(
+          *tuple(
+              update(moment, weight, gradient)
+              for moment, weight, gradient in zip(
+                  state['moments'],
+                  tf.nest.flatten(weights),
+                  tf.nest.flatten(gradients),
+              )
+          )
+      )
+      new_weights = tf.nest.pack_sequence_as(weights, new_weights)
 
     return {
         'steps': local_step,

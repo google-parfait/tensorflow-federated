@@ -90,7 +90,13 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       return w, p
 
     updated_weights, updated_preconditioner = nest_utils.map_at_leaves(
-        _rmsprop_update, weights, preconditioner, gradients
+        _rmsprop_update,
+        weights,
+        preconditioner,
+        gradients,
+        # We have to tell `map_at_leaves` how many outputs to yield in case
+        # `weights` has no leaves.
+        num_outputs=2,
     )
     updated_state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, lr),

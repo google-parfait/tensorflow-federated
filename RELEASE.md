@@ -30,6 +30,9 @@ and this project adheres to
     counter twice upon every invocation of `.next()`.
 *   A bug where tensor learning rates for `tff.learning.optimizers.build_sgdm`
     would fail with mixed dtype gradients.
+*   A bug where different optimizers had different behavior on empty weights
+    structures. TFF optimizers now consistently accept and function as no-ops on
+    empty weight structures.
 
 ### Removed
 

@@ -83,6 +83,21 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
+      ('empty_list', []),
+      ('empty_dict', {}),
+      ('empty_nested_structure', [([], []), {}]),
+  )
+  def test_behavior_on_empty_tree(self, structure):
+    weights = gradients = structure
+    optimizer = adagrad.build_adagrad(0.01)
+    state = optimizer.initialize(weights)
+
+    updated_state, updated_weights = optimizer.next(state, weights, gradients)
+
+    self.assertEqual(updated_state, state)
+    self.assertEqual(updated_weights, weights)
+
+  @parameterized.named_parameters(
       ('scalar_spec', _SCALAR_SPEC),
       ('struct_spec', _STRUCT_SPEC),
       ('nested_spec', _NESTED_SPEC),

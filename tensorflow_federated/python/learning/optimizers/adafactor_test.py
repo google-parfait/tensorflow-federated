@@ -77,6 +77,22 @@ class AdafactorTest(parameterized.TestCase, tf.test.TestCase):
     tf.nest.map_structure(self.assertAllEqual, weights, updated_weights)
     tf.nest.map_structure(self.assertAllEqual, state, updated_state)
 
+  @parameterized.named_parameters(
+      ('empty_list', []),
+      ('empty_dict', {}),
+      ('empty_nested_structure', [([], []), {}]),
+  )
+  def test_behavior_on_empty_tree(self, structure):
+    weights = gradients = structure
+    optimizer = adafactor.build_adafactor(0.01)
+
+    state = optimizer.initialize(weights)
+    updated_state, updated_weights = optimizer.next(state, weights, gradients)
+    state['steps'] += 1
+
+    self.assertEqual(updated_state, state)
+    self.assertEqual(updated_weights, weights)
+
   def test_initialization_and_step_in_eager_mode(self):
     optimizer = adafactor.build_adafactor(learning_rate=0.003)
     weights = tf.constant([[1.0, 2.0, 3.0]], dtype=tf.float32)
