@@ -219,6 +219,12 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       from_tensor_slices_client_data.TestClientData(TEST_DATA_WITH_NAMEDTUPLES)
 
+  def test_init_raises_error_if_slices_are_inconsistent_type(self):
+    with self.assertRaises(TypeError):
+      from_tensor_slices_client_data.TestClientData(
+          TEST_DATA_WITH_INCONSISTENT_TYPE
+      )
+
   def test_init_raises_error_if_slices_are_part_list_and_part_dict(self):
     with self.assertRaises(TypeError):
       from_tensor_slices_client_data.TestClientData(
@@ -254,6 +260,7 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_dataset_computation_where_client_data_is_tensors(self):
     client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
+
     dataset_computation = client_data.dataset_computation
     self.assertIsInstance(dataset_computation, computation_base.Computation)
 
@@ -261,10 +268,11 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
         computation_types.TensorType(np.str_),
         computation_types.SequenceType(
             computation_types.tensorflow_to_type(
-                (client_data.element_type_structure.dtype, (2,))
+                (client_data.element_type_structure.dtype, None)
             )
         ),
     )
+
     self.assertTrue(
         dataset_computation.type_signature.is_equivalent_to(
             expected_dataset_comp_type_signature
@@ -273,26 +281,31 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
 
     # Iterate over each client, invoking the dataset_computation and ensuring
     # we received a tf.data.Dataset with the correct data.
-    for client_id in TEST_DATA:
+    for client_id, expected_data in TEST_DATA.items():
       tf_dataset = dataset_computation(client_id)
-      expected_dataset = tf.data.Dataset.from_tensor_slices(
-          TEST_DATA[client_id]
-      )
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
-      self.assertSameDatasets(expected_dataset, tf_dataset)
+      self.assertLen(expected_data, tf_dataset.cardinality())
+      # Check that everything in tf_dataset is an exact match for the contents
+      # of expected_data at the corresponding index.
+      for expected, actual in zip(expected_data, tf_dataset):
+        self.assertAllEqual(expected, actual.numpy())
 
   def test_dataset_computation_where_client_data_is_tuples(self):
     client_data = from_tensor_slices_client_data.TestClientData(
         TEST_DATA_WITH_TUPLES
     )
+
     dataset_computation = client_data.dataset_computation
     self.assertIsInstance(dataset_computation, computation_base.Computation)
+
     expected_dataset_comp_type_signature = computation_types.FunctionType(
         computation_types.TensorType(np.str_),
-        computation_types.SequenceType((
-            computation_types.TensorType(np.int32),
-            computation_types.TensorType(np.int32),
-        )),
+        computation_types.SequenceType(
+            computation_types.tensorflow_to_type((
+                client_data.element_type_structure[0].dtype,
+                None,
+            ))
+        ),
     )
 
     self.assertTrue(
@@ -303,20 +316,23 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
 
     # Iterate over each client, invoking the dataset_computation and ensuring
     # we received a tf.data.Dataset with the correct data.
-    for client_id in TEST_DATA_WITH_TUPLES:
+    for client_id, expected_data in TEST_DATA_WITH_TUPLES.items():
       tf_dataset = dataset_computation(client_id)
-      expected_dataset = tf.data.Dataset.from_tensor_slices(
-          TEST_DATA_WITH_TUPLES[client_id]
-      )
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
-      self.assertSameDatasets(expected_dataset, tf_dataset)
+      self.assertLen(expected_data, tf_dataset.cardinality())
+      # Check that everything in tf_dataset is an exact match for the contents
+      # of expected_data at the corresponding index.
+      for expected, actual in zip(expected_data, tf_dataset):
+        self.assertAllEqual(expected, actual.numpy())
 
   def test_dataset_computation_where_client_data_is_ordered_dicts(self):
     client_data = from_tensor_slices_client_data.TestClientData(
         TEST_DATA_WITH_ORDEREDDICTS
     )
+
     dataset_computation = client_data.dataset_computation
     self.assertIsInstance(dataset_computation, computation_base.Computation)
+
     expected_dataset_comp_type_signature = computation_types.FunctionType(
         computation_types.TensorType(np.str_),
         computation_types.SequenceType(
