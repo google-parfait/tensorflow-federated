@@ -236,7 +236,7 @@ def serialize_jax_computation(
       )
   else:
     with context_stack.install(context):
-      tracer_callable = jax.xla_computation(fn, return_shape=True)
+      tracer_callable = jax.xla_computation(fn, return_shape=True)  # type: ignore
       compiled_xla, returned_shape = tracer_callable(*args, **kwargs)
 
     if isinstance(returned_shape, jax.ShapeDtypeStruct):
