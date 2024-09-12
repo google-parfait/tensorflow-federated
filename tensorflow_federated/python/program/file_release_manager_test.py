@@ -1238,9 +1238,8 @@ class SavedModelFileReleaseManagerGetValueTest(
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
     key = 1
     await release_mngr.release(value, key=key)
-    structure = value
 
-    actual_value = await release_mngr.get_value(key, structure)
+    actual_value = await release_mngr.get_value(key)
 
     tree.assert_same_structure(actual_value, expected_value)
     actual_value = program_test_utils.to_python(actual_value)
@@ -1257,9 +1256,8 @@ class SavedModelFileReleaseManagerGetValueTest(
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
     for key in range(3):
       await release_mngr.release(f'value_{key}', key=key)
-    structure = 'value'
 
-    actual_value = await release_mngr.get_value(key, structure)
+    actual_value = await release_mngr.get_value(key)
 
     expected_value = f'value_{key}'.encode()
     self.assertEqual(actual_value, expected_value)
@@ -1270,10 +1268,9 @@ class SavedModelFileReleaseManagerGetValueTest(
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
     key = 1
-    structure = 'value'
 
     with self.assertRaises(release_manager.ReleasedValueNotFoundError):
-      await release_mngr.get_value(key, structure)
+      await release_mngr.get_value(key)
 
   async def test_raises_released_value_not_found_error_with_unknown_key(self):
     root_dir = self.create_tempdir()
@@ -1282,10 +1279,9 @@ class SavedModelFileReleaseManagerGetValueTest(
     key = 1
     await release_mngr.release(value, key=key)
     unknown_key = 10
-    structure = 'value'
 
     with self.assertRaises(release_manager.ReleasedValueNotFoundError):
-      await release_mngr.get_value(unknown_key, structure)
+      await release_mngr.get_value(unknown_key)
 
 
 if __name__ == '__main__':

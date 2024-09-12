@@ -389,15 +389,11 @@ class SavedModelFileReleaseManager(
   async def get_value(
       self,
       key: release_manager.Key,
-      structure: release_manager.ReleasableStructure,
   ) -> release_manager.ReleasableStructure:
     """Returns the value for the given `key`.
 
     Args:
       key: Used to reference the released `value`.
-      structure: The structure of the saved program state for the given `key`
-        used to support serialization and deserialization of user-defined
-        classes in the structure.
 
     Returns:
       A retrieved value matching `structure`.
@@ -406,7 +402,6 @@ class SavedModelFileReleaseManager(
       ReleasedValueNotFoundError: If there is no released value for the given
         `key`.
     """
-    del structure  # Unused.
 
     path = self._get_path_for_key(key)
     if not await file_utils.exists(path):

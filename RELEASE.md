@@ -39,6 +39,8 @@ and this project adheres to
 *   `tff.jax_computation`, use `tff.jax.computation` instead.
 *   `tff.profiler`, this API is not used.
 *   Removed various stale tutorials.
+*   Removed `structure` from `tff.program.SavedModelFileReleaseManager`'s
+    `get_value` method parameters.
 
 ## Release 0.86.0
 
