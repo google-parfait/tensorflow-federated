@@ -33,6 +33,8 @@ and this project adheres to
 *   A bug where different optimizers had different behavior on empty weights
     structures. TFF optimizers now consistently accept and function as no-ops on
     empty weight structures.
+*   A bug where `tff.simulation.datasets.TestClientData.dataset_computation`
+    yielded datasets of indeterminate shape.
 
 ### Removed
 
