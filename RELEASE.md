@@ -23,6 +23,8 @@ and this project adheres to
     DP noise was calibrated for non-negative values.
 *   Change tutorials to use `tff.learning.optimizers` in conjunction with
     `tff.learning` computations.
+*   `tff.simulation.datasets.TestClientData` only accepts dictionaries whose
+    leaf nodes are not `tf.Tensor`s.
 
 ### Fixed
 
@@ -33,6 +35,8 @@ and this project adheres to
 *   A bug where different optimizers had different behavior on empty weights
     structures. TFF optimizers now consistently accept and function as no-ops on
     empty weight structures.
+*   A bug where `tff.simulation.datasets.TestClientData.dataset_computation`
+    yielded datasets of indeterminate shape.
 
 ### Removed
 

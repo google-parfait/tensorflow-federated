@@ -147,9 +147,10 @@ def _get_synthetic_digits_data():
   coarse_labels = tf.constant([4, 4, 4, 8, 10], dtype=tf.int64)
   labels = tf.constant([0, 51, 51, 88, 71], dtype=tf.int64)
 
-  return collections.OrderedDict(
+  data = collections.OrderedDict(
       coarse_label=coarse_labels, image=images, label=labels
   )
+  return tf.nest.map_structure(lambda x: x.numpy(), data)
 
 
 # This consists of 5 CIFAR-like that have been downsampled to images of shape

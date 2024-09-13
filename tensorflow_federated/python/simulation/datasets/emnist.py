@@ -156,7 +156,8 @@ def _get_synthetic_digits_data():
   pixels = tf.stack(img_list, axis=0)
   labels = tf.constant(range(10), dtype=tf.int32)
 
-  return collections.OrderedDict(label=labels, pixels=pixels)
+  data = collections.OrderedDict(label=labels, pixels=pixels)
+  return tf.nest.map_structure(lambda x: x.numpy(), data)
 
 
 # pyformat: disable

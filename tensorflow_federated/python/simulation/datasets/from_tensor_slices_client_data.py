@@ -47,7 +47,9 @@ class TestClientData(client_data.ClientData):
         lists, tuples, or dicts for passing to
         `tf.data.Dataset.from_tensor_slices`. Note that namedtuples and attrs
         classes are not explicitly supported, but a user can convert their data
-        from those formats to a dict, and then use this class.
+        from those formats to a dict, and then use this class. The leaves of
+        this dictionary must not be `tf.Tensor`s, in order to avoid putting
+        eager tensors into graphs.
 
     Raises:
       ValueError: If a client with no data is found.
@@ -55,8 +57,7 @@ class TestClientData(client_data.ClientData):
         structures are namedtuples, or its value structures are not either
         strictly lists, strictly (standard, non-named) tuples, or strictly
         dictionaries.
-      TypeError: If flattened values in tensor_slices_dict convert to different
-        TensorFlow data types.
+      TypeError: If any leaf of `tensor_slices_dict` is a `tf.Tensor`.
     """
     py_typecheck.check_type(tensor_slices_dict, dict)
     tensor_slices_dict = copy.deepcopy(tensor_slices_dict)
@@ -76,44 +77,12 @@ class TestClientData(client_data.ClientData):
     for structure in structures:
       py_typecheck.check_type(structure, type(example_structure))
 
-    def check_types_match(tensors, expected_dtypes):
-      for tensor, expected_dtype in zip(tensors, expected_dtypes):
-        if tensor.dtype is not expected_dtype:
-          raise TypeError(
-              'The input tensor_slices_dict must have entries that convert '
-              'to identical TensorFlow data types, but found two different '
-              'entries with values of %s and %s'
-              % (expected_dtype, tensor.dtype)
-          )
-
-    if isinstance(example_structure, dict):
-      # This is needed to keep data that was loosely specified in a list or
-      # tuple together in a common object (a tf.Tensor or tf.RaggedTensor), for
-      # correct flattening.
-      def convert_any_lists_of_strings_or_bytes_to_ragged_tensors(structure):
-        for key, entries in structure.items():
-          if isinstance(entries, (list, tuple)):
-            if isinstance(entries[0], (bytes, str)):
-              structure[key] = tf.ragged.constant(entries)
-            else:
-              structure[key] = tf.constant(entries)
-
-      convert_any_lists_of_strings_or_bytes_to_ragged_tensors(example_structure)
-      self._example_structure = example_structure
-      self._dtypes = [
-          tf.constant(x).dtype for x in tf.nest.flatten(example_structure)
-      ]
-
-      for s in structures:
-        convert_any_lists_of_strings_or_bytes_to_ragged_tensors(s)
-        check_types_match(
-            [tf.constant(x) for x in tf.nest.flatten(s)], self._dtypes
+    for leaf in tf.nest.flatten(tensor_slices_dict):
+      if tf.is_tensor(leaf):
+        raise TypeError(
+            'Tensor slices must not be TF tensors. Consider converting them to'
+            ' numpy values instead.'
         )
-    else:
-      self._example_structure = None
-      self._dtypes = [tf.constant(example_structure).dtype]
-      for s in structures:
-        check_types_match([tf.constant(s)], self._dtypes)
 
     self._tensor_slices_dict = tensor_slices_dict
     example_dataset = self.create_tf_dataset_for_client(self.client_ids[0])
@@ -160,63 +129,18 @@ class TestClientData(client_data.ClientData):
       tf.errors.InvalidArgumentError: If no data can be found for the
         `client_id` provided (i.e., it's not in the set of clients).
     """
-    keys = tf.constant(list(self._tensor_slices_dict.keys()))
-
+    keys = [x for x in self._tensor_slices_dict.keys()]
     client_id_valid = tf.math.reduce_any(tf.math.equal(client_id, keys))
     tf.Assert(client_id_valid, ['No data found for client ', client_id])
-
-    # An alternative strategy to the one below might be to have a
-    # tf.constant ordered in the same order as the keys (client ids),
-    # containing the data entries for each client. This proved complicated
-    # to get working in practice, and so the `tf.lookup.StaticHashTable` was
-    # opted for instead. If at some point problems are encountered with the
-    # hashtables (such as memory leaks), this might be revisited.
-
-    # Serialize and flatten (if necessary) the contents of the input dict.
-    serialized_flat_structures = [[] for _ in range(len(self._dtypes))]
-    for s in self._tensor_slices_dict.values():
-      flat_structure = tf.nest.flatten(s) if isinstance(s, dict) else [s]
-      for i, x in enumerate(flat_structure):
-        serialized_flat_structures[i].append(
-            tf.io.serialize_tensor(tf.constant(x))
-        )
-
-    # Put the data into TF hash tables. There is one hash table for each
-    # field in the client data.
-    hash_tables = []
-    for i in range(len(self._dtypes)):
-      hash_tables.append(
-          tf.lookup.StaticHashTable(
-              initializer=tf.lookup.KeyValueTensorInitializer(
-                  keys=keys, values=serialized_flat_structures[i]
-              ),
-              # Note: This default_value should never be encountered, as
-              # we do a check above that the client_id is in the set of
-              # keys.
-              default_value='unknown_value',
-          )
-      )
-
-    # Recover data relating to the given client_id from the hash table.
-    tensor_slices_list = [
-        tf.io.parse_tensor(
-            table.lookup(tf.convert_to_tensor(client_id)), out_type=dtype
-        )
-        for table, dtype in zip(hash_tables, self._dtypes)
+    datasets = [
+        tf.data.Dataset.from_tensor_slices(x)
+        for x in self._tensor_slices_dict.values()
     ]
-
-    # If necessary, unflatten the structures back into desired structure.
-    if self._example_structure is not None:
-      tensor_slices = tf.nest.pack_sequence_as(
-          self._example_structure, tensor_slices_list
-      )
-      for k, v in self._example_structure.items():
-        tensor_slices[k] = tf.stack(tensor_slices[k])
-        tensor_slices[k].set_shape([None] + list(v.shape)[1:])
-    else:
-      tensor_slices = tensor_slices_list[0]
-
-    return tf.data.Dataset.from_tensor_slices(tensor_slices)
+    out_dataset = datasets[0]
+    for k, d in zip(keys, datasets):
+      if tf.math.equal(k, client_id):
+        out_dataset = d
+    return out_dataset
 
   @property
   def serializable_dataset_fn(self):

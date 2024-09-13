@@ -227,9 +227,16 @@ def get_synthetic():
      characteristics (other than size) of those provided by
      `tff.simulation.datasets.stackoverflow.load_data`.
   """
-  return from_tensor_slices_client_data.TestClientData(
-      create_synthetic_data_dictionary()
-  )
+  data = create_synthetic_data_dictionary()
+
+  def convert_if_tensor(x):
+    if tf.is_tensor(x):
+      return x.numpy()
+    else:
+      return x
+
+  data = tf.nest.map_structure(convert_if_tensor, data)
+  return from_tensor_slices_client_data.TestClientData(data)
 
 
 def create_synthetic_data_dictionary():

@@ -347,4 +347,5 @@ def get_synthetic() -> ClientData:
   data = collections.OrderedDict(
       [('image/decoded', images_as_tensor), ('class', labels)]
   )
+  data = tf.nest.map_structure(lambda x: x.numpy(), data)
   return from_tensor_slices_client_data.TestClientData({'synthetic': data})
