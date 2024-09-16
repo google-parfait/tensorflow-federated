@@ -33,8 +33,8 @@ class MockTensorData : public TensorData {
  public:
   MockTensorData(size_t data_pointer_offset, size_t size);
 
-  MOCK_METHOD(const void*, data, (), (const override));
-  MOCK_METHOD(size_t, byte_size, (), (const override));
+  MOCK_METHOD(const void*, data, (), (const, override));
+  MOCK_METHOD(size_t, byte_size, (), (const, override));
 };
 
 MockTensorData::MockTensorData(size_t data_pointer_offset, size_t size) {
