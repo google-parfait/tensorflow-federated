@@ -8,6 +8,8 @@ and this project adheres to
 
 ## Unreleased
 
+## Release 0.87.0
+
 ### Added
 
 *   Added an implementation of AdamW to `tff.learning.optimizers`.
