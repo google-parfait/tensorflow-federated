@@ -142,14 +142,6 @@ class MimeLiteClientWorkComputationTest(
           client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
       )
 
-  def test_keras_optimizer_raises(self):
-    with self.assertRaises(TypeError):
-      mime._build_mime_lite_client_work(
-          model_examples.LinearRegression,
-          lambda: tf.keras.optimizers.SGD(1.0),
-          client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-      )
-
   def test_unweighted_full_gradient_aggregator_raises(self):
     with self.assertRaises(TypeError):
       mime._build_mime_lite_client_work(

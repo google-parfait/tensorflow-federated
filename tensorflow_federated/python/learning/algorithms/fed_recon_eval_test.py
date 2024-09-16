@@ -179,20 +179,10 @@ def _get_tff_optimizer(learning_rate=0.1):
   return sgdm.build_sgdm(learning_rate=learning_rate, momentum=0.5)
 
 
-def _get_keras_optimizer_fn(learning_rate=0.1):
-  return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
-
-
 class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
       ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
-      (
-          'keras_model_with_keras_opt',
-          keras_linear_model_fn,
-          _get_keras_optimizer_fn,
-      ),
       ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
   def test_federated_reconstruction_no_split_data(self, model_fn, optimizer_fn):
@@ -300,13 +290,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(eval_result['num_over'], 3.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
       ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
-      (
-          'keras_model_with_keras_opt',
-          keras_linear_model_fn,
-          _get_keras_optimizer_fn,
-      ),
       ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
   def test_federated_reconstruction_split_data(self, model_fn, optimizer_fn):
@@ -398,13 +382,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(eval_result['num_over'], 1.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
       ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
-      (
-          'keras_model_with_keras_opt',
-          keras_linear_model_fn,
-          _get_keras_optimizer_fn,
-      ),
       ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
   def test_federated_reconstruction_split_data_multiple_epochs(
@@ -507,13 +485,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(eval_result['num_over'], 7.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
       ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
-      (
-          'keras_model_with_keras_opt',
-          keras_linear_model_fn,
-          _get_keras_optimizer_fn,
-      ),
       ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
   def test_federated_reconstruction_recon_lr_0(self, model_fn, optimizer_fn):
@@ -620,13 +592,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(eval_result['num_over'], 3.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
       ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
-      (
-          'keras_model_with_keras_opt',
-          keras_linear_model_fn,
-          _get_keras_optimizer_fn,
-      ),
       ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
   def test_federated_reconstruction_skip_recon(self, model_fn, optimizer_fn):
@@ -731,13 +697,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(eval_result['num_over'], 6.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
       ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
-      (
-          'keras_model_with_keras_opt',
-          keras_linear_model_fn,
-          _get_keras_optimizer_fn,
-      ),
       ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
   def test_federated_reconstruction_metrics_none_loss_decreases(

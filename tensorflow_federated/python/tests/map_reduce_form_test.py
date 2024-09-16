@@ -50,7 +50,9 @@ def construct_example_training_comp() -> tff.learning.templates.LearningProcess:
 
   return tff.learning.algorithms.build_weighted_fed_avg(
       model_fn,
-      client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01),
+      client_optimizer_fn=tff.learning.optimizers.build_sgdm(
+          learning_rate=0.01
+      ),
   )
 
 
@@ -81,6 +83,9 @@ class MapReduceFormTest(tf.test.TestCase):
         '        float32[1]\n'
         '      >,\n'
         '      non_trainable=<>\n'
+        '    >,\n'
+        '    <\n'
+        '      learning_rate=float32\n'
         '    >\n'
         '  >\n'
         '> -> <\n'

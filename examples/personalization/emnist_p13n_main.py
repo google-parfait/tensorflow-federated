@@ -148,8 +148,10 @@ def main(argv):
     )
 
   # Build a standard federated averaging process for training the global model.
-  client_opt = lambda: tf.keras.optimizers.SGD(learning_rate=0.02)
-  server_opt = lambda: tf.keras.optimizers.SGD(learning_rate=1.0, momentum=0.9)
+  client_opt = tff.learning.optimizers.build_sgdm(learning_rate=0.02)
+  server_opt = tff.learning.optimizers.build_sgdm(
+      learning_rate=1.0, momentum=0.9
+  )
   learning_process = tff.learning.algorithms.build_weighted_fed_avg(
       model_fn=model_fn,
       client_optimizer_fn=client_opt,

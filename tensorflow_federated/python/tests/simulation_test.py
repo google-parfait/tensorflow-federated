@@ -25,8 +25,8 @@ def learning_process_builder(
 ) -> tff.learning.templates.LearningProcess:
   return tff.learning.algorithms.build_weighted_fed_avg(
       model_fn=model_fn,
-      client_optimizer_fn=tf.keras.optimizers.SGD,
-      server_optimizer_fn=tf.keras.optimizers.SGD,
+      client_optimizer_fn=tff.learning.optimizers.build_sgdm(),
+      server_optimizer_fn=tff.learning.optimizers.build_sgdm(),
   )
 
 
