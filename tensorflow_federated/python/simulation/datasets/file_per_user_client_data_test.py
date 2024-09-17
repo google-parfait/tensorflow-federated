@@ -19,6 +19,7 @@ Learning simulations.
 """
 
 import collections
+import functools
 import os
 import os.path
 import tempfile
@@ -219,12 +220,9 @@ class FilePerUserClientDataTest(tf.test.TestCase):
     )
     for client_id, expected_num_examples in client_id_counters.items():
       tf_dataset = data.dataset_computation(client_id)
-      self.assertIsInstance(tf_dataset, tf.data.Dataset)
 
-      actual_num_examples = tf_dataset.reduce(0, lambda x, _: x + 1)
-      self.assertEqual(
-          self.evaluate(actual_num_examples), expected_num_examples
-      )
+      actual_num_examples = functools.reduce(lambda x, _: x + 1, tf_dataset, 0)
+      self.assertEqual(actual_num_examples, expected_num_examples)
 
       # Assert the actual examples provided are the same.
       expected_examples = [
@@ -232,7 +230,6 @@ class FilePerUserClientDataTest(tf.test.TestCase):
       ]
       for actual in tf_dataset:
         expected = expected_examples.pop(0)
-        actual = self.evaluate(actual)
         self.assertLen(actual, len(expected))
         for i, e in enumerate(expected):
           if isinstance(e, list):
@@ -331,8 +328,7 @@ class PreprocessFilePerUserClientDataTest(tf.test.TestCase):
 
     for client_id in data.client_ids:
       client_dataset = data.dataset_computation(client_id)
-      self.assertIsInstance(client_dataset, tf.data.Dataset)
-      num_examples = client_dataset.reduce(0, lambda x, _: x + 1)
+      num_examples = functools.reduce(lambda x, _: x + 1, client_dataset, 0)
       self.assertEqual(num_examples, 1)
 
   def test_dataset_from_large_number_of_clients(self):

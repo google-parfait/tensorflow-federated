@@ -315,9 +315,9 @@ class FedEvalProcessTest(tf.test.TestCase):
       return {'temp': np.array(temps, dtype=np.float32)}
 
     clients_data = [
-        [_temp_dict([1.0, 10.0, 2.0, 7.0]), _temp_dict([6.0, 11.0])],
-        [_temp_dict([9.0, 12.0, 13.0])],
-        [_temp_dict([1.0]), _temp_dict([22.0, 23.0])],
+        [_temp_dict([1.0, 10.0, 2.0, 7.0]), _temp_dict([6.0, 11.0, 0.0, 0.0])],
+        [_temp_dict([9.0, 12.0, 13.0, 0.0])],
+        [_temp_dict([1.0, 0.0, 0.0, 0.0]), _temp_dict([22.0, 23.0, 0.0, 0.0])],
     ]
 
     output = eval_process.next(new_state, clients_data)
@@ -401,9 +401,9 @@ class FedEvalProcessTest(tf.test.TestCase):
       return {'temp': np.array(temps, dtype=np.float32)}
 
     clients_data = [
-        [_temp_dict([1.0, 10.0, 2.0, 7.0]), _temp_dict([6.0, 11.0])],
-        [_temp_dict([9.0, 12.0, 13.0])],
-        [_temp_dict([1.0]), _temp_dict([22.0, 23.0])],
+        [_temp_dict([1.0, 10.0, 2.0, 7.0]), _temp_dict([6.0, 11.0, 0.0, 0.0])],
+        [_temp_dict([9.0, 12.0, 13.0, 0.0])],
+        [_temp_dict([1.0, 0.0, 0.0, 0.0]), _temp_dict([22.0, 23.0, 0.0, 0.0])],
     ]
 
     output = eval_process.next(state, clients_data)
@@ -459,7 +459,7 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
             y=[[1.0], [2.0], [3.0], [4.0]],
         )
     )
-    return [dataset1.repeat(2).batch(3), dataset2.repeat(2).batch(3)]
+    return [dataset1.repeat(3).batch(3), dataset2.repeat(3).batch(3)]
 
   def test_raises_on_non_callable_or_functional_model(self):
     with self.assertRaisesRegex(TypeError, 'is not a callable'):

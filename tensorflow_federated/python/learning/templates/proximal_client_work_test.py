@@ -144,11 +144,10 @@ def create_test_dataset() -> tf.data.Dataset:
           y=[[0.0], [0.0], [1.0], [1.0]],
       )
   )
-  # Repeat the dataset 2 times with batches of 3 examples,
-  # producing 3 minibatches (the last one with only 2 examples).
-  # Note that `batch` is required for this dataset to be useable,
+  # Repeat the dataset 3 times with batches of 3 examples, producing 3
+  # minibatches. Note that `batch` is required for this dataset to be useable,
   # as it adds the batch dimension which is expected by the model.
-  return dataset.repeat(2).batch(3)
+  return dataset.repeat(3).batch(3)
 
 
 def create_test_initial_weights() -> model_weights.ModelWeights:
@@ -212,8 +211,8 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
     if weighting == client_weight_lib.ClientWeighting.UNIFORM:
       self.assertEqual(client_result.update_weight, 1.0)
     else:
-      self.assertEqual(client_result.update_weight, 8.0)
-    self.assertDictContainsSubset({'num_examples': 8}, model_output)
+      self.assertEqual(client_result.update_weight, 12.0)
+    self.assertDictContainsSubset({'num_examples': 12}, model_output)
     self.assertBetween(model_output['loss'][0], np.finfo(np.float32).eps, 10.0)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
@@ -274,7 +273,7 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
         process.initialize(), client_model_weights, client_data
     )
     # Train metrics should be multiplied by two by the custom aggregator.
-    self.assertEqual(output.measurements['train']['num_examples'], 16)
+    self.assertEqual(output.measurements['train']['num_examples'], 24)
 
   @parameterized.named_parameters(
       ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
@@ -402,8 +401,8 @@ class FunctionalProximalClientWorkExecutionTest(
     if weighting == client_weight_lib.ClientWeighting.UNIFORM:
       self.assertEqual(client_result.update_weight, 1.0)
     else:
-      self.assertEqual(client_result.update_weight, 8.0)
-    self.assertDictContainsSubset({'num_examples': 8}, model_output)
+      self.assertEqual(client_result.update_weight, 12.0)
+    self.assertDictContainsSubset({'num_examples': 12}, model_output)
     self.assertBetween(model_output['loss'], np.finfo(np.float32).eps, 10.0)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
@@ -469,7 +468,7 @@ class FunctionalProximalClientWorkExecutionTest(
         process.initialize(), client_model_weights, client_data
     )
     # Train metrics should be multiplied by two by the custom aggregator.
-    self.assertEqual(output.measurements['train']['num_examples'], 16)
+    self.assertEqual(output.measurements['train']['num_examples'], 24)
 
   def test_delta_regularizer_yields_smaller_model_delta(self):
     model = create_functional_model()

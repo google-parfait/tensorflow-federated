@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import os
-
 import sqlite3
+
 from absl import flags
 import tensorflow as tf
 
@@ -108,7 +109,7 @@ class SqlClientDataTest(tf.test.TestCase):
       )
       for client_id, expected_examples in example_counts.items():
         dataset = client_data.create_tf_dataset_for_client(client_id)
-        actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+        actual_examples = functools.reduce(lambda s, x: s + 1, dataset, 0)
         self.assertEqual(actual_examples, expected_examples, msg=client_id)
 
     with self.subTest('no_split'):
@@ -131,7 +132,7 @@ class SqlClientDataTest(tf.test.TestCase):
       )
       expected_examples = sum(example_counts.values())
       dataset = client_data.create_tf_dataset_from_all_clients()
-      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      actual_examples = functools.reduce(lambda s, x: s + 1, dataset, 0)
       self.assertEqual(actual_examples, expected_examples)
 
     with self.subTest('no_split'):
@@ -152,7 +153,7 @@ class SqlClientDataTest(tf.test.TestCase):
           '(str -> str*)',
       )
       dataset = client_data.dataset_computation('test_c')
-      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      actual_examples = functools.reduce(lambda s, x: s + 1, dataset, 0)
       self.assertEqual(actual_examples, expected_examples)
 
     with self.subTest('no_split'):
@@ -196,7 +197,7 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       )
       for client_id, expected_examples in example_counts.items():
         dataset = client_data.create_tf_dataset_for_client(client_id)
-        actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+        actual_examples = functools.reduce(lambda s, x: s + 1, dataset, 0)
         self.assertEqual(actual_examples, expected_examples, msg=client_id)
 
     with self.subTest('no_split'):
@@ -220,7 +221,7 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       )
       expected_examples = sum(example_counts.values())
       dataset = client_data.create_tf_dataset_from_all_clients()
-      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      actual_examples = functools.reduce(lambda s, x: s + 1, dataset, 0)
       self.assertEqual(actual_examples, expected_examples)
 
     with self.subTest('no_split'):
@@ -242,7 +243,7 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
           '(str -> str*)',
       )
       dataset = client_data.dataset_computation('test_c')
-      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      actual_examples = functools.reduce(lambda s, x: s + 1, dataset, 0)
       self.assertEqual(actual_examples, expected_examples)
 
     with self.subTest('no_split'):
@@ -265,7 +266,7 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       )
       for client_id, expected_examples in example_counts.items():
         dataset = client_data.create_tf_dataset_for_client(client_id)
-        actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+        actual_examples = functools.reduce(lambda s, x: s + 1, dataset, 0)
         self.assertEqual(actual_examples, expected_examples, msg=client_id)
 
     with self.subTest('no_split'):
@@ -284,7 +285,7 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       client_data = client_data.preprocess(lambda x: x.take(1))
       expected_examples = len(client_data.client_ids)
       dataset = client_data.create_tf_dataset_from_all_clients()
-      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      actual_examples = functools.reduce(lambda s, x: s + 1, dataset, 0)
       self.assertEqual(actual_examples, expected_examples)
 
     with self.subTest('no_split'):
@@ -305,7 +306,7 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
           '(str -> str*)',
       )
       dataset = client_data.dataset_computation('test_c')
-      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      actual_examples = functools.reduce(lambda s, x: s + 1, dataset, 0)
       self.assertEqual(actual_examples, expected_examples)
 
     with self.subTest('no_split'):

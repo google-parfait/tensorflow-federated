@@ -43,7 +43,7 @@ def _dataset() -> tf.data.Dataset:
   # producing 3 minibatches (the last one with only 2 examples).
   # Note that `batch` is required for this dataset to be useable,
   # as it adds the batch dimension which is expected by the model.
-  return dataset.repeat(2).batch(3)
+  return dataset.repeat(3).batch(3)
 
 
 def _model_fn() -> model_examples.LinearRegression:
@@ -102,8 +102,8 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # Both trainable parameters should have gradients, and we don't return the
     # non-trainable 'c'. Model deltas for squared error:
     self.assertAllClose(client_result.update, [[[-1.0], [0.0]], -1.0])
-    self.assertAllClose(client_result.update_weight, 8.0)
-    self.assertDictContainsSubset({'num_examples': 8}, model_output)
+    self.assertAllClose(client_result.update_weight, 12.0)
+    self.assertDictContainsSubset({'num_examples': 12}, model_output)
 
   @parameterized.named_parameters(
       ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
@@ -122,8 +122,8 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # Both trainable parameters should have gradients, and we don't return the
     # non-trainable 'c'. Model deltas for squared error:
     self.assertAllClose(client_result.update, [[[-1.0], [0.0]], -1.0, 0.0])
-    self.assertAllClose(client_result.update_weight, 8.0)
-    self.assertDictContainsSubset({'num_examples': 8}, model_output)
+    self.assertAllClose(client_result.update_weight, 12.0)
+    self.assertDictContainsSubset({'num_examples': 12}, model_output)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
@@ -206,8 +206,8 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # Both trainable parameters should have gradients. Model deltas for squared
     # error:
     self.assertAllClose(client_result.update, [[[-2.0], [0.0]], -2.0])
-    self.assertAllClose(client_result.update_weight, 8.0)
-    self.assertDictContainsSubset({'num_examples': 8}, model_output)
+    self.assertAllClose(client_result.update_weight, 12.0)
+    self.assertDictContainsSubset({'num_examples': 12}, model_output)
 
   @parameterized.named_parameters(
       ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
@@ -226,8 +226,8 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # Both trainable parameters should have gradients. Model deltas for squared
     # error:
     self.assertAllClose(client_result.update, [[[-2.0], [0.0]], -2.0, 0.0])
-    self.assertAllClose(client_result.update_weight, 8.0)
-    self.assertDictContainsSubset({'num_examples': 8}, model_output)
+    self.assertAllClose(client_result.update_weight, 12.0)
+    self.assertDictContainsSubset({'num_examples': 12}, model_output)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):

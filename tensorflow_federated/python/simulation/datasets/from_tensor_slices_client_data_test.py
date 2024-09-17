@@ -96,7 +96,7 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(len(a_dict), len(b_dict))
     self.assertAllEqual(a_dict.keys(), b_dict.keys())
     for key in a_dict:
-      self.assertAllEqual(a_dict[key].numpy(), b_dict[key].numpy())
+      self.assertAllEqual(a_dict[key], b_dict[key])
 
   def test_raises_on_dict_with_leaf_tf_tensors(self):
     tensor_slices_dict = {'a': [tf.constant(1)]}
@@ -283,7 +283,6 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
       expected_dataset = tf.data.Dataset.from_tensor_slices(
           TEST_DATA[client_id]
       )
-      self.assertIsInstance(tf_dataset, tf.data.Dataset)
       self.assertSameDatasets(expected_dataset, tf_dataset)
 
   def test_dataset_computation_where_client_data_is_tuples(self):
@@ -313,7 +312,6 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
       expected_dataset = tf.data.Dataset.from_tensor_slices(
           TEST_DATA_WITH_TUPLES[client_id]
       )
-      self.assertIsInstance(tf_dataset, tf.data.Dataset)
       self.assertSameDatasets(expected_dataset, tf_dataset)
 
   def test_dataset_computation_where_client_data_is_ordered_dicts(self):
@@ -358,7 +356,6 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     # we received a tf.data.Dataset with the correct data.
     for client_id in TEST_DATA_WITH_ORDEREDDICTS:
       dataset = dataset_computation(client_id)
-      self.assertIsInstance(dataset, tf.data.Dataset)
 
       expected_dataset = tf.data.Dataset.from_tensor_slices(
           TEST_DATA_WITH_ORDEREDDICTS[client_id]

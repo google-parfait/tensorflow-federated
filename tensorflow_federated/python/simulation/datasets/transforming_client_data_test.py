@@ -127,7 +127,6 @@ class TransformingClientDataTest(tf.test.TestCase):
   def test_dataset_computation(self):
     for client_id in TRANSFORMED_CLIENT_DATA.client_ids:
       actual_dataset = TRANSFORMED_CLIENT_DATA.dataset_computation(client_id)
-      self.assertIsInstance(actual_dataset, tf.data.Dataset)
       pattern = r'^(\d*)_(.*)$'
       match = re.search(pattern, client_id)
       client = match.group(2)
@@ -138,8 +137,7 @@ class TransformingClientDataTest(tf.test.TestCase):
           _make_transform_expanded(client_id)
       )
       for actual_client_data, expected_client_data in zip(
-          actual_dataset.as_numpy_iterator(),
-          expected_dataset.as_numpy_iterator(),
+          actual_dataset, expected_dataset
       ):
         for actual_datum, expected_datum in zip(
             actual_client_data, expected_client_data
