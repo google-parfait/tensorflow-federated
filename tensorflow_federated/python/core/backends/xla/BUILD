@@ -29,6 +29,7 @@ py_library(
     ],
     deps = [
         "//tensorflow_federated/python/core/backends/native:compiler",
+        "//tensorflow_federated/python/core/environments/jax_frontend:jax_computation",
         "//tensorflow_federated/python/core/environments/xla_backend:xla_executor_bindings",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",

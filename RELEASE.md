@@ -8,6 +8,10 @@ and this project adheres to
 
 ## Unreleased
 
+### Changed
+
+*   Updated JAX computations and contexts to be able to handle sequence types.
+
 ## Release 0.87.0
 
 ### Added

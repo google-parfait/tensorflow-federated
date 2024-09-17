@@ -26,6 +26,27 @@ from tensorflow_federated.python.core.impl.computation import polymorphic_comput
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
+class ToNumpyTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('scalar', lambda: jax.numpy.array(1), 1),
+      ('array', lambda: jax.numpy.array([1, 2, 3]), np.array([1, 2, 3])),
+      (
+          'list_array',
+          lambda: [jax.numpy.array(1), jax.numpy.array(2), jax.numpy.array(3)],
+          [1, 2, 3],
+      ),
+  )
+  def test_returns_expected_result(self, value_factory, expected_result):
+    value = value_factory()
+    actual_result = jax_computation._to_numpy(value)
+
+    if isinstance(actual_result, (np.ndarray, np.generic)):
+      np.testing.assert_array_equal(actual_result, expected_result)
+    else:
+      self.assertEqual(actual_result, expected_result)
+
+
 class JaxComputationTest(parameterized.TestCase):
 
   def test_returns_concrete_computation_with_no_arg(self):

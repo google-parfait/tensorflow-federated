@@ -18,6 +18,7 @@ from typing import Optional, Union
 
 import jax
 import numpy as np
+import tree
 
 from tensorflow_federated.python.core.environments.jax_frontend import jax_serialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -42,6 +43,28 @@ def _contains_dtype(
     )
 
   return type_analysis.contains(type_spec, predicate)
+
+
+def _to_numpy(value: object) -> object:
+  """Convert `value` to a numpy value."""
+
+  def _fn(obj):
+    if isinstance(obj, jax.Array):
+      return np.array(obj)
+    else:
+      return None
+
+  return tree.traverse(_fn, value)
+
+
+def transform_args(args: object) -> object:
+  """Transform the arguments to Jax computations."""
+  return _to_numpy(args)
+
+
+def transform_result(result: object) -> object:
+  """Transforms the result of Jax computations."""
+  return _to_numpy(result)
 
 
 def _jax_wrapper_fn(

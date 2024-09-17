@@ -49,8 +49,8 @@ class ToNumpyTest(parameterized.TestCase):
           [1, 2, 3],
       ),
   )
-  def test_returns_expected_result(self, result, expected_result):
-    actual_result = tensorflow_computation._to_numpy(result)
+  def test_returns_expected_result(self, value, expected_result):
+    actual_result = tensorflow_computation._to_numpy(value)
 
     if isinstance(actual_result, (np.ndarray, np.generic)):
       np.testing.assert_array_equal(actual_result, expected_result)

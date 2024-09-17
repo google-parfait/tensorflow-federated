@@ -14,6 +14,7 @@
 """Execution contexts for the XLA backend."""
 
 from tensorflow_federated.python.core.backends.native import compiler
+from tensorflow_federated.python.core.environments.jax_frontend import jax_computation
 from tensorflow_federated.python.core.environments.xla_backend import xla_executor_bindings
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -57,6 +58,8 @@ def create_async_local_cpp_execution_context(
   return async_execution_context.AsyncExecutionContext(
       executor_fn=factory,
       compiler_fn=compiler.transform_to_native_form,
+      transform_args=jax_computation.transform_args,
+      transform_result=jax_computation.transform_result,
   )
 
 
@@ -98,6 +101,8 @@ def create_sync_local_cpp_execution_context(
   return sync_execution_context.SyncExecutionContext(
       executor_fn=factory,
       compiler_fn=compiler.transform_to_native_form,
+      transform_args=jax_computation.transform_args,
+      transform_result=jax_computation.transform_result,
   )
 
 
