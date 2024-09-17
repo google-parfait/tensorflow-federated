@@ -89,7 +89,10 @@ jobs:
         gh release create "v${{ env.version }}" \
             --target="${{ github.sha }}" \
             --title="TensorFlow Federated ${{ env.version }}" \
-            --notes='${{ env.description }}'
+            --notes="$(cat <<'EOF'
+        ${{ env.description }}
+        EOF
+        )"
 
   build-package:
     name: Build Package
