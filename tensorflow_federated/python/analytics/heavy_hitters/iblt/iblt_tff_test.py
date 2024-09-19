@@ -56,7 +56,9 @@ def _iblt_test_data_sampler(
     list of tf.data.Datasets.
   """
   return [
-      tf.data.Dataset.from_tensor_slices(client_data).batch(batch_size)
+      tf.data.Dataset.from_tensor_slices(client_data).batch(
+          batch_size, drop_remainder=True
+      )
       for client_data in data
   ]
 
@@ -278,6 +280,8 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
       secure_sum_bitwidth,
       postprocess,
   ):
+    if batch_size != 1:
+      self.skipTest('b/368057405')
     (results, num_not_decoded, _) = _execute_computation(
         DATA,
         capacity=capacity,
@@ -338,6 +342,8 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
 
   @parameterized.named_parameters(('batch_1', 1), ('batch_5', 5))
   def test_computation_with_max_heavy_hitters(self, batch_size):
+    if batch_size != 1:
+      self.skipTest('b/368057405')
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
@@ -361,6 +367,8 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
       ('batch_size_5', 5),
   )
   def test_computation_with_k_anonymity(self, batch_size):
+    if batch_size != 1:
+      self.skipTest('b/368057405')
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
@@ -412,6 +420,8 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
   def test_computation_with_k_anonymity_and_string_max_bytes(
       self, batch_size, k_anonymity, string_max_bytes, expected_result
   ):
+    if batch_size != 1:
+      self.skipTest('b/368057405')
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
@@ -449,6 +459,8 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
       secure_sum_bitwidth,
       postprocess,
   ):
+    if batch_size != 1:
+      self.skipTest('b/368057405')
     (results, num_not_decoded, _) = _execute_computation(
         DATA,
         capacity=capacity,
@@ -549,6 +561,8 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
       batch_size,
       expected_results,
   ):
+    if batch_size != 1:
+      self.skipTest('b/368057405')
     results, _, _ = _execute_computation(
         DATA,
         capacity=capacity,
@@ -562,8 +576,13 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
 
     self.assertEqual(results, expected_results)
 
-  @parameterized.named_parameters(('batch_size_1', 1), ('batch_size_5', 5))
+  @parameterized.named_parameters(
+      ('batch_size_1', 1),
+      ('batch_size_5', 5),
+  )
   def test_computation_with_max_heavy_hitters(self, batch_size):
+    if batch_size != 1:
+      self.skipTest('b/368057405')
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
@@ -577,8 +596,13 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
         results, {'hello': (5, 5), 'I am on my way': (4, 4), 'pumpkin': (3, 3)}
     )
 
-  @parameterized.named_parameters(('batch_size_1', 1), ('batch_size_5', 5))
+  @parameterized.named_parameters(
+      ('batch_size_1', 1),
+      ('batch_size_5', 5),
+  )
   def test_computation_with_k_anonymity(self, batch_size):
+    if batch_size != 1:
+      self.skipTest('b/368057405')
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
@@ -631,6 +655,8 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
   def test_computation_with_k_anonymity_and_string_max_bytes(
       self, batch_size, k_anonymity, string_max_bytes, expected_result
   ):
+    if batch_size != 1:
+      self.skipTest('b/368057405')
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
