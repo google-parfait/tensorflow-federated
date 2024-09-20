@@ -30,22 +30,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import value_reference
 
 
-def _materialized_value_to_type(
-    value: value_reference.MaterializedValue,
-) -> value_reference.MaterializableTypeSignature:
-  """Returns a `tff.Type` for the `value`."""
-  if isinstance(value, bool):
-    return computation_types.TensorType(np.bool_)
-  elif isinstance(value, int):
-    return computation_types.TensorType(np.int32)
-  elif isinstance(value, str):
-    return computation_types.TensorType(np.str_)
-  elif isinstance(value, tf.data.Dataset):
-    return computation_types.SequenceType(np.int32)
-  else:
-    raise NotImplementedError(f'Unexpected type found: {type(value)}.')
-
-
 class TestMaterializableValueReference(
     value_reference.MaterializableValueReference
 ):
@@ -53,7 +37,17 @@ class TestMaterializableValueReference(
 
   def __init__(self, value: value_reference.MaterializedValue):
     self._value = value
-    self._type_signature = _materialized_value_to_type(value)
+
+    if isinstance(value, bool):
+      self._type_signature = computation_types.TensorType(np.bool_)
+    elif isinstance(value, int):
+      self._type_signature = computation_types.TensorType(np.int32)
+    elif isinstance(value, str):
+      self._type_signature = computation_types.TensorType(np.str_)
+    elif isinstance(value, list):
+      self._type_signature = computation_types.SequenceType(np.int32)
+    else:
+      raise NotImplementedError(f'Unexpected type found: {type(value)}.')
 
   @property
   def type_signature(self) -> value_reference.MaterializableTypeSignature:
@@ -134,8 +128,6 @@ def to_python(value: object) -> object:
         return obj.tolist()
       else:
         return obj
-    elif isinstance(obj, tf.data.Dataset):
-      return list(obj)
     elif isinstance(obj, np.ndarray):
       return obj.tolist()
     else:

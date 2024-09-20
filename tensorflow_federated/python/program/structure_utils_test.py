@@ -43,9 +43,7 @@ class FilterStructureTest(parameterized.TestCase):
       ),
       (
           'materializable_value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
           None,
       ),
       # serializable values
@@ -179,14 +177,10 @@ class FlattenWithNameTest(parameterized.TestCase):
       ),
       (
           'materializable_value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
           [(
               '',
-              program_test_utils.TestMaterializableValueReference(
-                  tf.data.Dataset.from_tensor_slices([1, 2, 3])
-              ),
+              program_test_utils.TestMaterializableValueReference([1, 2, 3]),
           )],
       ),
       # serializable values
@@ -337,10 +331,12 @@ class MapStructureTest(absltest.TestCase):
   def test_returns_result(self):
     fn = lambda x, y: (x, y)
     structure1 = [1, 2, 3]
-    structure2 = [4, 5, 6]
+    structure2 = [4, 5, program_test_utils.TestAttrs(1, 2)]
 
     result = structure_utils.map_structure(fn, structure1, structure2)
-    self.assertEqual(result, [(1, 4), (2, 5), (3, 6)])
+    self.assertEqual(
+        result, [(1, 4), (2, 5), (3, program_test_utils.TestAttrs(1, 2))]
+    )
 
   def test_raises_value_error_with_no_structures(self):
     fn = lambda x, y: (x, y)
@@ -350,8 +346,8 @@ class MapStructureTest(absltest.TestCase):
 
   def test_raises_value_error_with_different_structures(self):
     fn = lambda x, y: (x, y)
-    structure1 = []
-    structure2 = [1, 2, 3]
+    structure1 = [1, 2, 3]
+    structure2 = [4, 5]
 
     with self.assertRaises(ValueError):
       structure_utils.map_structure(fn, structure1, structure2)
@@ -370,6 +366,46 @@ class MapStructureTest(absltest.TestCase):
 
     with self.assertRaises(TypeError):
       structure_utils.map_structure(fn, structure1, structure2)
+
+
+class MapStructureUpToTest(parameterized.TestCase):
+
+  def test_returns_result(self):
+    shallow = [[None], None]
+    fn = lambda x, y: (x, y)
+    structure1 = [[1, 2], 3]
+    structure2 = [[3, 4], program_test_utils.TestAttrs(1, 2)]
+
+    result = structure_utils.map_structure_up_to(
+        shallow, fn, structure1, structure2
+    )
+    self.assertEqual(
+        result, [[(1, 3)], (3, program_test_utils.TestAttrs(1, 2))]
+    )
+
+  def test_raises_value_error_with_no_structures(self):
+    shallow = [None, None, None]
+    fn = lambda x, y: (x, y)
+
+    with self.assertRaises(ValueError):
+      structure_utils.map_structure_up_to(shallow, fn)
+
+  def test_raises_value_error_with_different_structures(self):
+    shallow = [None, None, None]
+    fn = lambda x, y: (x, y)
+    structure1 = [1, 2, 3]
+    structure2 = [4, 5]
+
+    with self.assertRaises(ValueError):
+      structure_utils.map_structure_up_to(shallow, fn, structure1, structure2)
+
+  def test_does_not_raises_type_error_with_different_types(self):
+    shallow = [None, None, None]
+    fn = lambda x, y: (x, y)
+    structure1 = [1, 2, 3]
+    structure2 = (4, 5, 6)
+
+    structure_utils.map_structure_up_to(shallow, fn, structure1, structure2)
 
 
 if __name__ == '__main__':

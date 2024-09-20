@@ -218,8 +218,11 @@ class FileProgramStateManager(
         value = serializable_cls.from_bytes(value)
       return value
 
-    deserialized_state = structure_utils.map_structure(
-        _deserialize_as, structure, normalized_state
+    # Note: `map_structure_up_to` is used because `structure` may be shallower
+    # than `normalized_state`. For example, a `MaterializableValueReference` may
+    # reference a sequence of data.
+    deserialized_state = structure_utils.map_structure_up_to(
+        structure, _deserialize_as, structure, normalized_state
     )
 
     logging.info('Program state loaded: %s', path)

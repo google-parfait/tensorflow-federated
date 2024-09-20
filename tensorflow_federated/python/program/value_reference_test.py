@@ -17,7 +17,6 @@ import unittest
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.program import program_test_utils
@@ -43,10 +42,8 @@ class MaterializeValueTest(
       ),
       (
           'materializable_value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          [1, 2, 3],
       ),
       # serializable values
       (

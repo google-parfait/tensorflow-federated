@@ -319,10 +319,8 @@ class FileProgramStateManagerLoadTest(
       ),
       (
           'materializable_value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          [1, 2, 3],
       ),
       # serializable values
       (
@@ -518,7 +516,7 @@ class FileProgramStateManagerLoadTest(
     with self.assertRaises(program_state_manager.ProgramStateNotFoundError):
       await program_state_mngr.load(unknown_version, structure)
 
-  async def test_raises_value_error_with_incorrect_structure(self):
+  async def test_raises_type_error_with_incorrect_structure(self):
     root_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir
@@ -528,7 +526,7 @@ class FileProgramStateManagerLoadTest(
     await program_state_mngr.save(program_state, version)
     structure = []
 
-    with self.assertRaises(ValueError):
+    with self.assertRaises(TypeError):
       await program_state_mngr.load(version, structure)
 
   @parameterized.named_parameters(
@@ -814,10 +812,8 @@ class FileProgramStateManagerSaveTest(
       ),
       (
           'materializable_value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          [1, 2, 3],
       ),
       # serializable values
       (
