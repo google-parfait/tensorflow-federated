@@ -243,7 +243,6 @@ py_test(
         ":program_test_utils",
         ":structure_utils",
         ":value_reference",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
