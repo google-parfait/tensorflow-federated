@@ -210,15 +210,15 @@ class CSVFileReleaseManagerReadValuesTest(parameterized.TestCase):
     self.assertEqual(fieldnames, ['key'])
     self.assertEqual(values, [])
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('no_values', ['key', 'a', 'b'], []),
       ('one_value', ['key', 'a', 'b'], [{'key': 1, 'a': 11, 'b': 12}]),
-      ('two_values', ['key', 'a', 'b'],
-       [{'key': 1, 'a': 11, 'b': 12},
-        {'key': 2, 'a': 21, 'b': 22}]),
+      (
+          'two_values',
+          ['key', 'a', 'b'],
+          [{'key': 1, 'a': 11, 'b': 12}, {'key': 2, 'a': 21, 'b': 22}],
+      ),
   )
-  # pyformat: enable
   def test_returns_values_from_existing_file(self, fieldnames, values):
     file_path = self.create_tempfile()
     _write_values_to_csv(file_path, fieldnames, values)
@@ -233,15 +233,15 @@ class CSVFileReleaseManagerReadValuesTest(parameterized.TestCase):
 
 class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('no_values', ['key', 'a', 'b'], []),
       ('one_value', ['key', 'a', 'b'], [{'key': 1, 'a': 11, 'b': 12}]),
-      ('two_values', ['key', 'a', 'b'],
-       [{'key': 1, 'a': 11, 'b': 12},
-        {'key': 2, 'a': 21, 'b': 22}]),
+      (
+          'two_values',
+          ['key', 'a', 'b'],
+          [{'key': 1, 'a': 11, 'b': 12}, {'key': 2, 'a': 21, 'b': 22}],
+      ),
   )
-  # pyformat: enable
   def test_writes_values_to_empty_file(self, fieldnames, values):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -254,15 +254,15 @@ class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
     expected_values = structure_utils.map_structure(str, values)
     self.assertEqual(actual_values, expected_values)
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('no_values', ['key', 'a', 'b'], []),
       ('one_value', ['key', 'a', 'b'], [{'key': 1, 'a': 11, 'b': 12}]),
-      ('two_values', ['key', 'a', 'b'],
-       [{'key': 1, 'a': 11, 'b': 12},
-        {'key': 2, 'a': 21, 'b': 22}]),
+      (
+          'two_values',
+          ['key', 'a', 'b'],
+          [{'key': 1, 'a': 11, 'b': 12}, {'key': 2, 'a': 21, 'b': 22}],
+      ),
   )
-  # pyformat: enable
   def test_writes_values_to_existing_file(self, fieldnames, values):
     file_path = self.create_tempfile()
     _write_values_to_csv(
@@ -574,7 +574,6 @@ class CSVFileReleaseManagerReleaseTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('none', None, [{'key': '1', '': ''}]),
@@ -582,157 +581,175 @@ class CSVFileReleaseManagerReleaseTest(
       ('int', 1, [{'key': '1', '': '1'}]),
       ('str', 'a', [{'key': '1', '': 'a'}]),
       ('tensor_int', tf.constant(1), [{'key': '1', '': '1'}]),
-      ('tensor_str', tf.constant('a'), [{'key': '1', '': 'b\'a\''}]),
+      ('tensor_str', tf.constant('a'), [{'key': '1', '': "b'a'"}]),
       ('tensor_array', tf.constant([1] * 3), [{'key': '1', '': '[1, 1, 1]'}]),
       ('numpy_int', np.int32(1), [{'key': '1', '': '1'}]),
-      ('numpy_array',
-       np.array([1] * 3, np.int32),
-       [{'key': '1', '': '[1, 1, 1]'}]),
-
+      (
+          'numpy_array',
+          np.array([1] * 3, np.int32),
+          [{'key': '1', '': '[1, 1, 1]'}],
+      ),
       # materializable value references
-      ('materializable_value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1),
-       [{'key': '1', '': '1'}]),
-      ('materializable_value_reference_sequence',
-       program_test_utils.TestMaterializableValueReference(
-           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       [{'key': '1', '': '[1, 2, 3]'}]),
-
+      (
+          'materializable_value_reference_tensor',
+          program_test_utils.TestMaterializableValueReference(1),
+          [{'key': '1', '': '1'}],
+      ),
+      (
+          'materializable_value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference(
+              tf.data.Dataset.from_tensor_slices([1, 2, 3])
+          ),
+          [{'key': '1', '': '[1, 2, 3]'}],
+      ),
       # serializable values
-      ('serializable_value',
-       program_test_utils.TestSerializable(1, 2),
-       [{'key': '1', '': 'TestSerializable(a=1, b=2)'}]),
-
+      (
+          'serializable_value',
+          program_test_utils.TestSerializable(1, 2),
+          [{'key': '1', '': 'TestSerializable(a=1, b=2)'}],
+      ),
       # other values
-      ('attrs',
-       program_test_utils.TestAttrs(1, 2),
-       [{'key': '1', '': 'TestAttrs(a=1, b=2)'}]),
-
+      (
+          'attrs',
+          program_test_utils.TestAttrs(1, 2),
+          [{'key': '1', '': 'TestAttrs(a=1, b=2)'}],
+      ),
       # structures
-      ('list',
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           program_test_utils.TestSerializable(3, 4),
-       ],
-       [
-           {
-               'key': '1',
-               '0': 'True',
-               '1': '1',
-               '2': 'a',
-               '3': '2',
-               '4': 'TestSerializable(a=3, b=4)',
-           },
-       ]),
+      (
+          'list',
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          [
+              {
+                  'key': '1',
+                  '0': 'True',
+                  '1': '1',
+                  '2': 'a',
+                  '3': '2',
+                  '4': 'TestSerializable(a=3, b=4)',
+              },
+          ],
+      ),
       ('list_empty', [], [{'key': '1'}]),
-      ('list_nested',
-       [
-           [
-               True,
-               1,
-               'a',
-               program_test_utils.TestMaterializableValueReference(2),
-               program_test_utils.TestSerializable(3, 4),
-           ],
-           [5],
-       ],
-       [
-           {
-               'key': '1',
-               '0/0': 'True',
-               '0/1': '1',
-               '0/2': 'a',
-               '0/3': '2',
-               '0/4': 'TestSerializable(a=3, b=4)',
-               '1/0': '5',
-           },
-       ]),
-      ('dict',
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': program_test_utils.TestSerializable(3, 4),
-       },
-       [
-           {
-               'key': '1',
-               'a': 'True',
-               'b': '1',
-               'c': 'a',
-               'd': '2',
-               'e': 'TestSerializable(a=3, b=4)',
-           },
-       ]),
+      (
+          'list_nested',
+          [
+              [
+                  True,
+                  1,
+                  'a',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+          [
+              {
+                  'key': '1',
+                  '0/0': 'True',
+                  '0/1': '1',
+                  '0/2': 'a',
+                  '0/3': '2',
+                  '0/4': 'TestSerializable(a=3, b=4)',
+                  '1/0': '5',
+              },
+          ],
+      ),
+      (
+          'dict',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          [
+              {
+                  'key': '1',
+                  'a': 'True',
+                  'b': '1',
+                  'c': 'a',
+                  'd': '2',
+                  'e': 'TestSerializable(a=3, b=4)',
+              },
+          ],
+      ),
       ('dict_empty', {}, [{'key': '1'}]),
-      ('dict_nested',
-       {
-           'x': {
-               'a': True,
-               'b': 1,
-               'c': 'a',
-               'd': program_test_utils.TestMaterializableValueReference(2),
-               'e': program_test_utils.TestSerializable(3, 4),
-           },
-           'y': {'a': 5},
-       },
-       [
-           {
-               'key': '1',
-               'x/a': 'True',
-               'x/b': '1',
-               'x/c': 'a',
-               'x/d': '2',
-               'x/e': 'TestSerializable(a=3, b=4)',
-               'y/a': '5',
-           },
-       ]),
-      ('named_tuple',
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       [
-           {
-               'key': '1',
-               'a': 'True',
-               'b': '1',
-               'c': 'a',
-               'd': '2',
-               'e': 'TestSerializable(a=3, b=4)',
-           },
-       ]),
-      ('named_tuple_nested',
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestNamedTuple2(a=5),
-       ),
-       [
-           {
-               'key': '1',
-               'x/a': 'True',
-               'x/b': '1',
-               'x/c': 'a',
-               'x/d': '2',
-               'x/e': 'TestSerializable(a=3, b=4)',
-               'y/a': '5',
-           },
-       ]),
+      (
+          'dict_nested',
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'a',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+          [
+              {
+                  'key': '1',
+                  'x/a': 'True',
+                  'x/b': '1',
+                  'x/c': 'a',
+                  'x/d': '2',
+                  'x/e': 'TestSerializable(a=3, b=4)',
+                  'y/a': '5',
+              },
+          ],
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+          [
+              {
+                  'key': '1',
+                  'a': 'True',
+                  'b': '1',
+                  'c': 'a',
+                  'd': '2',
+                  'e': 'TestSerializable(a=3, b=4)',
+              },
+          ],
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='a',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+          [
+              {
+                  'key': '1',
+                  'x/a': 'True',
+                  'x/b': '1',
+                  'x/c': 'a',
+                  'x/d': '2',
+                  'x/e': 'TestSerializable(a=3, b=4)',
+                  'y/a': '5',
+              },
+          ],
+      ),
   )
-  # pyformat: enable
   async def test_writes_value(self, value, expected_value):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -902,7 +919,6 @@ class SavedModelFileReleaseManagerReleaseTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('none', None, None),
@@ -914,129 +930,143 @@ class SavedModelFileReleaseManagerReleaseTest(
       ('tensor_array', tf.constant([1] * 3), tf.constant([1] * 3)),
       ('numpy_int', np.int32(1), np.int32(1)),
       ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
-
       # materializable value references
-      ('materializable_value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1),
-       1),
-      ('materializable_value_reference_sequence',
-       program_test_utils.TestMaterializableValueReference(
-           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-
+      (
+          'materializable_value_reference_tensor',
+          program_test_utils.TestMaterializableValueReference(1),
+          1,
+      ),
+      (
+          'materializable_value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference(
+              tf.data.Dataset.from_tensor_slices([1, 2, 3])
+          ),
+          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+      ),
       # structures
-      ('list',
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           program_test_utils.TestSerializable(3, 4),
-       ],
-       [
-           True,
-           1,
-           'a',
-           2,
-           program_test_utils.TestSerializable(3, 4),
-       ]),
+      (
+          'list',
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          [
+              True,
+              1,
+              'a',
+              2,
+              program_test_utils.TestSerializable(3, 4),
+          ],
+      ),
       ('list_empty', [], []),
-      ('list_nested',
-       [
-           [
-               True,
-               1,
-               'a',
-               program_test_utils.TestMaterializableValueReference(2),
-               program_test_utils.TestSerializable(3, 4),
-           ],
-           [5],
-       ],
-       [
-           [
-               True,
-               1,
-               'a',
-               2,
-               program_test_utils.TestSerializable(3, 4),
-           ],
-           [5],
-       ]),
-      ('dict',
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': program_test_utils.TestSerializable(3, 4),
-       },
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': 2,
-           'e': program_test_utils.TestSerializable(3, 4),
-       }),
+      (
+          'list_nested',
+          [
+              [
+                  True,
+                  1,
+                  'a',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+          [
+              [
+                  True,
+                  1,
+                  'a',
+                  2,
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+      ),
+      (
+          'dict',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': 2,
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
       ('dict_empty', {}, {}),
-      ('dict_nested',
-       {
-           'x': {
-               'a': True,
-               'b': 1,
-               'c': 'a',
-               'd': program_test_utils.TestMaterializableValueReference(2),
-               'e': program_test_utils.TestSerializable(3, 4),
-           },
-           'y': {'a': 5},
-       },
-       {
-           'x': {
-               'a': True,
-               'b': 1,
-               'c': 'a',
-               'd': 2,
-               'e': program_test_utils.TestSerializable(3, 4),
-           },
-           'y': {'a': 5},
-       }),
-      ('named_tuple',
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=2,
-           e=program_test_utils.TestSerializable(3, 4),
-       )),
-      ('named_tuple_nested',
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestNamedTuple2(a=5),
-       ),
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=True,
-               b=1,
-               c='a',
-               d=2,
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestNamedTuple2(a=5),
-       )),
+      (
+          'dict_nested',
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'a',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'a',
+                  'd': 2,
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=2,
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='a',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='a',
+                  d=2,
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+      ),
   )
-  # pyformat: enable
   async def test_writes_value(self, value, expected_value):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
@@ -1059,15 +1089,12 @@ class SavedModelFileReleaseManagerReleaseTest(
       self.assertEqual(actual_path, expected_path)
       self.assertEqual(kwargs, {'overwrite': True})
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # serializable values
       ('serializable_value', program_test_utils.TestSerializable(1, 2)),
-
       # other values
       ('attrs', program_test_utils.TestAttrs(1, 2)),
   )
-  # pyformat: enable
   async def test_raises_not_encodable_error_with_value(self, value):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
@@ -1098,7 +1125,6 @@ class SavedModelFileReleaseManagerGetValueTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('none', None, None),
@@ -1110,129 +1136,143 @@ class SavedModelFileReleaseManagerGetValueTest(
       ('tensor_array', tf.constant([1] * 3), np.array([1] * 3, np.int32)),
       ('numpy_int', np.int32(1), np.int32(1)),
       ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
-
       # materializable value references
-      ('materializable_value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1),
-       np.int32(1)),
-      ('materializable_value_reference_sequence',
-       program_test_utils.TestMaterializableValueReference(
-           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-
+      (
+          'materializable_value_reference_tensor',
+          program_test_utils.TestMaterializableValueReference(1),
+          np.int32(1),
+      ),
+      (
+          'materializable_value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference(
+              tf.data.Dataset.from_tensor_slices([1, 2, 3])
+          ),
+          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+      ),
       # structures
-      ('list',
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           None,
-       ],
-       [
-           np.bool_(True),
-           np.int32(1),
-           b'a',
-           np.int32(2),
-           None,
-       ]),
+      (
+          'list',
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              None,
+          ],
+          [
+              np.bool_(True),
+              np.int32(1),
+              b'a',
+              np.int32(2),
+              None,
+          ],
+      ),
       ('list_empty', [], []),
-      ('list_nested',
-       [
-           [
-               True,
-               1,
-               'a',
-               program_test_utils.TestMaterializableValueReference(2),
-               None,
-           ],
-           [5],
-       ],
-       [
-           [
-               np.bool_(True),
-               np.int32(1),
-               b'a',
-               np.int32(2),
-               None,
-           ],
-           [np.int32(5)],
-       ]),
-      ('dict',
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': None,
-       },
-       {
-           'a': np.bool_(True),
-           'b': np.int32(1),
-           'c': b'a',
-           'd': np.int32(2),
-           'e': None,
-       }),
+      (
+          'list_nested',
+          [
+              [
+                  True,
+                  1,
+                  'a',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  None,
+              ],
+              [5],
+          ],
+          [
+              [
+                  np.bool_(True),
+                  np.int32(1),
+                  b'a',
+                  np.int32(2),
+                  None,
+              ],
+              [np.int32(5)],
+          ],
+      ),
+      (
+          'dict',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': None,
+          },
+          {
+              'a': np.bool_(True),
+              'b': np.int32(1),
+              'c': b'a',
+              'd': np.int32(2),
+              'e': None,
+          },
+      ),
       ('dict_empty', {}, {}),
-      ('dict_nested',
-       {
-           'x': {
-               'a': True,
-               'b': 1,
-               'c': 'a',
-               'd': program_test_utils.TestMaterializableValueReference(2),
-               'e': None,
-           },
-           'y': {'a': 5},
-       },
-       {
-           'x': {
-               'a': np.bool_(True),
-               'b': np.int32(1),
-               'c': b'a',
-               'd': np.int32(2),
-               'e': None,
-           },
-           'y': {'a': np.int32(5)}
-       }),
-      ('named_tuple',
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=None,
-       ),
-       program_test_utils.TestNamedTuple1(
-           a=np.bool_(True),
-           b=np.int32(1),
-           c=b'a',
-           d=np.int32(2),
-           e=None,
-       )),
-      ('named_tuple_nested',
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=None,
-           ),
-           y=program_test_utils.TestNamedTuple2(a=5),
-       ),
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=np.bool_(True),
-               b=np.int32(1),
-               c=b'a',
-               d=np.int32(2),
-               e=None,
-           ),
-           y=program_test_utils.TestNamedTuple2(a=np.int32(5)),
-       )),
+      (
+          'dict_nested',
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'a',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': None,
+              },
+              'y': {'a': 5},
+          },
+          {
+              'x': {
+                  'a': np.bool_(True),
+                  'b': np.int32(1),
+                  'c': b'a',
+                  'd': np.int32(2),
+                  'e': None,
+              },
+              'y': {'a': np.int32(5)},
+          },
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=None,
+          ),
+          program_test_utils.TestNamedTuple1(
+              a=np.bool_(True),
+              b=np.int32(1),
+              c=b'a',
+              d=np.int32(2),
+              e=None,
+          ),
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='a',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=None,
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=np.bool_(True),
+                  b=np.int32(1),
+                  c=b'a',
+                  d=np.int32(2),
+                  e=None,
+              ),
+              y=program_test_utils.TestNamedTuple2(a=np.int32(5)),
+          ),
+      ),
   )
-  # pyformat: enable
   async def test_returns_saved_value(self, value, expected_value):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)

@@ -24,7 +24,6 @@ from tensorflow_federated.python.program import structure_utils
 
 class FilterStructureTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('none', None, None),
@@ -36,110 +35,120 @@ class FilterStructureTest(parameterized.TestCase):
       ('tensor_array', tf.constant([1] * 3), None),
       ('numpy_int', np.int32(1), None),
       ('numpy_array', np.array([1] * 3, np.int32), None),
-
       # materializable value references
-      ('materializable_value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1),
-       None),
-      ('materializable_value_reference_sequence',
-       program_test_utils.TestMaterializableValueReference(
-           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       None),
-
+      (
+          'materializable_value_reference_tensor',
+          program_test_utils.TestMaterializableValueReference(1),
+          None,
+      ),
+      (
+          'materializable_value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference(
+              tf.data.Dataset.from_tensor_slices([1, 2, 3])
+          ),
+          None,
+      ),
       # serializable values
-      ('serializable_value',
-       program_test_utils.TestSerializable(1, 2),
-       None),
-
+      ('serializable_value', program_test_utils.TestSerializable(1, 2), None),
       # other values
       ('attrs', program_test_utils.TestAttrs(1, 2), None),
-
       # structures
-      ('list',
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           program_test_utils.TestSerializable(3, 4),
-       ],
-       [None, None, None, None, None]),
+      (
+          'list',
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          [None, None, None, None, None],
+      ),
       ('list_empty', [], []),
-      ('list_nested',
-       [
-           [
-               True,
-               1,
-               'a',
-               program_test_utils.TestMaterializableValueReference(2),
-               program_test_utils.TestSerializable(3, 4),
-           ],
-           [5],
-       ],
-       [[None, None, None, None, None], [None]]),
-      ('dict',
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': program_test_utils.TestSerializable(3, 4),
-       },
-       {'a': None, 'b': None, 'c': None, 'd': None, 'e': None}),
+      (
+          'list_nested',
+          [
+              [
+                  True,
+                  1,
+                  'a',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+          [[None, None, None, None, None], [None]],
+      ),
+      (
+          'dict',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          {'a': None, 'b': None, 'c': None, 'd': None, 'e': None},
+      ),
       ('dict_empty', {}, {}),
-      ('dict_nested',
-       {
-           'x': {
-               'a': True,
-               'b': 1,
-               'c': 'a',
-               'd': program_test_utils.TestMaterializableValueReference(2),
-               'e': program_test_utils.TestSerializable(3, 4),
-           },
-           'y': {'a': 5},
-       },
-       {
-           'x': {'a': None, 'b': None, 'c': None, 'd': None, 'e': None},
-           'y': {'a': None},
-       }),
-      ('named_tuple',
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       program_test_utils.TestNamedTuple1(
-           a=None,
-           b=None,
-           c=None,
-           d=None,
-           e=None,
-       )),
-      ('named_tuple_nested',
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestNamedTuple2(a=5),
-       ),
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=None,
-               b=None,
-               c=None,
-               d=None,
-               e=None,
-           ),
-           y=program_test_utils.TestNamedTuple2(a=None),
-       )),
+      (
+          'dict_nested',
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'a',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+          {
+              'x': {'a': None, 'b': None, 'c': None, 'd': None, 'e': None},
+              'y': {'a': None},
+          },
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+          program_test_utils.TestNamedTuple1(
+              a=None,
+              b=None,
+              c=None,
+              d=None,
+              e=None,
+          ),
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='a',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=None,
+                  b=None,
+                  c=None,
+                  d=None,
+                  e=None,
+              ),
+              y=program_test_utils.TestNamedTuple2(a=None),
+          ),
+      ),
   )
-  # pyformat: enable
   def test_returns_result(self, structure, expected_result):
     actual_result = structure_utils._filter_structure(structure)
     self.assertEqual(actual_result, expected_result)
@@ -147,7 +156,6 @@ class FilterStructureTest(parameterized.TestCase):
 
 class FlattenWithNameTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('none', None, [('', None)]),
@@ -158,137 +166,159 @@ class FlattenWithNameTest(parameterized.TestCase):
       ('tensor_str', tf.constant('a'), [('', tf.constant('a'))]),
       ('tensor_array', tf.constant([1] * 3), [('', tf.constant([1] * 3))]),
       ('numpy_int', np.int32(1), [('', np.int32(1))]),
-      ('numpy_array',
-       np.array([1] * 3, np.int32),
-       [('', np.array([1] * 3, np.int32))]),
-
+      (
+          'numpy_array',
+          np.array([1] * 3, np.int32),
+          [('', np.array([1] * 3, np.int32))],
+      ),
       # materializable value references
-      ('materializable_value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1),
-       [('', program_test_utils.TestMaterializableValueReference(1))]),
-      ('materializable_value_reference_sequence',
-       program_test_utils.TestMaterializableValueReference(
-           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       [('', program_test_utils.TestMaterializableValueReference(
-           tf.data.Dataset.from_tensor_slices([1, 2, 3])))]),
-
+      (
+          'materializable_value_reference_tensor',
+          program_test_utils.TestMaterializableValueReference(1),
+          [('', program_test_utils.TestMaterializableValueReference(1))],
+      ),
+      (
+          'materializable_value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference(
+              tf.data.Dataset.from_tensor_slices([1, 2, 3])
+          ),
+          [(
+              '',
+              program_test_utils.TestMaterializableValueReference(
+                  tf.data.Dataset.from_tensor_slices([1, 2, 3])
+              ),
+          )],
+      ),
       # serializable values
-      ('serializable_value',
-       program_test_utils.TestSerializable(1, 2),
-       [('', program_test_utils.TestSerializable(1, 2))]),
-
+      (
+          'serializable_value',
+          program_test_utils.TestSerializable(1, 2),
+          [('', program_test_utils.TestSerializable(1, 2))],
+      ),
       # other values
-      ('attrs',
-       program_test_utils.TestAttrs(1, 2),
-       [('', program_test_utils.TestAttrs(1, 2))]),
-
+      (
+          'attrs',
+          program_test_utils.TestAttrs(1, 2),
+          [('', program_test_utils.TestAttrs(1, 2))],
+      ),
       # structures
-      ('list',
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           program_test_utils.TestSerializable(3, 4),
-       ],
-       [
-           ('0', True),
-           ('1', 1),
-           ('2', 'a'),
-           ('3', program_test_utils.TestMaterializableValueReference(2)),
-           ('4', program_test_utils.TestSerializable(3, 4)),
-       ]),
+      (
+          'list',
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          [
+              ('0', True),
+              ('1', 1),
+              ('2', 'a'),
+              ('3', program_test_utils.TestMaterializableValueReference(2)),
+              ('4', program_test_utils.TestSerializable(3, 4)),
+          ],
+      ),
       ('list_empty', [], []),
-      ('list_nested',
-       [
-           [
-               True,
-               1,
-               'a',
-               program_test_utils.TestMaterializableValueReference(2),
-               program_test_utils.TestSerializable(3, 4),
-           ],
-           [5],
-       ],
-       [
-           ('0/0', True),
-           ('0/1', 1),
-           ('0/2', 'a'),
-           ('0/3', program_test_utils.TestMaterializableValueReference(2)),
-           ('0/4', program_test_utils.TestSerializable(3, 4)),
-           ('1/0', 5),
-       ]),
-      ('dict',
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': program_test_utils.TestSerializable(3, 4),
-       },
-       [
-           ('a', True),
-           ('b', 1),
-           ('c', 'a'),
-           ('d', program_test_utils.TestMaterializableValueReference(2)),
-           ('e', program_test_utils.TestSerializable(3, 4)),
-       ]),
+      (
+          'list_nested',
+          [
+              [
+                  True,
+                  1,
+                  'a',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+          [
+              ('0/0', True),
+              ('0/1', 1),
+              ('0/2', 'a'),
+              ('0/3', program_test_utils.TestMaterializableValueReference(2)),
+              ('0/4', program_test_utils.TestSerializable(3, 4)),
+              ('1/0', 5),
+          ],
+      ),
+      (
+          'dict',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          [
+              ('a', True),
+              ('b', 1),
+              ('c', 'a'),
+              ('d', program_test_utils.TestMaterializableValueReference(2)),
+              ('e', program_test_utils.TestSerializable(3, 4)),
+          ],
+      ),
       ('dict_empty', {}, []),
-      ('dict_nested',
-       {
-           'x': {
-               'a': True,
-               'b': 1,
-               'c': 'a',
-               'd': program_test_utils.TestMaterializableValueReference(2),
-               'e': program_test_utils.TestSerializable(3, 4),
-           },
-           'y': {'a': 5},
-       },
-       [
-           ('x/a', True),
-           ('x/b', 1),
-           ('x/c', 'a'),
-           ('x/d', program_test_utils.TestMaterializableValueReference(2)),
-           ('x/e', program_test_utils.TestSerializable(3, 4)),
-           ('y/a', 5),
-       ]),
-      ('named_tuple',
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       [
-           ('a', True),
-           ('b', 1),
-           ('c', 'a'),
-           ('d', program_test_utils.TestMaterializableValueReference(2)),
-           ('e', program_test_utils.TestSerializable(3, 4)),
-       ]),
-      ('named_tuple_nested',
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestNamedTuple2(a=5),
-       ),
-       [
-           ('x/a', True),
-           ('x/b', 1),
-           ('x/c', 'a'),
-           ('x/d', program_test_utils.TestMaterializableValueReference(2)),
-           ('x/e', program_test_utils.TestSerializable(3, 4)),
-           ('y/a', 5),
-       ]),
+      (
+          'dict_nested',
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'a',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+          [
+              ('x/a', True),
+              ('x/b', 1),
+              ('x/c', 'a'),
+              ('x/d', program_test_utils.TestMaterializableValueReference(2)),
+              ('x/e', program_test_utils.TestSerializable(3, 4)),
+              ('y/a', 5),
+          ],
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+          [
+              ('a', True),
+              ('b', 1),
+              ('c', 'a'),
+              ('d', program_test_utils.TestMaterializableValueReference(2)),
+              ('e', program_test_utils.TestSerializable(3, 4)),
+          ],
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='a',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+          [
+              ('x/a', True),
+              ('x/b', 1),
+              ('x/c', 'a'),
+              ('x/d', program_test_utils.TestMaterializableValueReference(2)),
+              ('x/e', program_test_utils.TestSerializable(3, 4)),
+              ('y/a', 5),
+          ],
+      ),
   )
-  # pyformat: enable
   def test_returns_result(self, structure, expected_result):
     actual_result = structure_utils.flatten_with_name(structure)
 

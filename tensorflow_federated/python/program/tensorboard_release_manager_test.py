@@ -70,85 +70,95 @@ class TensorBoardReleaseManagerReleaseTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('bool', True, [('', True)]),
       ('int', 1, [('', 1)]),
       ('tensor_int', tf.constant(1), [('', tf.constant(1))]),
       ('numpy_int', np.int32(1), [('', np.int32(1))]),
-
       # materializable value references
-      ('materializable_value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1),
-       [('', 1)]),
-
+      (
+          'materializable_value_reference_tensor',
+          program_test_utils.TestMaterializableValueReference(1),
+          [('', 1)],
+      ),
       # structures
-      ('list',
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           program_test_utils.TestSerializable(3, 4),
-       ],
-       [('0', True), ('1', 1), ('3', 2)]),
-      ('list_nested',
-       [
-           [
-               True,
-               1,
-               'a',
-               program_test_utils.TestMaterializableValueReference(2),
-               program_test_utils.TestSerializable(3, 4),
-           ],
-           [5],
-       ],
-       [('0/0', True), ('0/1', 1), ('0/3', 2), ('1/0', 5)]),
-      ('dict',
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': program_test_utils.TestSerializable(3, 4),
-       },
-       [('a', True), ('b', 1), ('d', 2)]),
-      ('dict_nested',
-       {
-           'x': {
-               'a': True,
-               'b': 1,
-               'c': 'a',
-               'd': program_test_utils.TestMaterializableValueReference(2),
-               'e': program_test_utils.TestSerializable(3, 4),
-           },
-           'y': {'a': 5},
-       },
-       [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 5)]),
-      ('named_tuple',
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       [('a', True), ('b', 1), ('d', 2)]),
-      ('named_tuple_nested',
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestNamedTuple2(a=5),
-       ),
-       [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 5)]),
+      (
+          'list',
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          [('0', True), ('1', 1), ('3', 2)],
+      ),
+      (
+          'list_nested',
+          [
+              [
+                  True,
+                  1,
+                  'a',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+          [('0/0', True), ('0/1', 1), ('0/3', 2), ('1/0', 5)],
+      ),
+      (
+          'dict',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          [('a', True), ('b', 1), ('d', 2)],
+      ),
+      (
+          'dict_nested',
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'a',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+          [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 5)],
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+          [('a', True), ('b', 1), ('d', 2)],
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='a',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+          [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 5)],
+      ),
   )
-  # pyformat: enable
   async def test_writes_value_scalar(self, value, expected_calls):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
@@ -168,21 +178,23 @@ class TensorBoardReleaseManagerReleaseTest(
         self.assertEqual(actual_value, expected_value)
         self.assertEqual(kwargs, {'step': key})
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('tensor_array', tf.constant([1] * 3), [('', tf.constant([1] * 3))]),
-      ('numpy_array',
-       np.array([1] * 3, np.int32),
-       [('', np.array([1] * 3, np.int32))]),
-
+      (
+          'numpy_array',
+          np.array([1] * 3, np.int32),
+          [('', np.array([1] * 3, np.int32))],
+      ),
       # materializable value references
-      ('materializable_value_reference_sequence',
-       program_test_utils.TestMaterializableValueReference(
-           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       [('', [1, 2, 3])]),
+      (
+          'materializable_value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference(
+              tf.data.Dataset.from_tensor_slices([1, 2, 3])
+          ),
+          [('', [1, 2, 3])],
+      ),
   )
-  # pyformat: enable
   async def test_writes_value_histogram(self, value, expected_calls):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
@@ -231,24 +243,19 @@ class TensorBoardReleaseManagerReleaseTest(
       self.assertEqual(actual_value, expected_value)
       self.assertEqual(kwargs, {'step': key})
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('none', None),
       ('str', 'a'),
       ('tensor_str', tf.constant('a')),
-
       # serializable values
       ('serializable_value', program_test_utils.TestSerializable(1, 2)),
-
       # other values
       ('attrs', program_test_utils.TestAttrs(1, 2)),
-
       # structures
       ('list_empty', []),
       ('dict_empty', {}),
   )
-  # pyformat: enable
   async def test_does_not_write_value(self, value):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(

@@ -52,116 +52,132 @@ class FilteringReleaseManagerTest(
     with self.assertRaises(TypeError):
       release_manager.FilteringReleaseManager(release_mngr, filter_fn)
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('none_filter_none', None, lambda _: True, None),
       ('bool_filter_none', True, lambda _: True, True),
       ('int_filter_none', 1, lambda _: True, 1),
       ('str_filter_none', 'a', lambda _: True, 'a'),
-      ('tensor_int_filter_none',
-       tf.constant(1),
-       lambda _: True,
-       tf.constant(1)),
-      ('tensor_array_filter_none',
-       tf.constant([1] * 3),
-       lambda _: True,
-       tf.constant([1] * 3)),
+      (
+          'tensor_int_filter_none',
+          tf.constant(1),
+          lambda _: True,
+          tf.constant(1),
+      ),
+      (
+          'tensor_array_filter_none',
+          tf.constant([1] * 3),
+          lambda _: True,
+          tf.constant([1] * 3),
+      ),
       ('numpy_int_filter_none', np.int32(1), lambda _: True, np.int32(1)),
-      ('numpy_array_filter_none',
-       np.array([1] * 1, np.int32),
-       lambda _: True,
-       np.array([1] * 1, np.int32)),
-
+      (
+          'numpy_array_filter_none',
+          np.array([1] * 1, np.int32),
+          lambda _: True,
+          np.array([1] * 1, np.int32),
+      ),
       # materializable value references
-      ('value_reference_tensor_filter_none',
-       program_test_utils.TestMaterializableValueReference(1),
-       lambda _: True,
-       program_test_utils.TestMaterializableValueReference(1)),
-
+      (
+          'value_reference_tensor_filter_none',
+          program_test_utils.TestMaterializableValueReference(1),
+          lambda _: True,
+          program_test_utils.TestMaterializableValueReference(1),
+      ),
       # serializable values
-      ('serializable_value_filter_none',
-       program_test_utils.TestSerializable(1, 2),
-       lambda _: True,
-       program_test_utils.TestSerializable(1, 2)),
-
+      (
+          'serializable_value_filter_none',
+          program_test_utils.TestSerializable(1, 2),
+          lambda _: True,
+          program_test_utils.TestSerializable(1, 2),
+      ),
       # other values
-      ('attrs_filter_none',
-       program_test_utils.TestAttrs(1, 2),
-       lambda _: True,
-       program_test_utils.TestAttrs(1, 2)),
-
+      (
+          'attrs_filter_none',
+          program_test_utils.TestAttrs(1, 2),
+          lambda _: True,
+          program_test_utils.TestAttrs(1, 2),
+      ),
       # structures
-      ('list_filter_none',
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           program_test_utils.TestSerializable(3, 4),
-       ],
-       lambda _: True,
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           program_test_utils.TestSerializable(3, 4),
-       ]),
-      ('list_filter_some',
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           program_test_utils.TestSerializable(3, 4),
-       ],
-       lambda path: path == (1,) or path == (2,),
-       [1, 'a']),
-      ('dict_filter_none',
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': program_test_utils.TestSerializable(3, 4),
-       },
-       lambda _: True,
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': program_test_utils.TestSerializable(3, 4),
-       }),
-      ('dict_filter_some',
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': program_test_utils.TestSerializable(3, 4),
-       },
-       lambda path: path == ('b',) or path == ('c',),
-       {'b': 1, 'c': 'a'}),
-      ('named_tuple_filter_none',
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       lambda _: True,
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       )),
+      (
+          'list_filter_none',
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          lambda _: True,
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+      ),
+      (
+          'list_filter_some',
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          lambda path: path == (1,) or path == (2,),
+          [1, 'a'],
+      ),
+      (
+          'dict_filter_none',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          lambda _: True,
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      (
+          'dict_filter_some',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          lambda path: path == ('b',) or path == ('c',),
+          {'b': 1, 'c': 'a'},
+      ),
+      (
+          'named_tuple_filter_none',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+          lambda _: True,
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+      ),
   )
-  # pyformat: enable
   async def test_release_filters_and_delegates_value(
       self, value, filter_fn, expected_value
   ):
@@ -183,7 +199,6 @@ class FilteringReleaseManagerTest(
     self.assertEqual(actual_value, expected_value)
     self.assertEqual(kwargs, {'key': key})
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
       ('none', None),
@@ -195,82 +210,94 @@ class FilteringReleaseManagerTest(
       ('tensor_array', tf.constant([1] * 3)),
       ('numpy_int', np.int32(1)),
       ('numpy_array', np.array([1] * 3, np.int32)),
-
       # materializable value references
-      ('value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1)),
-      ('value_reference_sequence',
-       program_test_utils.TestMaterializableValueReference(
-           tf.data.Dataset.from_tensor_slices([1, 2, 3]))),
-
+      (
+          'value_reference_tensor',
+          program_test_utils.TestMaterializableValueReference(1),
+      ),
+      (
+          'value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference(
+              tf.data.Dataset.from_tensor_slices([1, 2, 3])
+          ),
+      ),
       # serializable values
       ('serializable_value', program_test_utils.TestSerializable(1, 2)),
-
       # other values
       ('attrs', program_test_utils.TestAttrs(1, 2)),
-
       # structures
-      ('list',
-       [
-           True,
-           1,
-           'a',
-           program_test_utils.TestMaterializableValueReference(2),
-           program_test_utils.TestSerializable(3, 4),
-       ]),
+      (
+          'list',
+          [
+              True,
+              1,
+              'a',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+      ),
       ('list_empty', []),
-      ('list_nested',
-       [
-           [
-               True,
-               1,
-               'a',
-               program_test_utils.TestMaterializableValueReference(2),
-               program_test_utils.TestSerializable(3, 4),
-           ],
-           [5],
-       ]),
-      ('dict',
-       {
-           'a': True,
-           'b': 1,
-           'c': 'a',
-           'd': program_test_utils.TestMaterializableValueReference(2),
-           'e': program_test_utils.TestSerializable(3, 4),
-       }),
+      (
+          'list_nested',
+          [
+              [
+                  True,
+                  1,
+                  'a',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+      ),
+      (
+          'dict',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'a',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
       ('dict_empty', {}),
-      ('dict_nested',
-       {
-           'x': {
-               'a': True,
-               'b': 1,
-               'c': 'a',
-               'd': program_test_utils.TestMaterializableValueReference(2),
-               'e': program_test_utils.TestSerializable(3, 4),
-           },
-           'y': {'a': 5},
-       }),
-      ('named_tuple',
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       )),
-      ('named_tuple_nested',
-       program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestNamedTuple2(a=5),
-       )),
+      (
+          'dict_nested',
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'a',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='a',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+      ),
   )
-  # pyformat: enable
   async def test_release_filters_and_does_not_delegate_value(self, value):
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
     filter_fn = lambda _: False
@@ -283,26 +310,32 @@ class FilteringReleaseManagerTest(
 
     mock_release_mngr.release.assert_not_called()
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('list_filter_none',
-       [True, 1, 'a', [], [2]],
-       lambda _: True,
-       [True, 1, 'a', [2]]),
-      ('list_filter_some',
-       [True, 1, 'a', [], [2]],
-       lambda path: path != (4, 0),
-       [True, 1, 'a']),
-      ('dict_filter_none',
-       {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
-       lambda _: True,
-       {'a': True, 'b': 1, 'c': 'a', 'e': {'a': 2}}),
-      ('dict_filter_some',
-       {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
-       lambda path: path != ('e', 'a'),
-       {'a': True, 'b': 1, 'c': 'a'}),
+      (
+          'list_filter_none',
+          [True, 1, 'a', [], [2]],
+          lambda _: True,
+          [True, 1, 'a', [2]],
+      ),
+      (
+          'list_filter_some',
+          [True, 1, 'a', [], [2]],
+          lambda path: path != (4, 0),
+          [True, 1, 'a'],
+      ),
+      (
+          'dict_filter_none',
+          {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
+          lambda _: True,
+          {'a': True, 'b': 1, 'c': 'a', 'e': {'a': 2}},
+      ),
+      (
+          'dict_filter_some',
+          {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
+          lambda path: path != ('e', 'a'),
+          {'a': True, 'b': 1, 'c': 'a'},
+      ),
   )
-  # pyformat: enable
   async def test_release_filters_and_does_not_delegate_empty_structures(
       self, value, filter_fn, expected_value
   ):
@@ -324,20 +357,20 @@ class FilteringReleaseManagerTest(
     self.assertEqual(actual_value, expected_value)
     self.assertEqual(kwargs, {'key': key})
 
-  # pyformat: disable
   @parameterized.named_parameters(
       # structures
-      ('named_tuple_filter_some',
-       program_test_utils.TestNamedTuple1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       lambda path: path == ('b',) or path == ('c',)),
+      (
+          'named_tuple_filter_some',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='a',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+          lambda path: path == ('b',) or path == ('c',),
+      ),
   )
-  # pyformat: enable
   async def test_release_raises_not_filterable_error(self, value, filter_fn):
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
     release_mngr = release_manager.FilteringReleaseManager(
