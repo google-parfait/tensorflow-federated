@@ -305,7 +305,8 @@ class StructTypeTest(parameterized.TestCase):
               "('a', TensorType(np.int32)), "
               "('b', TensorType(np.bool_))"
               '])'
-          ),
+          )
+          ,
       ),
   )
   def test_repr(self, type_spec, expected_repr):
@@ -327,20 +328,20 @@ class StructTypeTest(parameterized.TestCase):
       ),
       (
           'different_elements_unnamed',
-          computation_types.StructType([np.int32, np.bool_]),
+          computation_types.StructType([np.int32, np.float64]),
           computation_types.StructType([np.int32, np.int32]),
           False,
       ),
       (
           'different_elements_named',
-          computation_types.StructType([('a', np.int32), ('b', np.bool_)]),
+          computation_types.StructType([('a', np.int32), ('b', np.float64)]),
           computation_types.StructType([('a', np.int32), ('b', np.int32)]),
           False,
       ),
       (
           'same_elements_different_names',
-          computation_types.StructType([('a', np.int32), ('b', np.bool_)]),
-          computation_types.StructType([('a', np.int32), ('c', np.bool_)]),
+          computation_types.StructType([('a', np.int32), ('b', np.float64)]),
+          computation_types.StructType([('a', np.int32), ('c', np.float64)]),
           False,
       ),
   )
@@ -351,44 +352,44 @@ class StructTypeTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'same_elements_unnamed',
-          computation_types.StructType([np.int32, np.bool_]),
-          computation_types.StructType([np.int32, np.bool_]),
+          computation_types.StructType([np.int32, np.float64]),
+          computation_types.StructType([np.int32, np.float64]),
           True,
       ),
       (
           'same_elements_named',
-          computation_types.StructType([('a', np.int32), ('b', np.bool_)]),
-          computation_types.StructType([('a', np.int32), ('b', np.bool_)]),
+          computation_types.StructType([('a', np.int32), ('b', np.float64)]),
+          computation_types.StructType([('a', np.int32), ('b', np.float64)]),
           True,
       ),
       (
           'different_elements_unnamed',
-          computation_types.StructType([np.int32, np.bool_]),
+          computation_types.StructType([np.int32, np.float64]),
           computation_types.StructType([np.int32, np.int32]),
           False,
       ),
       (
           'different_elements_named',
-          computation_types.StructType([('a', np.int32), ('b', np.bool_)]),
+          computation_types.StructType([('a', np.int32), ('b', np.float64)]),
           computation_types.StructType([('a', np.int32), ('b', np.int32)]),
           False,
       ),
       (
           'same_elements_different_names',
-          computation_types.StructType([('a', np.int32), ('b', np.bool_)]),
-          computation_types.StructType([('a', np.int32), ('c', np.bool_)]),
+          computation_types.StructType([('a', np.int32), ('b', np.float64)]),
+          computation_types.StructType([('a', np.int32), ('c', np.float64)]),
           False,
       ),
       (
           'same_elements_unnamed_from_named',
-          computation_types.StructType([np.int32, np.bool_]),
-          computation_types.StructType([('a', np.int32), ('b', np.bool_)]),
+          computation_types.StructType([np.int32, np.float64]),
+          computation_types.StructType([('a', np.int32), ('b', np.float64)]),
           False,
       ),
       (
           'same_elements_named_from_unnamed',
-          computation_types.StructType([('a', np.int32), ('b', np.bool_)]),
-          computation_types.StructType([np.int32, np.bool_]),
+          computation_types.StructType([('a', np.int32), ('b', np.float64)]),
+          computation_types.StructType([np.int32, np.float64]),
           True,
       ),
   )
@@ -401,58 +402,58 @@ class StructWithPythonTypeTest(parameterized.TestCase):
 
   def test_interned(self):
     type_spec_1 = computation_types.StructWithPythonType(
-        [np.int32, np.bool_], list
+        [np.int32, np.float64], list
     )
     type_spec_2 = computation_types.StructWithPythonType(
-        [np.int32, np.bool_], list
+        [np.int32, np.float64], list
     )
     self.assertIs(type_spec_1, type_spec_2)
 
   @parameterized.named_parameters(
       (
           'list_unnamed',
-          computation_types.StructWithPythonType([np.int32, np.bool_], list),
-          '<int32,bool>',
+          computation_types.StructWithPythonType([np.int32, np.float64], list),
+          '<int32,float64>',
       ),
       (
           'list_named',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], list
+              [('a', np.int32), ('b', np.float64)], list
           ),
-          '<a=int32,b=bool>',
+          '<a=int32,b=float64>',
       ),
       (
           'tuple',
-          computation_types.StructWithPythonType([np.int32, np.bool_], tuple),
-          '<int32,bool>',
+          computation_types.StructWithPythonType([np.int32, np.float64], tuple),
+          '<int32,float64>',
       ),
       (
           'dict',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], dict
+              [('a', np.int32), ('b', np.float64)], dict
           ),
-          '<a=int32,b=bool>',
+          '<a=int32,b=float64>',
       ),
       (
           'ordered_dict',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], collections.OrderedDict
+              [('a', np.int32), ('b', np.float64)], collections.OrderedDict
           ),
-          '<a=int32,b=bool>',
+          '<a=int32,b=float64>',
       ),
       (
           'attrs',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], TestAttrs
+              [('a', np.int32), ('b', np.float64)], TestAttrs
           ),
-          '<a=int32,b=bool>',
+          '<a=int32,b=float64>',
       ),
       (
           'named_tuple',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], TestNamedTuple
+              [('a', np.int32), ('b', np.float64)], TestNamedTuple
           ),
-          '<a=int32,b=bool>',
+          '<a=int32,b=float64>',
       ),
   )
   def test_str(self, type_spec, expected_str):
@@ -462,71 +463,71 @@ class StructWithPythonTypeTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'list_unnamed',
-          computation_types.StructWithPythonType([np.int32, np.bool_], list),
-          'StructType([TensorType(np.int32), TensorType(np.bool_)]) as list',
+          computation_types.StructWithPythonType([np.int32, np.float64], list),
+          'StructType([TensorType(np.int32), TensorType(np.float64)]) as list',
       ),
       (
           'list_named',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], list
+              [('a', np.int32), ('b', np.float64)], list
           ),
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool_))"
+              "('b', TensorType(np.float64))"
               ']) as list'
           ),
       ),
       (
           'tuple',
-          computation_types.StructWithPythonType([np.int32, np.bool_], tuple),
-          'StructType([TensorType(np.int32), TensorType(np.bool_)]) as tuple',
+          computation_types.StructWithPythonType([np.int32, np.float64], tuple),
+          'StructType([TensorType(np.int32), TensorType(np.float64)]) as tuple',
       ),
       (
           'dict',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], dict
+              [('a', np.int32), ('b', np.float64)], dict
           ),
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool_))"
+              "('b', TensorType(np.float64))"
               ']) as dict'
           ),
       ),
       (
           'ordered_dict',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], collections.OrderedDict
+              [('a', np.int32), ('b', np.float64)], collections.OrderedDict
           ),
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool_))"
+              "('b', TensorType(np.float64))"
               ']) as OrderedDict'
           ),
       ),
       (
           'attrs',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], TestAttrs
+              [('a', np.int32), ('b', np.float64)], TestAttrs
           ),
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool_))"
+              "('b', TensorType(np.float64))"
               ']) as TestAttrs'
           ),
       ),
       (
           'named_tuple',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], TestNamedTuple
+              [('a', np.int32), ('b', np.float64)], TestNamedTuple
           ),
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool_))"
+              "('b', TensorType(np.float64))"
               ']) as TestNamedTuple'
           ),
       ),
@@ -538,39 +539,39 @@ class StructWithPythonTypeTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'same_elements_and_container_type_unnamed',
-          computation_types.StructWithPythonType([np.int32, np.bool_], list),
-          computation_types.StructWithPythonType([np.int32, np.bool_], list),
+          computation_types.StructWithPythonType([np.int32, np.float64], list),
+          computation_types.StructWithPythonType([np.int32, np.float64], list),
           True,
       ),
       (
           'same_elements_and_container_type_named',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], list
+              [('a', np.int32), ('b', np.float64)], list
           ),
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], list
+              [('a', np.int32), ('b', np.float64)], list
           ),
           True,
       ),
       (
           'different_elements',
-          computation_types.StructWithPythonType([np.int32, np.bool_], list),
+          computation_types.StructWithPythonType([np.int32, np.float64], list),
           computation_types.StructWithPythonType([np.int32, np.int32], list),
           False,
       ),
       (
           'different_container_type',
-          computation_types.StructWithPythonType([np.int32, np.bool_], list),
-          computation_types.StructWithPythonType([np.int32, np.bool_], tuple),
+          computation_types.StructWithPythonType([np.int32, np.float64], list),
+          computation_types.StructWithPythonType([np.int32, np.float64], tuple),
           False,
       ),
       (
           'same_elements_and_container_type_different_names',
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('b', np.bool_)], list
+              [('a', np.int32), ('b', np.float64)], list
           ),
           computation_types.StructWithPythonType(
-              [('a', np.int32), ('c', np.bool_)], list
+              [('a', np.int32), ('c', np.float64)], list
           ),
           False,
       ),
@@ -589,7 +590,7 @@ class SequenceTypeTest(parameterized.TestCase):
 
   def test_init_converts_struct_with_list_to_struct_with_tuple_with_list(self):
     type_spec = computation_types.SequenceType(
-        computation_types.StructWithPythonType([np.int32, np.bool_], list)
+        computation_types.StructWithPythonType([np.int32, np.float64], list)
     )
     self.assertIs(type_spec.element.python_container, tuple)
 
@@ -600,10 +601,10 @@ class SequenceTypeTest(parameterized.TestCase):
         computation_types.StructWithPythonType(
             [
                 computation_types.StructWithPythonType(
-                    [np.int32, np.bool_], list
+                    [np.int32, np.float64], list
                 ),
                 computation_types.StructWithPythonType(
-                    [np.int32, np.bool_], list
+                    [np.int32, np.float64], list
                 ),
             ],
             list,
@@ -663,9 +664,9 @@ class SequenceTypeTest(parameterized.TestCase):
       (
           'struct_type',
           computation_types.SequenceType(
-              computation_types.StructType([np.int32, np.bool_])
+              computation_types.StructType([np.int32, np.float64])
           ),
-          '<int32,bool>*',
+          '<int32,float64>*',
       ),
   )
   def test_str(self, type_spec, expected_str):
@@ -681,11 +682,11 @@ class SequenceTypeTest(parameterized.TestCase):
       (
           'struct_type',
           computation_types.SequenceType(
-              computation_types.StructType([np.int32, np.bool_])
+              computation_types.StructType([np.int32, np.float64])
           ),
           (
               'SequenceType(StructType([TensorType(np.int32),'
-              ' TensorType(np.bool_)]))'
+              ' TensorType(np.float64)]))'
           ),
       ),
   )
@@ -703,7 +704,7 @@ class SequenceTypeTest(parameterized.TestCase):
       (
           'different_element',
           computation_types.SequenceType(np.int32),
-          computation_types.SequenceType(np.bool_),
+          computation_types.SequenceType(np.float64),
           False,
       ),
   )
@@ -721,7 +722,7 @@ class SequenceTypeTest(parameterized.TestCase):
       (
           'different_element',
           computation_types.SequenceType(np.int32),
-          computation_types.SequenceType(np.bool_),
+          computation_types.SequenceType(np.float64),
           False,
       ),
   )
@@ -740,13 +741,13 @@ class FunctionTypeTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'with_parameter',
-          computation_types.FunctionType(np.int32, np.bool_),
-          '(int32 -> bool)',
+          computation_types.FunctionType(np.int32, np.float64),
+          '(int32 -> float64)',
       ),
       (
           'without_parameter',
-          computation_types.FunctionType(None, np.bool_),
-          '( -> bool)',
+          computation_types.FunctionType(None, np.float64),
+          '( -> float64)',
       ),
   )
   def test_str(self, type_spec, expected_str):
@@ -756,13 +757,13 @@ class FunctionTypeTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'with_parameter',
-          computation_types.FunctionType(np.int32, np.bool_),
-          'FunctionType(TensorType(np.int32), TensorType(np.bool_))',
+          computation_types.FunctionType(np.int32, np.float64),
+          'FunctionType(TensorType(np.int32), TensorType(np.float64))',
       ),
       (
           'without_parameter',
-          computation_types.FunctionType(None, np.bool_),
-          'FunctionType(None, TensorType(np.bool_))',
+          computation_types.FunctionType(None, np.float64),
+          'FunctionType(None, TensorType(np.float64))',
       ),
   )
   def test_repr(self, type_spec, expected_repr):
@@ -772,19 +773,19 @@ class FunctionTypeTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'same_parameter_and_result',
-          computation_types.FunctionType(np.int32, np.bool_),
-          computation_types.FunctionType(np.int32, np.bool_),
+          computation_types.FunctionType(np.int32, np.float64),
+          computation_types.FunctionType(np.int32, np.float64),
           True,
       ),
       (
           'different_parameter',
-          computation_types.FunctionType(np.int32, np.bool_),
-          computation_types.FunctionType(np.bool_, np.bool_),
+          computation_types.FunctionType(np.int32, np.float64),
+          computation_types.FunctionType(np.float64, np.float64),
           False,
       ),
       (
           'different_result',
-          computation_types.FunctionType(np.int32, np.bool_),
+          computation_types.FunctionType(np.int32, np.float64),
           computation_types.FunctionType(np.int32, np.int32),
           False,
       ),
@@ -796,19 +797,19 @@ class FunctionTypeTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'same_parameter_and_result',
-          computation_types.FunctionType(np.int32, np.bool_),
-          computation_types.FunctionType(np.int32, np.bool_),
+          computation_types.FunctionType(np.int32, np.float64),
+          computation_types.FunctionType(np.int32, np.float64),
           True,
       ),
       (
           'different_parameter',
-          computation_types.FunctionType(np.int32, np.bool_),
-          computation_types.FunctionType(np.bool_, np.bool_),
+          computation_types.FunctionType(np.int32, np.float64),
+          computation_types.FunctionType(np.float64, np.float64),
           False,
       ),
       (
           'different_result',
-          computation_types.FunctionType(np.int32, np.bool_),
+          computation_types.FunctionType(np.int32, np.float64),
           computation_types.FunctionType(np.int32, np.int32),
           False,
       ),
@@ -1038,7 +1039,7 @@ class FederatedTypeTest(parameterized.TestCase):
       (
           'different_member',
           computation_types.FederatedType(np.int32, placements.CLIENTS),
-          computation_types.FederatedType(np.bool_, placements.CLIENTS),
+          computation_types.FederatedType(np.float64, placements.CLIENTS),
           False,
       ),
       (
@@ -1068,7 +1069,7 @@ class FederatedTypeTest(parameterized.TestCase):
       (
           'different_member',
           computation_types.FederatedType(np.int32, placements.CLIENTS),
-          computation_types.FederatedType(np.bool_, placements.CLIENTS),
+          computation_types.FederatedType(np.float64, placements.CLIENTS),
           False,
       ),
       (
@@ -1116,17 +1117,17 @@ class ToTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), 'int32[?]')
 
   def test_list_of_tf_types(self):
-    s = [np.int32, np.bool_]
+    s = [np.int32, np.float64]
     t = computation_types.to_type(s)
     self.assertIsInstance(t, computation_types.StructWithPythonType)
-    self.assertEqual(str(t), '<int32,bool>')
+    self.assertEqual(str(t), '<int32,float64>')
 
   def test_tuple_of_tf_types(self):
-    s = (np.int32, np.bool_)
+    s = (np.int32, np.float64)
     t = computation_types.to_type(s)
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
-    self.assertEqual(str(t), '<int32,bool>')
+    self.assertEqual(str(t), '<int32,float64>')
 
   def test_singleton_named_tf_type(self):
     s = ('a', np.int32)
@@ -1136,50 +1137,50 @@ class ToTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), '<a=int32>')
 
   def test_list_of_named_tf_types(self):
-    s = [('a', np.int32), ('b', np.bool_)]
+    s = [('a', np.int32), ('b', np.float64)]
     t = computation_types.to_type(s)
     # Note: list of pairs should be interpreted as a plain StructType, and
     # not try to convert into a python list afterwards.
     self.assertNotIsInstance(t, computation_types.StructWithPythonType)
-    self.assertEqual(str(t), '<a=int32,b=bool>')
+    self.assertEqual(str(t), '<a=int32,b=float64>')
 
   def test_list_of_partially_named_tf_types(self):
-    s = [np.bool_, ('a', np.int32)]
+    s = [np.float64, ('a', np.int32)]
     t = computation_types.to_type(s)
     # Note: list of pairs should be interpreted as a plain StructType, and
     # not try to convert into a python list afterwards.
     self.assertNotIsInstance(t, computation_types.StructWithPythonType)
-    self.assertEqual(str(t), '<bool,a=int32>')
+    self.assertEqual(str(t), '<float64,a=int32>')
 
   def test_ordered_dict_of_tf_types(self):
-    s = collections.OrderedDict([('a', np.int32), ('b', np.bool_)])
+    s = collections.OrderedDict([('a', np.int32), ('b', np.float64)])
     t = computation_types.to_type(s)
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, collections.OrderedDict)
-    self.assertEqual(str(t), '<a=int32,b=bool>')
+    self.assertEqual(str(t), '<a=int32,b=float64>')
 
   def test_nested_tuple_of_tf_types(self):
-    s = (np.int32, (np.float32, np.bool_))
+    s = (np.int32, (np.float32, np.float64))
     t = computation_types.to_type(s)
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
-    self.assertEqual(str(t), '<int32,<float32,bool>>')
+    self.assertEqual(str(t), '<int32,<float32,float64>>')
 
   def test_nested_tuple_of_named_tf_types(self):
-    s = (np.int32, (('x', np.float32), np.bool_))
+    s = (np.int32, (('x', np.float32), np.float64))
     t = computation_types.to_type(s)
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
     self.assertNotIsInstance(t[1], computation_types.StructWithPythonType)
-    self.assertEqual(str(t), '<int32,<x=float32,bool>>')
+    self.assertEqual(str(t), '<int32,<x=float32,float64>>')
 
   def test_nested_tuple_of_named_nonscalar_tf_types(self):
-    s = ((np.int32, [1]), (('x', (np.float32, [2])), (np.bool_, [3])))
+    s = ((np.int32, [1]), (('x', (np.float32, [2])), (np.float64, [3])))
     t = computation_types.to_type(s)
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
     self.assertNotIsInstance(t[1], computation_types.StructWithPythonType)
-    self.assertEqual(str(t), '<int32[1],<x=float32[2],bool[3]>>')
+    self.assertEqual(str(t), '<int32[1],<x=float32[2],float64[3]>>')
 
   def test_namedtuple_elements_two_tuples(self):
     elems = [np.int32 for _ in range(10)]
@@ -1229,7 +1230,7 @@ class ToTypeTest(parameterized.TestCase):
       c: object
 
     t = computation_types.to_type(
-        TestFoo(a=[np.int32, np.bool_], b=TestFoo2(c=(np.float32, [2])))
+        TestFoo(a=[np.int32, np.float64], b=TestFoo2(c=(np.float32, [2])))
     )
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, TestFoo)
@@ -1237,7 +1238,7 @@ class ToTypeTest(parameterized.TestCase):
     self.assertIs(t.a.python_container, list)
     self.assertIsInstance(t.b, computation_types.StructWithPythonType)
     self.assertIs(t.b.python_container, TestFoo2)
-    self.assertEqual(str(t), '<a=<int32,bool>,b=<c=float32[2]>>')
+    self.assertEqual(str(t), '<a=<int32,float64>,b=<c=float32[2]>>')
 
   def test_struct(self):
     t = computation_types.to_type(
@@ -1434,9 +1435,9 @@ class TensorflowToTypeTest(parameterized.TestCase):
       ('type', computation_types.TensorType(np.int32)),
       ('dtype', np.int32),
       ('tensor_like', (np.int32, [2, 3])),
-      ('sequence_unnamed', [np.bool_, np.int32, np.str_]),
-      ('sequence_named', [('a', np.bool_), ('b', np.int32), ('c', np.str_)]),
-      ('mapping', {'a': np.bool_, 'b': np.int32, 'c': np.str_}),
+      ('sequence_unnamed', [np.float64, np.int32, np.str_]),
+      ('sequence_named', [('a', np.float64), ('b', np.int32), ('c', np.str_)]),
+      ('mapping', {'a': np.float64, 'b': np.int32, 'c': np.str_}),
   )
   def test_delegates_result_with_obj(self, obj):
 
@@ -1477,10 +1478,10 @@ class RepresentationTest(absltest.TestCase):
       self,
   ):
     parameter = computation_types.StructType((np.int32, np.float32))
-    type_spec = computation_types.FunctionType(parameter, np.bool_)
+    type_spec = computation_types.FunctionType(parameter, np.float64)
 
     self.assertEqual(
-        type_spec.compact_representation(), '(<int32,float32> -> bool)'
+        type_spec.compact_representation(), '(<int32,float32> -> float64)'
     )
     # pyformat: disable
     self.assertEqual(
@@ -1488,21 +1489,21 @@ class RepresentationTest(absltest.TestCase):
         '(<\n'
         '  int32,\n'
         '  float32\n'
-        '> -> bool)'
+        '> -> float64)'
     )
     # pyformat: enable
 
   def test_returns_string_for_function_type_with_named_tuple_type_result(self):
     result = computation_types.StructType((np.int32, np.float32))
-    type_spec = computation_types.FunctionType(np.bool_, result)
+    type_spec = computation_types.FunctionType(np.float64, result)
 
     self.assertEqual(
-        type_spec.compact_representation(), '(bool -> <int32,float32>)'
+        type_spec.compact_representation(), '(float64 -> <int32,float32>)'
     )
     # pyformat: disable
     self.assertEqual(
         type_spec.formatted_representation(),
-        '(bool -> <\n'
+        '(float64 -> <\n'
         '  int32,\n'
         '  float32\n'
         '>)'
@@ -1513,11 +1514,11 @@ class RepresentationTest(absltest.TestCase):
       self,
   ):
     parameter = computation_types.StructType((np.int32, np.float32))
-    result = computation_types.StructType((np.bool_, np.str_))
+    result = computation_types.StructType((np.float64, np.str_))
     type_spec = computation_types.FunctionType(parameter, result)
 
     self.assertEqual(
-        type_spec.compact_representation(), '(<int32,float32> -> <bool,str>)'
+        type_spec.compact_representation(), '(<int32,float32> -> <float64,str>)'
     )
     # pyformat: disable
     self.assertEqual(
@@ -1526,7 +1527,7 @@ class RepresentationTest(absltest.TestCase):
         '  int32,\n'
         '  float32\n'
         '> -> <\n'
-        '  bool,\n'
+        '  float64,\n'
         '  str\n'
         '>)'
     )

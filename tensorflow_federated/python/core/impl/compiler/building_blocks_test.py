@@ -66,7 +66,9 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual([], list(ref.children()))
 
   def test_basic_functionality_of_selection_class(self):
-    x = building_blocks.Reference('foo', [('bar', np.int32), ('baz', np.bool_)])
+    x = building_blocks.Reference(
+        'foo', [('bar', np.int32), ('baz', np.float64)]
+    )
     y = building_blocks.Selection(x, name='bar')
     self.assertEqual(y.name, 'bar')
     self.assertIsNone(y.index)
@@ -75,13 +77,13 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(y),
         (
             "Selection(Reference('foo', StructType(["
-            "('bar', TensorType(np.int32)), ('baz', TensorType(np.bool_))]))"
+            "('bar', TensorType(np.int32)), ('baz', TensorType(np.float64))]))"
             ", name='bar')"
         ),
     )
     self.assertEqual(y.compact_representation(), 'foo.bar')
     z = building_blocks.Selection(x, name='baz')
-    self.assertEqual(str(z.type_signature), 'bool')
+    self.assertEqual(str(z.type_signature), 'float64')
     self.assertEqual(z.compact_representation(), 'foo.baz')
     with self.assertRaises(ValueError):
       _ = building_blocks.Selection(x, name='bak')
@@ -93,13 +95,13 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(x0),
         (
             "Selection(Reference('foo', StructType(["
-            "('bar', TensorType(np.int32)), ('baz', TensorType(np.bool_))]))"
+            "('bar', TensorType(np.int32)), ('baz', TensorType(np.float64))]))"
             ', index=0)'
         ),
     )
     self.assertEqual(x0.compact_representation(), 'foo[0]')
     x1 = building_blocks.Selection(x, index=1)
-    self.assertEqual(str(x1.type_signature), 'bool')
+    self.assertEqual(str(x1.type_signature), 'float64')
     self.assertEqual(x1.compact_representation(), 'foo[1]')
     with self.assertRaises(ValueError):
       _ = building_blocks.Selection(x, index=2)
@@ -125,17 +127,17 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_basic_functionality_of_struct_class(self):
     x = building_blocks.Reference('foo', np.int32)
-    y = building_blocks.Reference('bar', np.bool_)
+    y = building_blocks.Reference('bar', np.float64)
     z = building_blocks.Struct([x, ('y', y)])
     with self.assertRaises(ValueError):
       _ = building_blocks.Struct([('', y)])
     self.assertIsInstance(z, structure.Struct)
-    self.assertEqual(str(z.type_signature), '<int32,y=bool>')
+    self.assertEqual(str(z.type_signature), '<int32,y=float64>')
     self.assertEqual(
         repr(z),
         (
             "Struct([(None, Reference('foo', TensorType(np.int32))), ('y', "
-            "Reference('bar', TensorType(np.bool_)))])"
+            "Reference('bar', TensorType(np.float64)))])"
         ),
     )
     self.assertEqual(z.compact_representation(), '<foo,y=bar>')
@@ -163,29 +165,29 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_struct_with_container_type(self):
     x = building_blocks.Reference('foo', np.int32)
-    y = building_blocks.Reference('bar', np.bool_)
+    y = building_blocks.Reference('bar', np.float64)
     z = building_blocks.Struct([x, ('y', y)], tuple)
     self.assertEqual(
         z.type_signature,
         computation_types.StructWithPythonType(
-            [np.int32, ('y', np.bool_)], tuple
+            [np.int32, ('y', np.float64)], tuple
         ),
     )
 
   def test_basic_functionality_of_call_class(self):
     x = building_blocks.Reference(
-        'foo', computation_types.FunctionType(np.int32, np.bool_)
+        'foo', computation_types.FunctionType(np.int32, np.float64)
     )
     y = building_blocks.Reference('bar', np.int32)
     z = building_blocks.Call(x, y)
-    self.assertEqual(str(z.type_signature), 'bool')
+    self.assertEqual(str(z.type_signature), 'float64')
     self.assertIs(z.function, x)
     self.assertIs(z.argument, y)
     self.assertEqual(
         repr(z),
         (
             "Call(Reference('foo', "
-            'FunctionType(TensorType(np.int32), TensorType(np.bool_))), '
+            'FunctionType(TensorType(np.int32), TensorType(np.float64))), '
             "Reference('bar', TensorType(np.int32)))"
         ),
     )
@@ -1712,7 +1714,11 @@ class PlacementTest(parameterized.TestCase):
 class LiteralTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('bool', True, computation_types.TensorType(np.bool_)),
+      (
+          'bool',
+          True,
+          computation_types.TensorType(np.bool_)
+      ),
       ('int8', 1, computation_types.TensorType(np.int8)),
       ('int16', 1, computation_types.TensorType(np.int16)),
       ('int32', 1, computation_types.TensorType(np.int32)),
@@ -1744,7 +1750,10 @@ class LiteralTest(parameterized.TestCase):
           np.complex64(1.0 + 1.0j),
           computation_types.TensorType(np.complex64),
       ),
-      ('generic_bool', np.bool_(True), computation_types.TensorType(np.bool_)),
+      (
+          'generic_bool',
+          np.bool_(True), computation_types.TensorType(np.bool_)
+      ),
       ('generic_str', np.str_('a'), computation_types.TensorType(np.str_)),
       ('generic_bytes', np.bytes_(b'a'), computation_types.TensorType(np.str_)),
       (
@@ -1956,7 +1965,10 @@ class LiteralTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'bool',
-          building_blocks.Literal(True, computation_types.TensorType(np.bool_)),
+          building_blocks.Literal(
+              True,
+              computation_types.TensorType(np.bool_),
+          ),
       ),
       (
           'int',
@@ -2003,8 +2015,14 @@ class LiteralTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'bool',
-          building_blocks.Literal(True, computation_types.TensorType(np.bool_)),
-          building_blocks.Literal(True, computation_types.TensorType(np.bool_)),
+          building_blocks.Literal(
+              True,
+              computation_types.TensorType(np.bool_)
+          ),
+          building_blocks.Literal(
+              True,
+              computation_types.TensorType(np.bool_)
+          ),
       ),
       (
           'int8',
@@ -2145,8 +2163,12 @@ class LiteralTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'bool',
-          building_blocks.Literal(True, computation_types.TensorType(np.bool_)),
-          building_blocks.Literal(True, computation_types.TensorType(np.bool_)),
+          building_blocks.Literal(
+              True, computation_types.TensorType(np.bool_)
+          ),
+          building_blocks.Literal(
+              True, computation_types.TensorType(np.bool_)
+          ),
       ),
       (
           'int',
@@ -2229,7 +2251,9 @@ class LiteralTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'bool',
-          building_blocks.Literal(True, computation_types.TensorType(np.bool_)),
+          building_blocks.Literal(
+              True, computation_types.TensorType(np.bool_)
+          ),
           'Literal(True, TensorType(np.bool_))',
       ),
       (
@@ -2401,7 +2425,7 @@ class RepresentationTest(absltest.TestCase):
     self.assertEqual(comp.structural_representation(), 'Ref(a)')
 
   def test_returns_string_for_selection_with_name(self):
-    ref = building_blocks.Reference('a', (('b', np.int32), ('c', np.bool_)))
+    ref = building_blocks.Reference('a', (('b', np.int32), ('c', np.float64)))
     comp = building_blocks.Selection(ref, name='b')
 
     self.assertEqual(comp.compact_representation(), 'a.b')
@@ -2416,7 +2440,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_selection_with_index(self):
-    ref = building_blocks.Reference('a', (('b', np.int32), ('c', np.bool_)))
+    ref = building_blocks.Reference('a', (('b', np.int32), ('c', np.float64)))
     comp = building_blocks.Selection(ref, index=0)
 
     self.assertEqual(comp.compact_representation(), 'a[0]')
