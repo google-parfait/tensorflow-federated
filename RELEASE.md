@@ -18,6 +18,7 @@ and this project adheres to
 ### Added
 
 *   An implementation of AdamW to `tff.learning.optimizers`.
+*   Added Executor class to public API.
 
 ### Changed
 

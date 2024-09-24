@@ -36,6 +36,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
         "//tensorflow_federated/python/core/impl/executors:cardinality_carrying_base",
         "//tensorflow_federated/python/core/impl/executors:data_descriptor",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/executors:ingestable_base",

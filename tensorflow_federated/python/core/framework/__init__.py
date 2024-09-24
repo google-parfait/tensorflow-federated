@@ -62,6 +62,7 @@ from tensorflow_federated.python.core.impl.executors.cardinality_carrying_base i
 from tensorflow_federated.python.core.impl.executors.data_descriptor import CardinalityFreeDataDescriptor
 from tensorflow_federated.python.core.impl.executors.data_descriptor import CreateDataDescriptor
 from tensorflow_federated.python.core.impl.executors.data_descriptor import DataDescriptor
+from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import CardinalitiesType
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executors_errors import RetryableError
