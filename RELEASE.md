@@ -10,13 +10,14 @@ and this project adheres to
 
 ### Changed
 
+*   Updated to use an environment-agnostic way to represent a sequence of data.
 *   Updated JAX computations and contexts to be able to handle sequence types.
 
 ## Release 0.87.0
 
 ### Added
 
-*   Added an implementation of AdamW to `tff.learning.optimizers`.
+*   An implementation of AdamW to `tff.learning.optimizers`.
 
 ### Changed
 

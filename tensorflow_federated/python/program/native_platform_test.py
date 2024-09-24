@@ -20,7 +20,6 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.common_libs import structure
@@ -91,9 +90,9 @@ class NativeValueReferenceTest(
       ),
       (
           'sequence',
-          lambda: _create_task(tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+          lambda: _create_task([1, 2, 3]),
           computation_types.SequenceType(np.int32),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+          [1, 2, 3],
       ),
   )
   async def test_get_value_returns_value(
@@ -125,10 +124,10 @@ class CreateStructureOfReferencesTest(
       ),
       (
           'sequence',
-          lambda: _create_task(tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+          lambda: _create_task([1, 2, 3]),
           computation_types.SequenceType(np.int32),
           lambda: native_platform.NativeValueReference(
-              _create_task(tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+              _create_task([1, 2, 3]),
               computation_types.SequenceType(np.int32),
           ),
       ),
@@ -315,11 +314,11 @@ class MaterializeStructureOfValueReferencesTest(
       (
           'sequence',
           lambda: native_platform.NativeValueReference(
-              _create_task(tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+              _create_task([1, 2, 3]),
               computation_types.SequenceType(np.int32),
           ),
           computation_types.SequenceType(np.int32),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+          [1, 2, 3],
       ),
       (
           'federated_server',
@@ -478,8 +477,8 @@ class NativeFederatedContextTest(
           _create_identity_tensorflow_computation(
               computation_types.SequenceType(np.int32)
           ),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+          [1, 2, 3],
+          [1, 2, 3],
       ),
       (
           'federated_server',

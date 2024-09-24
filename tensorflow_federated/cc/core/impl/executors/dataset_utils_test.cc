@@ -13,11 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-#include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
+#include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -26,7 +25,6 @@ limitations under the License
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
@@ -41,24 +39,14 @@ using ::tensorflow_federated::testing::SequenceV;
 
 TEST(DatasetConversionsTest, TestDatasetCreationFromSequence) {
   v0::Value value_pb = SequenceV(0, 10, 1);
-  TFF_ASSERT_OK(SequenceValueToDataset(value_pb.sequence()));
-}
-
-TEST(DatasetConversionsTest, TestBadStringReturnsInternalError) {
-  tensorflow::tstring bad_graph_def = "bad_graph_def";
-  v0::Value value_pb;
-  v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
-  *sequence_pb->mutable_serialized_graph_def() =
-      std::string(bad_graph_def.data(), bad_graph_def.size());
-  EXPECT_THAT(SequenceValueToDataset(value_pb.sequence()),
-              StatusIs(StatusCode::kInternal));
+  TFF_ASSERT_OK(DatasetFromSequence(value_pb.sequence()));
 }
 
 TEST(DatasetConversionsTest, TestIterationOverCreatedDataset) {
   v0::Value value_pb = SequenceV(0, 10, 1);
   TFF_ASSERT_OK_AND_ASSIGN(
       std::shared_ptr<tensorflow::data::standalone::Dataset> ds,
-      SequenceValueToDataset(value_pb.sequence()));
+      DatasetFromSequence(value_pb.sequence()));
   std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
   // We avoid taking a dependency on TF testing internals.
   auto status = ds->MakeIterator(&iterator);

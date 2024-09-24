@@ -44,7 +44,6 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -65,7 +64,6 @@ namespace tensorflow_federated {
 namespace {
 
 using ::absl::StatusCode;
-using ::tensorflow_federated::testing::CreateSerializedRangeDatasetGraphDef;
 using ::tensorflow_federated::testing::EqualsProto;
 using ::tensorflow_federated::testing::SequenceV;
 using ::tensorflow_federated::testing::StructV;
@@ -334,27 +332,19 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripStructOfNestedTensors) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripSequence) {
-  tensorflow::tstring graph_def = CreateSerializedRangeDatasetGraphDef(
-      /*start=*/0, /*stop=*/10, /*step=*/1);
-  v0::Value value_pb;
-  v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
-  *sequence_pb->mutable_serialized_graph_def() =
-      std::string(graph_def.data(), graph_def.size());
+  v0::Value value_pb = SequenceV(0, 2, 1);
   // We can't simply `this->CheckRoundTrip` because the serialized graph defs
   // don't have deterministic node orders.
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
                            this->test_executor_->CreateValue(value_pb));
   v0::Value output_pb;
   EXPECT_THAT(this->test_executor_->Materialize(id, &output_pb), IsOk());
-  // Compare GraphDef protos without ordering.
-  tensorflow::GraphDef input_graph_def;
-  ASSERT_TRUE(input_graph_def.ParseFromString(graph_def));
-  tensorflow::GraphDef materialized_graph_def;
-  ASSERT_TRUE(materialized_graph_def.ParseFromString(
-      output_pb.sequence().serialized_graph_def()));
-  EXPECT_THAT(materialized_graph_def,
-              testing::proto::IgnoringRepeatedFieldOrdering(
-                  EqualsProto(input_graph_def)));
+  // Compare elements without ordering, output_pb will not have an element_type
+  // because ExecutorValue does not have a type.
+  output_pb.mutable_sequence()->mutable_element_type()->Clear();
+  value_pb.mutable_sequence()->mutable_element_type()->Clear();
+  EXPECT_THAT(output_pb, testing::proto::IgnoringRepeatedFieldOrdering(
+                             EqualsProto(value_pb)));
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CreateStructOneElement) {

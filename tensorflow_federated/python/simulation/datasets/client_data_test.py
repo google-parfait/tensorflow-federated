@@ -197,8 +197,7 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
     client_data = create_concrete_client_data()
     for client_id in client_data.client_ids:
       expected_values = list(range(int(client_id)))
-      client_dataset = client_data.dataset_computation(client_id)
-      actual_values = list(client_dataset.as_numpy_iterator())
+      actual_values = client_data.dataset_computation(client_id)
       self.assertEqual(expected_values, actual_values)
 
   def test_datasets_is_lazy(self):
@@ -367,9 +366,7 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
     for client_id in client_data.client_ids:
       expected_dataset = [2 * a for a in range(int(client_id))]
       actual_dataset = preprocess_client_data.dataset_computation(client_id)
-      self.assertEqual(
-          expected_dataset, list(actual_dataset.as_numpy_iterator())
-      )
+      self.assertEqual(expected_dataset, actual_dataset)
 
   def test_preprocess_creates_expected_amalgamated_dataset(self):
     client_data = create_concrete_client_data()

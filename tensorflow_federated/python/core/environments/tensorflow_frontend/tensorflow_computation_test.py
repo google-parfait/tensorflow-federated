@@ -17,10 +17,12 @@ from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import ml_dtypes
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
@@ -48,6 +50,11 @@ class ToNumpyTest(parameterized.TestCase):
           [tf.constant(1), tf.constant(2), tf.constant(3)],
           [1, 2, 3],
       ),
+      (
+          'dataset',
+          tf.data.Dataset.range(1, 4),
+          [1, 2, 3],
+      ),
   )
   def test_returns_expected_result(self, value, expected_result):
     actual_result = tensorflow_computation._to_numpy(value)
@@ -59,6 +66,36 @@ class ToNumpyTest(parameterized.TestCase):
 
 
 class TensorFlowComputationTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('tensor_bool', computation_types.TensorType(np.bool_)),
+      ('tensor_int8', computation_types.TensorType(np.int8)),
+      ('tensor_int16', computation_types.TensorType(np.int16)),
+      ('tensor_int32', computation_types.TensorType(np.int32)),
+      ('tensor_int64', computation_types.TensorType(np.int64)),
+      ('tensor_uint8', computation_types.TensorType(np.uint8)),
+      ('tensor_uint16', computation_types.TensorType(np.uint16)),
+      ('tensor_uint32', computation_types.TensorType(np.uint32)),
+      ('tensor_uint64', computation_types.TensorType(np.uint64)),
+      ('tensor_float16', computation_types.TensorType(np.float16)),
+      ('tensor_float32', computation_types.TensorType(np.float32)),
+      ('tensor_float64', computation_types.TensorType(np.float64)),
+      ('tensor_complex64', computation_types.TensorType(np.complex64)),
+      ('tensor_complex128', computation_types.TensorType(np.complex128)),
+      ('tensor_bfloat16', computation_types.TensorType(ml_dtypes.bfloat16)),
+      ('tensor_str', computation_types.TensorType(np.str_)),
+      ('tensor_generic', computation_types.TensorType(np.int32)),
+      ('tensor_array', computation_types.TensorType(np.int32, shape=[3])),
+      ('sequence', computation_types.SequenceType(np.int32)),
+  )
+  def test_returns_concrete_computation_with_dtype(self, type_spec):
+    @tensorflow_computation.tf_computation(type_spec)
+    def _comp(x):
+      return x
+
+    self.assertIsInstance(_comp, computation_impl.ConcreteComputation)
+    expected_type = computation_types.FunctionType(type_spec, type_spec)
+    self.assertEqual(_comp.type_signature, expected_type)
 
   @parameterized.named_parameters(
       ('lambda_with_arg', lambda x: x > 10, tf.int32, '(int32 -> bool)'),
@@ -339,18 +376,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertEqual(
         foo.type_signature.compact_representation(), '(int32 -> int32)'
     )
-
-  def test_does_not_raise_type_error_with_sequence_inputs_and_outputs(self):
-    try:
-
-      @tensorflow_computation.tf_computation(
-          computation_types.SequenceType(np.int32)
-      )
-      def _(x):
-        return x
-
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
 
   def test_fails_with_bad_types(self):
     function = computation_types.FunctionType(

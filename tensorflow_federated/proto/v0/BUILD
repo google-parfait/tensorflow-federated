@@ -73,7 +73,6 @@ proto_library(
     deps = [
         ":array_proto",
         ":computation_proto",
-        "@com_google_protobuf//:any_proto",
     ],
 )
 

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import os.path
 import subprocess
 import sys
@@ -21,7 +20,6 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import executor_pb2
@@ -52,51 +50,24 @@ class DatasetsTest(parameterized.TestCase):
   def test_takes_dataset(self):
     @tensorflow_computation.tf_computation
     def foo(ds):
-      return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
+      return ds
 
     ds = tf.data.Dataset.range(10)
     actual_result = foo(ds)
 
-    expected_result = ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
+    expected_result = list(range(10))
     self.assertEqual(actual_result, expected_result)
 
   @tensorflow_test_utils.skip_test_for_gpu
-  def test_returns_dataset(self):
+  def test_returns_sequence(self):
     @tensorflow_computation.tf_computation
     def foo():
       return tf.data.Dataset.range(10)
 
     actual_result = foo()
 
-    expected_result = tf.data.Dataset.range(10)
-    self.assertEqual(
-        list(actual_result.as_numpy_iterator()),
-        list(expected_result.as_numpy_iterator()),
-    )
-
-  def test_takes_dataset_infinite(self):
-    @tensorflow_computation.tf_computation
-    def foo(ds):
-      return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
-
-    ds = tf.data.Dataset.range(10).repeat()
-    actual_result = foo(ds)
-
-    expected_result = ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
+    expected_result = list(range(10))
     self.assertEqual(actual_result, expected_result)
-
-  def test_returns_dataset_infinite(self):
-    @tensorflow_computation.tf_computation
-    def foo():
-      return tf.data.Dataset.range(10).repeat()
-
-    actual_result = foo()
-
-    expected_result = tf.data.Dataset.range(10).repeat()
-    self.assertEqual(
-        actual_result.take(100).reduce(np.int64(0), lambda x, y: x + y),
-        expected_result.take(100).reduce(np.int64(0), lambda x, y: x + y),
-    )
 
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset_two(self):
@@ -106,15 +77,8 @@ class DatasetsTest(parameterized.TestCase):
 
     actual_result = foo()
 
-    expected_result = [tf.data.Dataset.range(5), tf.data.Dataset.range(10)]
-    self.assertEqual(
-        list(actual_result[0].as_numpy_iterator()),
-        list(expected_result[0].as_numpy_iterator()),
-    )
-    self.assertEqual(
-        list(actual_result[1].as_numpy_iterator()),
-        list(expected_result[1].as_numpy_iterator()),
-    )
+    expected_result = [list(range(5)), list(range(10))]
+    self.assertEqual(actual_result, expected_result)
 
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset_and_tensor(self):
@@ -124,33 +88,8 @@ class DatasetsTest(parameterized.TestCase):
 
     actual_result = foo()
 
-    expected_result = [tf.data.Dataset.range(5), 5]
-    self.assertEqual(
-        list(actual_result[0].as_numpy_iterator()),
-        list(expected_result[0].as_numpy_iterator()),
-    )
-    self.assertEqual(actual_result[1], expected_result[1])
-
-  @tensorflow_test_utils.skip_test_for_gpu
-  def test_returns_empty_dataset(self):
-    @tensorflow_computation.tf_computation
-    def foo():
-      tensor_slices = collections.OrderedDict([('a', [1, 1]), ('b', [1, 1])])
-      ds = tf.data.Dataset.from_tensor_slices(tensor_slices)
-      return ds.batch(5).take(0)
-
-    actual_result = foo()
-
-    expected_element_spec = collections.OrderedDict([
-        ('a', tf.TensorSpec(shape=(None,), dtype=tf.int32)),
-        ('b', tf.TensorSpec(shape=(None,), dtype=tf.int32)),
-    ])
-    self.assertEqual(actual_result.element_spec, expected_element_spec)
-    expected_result = tf.data.Dataset.range(10).batch(5).take(0)
-    self.assertEqual(
-        list(actual_result.as_numpy_iterator()),
-        list(expected_result.as_numpy_iterator()),
-    )
+    expected_result = [list(range(5)), 5]
+    self.assertEqual(actual_result, expected_result)
 
 
 def _create_mock_remote_executor_grpc_stub(
@@ -158,10 +97,12 @@ def _create_mock_remote_executor_grpc_stub(
 ) -> remote_executor_grpc_stub.RemoteExecutorGrpcStub:
   class _GetExecutorResponse:
 
+    # pylint: disable=property-with-parameters
     @property
     def executor(self, *args, **kwargs):
       del args, kwargs  # Unused.
       return executor_pb2.ExecutorId(id='0')
+    # pylint: enable=property-with-parameters
 
   mock_ex = mock.create_autospec(
       remote_executor_grpc_stub.RemoteExecutorGrpcStub

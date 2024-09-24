@@ -211,46 +211,41 @@ class LocalCPPExecutionContextTest(absltest.TestCase):
       # 1 * 1 * 10
       self.assertEqual(x, 10)
 
-  def test_returns_datasets(self):
+  def test_returns_sequence(self):
     @tensorflow_computation.tf_computation
-    def create_dataset():
+    def create_sequence():
       return tf.data.Dataset.range(5)
 
     context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
     with get_context_stack.get_context_stack().install(context):
       with self.subTest('unplaced'):
-        dataset = create_dataset()
-        self.assertEqual(
-            dataset.element_spec, tf.TensorSpec(shape=[], dtype=np.int64)
-        )
-        self.assertEqual(dataset.cardinality(), 5)
+        sequence = create_sequence()
+        self.assertEqual(sequence, [0, 1, 2, 3, 4])
+
       with self.subTest('federated'):
 
         @federated_computation.federated_computation
-        def create_federated_dataset():
-          return intrinsics.federated_eval(create_dataset, placements.SERVER)
+        def create_federated_sequence():
+          return intrinsics.federated_eval(create_sequence, placements.SERVER)
 
-        dataset = create_federated_dataset()
-        self.assertEqual(
-            dataset.element_spec, tf.TensorSpec(shape=[], dtype=np.int64)
-        )
-        self.assertEqual(dataset.cardinality(), 5)
+        sequence = create_federated_sequence()
+        self.assertEqual(sequence, [0, 1, 2, 3, 4])
+
       with self.subTest('struct'):
 
         @tensorflow_computation.tf_computation()
-        def create_struct_of_datasets():
-          return (create_dataset(), create_dataset())
+        def create_struct_of_sequences():
+          return (create_sequence(), create_sequence())
 
-        datasets = create_struct_of_datasets()
-        self.assertLen(datasets, 2)
+        sequences = create_struct_of_sequences()
+        self.assertLen(sequences, 2)
         self.assertEqual(
-            [d.element_spec for d in datasets],
-            [
-                tf.TensorSpec(shape=[], dtype=np.int64),
-                tf.TensorSpec(shape=[], dtype=np.int64),
-            ],
+            sequences,
+            (
+                [0, 1, 2, 3, 4],
+                [0, 1, 2, 3, 4],
+            ),
         )
-        self.assertEqual([d.cardinality() for d in datasets], [5, 5])
 
 
 if __name__ == '__main__':

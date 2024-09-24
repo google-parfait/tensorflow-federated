@@ -36,7 +36,7 @@ limitations under the License
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
+#include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -247,7 +247,7 @@ class Sequence {
       if (!ds_is_set) {
         absl::WriterMutexLock writer_lock(&dataset_mutex_);
         if (!ds_.has_value()) {
-          ds_ = TFF_TRY(SequenceValueToDataset(proto().sequence()));
+          ds_ = TFF_TRY(DatasetFromSequence(proto().sequence()));
         }
       }
       std::unique_ptr<tensorflow::data::standalone::Iterator> iter;

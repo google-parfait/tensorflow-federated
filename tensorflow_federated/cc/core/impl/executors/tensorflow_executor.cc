@@ -38,19 +38,20 @@ limitations under the License
 #include "absl/strings/str_join.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/macros.h"
-#include "tensorflow/core/platform/tstring.h"
+#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/public/session.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_from_tensor_structures.h"
+#include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -755,17 +756,40 @@ using ValueFuture = std::shared_future<absl::StatusOr<ExecutorValue>>;
 
 absl::Status MaterializeSequence(const tensorflow::Tensor& graph_def_tensor,
                                  v0::Value::Sequence* sequence_value_pb) {
-  if ((graph_def_tensor.dtype() != tensorflow::DT_STRING) ||
-      graph_def_tensor.shape().dims() != 0) {
-    return absl::InternalError(
-        absl::StrCat("Materialize sequence produced unexpected output. "
-                     "Expected scalar string tensor, received tensor "
-                     "with dtype [",
-                     graph_def_tensor.dtype(), "] and rank ",
-                     graph_def_tensor.shape().dims()));
+  std::unique_ptr<tensorflow::data::standalone::Dataset> dataset =
+      TFF_TRY(DatasetFromGraphDefTensor(graph_def_tensor));
+  std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
+  tensorflow::Status iter_status = dataset->MakeIterator(&iterator);
+  if (!iter_status.ok()) {
+    return absl::InternalError(absl::StrCat(
+        "Error creating iterator from dataset: ", iter_status.message()));
   }
-  *sequence_value_pb->mutable_serialized_graph_def() =
-      graph_def_tensor.flat<tensorflow::tstring>()(0);
+
+  std::vector<tensorflow::Tensor> tensors;
+  bool end_of_input = false;
+  while (true) {
+    auto status = iterator->GetNext(&tensors, &end_of_input);
+    if (!status.ok()) {
+      return absl::InternalError(absl::StrCat(
+          "Error getting the next element from dataset: ", status.message()));
+    }
+    if (end_of_input) {
+      break;
+    }
+
+    v0::Value::Sequence::Element* element_pb = sequence_value_pb->add_element();
+    for (const tensorflow::Tensor& tensor : tensors) {
+      // Repeated fields are used for strings and constants to maintain
+      // compatibility with TensorFlow.
+      if ((tensor.shape().dims() == 0 && !tensor.shape().unknown_rank()) ||
+          tensor.dtype() == tensorflow::DataType::DT_STRING) {
+        element_pb->mutable_flat_value()->Add(TFF_TRY(ArrayFromTensor(tensor)));
+      } else {
+        element_pb->mutable_flat_value()->Add(
+            TFF_TRY(ArrayContentFromTensor(tensor)));
+      }
+    }
+  }
   return absl::OkStatus();
 }
 
@@ -886,8 +910,9 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ExecutorValue> CreateValueSequence(
       const v0::Value::Sequence& sequence_pb) const {
-    return ExecutorValue(
-        SequenceTensor(tensorflow::Tensor(sequence_pb.serialized_graph_def())));
+    tensorflow::Tensor tensor =
+        TFF_TRY(GraphDefTensorFromSequence(sequence_pb));
+    return ExecutorValue(SequenceTensor(std::move(tensor)));
   }
 
   // NOTE: `value` reference must be valid until `tasks.WaitAll` is called.
