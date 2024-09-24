@@ -18,12 +18,12 @@ import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_utils
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def get_session_token() -> tf.Tensor:

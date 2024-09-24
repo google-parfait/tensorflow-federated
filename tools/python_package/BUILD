@@ -42,7 +42,6 @@ sh_binary(
         "//tensorflow_federated/python/core/impl/executor_stacks",
         "//tensorflow_federated/python/core/impl/executors",
         "//tensorflow_federated/python/core/impl/federated_context",
-        "//tensorflow_federated/python/core/impl/utils",
         "//tensorflow_federated/python/tensorflow_libs",
     ],
 )

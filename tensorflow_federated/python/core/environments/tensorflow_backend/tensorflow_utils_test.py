@@ -21,10 +21,10 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
-from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import serialization_utils
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
@@ -908,53 +908,43 @@ class GraphUtilsTest(tf.test.TestCase):
 
   @tensorflow_test_utils.graph_mode_test
   def test_fetch_value_in_session_without_data_sets(self):
-    x = structure.Struct(
-        [
-            (
-                'a',
-                structure.Struct(
-                    [
-                        ('b', tf.constant(10)),
-                    ]
-                ),
-            ),
-        ]
-    )
+    x = structure.Struct([
+        (
+            'a',
+            structure.Struct([
+                ('b', tf.constant(10)),
+            ]),
+        ),
+    ])
     with tf.compat.v1.Session() as sess:
       y = tensorflow_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), '<a=<b=10>>')
 
   @tensorflow_test_utils.graph_mode_test
   def test_fetch_value_in_session_with_empty_structure(self):
-    x = structure.Struct(
-        [
-            (
-                'a',
-                structure.Struct(
-                    [
-                        ('b', structure.Struct([])),
-                    ]
-                ),
-            ),
-        ]
-    )
+    x = structure.Struct([
+        (
+            'a',
+            structure.Struct([
+                ('b', structure.Struct([])),
+            ]),
+        ),
+    ])
     with tf.compat.v1.Session() as sess:
       y = tensorflow_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), '<a=<b=<>>>')
 
   @tensorflow_test_utils.graph_mode_test
   def test_fetch_value_in_session_with_partially_empty_structure(self):
-    x = structure.Struct(
-        [
-            (
-                'a',
-                structure.Struct([
-                    ('b', structure.Struct([])),
-                    ('c', tf.constant(10)),
-                ]),
-            ),
-        ]
-    )
+    x = structure.Struct([
+        (
+            'a',
+            structure.Struct([
+                ('b', structure.Struct([])),
+                ('c', tf.constant(10)),
+            ]),
+        ),
+    ])
     with tf.compat.v1.Session() as sess:
       y = tensorflow_utils.fetch_value_in_session(sess, x)
     self.assertEqual(str(y), '<a=<b=<>,c=10>>')

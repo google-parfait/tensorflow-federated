@@ -57,7 +57,6 @@ digraph {
     federated_context [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/federated_context" target="_parent"]
     computation [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/computation" target="_parent"]
     compiler [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/compiler" target="_parent"]
-    utils [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/utils" target="_parent"]
     types [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/types" target="_parent"]
     context_stack [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/context_stack" target="_parent"]
   }

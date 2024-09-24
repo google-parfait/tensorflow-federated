@@ -20,9 +20,9 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import graph_optimizations
 from tensorflow_federated.python.core.environments.tensorflow_backend import graph_spec
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_transformations
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import serialization_utils
 
 
