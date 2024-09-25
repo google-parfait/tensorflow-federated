@@ -19,11 +19,17 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import federated_context
+
+
+class TestContext(context_base.SyncContext):
+
+  def invoke(self, comp, arg):
+    return None
 
 
 class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
@@ -149,17 +155,8 @@ class CheckInFederatedContextTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()
 
-  @parameterized.named_parameters(
-      (
-          'async_cpp',
-          execution_contexts.create_async_local_cpp_execution_context(),
-      ),
-      (
-          'sync_cpp',
-          execution_contexts.create_sync_local_cpp_execution_context(),
-      ),
-  )
-  def test_raises_value_error_with_context(self, context):
+  def test_raises_value_error_with_context(self):
+    context = TestContext()
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()
 
@@ -183,7 +180,7 @@ class CheckInFederatedContextTest(parameterized.TestCase):
       except TypeError:
         self.fail('Raised `ValueError` unexpectedly.')
 
-      context = execution_contexts.create_sync_local_cpp_execution_context()
+      context = TestContext()
       with context_stack_impl.context_stack.install(context):
         with self.assertRaises(ValueError):
           federated_context.check_in_federated_context()
