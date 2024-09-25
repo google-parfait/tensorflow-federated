@@ -11,6 +11,8 @@ and this project adheres to
 ### Added
 
 *   `tff.tensorflow.to_type`.
+*   Added `pack_args_into_struct` and `unpack_args_from_struct` to the public
+    API under `framework`.
 
 ### Deprecated
 

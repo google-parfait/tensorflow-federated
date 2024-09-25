@@ -46,6 +46,8 @@ from tensorflow_federated.python.core.impl.compiler.transformations import to_ca
 from tensorflow_federated.python.core.impl.computation.computation_impl import ConcreteComputation
 from tensorflow_federated.python.core.impl.computation.computation_serialization import deserialize_computation
 from tensorflow_federated.python.core.impl.computation.computation_serialization import serialize_computation
+from tensorflow_federated.python.core.impl.computation.function_utils import pack_args_into_struct
+from tensorflow_federated.python.core.impl.computation.function_utils import unpack_args_from_struct
 from tensorflow_federated.python.core.impl.context_stack.context_base import AsyncContext
 from tensorflow_federated.python.core.impl.context_stack.context_base import SyncContext
 from tensorflow_federated.python.core.impl.context_stack.context_stack_base import ContextStack
