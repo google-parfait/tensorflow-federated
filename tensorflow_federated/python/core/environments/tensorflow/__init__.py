@@ -20,4 +20,5 @@ from tensorflow_federated.python.core.environments.tensorflow_backend.type_conve
 from tensorflow_federated.python.core.environments.tensorflow_frontend.tensorflow_computation import tf_computation as computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend.tensorflow_computation import transform_args
 from tensorflow_federated.python.core.environments.tensorflow_frontend.tensorflow_computation import transform_result
+from tensorflow_federated.python.core.impl.types.computation_types import tensorflow_to_type as to_type
 # pylint: enable=g-importing-member

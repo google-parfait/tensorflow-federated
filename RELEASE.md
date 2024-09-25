@@ -8,6 +8,14 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   `tff.tensorflow.to_type`.
+
+### Deprecated
+
+*   `tff.types.tensorflow_to_type`, use `tff.tensorflow.to_type` instead.
+
 ### Changed
 
 *   Updated to use an environment-agnostic way to represent a sequence of data.
