@@ -25,6 +25,15 @@ and this project adheres to
 *   Moved `tff.types.structure_from_tensor_type_tree` and
     `tff.types.type_to_tf_tensor_specs` to the `tff.tensorflow` package.
 
+### Removed
+
+*   `tff.framework.merge_cardinalities`
+*   `tff.framework.CardinalityCarrying`
+*   `tff.framework.CardinalityFreeDataDescriptor`
+*   `tff.framework.CreateDataDescriptor`
+*   `tff.framework.DataDescriptor`
+*   `tff.framework.Ingestable`
+
 ## Release 0.87.0
 
 ### Added
