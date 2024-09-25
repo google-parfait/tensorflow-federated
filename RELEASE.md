@@ -12,6 +12,8 @@ and this project adheres to
 
 *   Updated to use an environment-agnostic way to represent a sequence of data.
 *   Updated JAX computations and contexts to be able to handle sequence types.
+*   Moved `tff.types.structure_from_tensor_type_tree` and
+    `tff.types.type_to_tf_tensor_specs` to the `tff.tensorflow` package.
 
 ## Release 0.87.0
 

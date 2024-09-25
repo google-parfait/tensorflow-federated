@@ -85,6 +85,7 @@ py_library(
     srcs = ["tensorflow_building_block_factory.py"],
     deps = [
         ":tensorflow_computation_factory",
+        ":type_conversions",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
@@ -94,7 +95,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
 
@@ -116,6 +116,7 @@ py_library(
     srcs = ["tensorflow_computation_factory.py"],
     deps = [
         ":tensorflow_utils",
+        ":type_conversions",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -123,7 +124,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:array_shape",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
@@ -217,6 +217,7 @@ py_library(
     deps = [
         ":tensorflow_building_block_factory",
         ":tensorflow_computation_factory",
+        ":type_conversions",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
@@ -224,7 +225,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
 
@@ -246,12 +246,12 @@ py_library(
     name = "tensorflow_utils",
     srcs = ["tensorflow_utils.py"],
     deps = [
+        ":type_conversions",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/tensorflow_libs:graph_utils",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
@@ -271,5 +271,30 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
+    ],
+)
+
+py_library(
+    name = "type_conversions",
+    srcs = ["type_conversions.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
+    ],
+)
+
+py_test(
+    name = "type_conversions_test",
+    size = "small",
+    srcs = ["type_conversions_test.py"],
+    deps = [
+        ":type_conversions",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
     ],
 )

@@ -18,6 +18,7 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
     ],
 )

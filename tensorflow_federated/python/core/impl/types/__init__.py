@@ -13,6 +13,7 @@
 # limitations under the License.
 """Libraries for interacting with the type of a computation."""
 
+# pylint: disable=g-importing-member
 from tensorflow_federated.python.core.impl.types.array_shape import ArrayShape
 from tensorflow_federated.python.core.impl.types.array_shape import is_shape_fully_defined
 from tensorflow_federated.python.core.impl.types.array_shape import num_elements_in_shape
@@ -40,8 +41,7 @@ from tensorflow_federated.python.core.impl.types.type_analysis import is_structu
 from tensorflow_federated.python.core.impl.types.type_analysis import is_structure_of_integers
 from tensorflow_federated.python.core.impl.types.type_analysis import is_structure_of_tensors
 from tensorflow_federated.python.core.impl.types.type_analysis import is_tensorflow_compatible_type
-from tensorflow_federated.python.core.impl.types.type_conversions import structure_from_tensor_type_tree
 from tensorflow_federated.python.core.impl.types.type_conversions import type_to_py_container
-from tensorflow_federated.python.core.impl.types.type_conversions import type_to_tf_tensor_specs
 from tensorflow_federated.python.core.impl.types.type_serialization import deserialize_type
 from tensorflow_federated.python.core.impl.types.type_serialization import serialize_type
+# pylint: disable=g-importing-member

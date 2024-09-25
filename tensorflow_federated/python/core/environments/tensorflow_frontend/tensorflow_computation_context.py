@@ -19,6 +19,7 @@ import tree
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_utils
+from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions as tensorflow_type_conversions
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
@@ -70,7 +71,9 @@ class TensorFlowComputationContext(context_base.SyncContext):
           return None
 
       normalized_arg = tree.traverse(_to_python, arg)
-      inferred_type = type_conversions.tensorflow_infer_type(normalized_arg)
+      inferred_type = tensorflow_type_conversions.tensorflow_infer_type(
+          normalized_arg
+      )
 
       if not comp.type_signature.parameter.is_assignable_from(inferred_type):
         raise TypeError(

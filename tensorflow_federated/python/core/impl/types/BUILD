@@ -159,7 +159,6 @@ py_test(
         ":computation_types",
         ":placements",
         ":type_conversions",
-        ":type_test_utils",
         ":typed_object",
         "//tensorflow_federated/python/common_libs:structure",
     ],
