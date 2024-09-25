@@ -869,6 +869,7 @@ cc_library(
     name = "tensor_serialization",
     srcs = ["tensor_serialization.cc"],
     hdrs = ["tensor_serialization.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":array_shape_utils",
         ":status_macros",
