@@ -76,7 +76,7 @@ def _build_client_update_fn(
     # function, using tff.sequenece_reduce.
 
     client_update_type_spec = client_update_fn.type_signature.result
-    batch_type = tff.types.tensorflow_to_type(model_fn().input_spec)
+    batch_type = tff.tensorflow.to_type(model_fn().input_spec)
 
     @tff.tensorflow.computation(client_update_type_spec, batch_type)
     def client_update_batch_fn(client_data, batch):
@@ -163,7 +163,7 @@ def build_federated_averaging_process(
     return build_server_broadcast_message(server_state)
 
   server_message_type = server_message_fn.type_signature.result
-  element_type = tff.types.tensorflow_to_type(whimsy_model.input_spec)
+  element_type = tff.tensorflow.to_type(whimsy_model.input_spec)
   tf_dataset_type = tff.SequenceType(element_type)
 
   federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)

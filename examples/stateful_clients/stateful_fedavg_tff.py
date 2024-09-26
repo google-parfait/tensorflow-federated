@@ -112,7 +112,7 @@ def build_federated_averaging_process(
     return stateful_fedavg_tf.build_server_broadcast_message(server_state)
 
   server_message_type = server_message_fn.type_signature.result
-  element_type = tff.types.tensorflow_to_type(whimsy_model.input_spec)
+  element_type = tff.tensorflow.to_type(whimsy_model.input_spec)
   tf_dataset_type = tff.SequenceType(element_type)
 
   @tff.tensorflow.computation(
