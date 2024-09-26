@@ -29,7 +29,6 @@ py_library(
     srcs = ["cardinalities_utils.py"],
     srcs_version = "PY3",
     deps = [
-        ":cardinality_carrying_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -46,12 +45,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
-)
-
-py_library(
-    name = "cardinality_carrying_base",
-    srcs = ["cardinality_carrying_base.py"],
-    srcs_version = "PY3",
 )
 
 py_library(
@@ -99,33 +92,6 @@ py_test(
     srcs = ["data_conversions_test.py"],
     deps = [
         ":data_conversions",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_library(
-    name = "data_descriptor",
-    srcs = ["data_descriptor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":cardinality_carrying_base",
-        ":ingestable_base",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-    ],
-)
-
-py_test(
-    name = "data_descriptor_test",
-    srcs = ["data_descriptor_test.py"],
-    deps = [
-        ":data_descriptor",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
@@ -217,13 +183,6 @@ py_library(
     name = "executors_errors",
     srcs = ["executors_errors.py"],
     srcs_version = "PY3",
-)
-
-py_library(
-    name = "ingestable_base",
-    srcs = ["ingestable_base.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
 )
 
 py_library(

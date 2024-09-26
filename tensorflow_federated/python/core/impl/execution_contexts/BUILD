@@ -38,7 +38,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_value_base",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
-        "//tensorflow_federated/python/core/impl/executors:ingestable_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:typed_object",
