@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_utils
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -63,7 +64,7 @@ class GraphUtilsTest(tf.test.TestCase):
       self.assertEqual(variant_tensor.dtype, tf.variant)
       self.assertIsInstance(type_spec, computation_types.SequenceType)
       self.assertEqual(
-          computation_types.tensorflow_to_type(val.element_spec),
+          tensorflow_types.to_type(val.element_spec),
           type_spec.element,
       )
     elif binding_oneof == 'struct':
@@ -129,7 +130,7 @@ class GraphUtilsTest(tf.test.TestCase):
       graph = tf.compat.v1.get_default_graph()
     val, binding = tensorflow_utils.stamp_parameter_in_graph(name, spec, graph)
     self._assert_input_binding_matches_type_and_value(
-        binding, computation_types.tensorflow_to_type(spec), val, graph
+        binding, tensorflow_types.to_type(spec), val, graph
     )
     return val
 
@@ -661,7 +662,7 @@ class GraphUtilsTest(tf.test.TestCase):
     )
     ds = tf.data.Dataset.from_tensor_slices(sparse_tensor)
     constructed_ds = tensorflow_utils.make_data_set_from_elements(
-        None, list(ds), computation_types.tensorflow_to_type(ds.element_spec)
+        None, list(ds), tensorflow_types.to_type(ds.element_spec)
     )
     self.assertEqual(ds.element_spec, constructed_ds.element_spec)
     self.assertEqual(
@@ -675,9 +676,7 @@ class GraphUtilsTest(tf.test.TestCase):
     constructed_ds = tensorflow_utils.make_data_set_from_elements(
         None,
         [ragged_tensor],
-        computation_types.tensorflow_to_type(
-            tf.RaggedTensorSpec.from_value(ragged_tensor)
-        ),
+        tensorflow_types.to_type(tf.RaggedTensorSpec.from_value(ragged_tensor)),
     )
     self.assertIsInstance(constructed_ds.element_spec, tf.RaggedTensorSpec)
     self.assertEqual(
@@ -1298,7 +1297,7 @@ class GraphUtilsTest(tf.test.TestCase):
     y = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
         x, element_type
     )
-    y_type = computation_types.tensorflow_to_type(y.element_spec)
+    y_type = tensorflow_types.to_type(y.element_spec)
     y_type.check_equivalent_to(element_type)
 
 

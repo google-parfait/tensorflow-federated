@@ -20,11 +20,11 @@ import tree
 
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_serialization
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 
@@ -88,7 +88,7 @@ def _tf_wrapper_fn(
 
 tf_computation = computation_wrapper.ComputationWrapper(
     _tf_wrapper_fn,
-    computation_types.tensorflow_to_type,
+    tensorflow_types.to_type,
     type_conversions.tensorflow_infer_type,
 )
 tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF TensorFlow computations.

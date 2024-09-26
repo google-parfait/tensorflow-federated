@@ -20,6 +20,7 @@ from typing import Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import data_source
@@ -173,7 +174,7 @@ class DatasetDataSource(data_source.FederatedDataSource):
         )
 
     self._datasets = datasets
-    element_type = computation_types.tensorflow_to_type(element_spec)
+    element_type = tensorflow_types.to_type(element_spec)
     self._federated_type = computation_types.FederatedType(
         computation_types.SequenceType(element_type), placements.CLIENTS
     )

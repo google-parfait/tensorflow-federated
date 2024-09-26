@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -161,7 +162,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     dataset = dataset_factory()
     sequence = list(dataset.as_numpy_iterator())
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
-    element_type = computation_types.tensorflow_to_type(dataset.element_spec)
+    element_type = tensorflow_types.to_type(dataset.element_spec)
     sequence_type = computation_types.SequenceType(element_type)
     arg_value_pb, _ = value_serialization.serialize_value(
         sequence, sequence_type

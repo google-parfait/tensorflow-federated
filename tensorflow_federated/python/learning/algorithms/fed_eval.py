@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -198,13 +199,11 @@ def _build_fed_eval_client_work(
 
   def _tensor_type_from_tensor_like(x):
     x_as_tensor = tf.convert_to_tensor(x)
-    return computation_types.tensorflow_to_type(
-        (x_as_tensor.dtype, x_as_tensor.shape)
-    )
+    return tensorflow_types.to_type((x_as_tensor.dtype, x_as_tensor.shape))
 
   with tf.Graph().as_default():
     model = model_fn()
-    batch_type = computation_types.tensorflow_to_type(model.input_spec)
+    batch_type = tensorflow_types.to_type(model.input_spec)
     if metrics_aggregation_process is None:
       unfinalized_metrics = model.report_local_unfinalized_metrics()
       unfinalized_metrics_spec = tf.nest.map_structure(
@@ -290,7 +289,7 @@ def _build_functional_fed_eval_client_work(
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]),
   )
   tuple_weights_type = (weights_type.trainable, weights_type.non_trainable)
-  batch_type = computation_types.tensorflow_to_type(model.input_spec)
+  batch_type = tensorflow_types.to_type(model.input_spec)
   local_eval = _build_functional_local_evaluation(
       model,
       tuple_weights_type,  # pytype: disable=wrong-arg-types

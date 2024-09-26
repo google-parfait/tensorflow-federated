@@ -20,6 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
@@ -265,7 +266,7 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     expected_dataset_comp_type_signature = computation_types.FunctionType(
         computation_types.TensorType(np.str_),
         computation_types.SequenceType(
-            computation_types.tensorflow_to_type(
+            tensorflow_types.to_type(
                 (client_data.element_type_structure.dtype, (2,))
             )
         ),
@@ -326,19 +327,19 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
             collections.OrderedDict([
                 (
                     'x',
-                    computation_types.tensorflow_to_type(
+                    tensorflow_types.to_type(
                         (client_data.element_type_structure['x'].dtype, [2])
                     ),
                 ),
                 (
                     'y',
-                    computation_types.tensorflow_to_type(
+                    tensorflow_types.to_type(
                         client_data.element_type_structure['y'].dtype
                     ),
                 ),
                 (
                     'z',
-                    computation_types.tensorflow_to_type(
+                    tensorflow_types.to_type(
                         client_data.element_type_structure['z'].dtype
                     ),
                 ),

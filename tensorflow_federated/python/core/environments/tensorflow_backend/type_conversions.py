@@ -22,6 +22,7 @@ import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
@@ -29,18 +30,18 @@ from tensorflow_federated.python.core.impl.types import typed_object
 
 def _tensor_to_type(tensor: tf.Tensor) -> computation_types.Type:
   """Returns a `tff.Type` for the `tensor`."""
-  return computation_types.tensorflow_to_type((tensor.dtype, tensor.shape))
+  return tensorflow_types.to_type((tensor.dtype, tensor.shape))
 
 
 def _variable_to_type(variable: tf.Variable) -> computation_types.Type:
   """Returns a `tff.Type` for the `variable`."""
-  return computation_types.tensorflow_to_type((variable.dtype, variable.shape))
+  return tensorflow_types.to_type((variable.dtype, variable.shape))
 
 
 def _dataset_to_type(dataset: tf.data.Dataset) -> computation_types.Type:
   """Returns a `tff.Type` for the `dataset`."""
   dataset_spec = tf.data.DatasetSpec.from_value(dataset)
-  return computation_types.tensorflow_to_type(dataset_spec)
+  return tensorflow_types.to_type(dataset_spec)
 
 
 def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:

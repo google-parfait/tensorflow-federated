@@ -24,7 +24,6 @@ from tensorflow_federated.python.core.impl.types.computation_types import Placem
 from tensorflow_federated.python.core.impl.types.computation_types import SequenceType
 from tensorflow_federated.python.core.impl.types.computation_types import StructType
 from tensorflow_federated.python.core.impl.types.computation_types import StructWithPythonType
-from tensorflow_federated.python.core.impl.types.computation_types import tensorflow_to_type
 from tensorflow_federated.python.core.impl.types.computation_types import TensorType
 from tensorflow_federated.python.core.impl.types.computation_types import to_type
 from tensorflow_federated.python.core.impl.types.computation_types import Type

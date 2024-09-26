@@ -20,6 +20,7 @@ from typing import Any, NamedTuple, Optional
 
 import tensorflow as tf
 
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import variable
@@ -662,7 +663,7 @@ def global_weights_type_from_model(
   global_model_weights = ReconstructionModel.get_global_variables(model)
 
   def _variable_to_type(x: tf.Variable) -> computation_types.Type:
-    return computation_types.tensorflow_to_type((x.dtype, x.shape))
+    return tensorflow_types.to_type((x.dtype, x.shape))
 
   model_weights_type = tf.nest.map_structure(
       _variable_to_type, global_model_weights

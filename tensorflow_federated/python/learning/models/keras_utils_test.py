@@ -25,6 +25,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -878,13 +879,13 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
               [
                   (
                       'x',
-                      computation_types.tensorflow_to_type(
+                      tensorflow_types.to_type(
                           _create_input_spec_multiple_inputs_outputs()['x']
                       ),
                   ),
                   (
                       'y',
-                      computation_types.tensorflow_to_type(
+                      tensorflow_types.to_type(
                           _create_input_spec_multiple_inputs_outputs()['y']
                       ),
                   ),
@@ -897,13 +898,13 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
           computation_types.StructType([
               (
                   'x',
-                  computation_types.tensorflow_to_type(
+                  tensorflow_types.to_type(
                       _create_input_spec_multiple_inputs_outputs()['x']
                   ),
               ),
               (
                   'y',
-                  computation_types.tensorflow_to_type(
+                  tensorflow_types.to_type(
                       _create_input_spec_multiple_inputs_outputs()['y']
                   ),
               ),
@@ -1048,13 +1049,13 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
               [
                   (
                       'x',
-                      computation_types.tensorflow_to_type(
+                      tensorflow_types.to_type(
                           _create_input_spec_multiple_inputs_outputs()['x']
                       ),
                   ),
                   (
                       'y',
-                      computation_types.tensorflow_to_type(
+                      tensorflow_types.to_type(
                           _create_input_spec_multiple_inputs_outputs()['y']
                       ),
                   ),
@@ -1067,13 +1068,13 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
           computation_types.StructType([
               (
                   'x',
-                  computation_types.tensorflow_to_type(
+                  tensorflow_types.to_type(
                       _create_input_spec_multiple_inputs_outputs()['x']
                   ),
               ),
               (
                   'y',
-                  computation_types.tensorflow_to_type(
+                  tensorflow_types.to_type(
                       _create_input_spec_multiple_inputs_outputs()['y']
                   ),
               ),

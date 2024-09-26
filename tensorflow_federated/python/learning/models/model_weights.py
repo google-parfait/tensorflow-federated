@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.models import variable
 
@@ -125,7 +126,7 @@ def weights_type_from_model(
   model_weights = ModelWeights.from_model(model)
 
   def _variable_to_type(x: tf.Variable) -> computation_types.Type:
-    return computation_types.tensorflow_to_type((x.dtype, x.shape))
+    return tensorflow_types.to_type((x.dtype, x.shape))
 
   model_weights_type = tf.nest.map_structure(_variable_to_type, model_weights)
   # StructWithPythonType operates recursively, and will preserve the python type

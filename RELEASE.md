@@ -8,6 +8,10 @@ and this project adheres to
 
 ## Unreleased
 
+### Removed
+
+*   `tff.types.tensorflow_to_type`, this function is no longer used.
+
 ## Release 0.88.0
 
 ### Added

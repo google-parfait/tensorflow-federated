@@ -32,6 +32,7 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -167,7 +168,7 @@ def _build_fed_sgd_client_work(
     metrics_aggregation_fn = metrics_aggregator(
         model.metric_finalizers(),
     )
-  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  element_type = tensorflow_types.to_type(model.input_spec)
   data_type = computation_types.SequenceType(element_type)
   weights_type = model_weights_lib.weights_type_from_model(model)
 
@@ -332,7 +333,7 @@ def _build_functional_fed_sgd_client_work(
     A `tff.learning.templates.ClientWorkProcess`.
   """
   py_typecheck.check_type(model, functional.FunctionalModel)
-  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  element_type = tensorflow_types.to_type(model.input_spec)
   data_type = computation_types.SequenceType(element_type)
 
   def ndarray_to_tensorspec(ndarray):
@@ -344,7 +345,7 @@ def _build_functional_fed_sgd_client_work(
       tuple(ndarray_to_tensorspec(w) for w in trainable_weights),
       tuple(ndarray_to_tensorspec(w) for w in non_trainable_weights),
   )
-  weights_type = computation_types.tensorflow_to_type(weights_spec)
+  weights_type = tensorflow_types.to_type(weights_spec)
 
   @federated_computation.federated_computation
   def init_fn():

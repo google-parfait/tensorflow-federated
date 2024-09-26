@@ -28,6 +28,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -343,7 +344,7 @@ def build_model_delta_client_work(
     metrics_aggregation_fn = metrics_aggregator(
         model.metric_finalizers(),
     )
-  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  element_type = tensorflow_types.to_type(model.input_spec)
   data_type = computation_types.SequenceType(element_type)
   weights_type = model_weights_lib.weights_type_from_model(model)
 
@@ -427,7 +428,7 @@ def build_functional_model_delta_client_work(
 
   if metrics_aggregator is None:
     metrics_aggregator = aggregator.sum_then_finalize
-  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  element_type = tensorflow_types.to_type(model.input_spec)
   data_type = computation_types.SequenceType(element_type)
 
   def ndarray_to_tensorspec(ndarray):
@@ -438,7 +439,7 @@ def build_functional_model_delta_client_work(
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[0]),
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]),
   )
-  weights_type = computation_types.tensorflow_to_type(weights_spec)
+  weights_type = tensorflow_types.to_type(weights_spec)
 
   @tensorflow_computation.tf_computation(weights_type, data_type)
   def client_update_computation(initial_model_weights, dataset):

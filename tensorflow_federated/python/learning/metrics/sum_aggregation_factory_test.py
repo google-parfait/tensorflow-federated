@@ -21,6 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -39,9 +40,7 @@ def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
   # TODO: b/319261270 - Avoid the need for inferring types here, if possible.
   def _tensor_type_from_tensor_like(x):
     x_as_tensor = tf.convert_to_tensor(x)
-    return computation_types.tensorflow_to_type(
-        (x_as_tensor.dtype, x_as_tensor.shape)
-    )
+    return tensorflow_types.to_type((x_as_tensor.dtype, x_as_tensor.shape))
 
   if callable(metric_finalizers):
     finalized_metrics = metric_finalizers(unfinalized_metrics)

@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -104,10 +105,10 @@ def _run_in_federated_computation(optimizer, spec):
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.FederatedType(
-          computation_types.tensorflow_to_type(spec), placements.SERVER
+          tensorflow_types.to_type(spec), placements.SERVER
       ),
       computation_types.FederatedType(
-          computation_types.tensorflow_to_type(spec), placements.SERVER
+          tensorflow_types.to_type(spec), placements.SERVER
       ),
   )
   def next_fn(state, weights, gradients):

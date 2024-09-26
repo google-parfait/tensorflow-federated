@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -71,7 +72,7 @@ class ProximalClientWorkComputationTest(
     expected_param_model_weights_type = computation_types.FederatedType(
         mw_type, placements.CLIENTS
     )
-    element_type = computation_types.tensorflow_to_type(model_fn().input_spec)
+    element_type = tensorflow_types.to_type(model_fn().input_spec)
     expected_param_data_type = computation_types.FederatedType(
         computation_types.SequenceType(element_type), placements.CLIENTS
     )

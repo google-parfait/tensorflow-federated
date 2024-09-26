@@ -15,13 +15,11 @@
 import collections
 import inspect
 from typing import NamedTuple
-from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import attrs
 import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import structure
@@ -1281,171 +1279,6 @@ class ToTypeTest(parameterized.TestCase):
   def test_raises_type_error(self, obj):
     with self.assertRaises(TypeError):
       _ = computation_types.to_type(obj)
-
-
-class TensorflowToTypeTest(parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      (
-          'dtype',
-          tf.int32,
-          computation_types.TensorType(np.int32),
-      ),
-      (
-          'dtype_nested',
-          [tf.int32],
-          computation_types.StructWithPythonType(
-              [
-                  computation_types.TensorType(np.int32),
-              ],
-              list,
-          ),
-      ),
-      (
-          'dtype_mixed',
-          [tf.int32, np.float32],
-          computation_types.StructWithPythonType(
-              [
-                  computation_types.TensorType(np.int32),
-                  computation_types.TensorType(np.float32),
-              ],
-              list,
-          ),
-      ),
-      (
-          'tensor_like_shape_fully_defined',
-          (tf.int32, tf.TensorShape([2, 3])),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
-      ),
-      (
-          'tensor_like_shape_partially_defined',
-          (tf.int32, tf.TensorShape([2, None])),
-          computation_types.TensorType(np.int32, shape=[2, None]),
-      ),
-      (
-          'tensor_like_shape_unknown',
-          (tf.int32, tf.TensorShape(None)),
-          computation_types.TensorType(np.int32, shape=None),
-      ),
-      (
-          'tensor_like_shape_scalar',
-          (tf.int32, tf.TensorShape([])),
-          computation_types.TensorType(np.int32),
-      ),
-      (
-          'tensor_like_dtype_only',
-          (tf.int32, [2, 3]),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
-      ),
-      (
-          'tensor_like_shape_only',
-          (np.int32, tf.TensorShape([2, 3])),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
-      ),
-      (
-          'tensor_like_nested',
-          [(tf.int32, tf.TensorShape([2, 3]))],
-          computation_types.StructWithPythonType(
-              [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
-              ],
-              list,
-          ),
-      ),
-      (
-          'tensor_like_mixed',
-          [(tf.int32, tf.TensorShape([2, 3])), np.float32],
-          computation_types.StructWithPythonType(
-              [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
-                  computation_types.TensorType(np.float32),
-              ],
-              list,
-          ),
-      ),
-      (
-          'tensor_spec',
-          tf.TensorSpec(shape=[2, 3], dtype=tf.int32),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
-      ),
-      (
-          'tensor_spec_nested',
-          [tf.TensorSpec(shape=[2, 3], dtype=tf.int32)],
-          computation_types.StructWithPythonType(
-              [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
-              ],
-              list,
-          ),
-      ),
-      (
-          'tensor_spec_mixed',
-          [tf.TensorSpec(shape=[2, 3], dtype=tf.int32), np.float32],
-          computation_types.StructWithPythonType(
-              [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
-                  computation_types.TensorType(np.float32),
-              ],
-              list,
-          ),
-      ),
-      (
-          'dataset_spec',
-          tf.data.DatasetSpec(tf.TensorSpec(shape=[2, 3], dtype=tf.int32)),
-          computation_types.SequenceType(
-              computation_types.TensorType(np.int32, shape=[2, 3])
-          ),
-      ),
-      (
-          'dataset_spec_nested',
-          [
-              tf.data.DatasetSpec(tf.TensorSpec(shape=[2, 3], dtype=tf.int32)),
-          ],
-          computation_types.StructWithPythonType(
-              [
-                  computation_types.SequenceType(
-                      computation_types.TensorType(np.int32, shape=[2, 3])
-                  ),
-              ],
-              list,
-          ),
-      ),
-      (
-          'dataset_spec_mixed',
-          [
-              tf.data.DatasetSpec(tf.TensorSpec(shape=[2, 3], dtype=tf.int32)),
-              np.float32,
-          ],
-          computation_types.StructWithPythonType(
-              [
-                  computation_types.SequenceType(
-                      computation_types.TensorType(np.int32, shape=[2, 3])
-                  ),
-                  computation_types.TensorType(np.float32),
-              ],
-              list,
-          ),
-      ),
-  )
-  def test_returns_result_with_tensorflow_obj(self, obj, expected_result):
-    actual_result = computation_types.tensorflow_to_type(obj)
-    self.assertEqual(actual_result, expected_result)
-
-  @parameterized.named_parameters(
-      ('type', computation_types.TensorType(np.int32)),
-      ('dtype', np.int32),
-      ('tensor_like', (np.int32, [2, 3])),
-      ('sequence_unnamed', [np.float64, np.int32, np.str_]),
-      ('sequence_named', [('a', np.float64), ('b', np.int32), ('c', np.str_)]),
-      ('mapping', {'a': np.float64, 'b': np.int32, 'c': np.str_}),
-  )
-  def test_delegates_result_with_obj(self, obj):
-
-    with mock.patch.object(
-        computation_types, 'to_type', autospec=True, spec_set=True
-    ) as mock_to_type:
-      computation_types.tensorflow_to_type(obj)
-      mock_to_type.assert_called_once_with(obj)
 
 
 class RepresentationTest(absltest.TestCase):

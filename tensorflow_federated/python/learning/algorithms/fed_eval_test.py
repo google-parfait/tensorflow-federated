@@ -24,6 +24,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -120,9 +121,7 @@ class TestModel(variable.VariableModel):
 def _get_metrics_type(metrics: collections.OrderedDict[str, Any]):
   def _tensor_spec_from_tensor_like(x):
     x_as_tensor = tf.convert_to_tensor(x)
-    return computation_types.tensorflow_to_type(
-        (x_as_tensor.dtype, x_as_tensor.shape)
-    )
+    return tensorflow_types.to_type((x_as_tensor.dtype, x_as_tensor.shape))
 
   finalizer_spec = tf.nest.map_structure(_tensor_spec_from_tensor_like, metrics)
   return computation_types.StructWithPythonType(
@@ -468,7 +467,7 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_functional_evaluation_matches_non_functional(self):
     datasets = self.create_test_datasets()
-    batch_type = computation_types.tensorflow_to_type(datasets[0].element_spec)
+    batch_type = tensorflow_types.to_type(datasets[0].element_spec)
     loss_fn = tf.keras.losses.MeanSquaredError
     keras_model_fn = functools.partial(
         model_examples.build_linear_regression_keras_functional_model,

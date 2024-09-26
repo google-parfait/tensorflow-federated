@@ -28,12 +28,12 @@ py_library(
     srcs = ["tensorflow_computation.py"],
     deps = [
         ":tensorflow_serialization",
+        ":tensorflow_types",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],
 )
@@ -121,10 +121,28 @@ py_library(
     srcs = ["variable_utils.py"],
 )
 
+py_library(
+    name = "tensorflow_types",
+    srcs = ["tensorflow_types.py"],
+    deps = [
+        "//tensorflow_federated/python/core/impl/types:array_shape",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
 py_test(
     name = "variable_utils_test",
     size = "small",
     timeout = "moderate",
     srcs = ["variable_utils_test.py"],
     deps = [":variable_utils"],
+)
+
+py_test(
+    name = "tensorflow_types_test",
+    srcs = ["tensorflow_types_test.py"],
+    deps = [
+        ":tensorflow_types",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
 )

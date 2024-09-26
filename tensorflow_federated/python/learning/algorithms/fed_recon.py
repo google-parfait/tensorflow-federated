@@ -53,6 +53,7 @@ from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -145,9 +146,7 @@ def _build_reconstruction_client_work(
   model_weights_type = reconstruction_model.global_weights_type_from_model(
       model_for_metadata
   )
-  element_type = computation_types.tensorflow_to_type(
-      model_for_metadata.input_spec
-  )
+  element_type = tensorflow_types.to_type(model_for_metadata.input_spec)
   dataset_type = computation_types.SequenceType(element_type)
 
   @federated_computation.federated_computation

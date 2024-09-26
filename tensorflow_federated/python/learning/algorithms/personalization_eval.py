@@ -23,6 +23,7 @@ from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -126,7 +127,7 @@ def build_personalization_eval_computation(
   with tf.Graph().as_default():
     model = model_fn()
     model_weights_type = model_weights_lib.weights_type_from_model(model)
-    batch_tff_type = computation_types.tensorflow_to_type(model.input_spec)
+    batch_tff_type = tensorflow_types.to_type(model.input_spec)
 
   # Define the `tff.Type` of each client's input. Since batching (as well as
   # other preprocessing of datasets) is done within each personalization

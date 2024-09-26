@@ -23,6 +23,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -170,7 +171,7 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
   concrete_fn = tf.function(fn).get_concrete_function(*args, **kwargs)
 
   def _create_tensor_type(dtype, shape):
-    return computation_types.tensorflow_to_type((dtype, shape))
+    return tensorflow_types.to_type((dtype, shape))
 
   tensor_types = tf.nest.map_structure(
       _create_tensor_type,
@@ -350,7 +351,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
     def type_for_normalized_tensor_value(value):
       tensor = tf.convert_to_tensor(value)
       tensor_spec = tf.TensorSpec.from_tensor(tensor)
-      return computation_types.tensorflow_to_type(tensor_spec)
+      return tensorflow_types.to_type(tensor_spec)
 
     return computation_types.to_type(
         tf.nest.map_structure(type_for_normalized_tensor_value, values)
@@ -368,7 +369,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
   # protos from the computation or the type.
   m.serialized_input_spec = tf.Variable(
       type_serialization.serialize_type(
-          computation_types.tensorflow_to_type(model.input_spec)
+          tensorflow_types.to_type(model.input_spec)
       ).SerializeToString(deterministic=True),
       trainable=False,
   )
@@ -463,7 +464,7 @@ def save_functional_model(
         tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
     )
     result_type_spec = type_serialization.serialize_type(
-        computation_types.tensorflow_to_type(output_tensor_spec_structure)
+        tensorflow_types.to_type(output_tensor_spec_structure)
     )
 
     @tf.function
@@ -525,7 +526,7 @@ def save_functional_model(
         tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
     )
     result_type_spec = type_serialization.serialize_type(
-        computation_types.tensorflow_to_type(output_tensor_spec_structure)
+        tensorflow_types.to_type(output_tensor_spec_structure)
     )
 
     @tf.function
@@ -554,7 +555,7 @@ def save_functional_model(
   # protos from the computation or the type.
   m.serialized_input_spec = tf.Variable(
       type_serialization.serialize_type(
-          computation_types.tensorflow_to_type(functional_model.input_spec)
+          tensorflow_types.to_type(functional_model.input_spec)
       ).SerializeToString(deterministic=True),
       trainable=False,
   )

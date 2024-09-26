@@ -33,6 +33,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -144,7 +145,7 @@ def build_fed_recon_eval(
           f'`tff.learning.models.ReconstructionModel`. Got a: {type(model)}'
       )
     nonlocal batch_type
-    batch_type = computation_types.tensorflow_to_type(model.input_spec)
+    batch_type = tensorflow_types.to_type(model.input_spec)
     return reconstruction_model.ReconstructionModel.get_global_variables(model)
 
   if dataset_split_fn is None:
