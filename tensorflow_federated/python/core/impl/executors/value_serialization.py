@@ -86,7 +86,7 @@ def _serialize_tensor_value(
         for x in tree.flatten(value)
     ):
       raise TypeError(
-          f'Failed to serialize a value of type {type(value)} to dtype'
+          f'Failed to serialize the value {value} to dtype'
           f' {type_spec.dtype.type}.'
       )
     value = np.asarray(value, type_spec.dtype.type)
@@ -103,7 +103,7 @@ def _serialize_tensor_value(
     else:
       shape = ()
     raise TypeError(
-        f'Failed to serialize a value with shape {shape} to shape'
+        f'Failed to serialize the value {value} with shape {shape} to shape'
         f' {type_spec.shape}.'
     )
 
@@ -113,7 +113,7 @@ def _serialize_tensor_value(
     else:
       dtype = type(value)
     raise TypeError(
-        f'Failed to serialize a value of dtype {dtype} to dtype'
+        f'Failed to serialize the value {value} of dtype {dtype} to dtype'
         f' {type_spec.dtype.type}.'
     )
 

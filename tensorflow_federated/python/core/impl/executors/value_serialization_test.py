@@ -162,7 +162,7 @@ class ValueSerializationTest(parameterized.TestCase):
 
   def test_serialize_raises_on_incompatible_dtype_float_to_int(self):
     x = np.float32(10.0)
-    with self.assertRaisesRegex(TypeError, 'Failed to serialize a value'):
+    with self.assertRaisesRegex(TypeError, 'Failed to serialize the value'):
       value_serialization.serialize_value(x, TensorType(np.int32))
 
   def test_serialize_deserialize_tensor_value_with_nontrivial_shape(self):
@@ -196,7 +196,7 @@ class ValueSerializationTest(parameterized.TestCase):
   def test_serialize_sequence_raises_type_error_with_invalid_type_spec(self):
     value = [1, 2, 3]
     type_spec = computation_types.SequenceType(np.float32)
-    with self.assertRaisesRegex(TypeError, 'Failed to serialize a value'):
+    with self.assertRaisesRegex(TypeError, 'Failed to serialize the value'):
       value_serialization.serialize_value(value, type_spec)
 
   @parameterized.named_parameters(
