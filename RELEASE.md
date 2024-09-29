@@ -12,6 +12,11 @@ and this project adheres to
 
 *   `tff.types.tensorflow_to_type`, this function is no longer used.
 
+### Changed
+
+*   `tff.learning.build_sgdm` when momentum is enabled now more closely follows
+    the implementation of other ML frameworks.
+
 ## Release 0.88.0
 
 ### Added
