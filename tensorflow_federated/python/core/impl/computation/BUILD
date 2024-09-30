@@ -150,7 +150,6 @@ py_library(
     deps = [
         ":computation_impl",
         ":function_utils",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )

@@ -100,7 +100,7 @@ def infer_cardinalities(value, type_spec):
   elif isinstance(type_spec, computation_types.StructType):
     structure_value = structure.from_container(value, recursive=False)
     cardinality_dict = {}
-    for idx, (_, elem_type) in enumerate(structure.to_elements(type_spec)):
+    for idx, (_, elem_type) in enumerate(type_spec.items()):
       cardinality_dict = merge_cardinalities(
           cardinality_dict, infer_cardinalities(structure_value[idx], elem_type)
       )

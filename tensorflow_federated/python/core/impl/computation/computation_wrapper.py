@@ -157,7 +157,7 @@ def _parameter_type(
     else:
       # The provided parameter type has no named fields. Apply the names from
       # the function parameters.
-      parameter_types = (v for (_, v) in structure.to_elements(parameter_type))
+      parameter_types = (v for (_, v) in parameter_type.items())
       return computation_types.StructWithPythonType(
           list(zip(parameter_names, parameter_types)), collections.OrderedDict
       )

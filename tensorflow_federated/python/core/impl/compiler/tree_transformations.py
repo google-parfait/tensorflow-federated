@@ -16,7 +16,6 @@
 from collections.abc import Sequence
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -253,7 +252,7 @@ def normalize_types(comp, normalize_all_equal_bit: bool = True):
         )
     elif isinstance(type_signature, computation_types.StructType):
       new_elements = []
-      for element_name, element_type in structure.iter_elements(type_signature):
+      for element_name, element_type in type_signature.items():
         new_elements.append(
             (element_name, _normalize_type_signature_helper(element_type))
         )

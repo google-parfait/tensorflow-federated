@@ -16,7 +16,6 @@
 from collections.abc import Callable
 from typing import Optional
 
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -108,8 +107,8 @@ class PolymorphicComputation:
     if not isinstance(kwargs_type, computation_types.StructType):
       raise ValueError
     arg_type = computation_types.StructType([
-        *structure.iter_elements(args_type),
-        *structure.iter_elements(kwargs_type),
+        *args_type.items(),
+        *kwargs_type.items(),
     ])
     # We know the argument types have been packed, so force unpacking.
     concrete_fn = self.fn_for_argument_type(arg_type, unpack=True)

@@ -934,7 +934,7 @@ def _augment_lambda_with_parameter_for_unbound_references(
 
   # Update the comp parameter type to include the new extension.
   new_parameter_type = computation_types.StructType(
-      structure.to_elements(comp.type_signature.parameter)  # pytype: disable=wrong-arg-types
+      list(comp.type_signature.parameter.items())  # pytype: disable=attribute-error
       + [(
           lambda_parameter_extension_name,
           [e.type_signature for e in new_input_comps.keys()],
@@ -1409,8 +1409,8 @@ def divisive_force_align_and_split_by_intrinsics(
   # state. Also restore the name associated with the intrinsic results portion
   # of the after comp parameter (it would have been lost by the earlier
   # subparams transformation).
-  after_param_type_signature = structure.to_elements(
-      preliminary_after_comp.parameter_type
+  after_param_type_signature = list(
+      preliminary_after_comp.parameter_type.items()  # pytype: disable=attribute-error
   )
   intrinsic_results_index_in_after_comp_param = -2
   after_param_type_signature[intrinsic_results_index_in_after_comp_param] = (

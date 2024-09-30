@@ -440,9 +440,7 @@ def _format_struct_type_members(struct_type: 'StructType') -> str:
       return "('{}', {!r})".format(name, value)
     return repr(value)
 
-  return ', '.join(
-      _element_repr(e) for e in structure.iter_elements(struct_type)
-  )
+  return ', '.join(_element_repr(e) for e in struct_type.items())
 
 
 def _to_named_types(
@@ -533,11 +531,14 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
     structure.Struct.__init__(self, elements)
 
   def children(self) -> Iterator[Type]:
-    return (element for _, element in structure.iter_elements(self))
+    return (element for _, element in self.items())
 
   @property
   def python_container(self) -> Optional[type[object]]:
     return None
+
+  def items(self) -> Iterator[tuple[Optional[str], Type]]:
+    return structure.iter_elements(self)
 
   def __repr__(self):
     members = _format_struct_type_members(self)
@@ -557,8 +558,8 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
       return True
     if not isinstance(source_type, StructType):
       return False
-    target_elements = structure.to_elements(self)
-    source_elements = structure.to_elements(source_type)
+    target_elements = list(self.items())
+    source_elements = list(source_type.items())
     if len(target_elements) != len(source_elements):
       return False
     for (target_name, target_element), (source_name, source_element) in zip(
@@ -637,7 +638,7 @@ class SequenceType(Type, metaclass=_Intern):
         return type_spec
       elements = [
           (name, convert_struct_with_list_to_struct_with_tuple(value))
-          for name, value in structure.iter_elements(type_spec)
+          for name, value in type_spec.items()
       ]
       if not isinstance(type_spec, StructWithPythonType):
         return StructType(elements=elements)
@@ -1208,7 +1209,7 @@ def _string_representation(type_spec: Type, formatted: bool) -> str:
     elif isinstance(type_spec, StructType):
       if not type_spec:
         return ['<>']
-      elements = structure.to_elements(type_spec)
+      elements = list(type_spec.items())
       elements_lines = _lines_for_named_types(elements, formatted)
       if formatted:
         elements_lines = _indent(elements_lines)
