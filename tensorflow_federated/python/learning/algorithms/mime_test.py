@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -51,7 +52,6 @@ from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.optimizers import yogi
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import distributors
-from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 class MimeLiteClientWorkComputationTest(

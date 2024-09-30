@@ -17,7 +17,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from google.protobuf import any_pb2
-from tensorflow_federated.python.tensorflow_libs import serialization_utils
+from tensorflow_federated.python.core.environments.tensorflow_backend import serialization_utils
 
 
 class SerializationUtilsTest(parameterized.TestCase):

@@ -120,10 +120,10 @@ py_test(
     deps = [
         ":execution_contexts",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
 )
 

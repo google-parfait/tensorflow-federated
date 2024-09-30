@@ -93,12 +93,12 @@ py_library(
         ":variable_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:serialization_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_utils",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -108,11 +108,11 @@ py_test(
     srcs = ["tensorflow_serialization_test.py"],
     deps = [
         ":tensorflow_serialization",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:serialization_utils",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
 )
 

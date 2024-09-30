@@ -30,13 +30,13 @@ py_library(
     deps = [
         ":graph_optimizations",
         ":graph_spec",
+        ":serialization_utils",
         ":tensorflow_computation_transformations",
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -81,6 +81,36 @@ py_test(
 )
 
 py_library(
+    name = "graph_utils",
+    srcs = ["graph_utils.py"],
+)
+
+py_test(
+    name = "graph_utils_test",
+    srcs = ["graph_utils_test.py"],
+    deps = [":graph_utils"],
+)
+
+py_library(
+    name = "serialization_utils",
+    srcs = ["serialization_utils.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)
+
+py_test(
+    name = "serialization_utils_test",
+    size = "small",
+    srcs = ["serialization_utils_test.py"],
+    deps = [
+        ":serialization_utils",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)
+
+py_library(
     name = "tensorflow_building_block_factory",
     srcs = ["tensorflow_building_block_factory.py"],
     deps = [
@@ -115,6 +145,7 @@ py_library(
     name = "tensorflow_computation_factory",
     srcs = ["tensorflow_computation_factory.py"],
     deps = [
+        ":serialization_utils",
         ":tensorflow_utils",
         ":type_conversions",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -126,7 +157,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -162,9 +192,9 @@ py_library(
     name = "tensorflow_computation_transformations",
     srcs = ["tensorflow_computation_transformations.py"],
     deps = [
+        ":serialization_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -173,6 +203,7 @@ py_test(
     size = "small",
     srcs = ["tensorflow_computation_transformations_test.py"],
     deps = [
+        ":serialization_utils",
         ":tensorflow_computation_factory",
         ":tensorflow_computation_transformations",
         ":tensorflow_utils",
@@ -180,7 +211,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -210,6 +240,12 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
     ],
+)
+
+py_library(
+    name = "tensorflow_test_utils",
+    testonly = True,
+    srcs = ["tensorflow_test_utils.py"],
 )
 
 py_library(
@@ -247,6 +283,8 @@ py_library(
     name = "tensorflow_utils",
     srcs = ["tensorflow_utils.py"],
     deps = [
+        ":graph_utils",
+        ":serialization_utils",
         ":type_conversions",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -255,8 +293,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/tensorflow_libs:graph_utils",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -265,6 +301,8 @@ py_test(
     size = "small",
     srcs = ["tensorflow_utils_test.py"],
     deps = [
+        ":serialization_utils",
+        ":tensorflow_test_utils",
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
@@ -272,8 +310,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
 )
 

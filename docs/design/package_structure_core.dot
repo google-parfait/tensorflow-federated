@@ -87,14 +87,10 @@ digraph {
   compiler -> utils
   compiler -> types
   utils -> types
-  types -> tensorflow_libs [arrowhead="none", style="invisible"]
   types -> proto [arrowhead="none", style="invisible"]
 
   subgraph cluster_core_3 {
-    tensorflow_libs [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/tensorflow_libs" target="_parent"]
     common_libs [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/common_libs" target="_parent"]
     proto [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/proto" target="_parent"]
   }
-
-  tensorflow_libs -> common_libs
 }

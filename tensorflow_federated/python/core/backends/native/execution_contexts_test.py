@@ -24,10 +24,10 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
-from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 @tensorflow_computation.tf_computation
@@ -102,6 +102,7 @@ def _create_mock_remote_executor_grpc_stub(
     def executor(self, *args, **kwargs):
       del args, kwargs  # Unused.
       return executor_pb2.ExecutorId(id='0')
+
     # pylint: enable=property-with-parameters
 
   mock_ex = mock.create_autospec(

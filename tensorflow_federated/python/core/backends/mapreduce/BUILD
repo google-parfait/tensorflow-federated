@@ -154,6 +154,7 @@ py_test(
         ":intrinsics",
         ":mapreduce_test_utils",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:serialization_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
@@ -167,7 +168,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 

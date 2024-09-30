@@ -329,6 +329,7 @@ py_cpu_gpu_test(
     shard_count = 10,
     deps = [
         ":fed_sgd",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/test:static_assert",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning:model_update_aggregator",
@@ -337,7 +338,6 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:test_models",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
 )
 
@@ -420,6 +420,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -447,7 +448,6 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/optimizers:yogi",
         "//tensorflow_federated/python/learning/templates:client_works",
         "//tensorflow_federated/python/learning/templates:distributors",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
 )
 
@@ -485,6 +485,7 @@ py_cpu_gpu_test(
     deps = [
         ":fed_eval",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
@@ -506,7 +507,6 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
 )
 

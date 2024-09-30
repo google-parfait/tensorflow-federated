@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
@@ -28,7 +29,6 @@ from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_examples
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import test_models
-from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 def _dataset() -> tf.data.Dataset:

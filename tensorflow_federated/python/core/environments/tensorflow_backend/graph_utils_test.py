@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for graph_utils."""
 
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.tensorflow_libs import graph_utils
+from tensorflow_federated.python.core.environments.tensorflow_backend import graph_utils
 
 
 class IsControlDependencyTest(tf.test.TestCase):
