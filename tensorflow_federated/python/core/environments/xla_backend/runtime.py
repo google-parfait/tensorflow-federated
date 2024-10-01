@@ -15,6 +15,7 @@
 
 from jax.lib import xla_client
 from jax.lib import xla_extension
+import jax.numpy as jnp
 import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -166,12 +167,13 @@ class ComputationCallable(typed_object.TypedObject):
         flat_py_args = structure.flatten(positional_arg)
 
     reordered_flat_py_args = [
-        flat_py_args[idx] for idx in self._inverted_parameter_tensor_indexes
+        jnp.asarray(flat_py_args[idx])
+        for idx in self._inverted_parameter_tensor_indexes
     ]
 
-    unordered_result = xla_client.execute_with_python_values(
-        self._executable, reordered_flat_py_args, self._backend
-    )
+    unordered_result = [
+        np.asarray(x) for x in self._executable.execute(reordered_flat_py_args)
+    ]
     py_typecheck.check_type(unordered_result, list)
     result = [unordered_result[idx] for idx in self._result_tensor_indexes]
     result_type = self.type_signature.result
