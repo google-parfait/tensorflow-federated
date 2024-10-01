@@ -16,7 +16,6 @@ from collections.abc import Callable
 from typing import TypeVar
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 
 T = TypeVar('T')
@@ -98,7 +97,7 @@ def transform_type_postorder(
   elif isinstance(type_signature, computation_types.StructType):
     elements = []
     elements_mutated = False
-    for element in structure.iter_elements(type_signature):
+    for element in type_signature.items():
       transformed_element, element_mutated = transform_type_postorder(
           element[1], transform_fn
       )

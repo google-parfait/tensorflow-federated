@@ -14,7 +14,6 @@
 """Utilities file for functions with TFF `Value`s as inputs and outputs."""
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.federated_context import value_impl
@@ -46,7 +45,7 @@ def get_curried(fn):
     raise ValueError(
         f'Expected a `tff.StructType`, found {fn.type_signature.parameter}.'
     )
-  param_elements = structure.to_elements(fn.type_signature.parameter)
+  param_elements = fn.type_signature.parameter.items()
   references = []
   for idx, (_, elem_type) in enumerate(param_elements):
     references.append(building_blocks.Reference('arg{}'.format(idx), elem_type))

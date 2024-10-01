@@ -240,9 +240,7 @@ def type_to_py_container(value, type_spec: computation_types.Type):
     )
 
   elements = []
-  for index, (elem_name, elem_type) in enumerate(
-      structure.iter_elements(structure_type_spec)
-  ):
+  for index, (elem_name, elem_type) in enumerate(structure_type_spec.items()):
     element = type_to_py_container(value[index], elem_type)
 
     if elem_name is None:

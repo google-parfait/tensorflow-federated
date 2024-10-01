@@ -99,7 +99,7 @@ def is_argument_struct(arg) -> bool:
     if arg is not None:
       arg = computation_types.to_type(arg)
     if isinstance(arg, computation_types.StructType):
-      elements = structure.to_elements(arg)
+      elements = list(arg.items())
     else:
       return False
   max_unnamed = -1
@@ -134,9 +134,7 @@ def unpack_args_from_struct(
     elements = structure.to_elements(struct_with_args)
   elif isinstance(struct_with_args, typed_object.TypedObject):
     elements = []
-    for index, (name, _) in enumerate(
-        structure.to_elements(struct_with_args.type_signature)
-    ):
+    for index, (name, _) in enumerate(struct_with_args.type_signature.items()):  # pytype: disable=attribute-error
       if name is not None:
         elements.append((name, getattr(struct_with_args, name)))
       else:
@@ -147,7 +145,7 @@ def unpack_args_from_struct(
       raise ValueError(
           f'Expected a `tff.StructType`, found {struct_with_args}.'
       )
-    elements = structure.to_elements(struct_with_args)
+    elements = list(struct_with_args.items())
   args = []
   kwargs = {}
   for name, value in elements:
@@ -204,9 +202,7 @@ def pack_args_into_struct(
       result_elements = []
       positions_used = set()
       keywords_used = set()
-      for index, (name, elem_type) in enumerate(
-          structure.to_elements(type_spec)
-      ):
+      for index, (name, elem_type) in enumerate(type_spec.items()):  # pytype: disable=attribute-error
         if index < len(args):
           # This argument is present in `args`.
           if name is not None and name in kwargs:

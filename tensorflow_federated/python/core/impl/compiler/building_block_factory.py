@@ -245,7 +245,7 @@ def create_federated_getattr_comp(
   )
   py_typecheck.check_type(name, str)
   element_names = [
-      x for x, _ in structure.iter_elements(comp.type_signature.member)  # pytype: disable=attribute-error
+      x for x, _ in comp.type_signature.member.items()  # pytype: disable=attribute-error
   ]
   if name not in element_names:
     raise ValueError(
@@ -293,7 +293,7 @@ def create_federated_getitem_comp(
   if isinstance(key, int):
     selected = building_blocks.Selection(apply_input, index=key)
   else:
-    elems = structure.to_elements(comp.type_signature.member)  # pytype: disable=attribute-error
+    elems = list(comp.type_signature.member.items())  # pytype: disable=attribute-error
     index_range = range(*key.indices(len(elems)))
     elem_list = []
     for k in index_range:
@@ -944,7 +944,7 @@ def create_federated_unzip(
     ValueError: If `value` does not contain any elements.
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  named_type_signatures = structure.to_elements(value.type_signature.member)  # pytype: disable=attribute-error
+  named_type_signatures = list(value.type_signature.member.items())  # pytype: disable=attribute-error
   length = len(named_type_signatures)
   if length == 0:
     raise ValueError('federated_zip is only supported on non-empty tuples.')
@@ -1373,8 +1373,8 @@ def zip_to_match_type(
       elif isinstance(target_type, computation_types.StructType):
         elements_zippable = []
         for (s_name, s_el), (t_name, t_el) in zip(
-            structure.iter_elements(source_type),
-            structure.iter_elements(target_type),
+            source_type.items(),
+            target_type.items(),
         ):
           elements_zippable.append(
               _struct_elem_zippable(s_name, s_el, t_name, t_el)
@@ -1401,8 +1401,8 @@ def zip_to_match_type(
       ref_to_source = building_blocks.Reference(ref_name, source.type_signature)
       for idx, ((_, t_el), (s_name, _)) in enumerate(
           zip(
-              structure.iter_elements(target_type),  # pytype: disable=wrong-arg-types
-              structure.iter_elements(source.type_signature),  # pytype: disable=wrong-arg-types
+              target_type.items(),
+              source.type_signature.items(),
           )
       ):
         s_selection = building_blocks.Selection(ref_to_source, index=idx)

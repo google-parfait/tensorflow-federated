@@ -8,6 +8,12 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   `tff.StructType.items()`, this API makes it easier to iterate over
+    `tff.StrucType` without having to deal with hard to discover and use
+    `tff.structure.*` APIs.
+
 ### Removed
 
 *   `tff.types.tensorflow_to_type`, this function is no longer used.

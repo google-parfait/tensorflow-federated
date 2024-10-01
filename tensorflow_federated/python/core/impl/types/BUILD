@@ -190,7 +190,6 @@ py_library(
         ":placements",
         "//tensorflow_federated/proto/v0:array_py_pb2",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:structure",
     ],
 )
 
@@ -221,7 +220,6 @@ py_library(
     deps = [
         ":computation_types",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
     ],
 )
 

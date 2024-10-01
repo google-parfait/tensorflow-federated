@@ -18,7 +18,6 @@ import weakref
 
 from tensorflow_federated.proto.v0 import array_pb2
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import dtype_utils
@@ -71,7 +70,7 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
         struct=pb.StructType(
             element=[
                 pb.StructType.Element(name=e[0], value=serialize_type(e[1]))
-                for e in structure.iter_elements(type_spec)
+                for e in type_spec.items()
             ]
         )
     )

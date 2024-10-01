@@ -110,8 +110,7 @@ def _create_structure_of_references(
       return value[index]
 
     elements = []
-    element_types = structure.iter_elements(type_signature)
-    for index, (name, element_type) in enumerate(element_types):
+    for index, (name, element_type) in enumerate(type_signature.items()):
       element = _get_item(task, index)
       element_task = asyncio.create_task(element)
       element = _create_structure_of_references(element_task, element_type)
@@ -146,7 +145,7 @@ async def _materialize_structure_of_references(
 
   if isinstance(type_signature, computation_types.StructType):
     value = structure.from_container(value)
-    element_types = list(structure.iter_elements(type_signature))
+    element_types = list(type_signature.items())
     element_awaitables = [
         _materialize_structure_of_references(v, t)
         for v, (_, t) in zip(value, element_types)
