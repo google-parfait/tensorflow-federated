@@ -98,13 +98,26 @@ def unflatten_as(
 def map_structure(
     fn: Callable[..., T], *structures: Structure[T], **kwargs: object
 ) -> Structure[T]:
-  """Maps `fn` through the `tff.program.Structure`s."""
+  """Maps `fn` through the `structures`."""
   if not structures:
     raise ValueError('Expected at least one structure.')
-  first_structure = structures[0]
-  if len(structures) > 1:
+  filtered_structures = [_filter_structure(x) for x in structures]
+  first_structure, *other_structures = filtered_structures
+  if other_structures:
     check_types = kwargs.get('check_types', True)
-    for structure in structures[1:]:
+    for structure in other_structures:
       tree.assert_same_structure(first_structure, structure, check_types)
-  filtered_structure = _filter_structure(first_structure)
+  return tree.map_structure_up_to(first_structure, fn, *structures, **kwargs)
+
+
+def map_structure_up_to(
+    shallow_structure: Structure[T],
+    fn: Callable[..., T],
+    *structures: Structure[T],
+    **kwargs: object
+) -> Structure[T]:
+  """Maps `fn` through the `structures` up to `shallow_structure`."""
+  if not structures:
+    raise ValueError('Expected at least one structure.')
+  filtered_structure = _filter_structure(shallow_structure)
   return tree.map_structure_up_to(filtered_structure, fn, *structures, **kwargs)

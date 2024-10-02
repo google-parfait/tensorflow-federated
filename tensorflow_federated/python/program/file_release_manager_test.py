@@ -597,10 +597,8 @@ class CSVFileReleaseManagerReleaseTest(
       ),
       (
           'materializable_value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
-          [{'key': '1', '': '[1, 2, 3]'}],
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          [{'key': '1', '0': '1', '1': '2', '2': '3'}],
       ),
       # serializable values
       (
@@ -938,10 +936,8 @@ class SavedModelFileReleaseManagerReleaseTest(
       ),
       (
           'materializable_value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          [1, 2, 3],
       ),
       # structures
       (
@@ -1144,10 +1140,8 @@ class SavedModelFileReleaseManagerGetValueTest(
       ),
       (
           'materializable_value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          [1, 2, 3],
       ),
       # structures
       (

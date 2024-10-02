@@ -82,6 +82,11 @@ class TensorBoardReleaseManagerReleaseTest(
           program_test_utils.TestMaterializableValueReference(1),
           [('', 1)],
       ),
+      (
+          'materializable_value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          [('0', 1), ('1', 2), ('2', 3)],
+      ),
       # structures
       (
           'list',
@@ -185,14 +190,6 @@ class TensorBoardReleaseManagerReleaseTest(
           'numpy_array',
           np.array([1] * 3, np.int32),
           [('', np.array([1] * 3, np.int32))],
-      ),
-      # materializable value references
-      (
-          'materializable_value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
-          [('', [1, 2, 3])],
       ),
   )
   async def test_writes_value_histogram(self, value, expected_calls):

@@ -48,10 +48,8 @@ class MemoryReleaseManagerTest(
       ),
       (
           'value_reference_sequence',
-          program_test_utils.TestMaterializableValueReference(
-              tf.data.Dataset.from_tensor_slices([1, 2, 3])
-          ),
-          tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          [1, 2, 3],
       ),
       # serializable values
       (
