@@ -274,6 +274,15 @@ class StructTypeTest(parameterized.TestCase):
     self.assertIs(type_spec_1, type_spec_2)
 
   @parameterized.named_parameters(
+      ('__init__', '__init__'),
+      ('python_container', 'python_container'),
+      ('items', 'items'),
+  )
+  def test_init_raises_value_error_with_reserved_name(self, name):
+    with self.assertRaises(ValueError):
+      computation_types.StructType([(name, np.int32)])
+
+  @parameterized.named_parameters(
       (
           'unnamed',
           computation_types.StructType([np.int32, np.bool_]),
@@ -406,6 +415,15 @@ class StructWithPythonTypeTest(parameterized.TestCase):
         [np.int32, np.float64], list
     )
     self.assertIs(type_spec_1, type_spec_2)
+
+  @parameterized.named_parameters(
+      ('__init__', '__init__'),
+      ('python_container', 'python_container'),
+      ('items', 'items'),
+  )
+  def test_init_raises_value_error_with_reserved_name(self, name):
+    with self.assertRaises(ValueError):
+      computation_types.StructWithPythonType([(name, np.int32)], list)
 
   @parameterized.named_parameters(
       (

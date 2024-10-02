@@ -445,7 +445,7 @@ def _format_struct_type_members(struct_type: 'StructType') -> str:
 
 def _to_named_types(
     elements: Iterable[object],
-) -> Iterable[tuple[Optional[str], Type]]:
+) -> Sequence[tuple[Optional[str], Type]]:
   """Creates an `Iterable` of optionally named types from `elements`.
 
   This function creates an `Iterable` of optionally named types by iterating
@@ -468,7 +468,7 @@ def _to_named_types(
       See `tff.types.to_type` for more information.
 
   Returns:
-    An `Iterable` where each each element is `tuple[Optional[str], Type]`.
+    A `Sequence` where each each element is `tuple[Optional[str], Type]`.
   """
 
   if py_typecheck.is_name_value_pair(elements):
@@ -490,11 +490,22 @@ def _to_named_types(
   return [_to_named_value_pair(x) for x in elements]
 
 
+def _reserved_names_in_elements(
+    elements: Sequence[tuple[Optional[str], object]],
+    reserved_names: Sequence[str],
+) -> set[str]:
+  element_names = {n for n, _ in elements if n is not None}
+  return set(reserved_names).intersection(element_names)
+
+
 class StructType(structure.Struct, Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing structural types in TFF.
 
   Elements initialized by name can be accessed as `foo.name`, and otherwise by
   index, `foo[index]`.
+
+  Elements can not be given names that would conflict with the methods and on
+  this class.
   """
 
   @classmethod
@@ -506,6 +517,12 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
   ) -> Hashable:
     if convert:
       elements = _to_named_types(elements)
+    invalid_names = _reserved_names_in_elements(elements, dir(cls))
+    if invalid_names:
+      raise ValueError(
+          'Expected named elements to not match any reserved names, found'
+          f' {invalid_names}.'
+      )
     return (tuple(elements), convert)
 
   def __init__(
@@ -573,14 +590,24 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
 
 
 class StructWithPythonType(StructType, metaclass=_Intern):
-  """A representation of a structure paired with a Python container type."""
+  """A representation of a structure paired with a Python container type.
+
+  Elements can not be given names that would conflict with the methods and on
+  this class.
+  """
 
   @classmethod
   def _hashable_from_init_args(
       cls, elements: Iterable[object], container_type: type[object]
   ) -> Hashable:
-    named_types = _to_named_types(elements)
-    return (tuple(named_types), container_type)
+    elements = _to_named_types(elements)
+    invalid_names = _reserved_names_in_elements(elements, dir(cls))
+    if invalid_names:
+      raise ValueError(
+          'Expected named elements to not match any reserved names, found'
+          f' {invalid_names}.'
+      )
+    return (tuple(elements), container_type)
 
   def __init__(self, elements: Iterable[object], container_type: type[object]):
     super().__init__(elements)
