@@ -19,7 +19,6 @@ import inspect
 from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import polymorphic_computation
@@ -137,7 +136,9 @@ def _parameter_type(
           'type with the same number of parameters. Found parameter type '
           f'{parameter_type}.'
       )
-    name_list_from_types = structure.name_list(parameter_type)
+    name_list_from_types = [
+        n for n, _ in parameter_type.items() if n is not None
+    ]
     if name_list_from_types:
       if len(name_list_from_types) != len(parameter_type):
         raise TypeError(

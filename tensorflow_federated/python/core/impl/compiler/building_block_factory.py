@@ -20,7 +20,6 @@ import string
 from typing import Optional, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
@@ -309,7 +308,7 @@ def create_federated_getitem_comp(
 
 def _unname_fn_parameter(fn, unnamed_parameter_type):
   """Coerces `fn` to a comp whose parameter type is `unnamed_parameter_type`."""
-  if structure.name_list(fn.type_signature.parameter):  # pytype: disable=attribute-error
+  if any([n for n, _ in fn.type_signature.parameter.items()]):  # pytype: disable=attribute-error
     return building_blocks.Lambda(
         'a',
         unnamed_parameter_type,
