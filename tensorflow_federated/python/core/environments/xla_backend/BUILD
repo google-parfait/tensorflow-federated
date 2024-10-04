@@ -28,9 +28,9 @@ py_library(
     srcs = ["compiler.py"],
     deps = [
         ":xla_serialization",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],

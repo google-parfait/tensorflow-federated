@@ -20,13 +20,12 @@ from typing import Optional, TypeVar
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import serialization_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
-from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
 from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -34,13 +33,13 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
 
 
-ComputationProtoAndType = local_computation_factory_base.ComputationProtoAndType
+ComputationProtoAndType = tuple[
+    computation_pb2.Computation, computation_types.Type
+]
 T = TypeVar('T', bound=computation_types.Type)
 
 
-class TensorFlowComputationFactory(
-    local_computation_factory_base.LocalComputationFactory
-):
+class TensorFlowComputationFactory:
   """An implementation of local computation factory for TF computations."""
 
   def __init__(self):
@@ -49,21 +48,40 @@ class TensorFlowComputationFactory(
   def create_constant_from_scalar(
       self, value, type_spec: computation_types.Type
   ) -> ComputationProtoAndType:
+    """Creates a TFF computation returning a constant based on a scalar value.
+
+    The returned computation has the type signature `( -> T)`, where `T` may be
+    either a scalar, or a nested structure made up of scalars.
+
+    Args:
+      value: A numpy scalar representing the value to return from the
+        constructed computation (or to broadcast to all parts of a nested
+        structure if `type_spec` is a structured type).
+      type_spec: A `computation_types.Type` of the constructed constant. Must be
+        either a tensor, or a nested structure of tensors.
+
+    Returns:
+      A tuple `(pb.Computation, computation_types.Type)` with the first element
+      being a TFF computation with semantics as described above, and the second
+      element representing the formal type of that computation.
+    """
     return create_constant(value, type_spec)
 
 
 def _tensorflow_comp(
-    tensorflow_proto: pb.TensorFlow,
+    tensorflow_proto: computation_pb2.TensorFlow,
     type_signature: T,
-) -> tuple[pb.Computation, T]:
+) -> tuple[computation_pb2.Computation, T]:
   serialized_type = type_serialization.serialize_type(type_signature)
-  comp = pb.Computation(type=serialized_type, tensorflow=tensorflow_proto)
+  comp = computation_pb2.Computation(
+      type=serialized_type, tensorflow=tensorflow_proto
+  )
   return (comp, type_signature)
 
 
 def create_constant(
     value, type_spec: computation_types.Type
-) -> tuple[pb.Computation, computation_types.FunctionType]:
+) -> tuple[computation_pb2.Computation, computation_types.FunctionType]:
   """Returns a tensorflow computation returning a constant `value`.
 
   The returned computation has the type signature `( -> T)`, where `T` is
@@ -154,7 +172,7 @@ def create_constant(
     )
 
   type_signature = computation_types.FunctionType(None, result_type)
-  tensorflow = pb.TensorFlow(
+  tensorflow = computation_pb2.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=None,
       result=result_binding,
@@ -202,7 +220,7 @@ def create_unary_operator(
 
   type_signature = computation_types.FunctionType(operand_type, result_type)
   parameter_binding = operand_binding
-  tensorflow = pb.TensorFlow(
+  tensorflow = computation_pb2.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding,
@@ -279,12 +297,12 @@ def create_binary_operator(
       computation_types.StructType((operand_type, second_operand_type)),
       result_type,
   )
-  parameter_binding = pb.TensorFlow.Binding(
-      struct=pb.TensorFlow.StructBinding(
+  parameter_binding = computation_pb2.TensorFlow.Binding(
+      struct=computation_pb2.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]
       )  # pytype: disable=wrong-arg-types
   )
-  tensorflow = pb.TensorFlow(
+  tensorflow = computation_pb2.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding,
@@ -407,12 +425,12 @@ def create_binary_operator_with_upcast(
   )
 
   type_signature = computation_types.FunctionType(type_signature, result_type)
-  parameter_binding = pb.TensorFlow.Binding(
-      struct=pb.TensorFlow.StructBinding(
+  parameter_binding = computation_pb2.TensorFlow.Binding(
+      struct=computation_pb2.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]
       )  # pytype: disable=wrong-arg-types
   )
-  tensorflow = pb.TensorFlow(
+  tensorflow = computation_pb2.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding,
@@ -500,7 +518,7 @@ def create_computation_for_py_fn(
     )
 
   type_signature = computation_types.FunctionType(parameter_type, result_type)
-  tensorflow = pb.TensorFlow(
+  tensorflow = computation_pb2.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding,

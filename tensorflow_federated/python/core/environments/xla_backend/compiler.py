@@ -16,17 +16,15 @@
 from jax.lib import xla_client
 import numpy as np
 
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.xla_backend import xla_serialization
-from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 
-class XlaComputationFactory(
-    local_computation_factory_base.LocalComputationFactory
-):
+class XlaComputationFactory:
   """An implementation of local computation factory for XLA computations."""
 
   def __init__(self):
@@ -34,7 +32,24 @@ class XlaComputationFactory(
 
   def create_constant_from_scalar(
       self, value, type_spec: computation_types.Type
-  ) -> local_computation_factory_base.ComputationProtoAndType:
+  ) -> tuple[computation_pb2.Computation, computation_types.Type]:
+    """Creates a TFF computation returning a constant based on a scalar value.
+
+    The returned computation has the type signature `( -> T)`, where `T` may be
+    either a scalar, or a nested structure made up of scalars.
+
+    Args:
+      value: A numpy scalar representing the value to return from the
+        constructed computation (or to broadcast to all parts of a nested
+        structure if `type_spec` is a structured type).
+      type_spec: A `computation_types.Type` of the constructed constant. Must be
+        either a tensor, or a nested structure of tensors.
+
+    Returns:
+      A tuple `(pb.Computation, computation_types.Type)` with the first element
+      being a TFF computation with semantics as described above, and the second
+      element representing the formal type of that computation.
+    """
     py_typecheck.check_type(type_spec, computation_types.Type)
     if not type_analysis.is_structure_of_tensors(type_spec):
       raise ValueError(

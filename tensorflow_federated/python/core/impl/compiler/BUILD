@@ -219,15 +219,6 @@ py_test(
 )
 
 py_library(
-    name = "local_computation_factory_base",
-    srcs = ["local_computation_factory_base.py"],
-    deps = [
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
-py_library(
     name = "transformations",
     srcs = ["transformations.py"],
     deps = [
