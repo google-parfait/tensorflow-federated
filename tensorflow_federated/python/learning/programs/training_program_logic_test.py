@@ -15,6 +15,7 @@
 import asyncio
 import collections
 import datetime
+from typing import Optional
 import unittest
 from unittest import mock
 
@@ -165,8 +166,26 @@ def _create_mock_train_process() -> mock.Mock:
   return mock_process
 
 
-def _create_metrics_release_call(*, key: int):
-  return mock.call(mock.ANY, key=key)
+def _create_metrics_release_call(
+    *,
+    key: int,
+    round_end_timestamp: Optional[float] = None,
+):
+  return mock.call(
+      {
+          'distributor': mock.ANY,
+          'client_work': mock.ANY,
+          'aggregator': mock.ANY,
+          'finalizer': mock.ANY,
+          'model_metrics': mock.ANY,
+          'round_timestamps': {
+              'round_end_timestamp': (
+                  round_end_timestamp if round_end_timestamp else mock.ANY
+              ),
+          },
+      },
+      key=key,
+  )
 
 
 class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
@@ -380,10 +399,11 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         'datetime.datetime', wraps=datetime.datetime
     ) as mock_datetime:
       start_datetime = datetime.datetime(2022, 11, 17, 9, 0)
-      mock_datetime.now.side_effect = [
+      round_end_timestamps = [
           start_datetime + datetime.timedelta(seconds=20 * i)
           for i in range(training_rounds)
       ]
+      mock_datetime.now.side_effect = round_end_timestamps
       await training_program_logic.train_model(
           train_process=training_process,
           train_data_source=mock_train_data_source,
@@ -463,7 +483,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Assert that training metrics were released every round.
     self.assertSequenceEqual(
         [
-            _create_metrics_release_call(key=round_num)
+            _create_metrics_release_call(
+                key=round_num,
+                round_end_timestamp=round_end_timestamps[
+                    round_num - 1
+                ].timestamp(),
+            )
             for round_num in range(1, training_rounds + 1)
         ],
         mock_train_metrics_manager.release.call_args_list,

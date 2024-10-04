@@ -22,10 +22,10 @@ duration of time based on the `evaluation_period` parameter.
 """
 
 import asyncio
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Mapping
 import copy
 import datetime
-from typing import NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Optional, Union
 
 from absl import logging
 
@@ -37,6 +37,10 @@ from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
+
+
+_ROUND_TIMESTAMPS_KEY = 'round_timestamps'
+_ROUND_END_TIMESTAMP_KEY = 'round_end_timestamp'
 
 
 class ProgramState(NamedTuple):
@@ -87,6 +91,22 @@ class TaskManager:
     new_task = asyncio.create_task(coro)
     new_task.add_done_callback(self._finalize_task)
     self._pending_tasks.add(new_task)
+
+
+def _add_round_timestamps_to_metrics(
+    metrics: Mapping[str, Any],
+    round_end_time: datetime.datetime,
+) -> release_manager.ReleasableStructure:
+  """Adds round start and end timestamps to the metrics."""
+  if _ROUND_TIMESTAMPS_KEY in metrics:
+    raise ValueError(
+        f'The metrics already contain the key {_ROUND_TIMESTAMPS_KEY}.'
+    )
+  metrics_with_round_timestamps = dict(metrics)
+  metrics_with_round_timestamps[_ROUND_TIMESTAMPS_KEY] = {
+      _ROUND_END_TIMESTAMP_KEY: round_end_time.timestamp(),
+  }
+  return metrics_with_round_timestamps
 
 
 # TODO: b/284509457 - Revisit this API when `initialize` is changed to be a
@@ -357,9 +377,15 @@ async def train_model(
             '`tff.Computation` whose result signature was: '
             f'{train_process.next.type_signature.result}'
         ) from e
+      # TODO: b/371431768 - Clean up the timestamps in the metrics once min sep
+      # policy is fixed.
+      released_train_metrics_with_timestamps = _add_round_timestamps_to_metrics(
+          released_train_metrics,
+          train_round_finished_time,
+      )
       task_manager.add_task(
           train_metrics_manager.release(
-              released_train_metrics,
+              released_train_metrics_with_timestamps,
               key=round_num,
           )
       )

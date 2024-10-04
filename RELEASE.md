@@ -26,6 +26,11 @@ and this project adheres to
 *   Added `pack_args_into_struct` and `unpack_args_from_struct` to the public
     API under `framework`.
 
+### Changed
+
+*   Add round end timestamp to train metrics in
+    `tff.learning.programs.train_model`.
+
 ### Deprecated
 
 *   `tff.types.tensorflow_to_type`, use `tff.tensorflow.to_type` instead.
