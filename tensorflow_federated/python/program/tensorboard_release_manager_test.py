@@ -49,16 +49,6 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
 
     self.assertTrue(os.path.exists(summary_dir))
 
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('list', []),
-  )
-  def test_raises_type_error_with_summary_dir(self, summary_dir):
-    with self.assertRaises(TypeError):
-      tensorboard_release_manager.TensorBoardReleaseManager(summary_dir)
-
   def test_raises_value_error_with_summary_dir_empty(self):
     summary_dir = ''
 
@@ -74,7 +64,6 @@ class TensorBoardReleaseManagerReleaseTest(
       # materialized values
       ('bool', True, [('', True)]),
       ('int', 1, [('', 1)]),
-      ('tensor_int', tf.constant(1), [('', tf.constant(1))]),
       ('numpy_int', np.int32(1), [('', np.int32(1))]),
       # materializable value references
       (
@@ -93,7 +82,7 @@ class TensorBoardReleaseManagerReleaseTest(
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
@@ -105,7 +94,7 @@ class TensorBoardReleaseManagerReleaseTest(
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   program_test_utils.TestMaterializableValueReference(2),
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -114,15 +103,29 @@ class TensorBoardReleaseManagerReleaseTest(
           [('0/0', True), ('0/1', 1), ('0/3', 2), ('1/0', 5)],
       ),
       (
-          'dict',
+          'dict_ordered',
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
           [('a', True), ('b', 1), ('d', 2)],
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          # Note: Flattening a mapping container will sort the keys, and the
+          # `tff.program.TensorBoardReleaseManager`` flattens values before they
+          # are released.
+          [('b', 1), ('c', True), ('d', 2)],
       ),
       (
           'dict_nested',
@@ -130,7 +133,7 @@ class TensorBoardReleaseManagerReleaseTest(
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': program_test_utils.TestMaterializableValueReference(2),
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -143,7 +146,7 @@ class TensorBoardReleaseManagerReleaseTest(
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
@@ -155,7 +158,7 @@ class TensorBoardReleaseManagerReleaseTest(
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=program_test_utils.TestMaterializableValueReference(2),
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -185,7 +188,6 @@ class TensorBoardReleaseManagerReleaseTest(
 
   @parameterized.named_parameters(
       # materialized values
-      ('tensor_array', tf.constant([1] * 3), [('', tf.constant([1] * 3))]),
       (
           'numpy_array',
           np.array([1] * 3, np.int32),
@@ -243,8 +245,7 @@ class TensorBoardReleaseManagerReleaseTest(
   @parameterized.named_parameters(
       # materialized values
       ('none', None),
-      ('str', 'a'),
-      ('tensor_str', tf.constant('a')),
+      ('str', 'abc'),
       # serializable values
       ('serializable_value', program_test_utils.TestSerializable(1, 2)),
       # other values
@@ -267,39 +268,6 @@ class TensorBoardReleaseManagerReleaseTest(
 
       mock_scalar.assert_not_called()
       mock_histogram.assert_not_called()
-
-  @parameterized.named_parameters(
-      ('0', 0),
-      ('1', 1),
-      ('negative', -1),
-      ('numpy', np.int32(1)),
-  )
-  async def test_does_not_raise_type_error_with_key(self, key):
-    summary_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir
-    )
-    value = 1
-
-    try:
-      await release_mngr.release(value, key=key)
-    except TypeError:
-      self.fail('Raised `TypeError` unexpectedly.')
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  async def test_raises_type_error_with_key(self, key):
-    summary_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir
-    )
-    value = 1
-
-    with self.assertRaises(TypeError):
-      await release_mngr.release(value, key=key)
 
 
 if __name__ == '__main__':

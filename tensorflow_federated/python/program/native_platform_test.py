@@ -84,9 +84,9 @@ class NativeValueReferenceTest(
       ),
       (
           'tensor_str',
-          lambda: _create_task('a'),
+          lambda: _create_task('abc'),
           computation_types.TensorType(np.str_),
-          'a',
+          'abc',
       ),
       (
           'sequence',
@@ -141,7 +141,7 @@ class CreateStructureOfReferencesTest(
       ),
       (
           'struct_unnamed',
-          lambda: _create_task([True, 1, 'a']),
+          lambda: _create_task([True, 1, 'abc']),
           computation_types.StructWithPythonType(
               [np.bool_, np.int32, np.str_], list
           ),
@@ -161,14 +161,14 @@ class CreateStructureOfReferencesTest(
               (
                   None,
                   native_platform.NativeValueReference(
-                      _create_task('a'), computation_types.TensorType(np.str_)
+                      _create_task('abc'), computation_types.TensorType(np.str_)
                   ),
               ),
           ]),
       ),
       (
           'struct_named',
-          lambda: _create_task({'a': True, 'b': 1, 'c': 'a'}),
+          lambda: _create_task({'a': True, 'b': 1, 'c': 'abc'}),
           computation_types.StructWithPythonType(
               [
                   ('a', np.bool_),
@@ -193,14 +193,14 @@ class CreateStructureOfReferencesTest(
               (
                   'c',
                   native_platform.NativeValueReference(
-                      _create_task('a'), computation_types.TensorType(np.str_)
+                      _create_task('abc'), computation_types.TensorType(np.str_)
                   ),
               ),
           ]),
       ),
       (
           'struct_nested',
-          lambda: _create_task({'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}}),
+          lambda: _create_task({'x': {'a': True, 'b': 1}, 'y': {'c': 'abc'}}),
           computation_types.StructWithPythonType(
               [
                   (
@@ -251,7 +251,7 @@ class CreateStructureOfReferencesTest(
                       (
                           'c',
                           native_platform.NativeValueReference(
-                              _create_task('a'),
+                              _create_task('abc'),
                               computation_types.TensorType(np.str_),
                           ),
                       ),
@@ -346,13 +346,13 @@ class MaterializeStructureOfValueReferencesTest(
                   _create_task(1), computation_types.TensorType(np.int32)
               ),
               native_platform.NativeValueReference(
-                  _create_task('a'), computation_types.TensorType(np.str_)
+                  _create_task('abc'), computation_types.TensorType(np.str_)
               ),
           ],
           computation_types.StructWithPythonType(
               [np.bool_, np.int32, np.str_], list
           ),
-          structure.Struct([(None, True), (None, 1), (None, 'a')]),
+          structure.Struct([(None, True), (None, 1), (None, 'abc')]),
       ),
       (
           'struct_named',
@@ -364,14 +364,14 @@ class MaterializeStructureOfValueReferencesTest(
                   _create_task(1), computation_types.TensorType(np.int32)
               ),
               'c': native_platform.NativeValueReference(
-                  _create_task('a'), computation_types.TensorType(np.str_)
+                  _create_task('abc'), computation_types.TensorType(np.str_)
               ),
           },
           computation_types.StructWithPythonType(
               [('a', np.bool_), ('b', np.int32), ('c', np.str_)],
               collections.OrderedDict,
           ),
-          structure.Struct([('a', True), ('b', 1), ('c', 'a')]),
+          structure.Struct([('a', True), ('b', 1), ('c', 'abc')]),
       ),
       (
           'struct_nested',
@@ -386,7 +386,7 @@ class MaterializeStructureOfValueReferencesTest(
               },
               'y': {
                   'c': native_platform.NativeValueReference(
-                      _create_task('a'), computation_types.TensorType(np.str_)
+                      _create_task('abc'), computation_types.TensorType(np.str_)
                   ),
               },
           },
@@ -425,7 +425,7 @@ class MaterializeStructureOfValueReferencesTest(
               (
                   'y',
                   structure.Struct([
-                      ('c', 'a'),
+                      ('c', 'abc'),
                   ]),
               ),
           ]),
@@ -495,8 +495,8 @@ class NativeFederatedContextTest(
                   [np.bool_, np.int32, np.str_], list
               )
           ),
-          [True, 1, 'a'],
-          [True, 1, b'a'],
+          [True, 1, 'abc'],
+          [True, 1, b'abc'],
       ),
       (
           'struct_named',
@@ -506,8 +506,8 @@ class NativeFederatedContextTest(
                   collections.OrderedDict,
               )
           ),
-          {'a': True, 'b': 1, 'c': 'a'},
-          {'a': True, 'b': 1, 'c': b'a'},
+          {'a': True, 'b': 1, 'c': 'abc'},
+          {'a': True, 'b': 1, 'c': b'abc'},
       ),
   )
   async def test_invoke_returns_result(self, comp, arg, expected_value):
@@ -552,8 +552,8 @@ class NativeFederatedContextTest(
                   collections.OrderedDict,
               )
           ),
-          {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
-          {'x': {'a': True, 'b': 1}, 'y': {'c': b'a'}},
+          {'x': {'a': True, 'b': 1}, 'y': {'c': 'abc'}},
+          {'x': {'a': True, 'b': 1}, 'y': {'c': b'abc'}},
       ),
       (
           'struct_partially_empty',
@@ -631,8 +631,8 @@ class NativeFederatedContextTest(
                   collections.OrderedDict,
               )
           ),
-          {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
-          {'x': {'a': True, 'b': 1}, 'y': {'c': b'a'}},
+          {'x': {'a': True, 'b': 1}, 'y': {'c': 'abc'}},
+          {'x': {'a': True, 'b': 1}, 'y': {'c': b'abc'}},
       ),
       (
           'struct_partially_empty',
@@ -708,8 +708,8 @@ class NativeFederatedContextTest(
                   collections.OrderedDict,
               )
           ),
-          {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
-          {'x': {'a': True, 'b': 1}, 'y': {'c': b'a'}},
+          {'x': {'a': True, 'b': 1}, 'y': {'c': 'abc'}},
+          {'x': {'a': True, 'b': 1}, 'y': {'c': b'abc'}},
       ),
       (
           'struct_partially_empty',

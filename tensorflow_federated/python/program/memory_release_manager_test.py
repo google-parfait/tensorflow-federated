@@ -18,7 +18,6 @@ import unittest
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.program import memory_release_manager
@@ -34,10 +33,7 @@ class MemoryReleaseManagerTest(
       ('none', None, None),
       ('bool', True, True),
       ('int', 1, 1),
-      ('str', 'a', 'a'),
-      ('tensor_int', tf.constant(1), tf.constant(1)),
-      ('tensor_str', tf.constant('a'), tf.constant('a')),
-      ('tensor_array', tf.constant([1] * 3), tf.constant([1] * 3)),
+      ('str', 'abc', 'abc'),
       ('numpy_int', np.int32(1), np.int32(1)),
       ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
       # materializable value references
@@ -69,14 +65,14 @@ class MemoryReleaseManagerTest(
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
           [
               True,
               1,
-              'a',
+              'abc',
               2,
               program_test_utils.TestSerializable(3, 4),
           ],
@@ -88,7 +84,7 @@ class MemoryReleaseManagerTest(
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   program_test_utils.TestMaterializableValueReference(2),
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -98,7 +94,7 @@ class MemoryReleaseManagerTest(
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   2,
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -106,18 +102,35 @@ class MemoryReleaseManagerTest(
           ],
       ),
       (
-          'dict',
+          'dict_ordered',
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
+              'd': 2,
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
               'd': 2,
               'e': program_test_utils.TestSerializable(3, 4),
           },
@@ -129,7 +142,7 @@ class MemoryReleaseManagerTest(
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': program_test_utils.TestMaterializableValueReference(2),
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -139,7 +152,7 @@ class MemoryReleaseManagerTest(
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': 2,
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -151,14 +164,14 @@ class MemoryReleaseManagerTest(
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=2,
               e=program_test_utils.TestSerializable(3, 4),
           ),
@@ -169,7 +182,7 @@ class MemoryReleaseManagerTest(
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=program_test_utils.TestMaterializableValueReference(2),
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -179,7 +192,7 @@ class MemoryReleaseManagerTest(
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=2,
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -199,16 +212,6 @@ class MemoryReleaseManagerTest(
     actual_value = program_test_utils.to_python(actual_value)
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
-
-  @parameterized.named_parameters(
-      ('list', []),
-  )
-  async def test_release_raises_type_error_with_key(self, key):
-    release_mngr = memory_release_manager.MemoryReleaseManager()
-    value = 1
-
-    with self.assertRaises(TypeError):
-      await release_mngr.release(value, key=key)
 
   async def test_remove_all_with_no_values(self):
     release_mngr = memory_release_manager.MemoryReleaseManager()

@@ -22,7 +22,6 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.program import file_program_state_manager
@@ -52,62 +51,11 @@ class FileProgramStateManagerInitTest(parameterized.TestCase):
 
     self.assertTrue(os.path.exists(root_dir))
 
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('list', []),
-  )
-  def test_raises_type_error_with_root_dir(self, root_dir):
-    with self.assertRaises(TypeError):
-      file_program_state_manager.FileProgramStateManager(root_dir)
-
   def test_raises_value_error_with_root_dir_empty(self):
     root_dir = ''
 
     with self.assertRaises(ValueError):
       file_program_state_manager.FileProgramStateManager(root_dir)
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('list', []),
-  )
-  def test_raises_type_error_with_prefix(self, prefix):
-    root_dir = self.create_tempdir()
-
-    with self.assertRaises(TypeError):
-      file_program_state_manager.FileProgramStateManager(
-          root_dir, prefix=prefix
-      )
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_raises_type_error_with_keep_total(self, keep_total):
-    root_dir = self.create_tempdir()
-
-    with self.assertRaises(TypeError):
-      file_program_state_manager.FileProgramStateManager(
-          root_dir, keep_total=keep_total
-      )
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('int', 1),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_raises_type_error_with_keep_first(self, keep_first):
-    root_dir = self.create_tempdir()
-
-    with self.assertRaises(TypeError):
-      file_program_state_manager.FileProgramStateManager(
-          root_dir, keep_first=keep_first
-      )
 
 
 class FileProgramStateManagerGetVersionsTest(
@@ -121,8 +69,8 @@ class FileProgramStateManagerGetVersionsTest(
   )
   async def test_returns_versions_with_program_state_only(self, count):
     root_dir = self.create_tempdir()
-    for version in range(count):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(count):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir, keep_total=0
     )
@@ -136,8 +84,8 @@ class FileProgramStateManagerGetVersionsTest(
       self,
   ):
     root_dir = self.create_tempdir()
-    for version in range(10):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
       tempfile.mkstemp(prefix=os.path.join(root_dir, 'file_'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir, keep_total=0
@@ -152,8 +100,8 @@ class FileProgramStateManagerGetVersionsTest(
       self,
   ):
     root_dir = self.create_tempdir()
-    for version in range(10):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
       tempfile.mkstemp(prefix=os.path.join(root_dir, 'program_state_'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir, keep_total=0
@@ -230,21 +178,6 @@ class FileProgramStateManagerGetVersionForPathTest(parameterized.TestCase):
 
     self.assertIsNone(version)
 
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('list', []),
-  )
-  def test_raises_type_error_with_path(self, path):
-    root_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir
-    )
-
-    with self.assertRaises(TypeError):
-      program_state_mngr._get_version_for_path(path)
-
 
 class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
 
@@ -264,37 +197,6 @@ class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
 
     self.assertEqual(actual_path, expected_path)
 
-  @parameterized.named_parameters(
-      ('0', 0),
-      ('1', 1),
-      ('negative', -1),
-      ('numpy', np.int32(1)),
-  )
-  async def test_does_not_raise_type_error_with_version(self, version):
-    root_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir
-    )
-
-    try:
-      program_state_mngr._get_path_for_version(version)
-    except TypeError:
-      self.fail('Raised `TypeError` unexpectedly.')
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_raises_type_error_with_version(self, version):
-    root_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir
-    )
-
-    with self.assertRaises(TypeError):
-      program_state_mngr._get_path_for_version(version)
-
 
 class FileProgramStateManagerLoadTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
@@ -305,10 +207,7 @@ class FileProgramStateManagerLoadTest(
       ('none', None, None),
       ('bool', True, np.bool_(True)),
       ('int', 1, np.int32(1)),
-      ('str', 'a', b'a'),
-      ('tensor_int', tf.constant(1), np.int32(1)),
-      ('tensor_str', tf.constant('a'), b'a'),
-      ('tensor_array', tf.constant([1] * 3), np.array([1] * 3, np.int32)),
+      ('str', 'abc', b'abc'),
       ('numpy_int', np.int32(1), np.int32(1)),
       ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
       # materializable value references
@@ -334,14 +233,14 @@ class FileProgramStateManagerLoadTest(
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
           [
               np.bool_(True),
               np.int32(1),
-              b'a',
+              b'abc',
               np.int32(2),
               program_test_utils.TestSerializable(3, 4),
           ],
@@ -353,7 +252,7 @@ class FileProgramStateManagerLoadTest(
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   program_test_utils.TestMaterializableValueReference(2),
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -363,7 +262,7 @@ class FileProgramStateManagerLoadTest(
               [
                   np.bool_(True),
                   np.int32(1),
-                  b'a',
+                  b'abc',
                   np.int32(2),
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -371,18 +270,35 @@ class FileProgramStateManagerLoadTest(
           ],
       ),
       (
-          'dict',
+          'dict_ordered',
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
           {
               'a': np.bool_(True),
               'b': np.int32(1),
-              'c': b'a',
+              'c': b'abc',
+              'd': np.int32(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          {
+              'c': np.bool_(True),
+              'b': np.int32(1),
+              'a': b'abc',
               'd': np.int32(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
@@ -394,7 +310,7 @@ class FileProgramStateManagerLoadTest(
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': program_test_utils.TestMaterializableValueReference(2),
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -404,7 +320,7 @@ class FileProgramStateManagerLoadTest(
               'x': {
                   'a': np.bool_(True),
                   'b': np.int32(1),
-                  'c': b'a',
+                  'c': b'abc',
                   'd': np.int32(2),
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -416,14 +332,14 @@ class FileProgramStateManagerLoadTest(
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
           program_test_utils.TestNamedTuple1(
               a=np.bool_(True),
               b=np.int32(1),
-              c=b'a',
+              c=b'abc',
               d=np.int32(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
@@ -434,7 +350,7 @@ class FileProgramStateManagerLoadTest(
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=program_test_utils.TestMaterializableValueReference(2),
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -444,7 +360,7 @@ class FileProgramStateManagerLoadTest(
               x=program_test_utils.TestNamedTuple1(
                   a=np.bool_(True),
                   b=np.int32(1),
-                  c=b'a',
+                  c=b'abc',
                   d=np.int32(2),
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -516,21 +432,6 @@ class FileProgramStateManagerLoadTest(
     with self.assertRaises(program_state_manager.ProgramStateNotFoundError):
       await program_state_mngr.load(unknown_version, structure)
 
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  async def test_raises_type_error_with_version(self, version):
-    root_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir
-    )
-    structure = 'state'
-
-    with self.assertRaises(TypeError):
-      await program_state_mngr.load(version, structure)
-
 
 class FileProgramStateManagerRemoveTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
@@ -543,8 +444,8 @@ class FileProgramStateManagerRemoveTest(
   )
   async def test_removes_program_state_with_version(self, version):
     root_dir = self.create_tempdir()
-    for version in range(3):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(3):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir
     )
@@ -579,37 +480,6 @@ class FileProgramStateManagerRemoveTest(
 
     self.assertCountEqual(os.listdir(root_dir), ['program_state_1'])
 
-  @parameterized.named_parameters(
-      ('0', 0),
-      ('1', 1),
-      ('negative', -1),
-      ('numpy', np.int32(1)),
-  )
-  async def test_does_not_raise_type_error_with_version(self, version):
-    root_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir
-    )
-
-    try:
-      await program_state_mngr._remove(version)
-    except TypeError:
-      self.fail('Raised `TypeError` unexpectedly.')
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  async def test_raises_type_error_with_version(self, version):
-    root_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir
-    )
-
-    with self.assertRaises(TypeError):
-      await program_state_mngr._remove(version)
-
 
 class FileProgramStateManagerRemoveOldProgramStateTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
@@ -617,8 +487,8 @@ class FileProgramStateManagerRemoveOldProgramStateTest(
 
   async def test_does_not_remove_program_state_with_keep_total_0(self):
     root_dir = self.create_tempdir()
-    for version in range(10):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir, keep_total=0
     )
@@ -631,8 +501,8 @@ class FileProgramStateManagerRemoveOldProgramStateTest(
 
   async def test_removes_program_state_with_keep_first_true(self):
     root_dir = self.create_tempdir()
-    for version in range(10):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir, keep_total=3, keep_first=True
     )
@@ -646,8 +516,8 @@ class FileProgramStateManagerRemoveOldProgramStateTest(
 
   async def test_removes_program_state_with_keep_first_false(self):
     root_dir = self.create_tempdir()
-    for version in range(10):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir, keep_total=3, keep_first=False
     )
@@ -661,8 +531,8 @@ class FileProgramStateManagerRemoveOldProgramStateTest(
 
   async def test_removes_all_program_state_except_for_the_first(self):
     root_dir = self.create_tempdir()
-    for version in range(10):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir, keep_total=1, keep_first=True
     )
@@ -673,8 +543,8 @@ class FileProgramStateManagerRemoveOldProgramStateTest(
 
   async def test_removes_all_program_state_except_for_the_last(self):
     root_dir = self.create_tempdir()
-    for version in range(10):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir, keep_total=1, keep_first=False
     )
@@ -735,8 +605,8 @@ class FileProgramStateManagerRemoveOldProgramStateTest(
       self, keep_total, keep_first, keep_every_k, expected_remaining_states
   ):
     root_dir = self.create_tempdir()
-    for version in range(10):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir,
         keep_total=keep_total,
@@ -765,8 +635,8 @@ class FileProgramStateManagerRemoveAllTest(
 
   async def test_removes_all_program_state(self):
     root_dir = self.create_tempdir()
-    for version in range(10):
-      os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
+    for i in range(10):
+      os.mkdir(os.path.join(root_dir, f'program_state_{i}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir
     )
@@ -785,10 +655,7 @@ class FileProgramStateManagerSaveTest(
       ('none', None, None),
       ('bool', True, True),
       ('int', 1, 1),
-      ('str', 'a', 'a'),
-      ('tensor_int', tf.constant(1), tf.constant(1)),
-      ('tensor_str', tf.constant('a'), tf.constant('a')),
-      ('tensor_array', tf.constant([1] * 3), tf.constant([1] * 3)),
+      ('str', 'abc', 'abc'),
       ('numpy_int', np.int32(1), np.int32(1)),
       ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
       # materializable value references
@@ -814,14 +681,14 @@ class FileProgramStateManagerSaveTest(
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
           [
               True,
               1,
-              'a',
+              'abc',
               2,
               program_test_utils.TestSerializable(3, 4).to_bytes(),
           ],
@@ -833,7 +700,7 @@ class FileProgramStateManagerSaveTest(
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   program_test_utils.TestMaterializableValueReference(2),
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -843,7 +710,7 @@ class FileProgramStateManagerSaveTest(
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   2,
                   program_test_utils.TestSerializable(3, 4).to_bytes(),
               ],
@@ -851,18 +718,35 @@ class FileProgramStateManagerSaveTest(
           ],
       ),
       (
-          'dict',
+          'dict_ordered',
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
+              'd': 2,
+              'e': program_test_utils.TestSerializable(3, 4).to_bytes(),
+          },
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
               'd': 2,
               'e': program_test_utils.TestSerializable(3, 4).to_bytes(),
           },
@@ -874,7 +758,7 @@ class FileProgramStateManagerSaveTest(
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': program_test_utils.TestMaterializableValueReference(2),
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -884,7 +768,7 @@ class FileProgramStateManagerSaveTest(
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': 2,
                   'e': program_test_utils.TestSerializable(3, 4).to_bytes(),
               },
@@ -896,14 +780,14 @@ class FileProgramStateManagerSaveTest(
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=2,
               e=program_test_utils.TestSerializable(3, 4).to_bytes(),
           ),
@@ -914,7 +798,7 @@ class FileProgramStateManagerSaveTest(
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=program_test_utils.TestMaterializableValueReference(2),
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -924,7 +808,7 @@ class FileProgramStateManagerSaveTest(
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=2,
                   e=program_test_utils.TestSerializable(3, 4).to_bytes(),
               ),
@@ -981,39 +865,6 @@ class FileProgramStateManagerSaveTest(
       await program_state_mngr.save(program_state, version)
 
       mock_remove_old_program_state.assert_called_once()
-
-  @parameterized.named_parameters(
-      ('0', 0),
-      ('1', 1),
-      ('negative', -1),
-      ('numpy', np.int32(1)),
-  )
-  async def test_does_not_raise_type_error_with_version(self, version):
-    root_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir
-    )
-    program_state = 'state'
-
-    try:
-      await program_state_mngr.save(program_state, version)
-    except TypeError:
-      self.fail('Raised `TypeError` unexpectedly.')
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  async def test_raises_type_error_with_version(self, version):
-    root_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir
-    )
-    program_state = 'state'
-
-    with self.assertRaises(TypeError):
-      await program_state_mngr.save(program_state, version)
 
   async def test_raises_program_state_exists_error_with_existing_version(self):
     root_dir = self.create_tempdir()

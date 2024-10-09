@@ -19,7 +19,6 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.program import program_test_utils
@@ -40,36 +39,11 @@ class FilteringReleaseManagerTest(
       self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_init_raises_type_error_with_release_manager(self, release_mngr):
-    filter_fn = lambda _: True
-
-    with self.assertRaises(TypeError):
-      release_manager.FilteringReleaseManager(release_mngr, filter_fn)
-
-  @parameterized.named_parameters(
       # materialized values
       ('none_filter_none', None, lambda _: True, None),
       ('bool_filter_none', True, lambda _: True, True),
       ('int_filter_none', 1, lambda _: True, 1),
-      ('str_filter_none', 'a', lambda _: True, 'a'),
-      (
-          'tensor_int_filter_none',
-          tf.constant(1),
-          lambda _: True,
-          tf.constant(1),
-      ),
-      (
-          'tensor_array_filter_none',
-          tf.constant([1] * 3),
-          lambda _: True,
-          tf.constant([1] * 3),
-      ),
+      ('str_filter_none', 'abc', lambda _: True, 'abc'),
       ('numpy_int_filter_none', np.int32(1), lambda _: True, np.int32(1)),
       (
           'numpy_array_filter_none',
@@ -104,7 +78,7 @@ class FilteringReleaseManagerTest(
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
@@ -112,7 +86,7 @@ class FilteringReleaseManagerTest(
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
@@ -122,19 +96,19 @@ class FilteringReleaseManagerTest(
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
           lambda path: path == (1,) or path == (2,),
-          [1, 'a'],
+          [1, 'abc'],
       ),
       (
           'dict_filter_none',
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
@@ -142,7 +116,7 @@ class FilteringReleaseManagerTest(
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
@@ -152,19 +126,19 @@ class FilteringReleaseManagerTest(
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
           lambda path: path == ('b',) or path == ('c',),
-          {'b': 1, 'c': 'a'},
+          {'b': 1, 'c': 'abc'},
       ),
       (
           'named_tuple_filter_none',
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
@@ -172,7 +146,7 @@ class FilteringReleaseManagerTest(
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
@@ -204,10 +178,7 @@ class FilteringReleaseManagerTest(
       ('none', None),
       ('bool', True),
       ('int', 1),
-      ('str', 'a'),
-      ('tensor_int', tf.constant(1)),
-      ('tensor_str', tf.constant('a')),
-      ('tensor_array', tf.constant([1] * 3)),
+      ('str', 'abc'),
       ('numpy_int', np.int32(1)),
       ('numpy_array', np.array([1] * 3, np.int32)),
       # materializable value references
@@ -229,7 +200,7 @@ class FilteringReleaseManagerTest(
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
@@ -241,7 +212,7 @@ class FilteringReleaseManagerTest(
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   program_test_utils.TestMaterializableValueReference(2),
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -249,11 +220,21 @@ class FilteringReleaseManagerTest(
           ],
       ),
       (
-          'dict',
+          'dict_ordered',
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
@@ -265,7 +246,7 @@ class FilteringReleaseManagerTest(
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': program_test_utils.TestMaterializableValueReference(2),
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -277,7 +258,7 @@ class FilteringReleaseManagerTest(
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
@@ -288,7 +269,7 @@ class FilteringReleaseManagerTest(
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=program_test_utils.TestMaterializableValueReference(2),
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -311,27 +292,27 @@ class FilteringReleaseManagerTest(
   @parameterized.named_parameters(
       (
           'list_filter_none',
-          [True, 1, 'a', [], [2]],
+          [True, 1, 'abc', [], [2]],
           lambda _: True,
-          [True, 1, 'a', [2]],
+          [True, 1, 'abc', [2]],
       ),
       (
           'list_filter_some',
-          [True, 1, 'a', [], [2]],
+          [True, 1, 'abc', [], [2]],
           lambda path: path != (4, 0),
-          [True, 1, 'a'],
+          [True, 1, 'abc'],
       ),
       (
           'dict_filter_none',
-          {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
+          {'a': True, 'b': 1, 'c': 'abc', 'd': {}, 'e': {'a': 2}},
           lambda _: True,
-          {'a': True, 'b': 1, 'c': 'a', 'e': {'a': 2}},
+          {'a': True, 'b': 1, 'c': 'abc', 'e': {'a': 2}},
       ),
       (
           'dict_filter_some',
-          {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
+          {'a': True, 'b': 1, 'c': 'abc', 'd': {}, 'e': {'a': 2}},
           lambda path: path != ('e', 'a'),
-          {'a': True, 'b': 1, 'c': 'a'},
+          {'a': True, 'b': 1, 'c': 'abc'},
       ),
   )
   async def test_release_filters_and_does_not_delegate_empty_structures(
@@ -362,7 +343,7 @@ class FilteringReleaseManagerTest(
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
@@ -395,17 +376,6 @@ class GroupingReleaseManagerTest(
       release_manager.GroupingReleaseManager(release_mngrs)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('str', 'a'),
-      ('list', [True, 1, 'a']),
-  )
-  def test_init_raises_type_error_with_release_managers(self, release_mngrs):
-    with self.assertRaises(TypeError):
-      release_manager.GroupingReleaseManager(release_mngrs)
 
   def test_init_raises_value_error_with_release_manager_empty(self):
     release_mngrs = []
@@ -478,31 +448,31 @@ class PeriodicReleaseManagerTest(
       (
           'all_releases',
           datetime.timedelta(seconds=1),
-          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          [datetime.timedelta(seconds=i) for i in range(1, 11)],
           10,
       ),
       (
           'some_releases',
           datetime.timedelta(seconds=2),
-          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          [datetime.timedelta(seconds=i) for i in range(1, 11)],
           5,
       ),
       (
           'last_release',
           datetime.timedelta(seconds=10),
-          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          [datetime.timedelta(seconds=i) for i in range(1, 11)],
           1,
       ),
       (
           'drops_trailing_releases',
           datetime.timedelta(seconds=3),
-          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          [datetime.timedelta(seconds=i) for i in range(1, 11)],
           3,
       ),
       (
           'drops_all_releases',
           datetime.timedelta(seconds=11),
-          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          [datetime.timedelta(seconds=i) for i in range(1, 11)],
           0,
       ),
   )

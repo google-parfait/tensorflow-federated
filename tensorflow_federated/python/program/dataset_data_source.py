@@ -19,7 +19,6 @@ from typing import Optional
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -53,11 +52,9 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
       ValueError: If `datasets` is empty or if each `tf.data.Dataset` in
         `datasets` does not have the same type specification.
     """
-    py_typecheck.check_type(datasets, Sequence)
     if not datasets:
       raise ValueError('Expected `datasets` to not be empty.')
     for dataset in datasets:
-      py_typecheck.check_type(dataset, tf.data.Dataset)
       element_spec = datasets[0].element_spec
       if dataset.element_spec != element_spec:
         raise ValueError(
@@ -65,7 +62,6 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
             f'type specification, found {element_spec} and '
             f'{dataset.element_spec}.'
         )
-    py_typecheck.check_type(federated_type, computation_types.FederatedType)
 
     self._datasets = datasets
     self._federated_type = federated_type
@@ -116,8 +112,6 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
       ValueError: If `k` is not a positive integer or if `k` is not less than
         the number of `datasets`.
     """
-    if k is not None:
-      py_typecheck.check_type(k, int)
     if k is None or k < 0 or k > len(self._datasets):
       raise ValueError(
           'Expected `k` to be a positive integer and less than the number of '
@@ -160,12 +154,11 @@ class DatasetDataSource(data_source.FederatedDataSource):
       ValueError: If `datasets` is empty or if each `tf.data.Dataset` in
         `datasets` does not have the same type specification.
     """
-    py_typecheck.check_type(datasets, Sequence)
     if not datasets:
       raise ValueError('Expected `datasets` to not be empty.')
-    for dataset in datasets:
-      py_typecheck.check_type(dataset, tf.data.Dataset)
-      element_spec = datasets[0].element_spec
+    first_dataset, *other_datasets = datasets
+    element_spec = first_dataset.element_spec
+    for dataset in other_datasets:
       if dataset.element_spec != element_spec:
         raise ValueError(
             'Expected each `tf.data.Dataset` in `datasets` to have the same '

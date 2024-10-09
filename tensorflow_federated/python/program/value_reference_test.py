@@ -31,7 +31,7 @@ class MaterializeValueTest(
       # materialized values
       ('bool', True, True),
       ('int', 1, 1),
-      ('str', 'a', 'a'),
+      ('str', 'abc', 'abc'),
       ('numpy_generic', np.int32(1), np.int32(1)),
       ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
       # materializable value references
@@ -63,14 +63,14 @@ class MaterializeValueTest(
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
           [
               True,
               1,
-              'a',
+              'abc',
               2,
               program_test_utils.TestSerializable(3, 4),
           ],
@@ -82,7 +82,7 @@ class MaterializeValueTest(
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   program_test_utils.TestMaterializableValueReference(2),
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -92,7 +92,7 @@ class MaterializeValueTest(
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   2,
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -100,18 +100,35 @@ class MaterializeValueTest(
           ],
       ),
       (
-          'dict',
+          'dict_ordered',
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
+              'd': 2,
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
               'd': 2,
               'e': program_test_utils.TestSerializable(3, 4),
           },
@@ -123,7 +140,7 @@ class MaterializeValueTest(
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': program_test_utils.TestMaterializableValueReference(2),
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -133,7 +150,7 @@ class MaterializeValueTest(
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': 2,
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -145,14 +162,14 @@ class MaterializeValueTest(
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=2,
               e=program_test_utils.TestSerializable(3, 4),
           ),
@@ -163,7 +180,7 @@ class MaterializeValueTest(
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=program_test_utils.TestMaterializableValueReference(2),
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -173,7 +190,7 @@ class MaterializeValueTest(
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=2,
                   e=program_test_utils.TestSerializable(3, 4),
               ),

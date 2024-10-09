@@ -15,7 +15,6 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.program import program_test_utils
@@ -29,10 +28,7 @@ class FilterStructureTest(parameterized.TestCase):
       ('none', None, None),
       ('bool', True, None),
       ('int', 1, None),
-      ('str', 'a', None),
-      ('tensor_int', tf.constant(1), None),
-      ('tensor_str', tf.constant('a'), None),
-      ('tensor_array', tf.constant([1] * 3), None),
+      ('str', 'abc', None),
       ('numpy_int', np.int32(1), None),
       ('numpy_array', np.array([1] * 3, np.int32), None),
       # materializable value references
@@ -56,7 +52,7 @@ class FilterStructureTest(parameterized.TestCase):
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
@@ -69,7 +65,7 @@ class FilterStructureTest(parameterized.TestCase):
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   program_test_utils.TestMaterializableValueReference(2),
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -78,15 +74,26 @@ class FilterStructureTest(parameterized.TestCase):
           [[None, None, None, None, None], [None]],
       ),
       (
-          'dict',
+          'dict_ordered',
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
           {'a': None, 'b': None, 'c': None, 'd': None, 'e': None},
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          {'c': None, 'b': None, 'a': None, 'd': None, 'e': None},
       ),
       ('dict_empty', {}, {}),
       (
@@ -95,7 +102,7 @@ class FilterStructureTest(parameterized.TestCase):
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': program_test_utils.TestMaterializableValueReference(2),
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -111,7 +118,7 @@ class FilterStructureTest(parameterized.TestCase):
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
@@ -129,7 +136,7 @@ class FilterStructureTest(parameterized.TestCase):
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=program_test_utils.TestMaterializableValueReference(2),
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -159,10 +166,7 @@ class FlattenWithNameTest(parameterized.TestCase):
       ('none', None, [('', None)]),
       ('bool', True, [('', True)]),
       ('int', 1, [('', 1)]),
-      ('str', 'a', [('', 'a')]),
-      ('tensor_int', tf.constant(1), [('', tf.constant(1))]),
-      ('tensor_str', tf.constant('a'), [('', tf.constant('a'))]),
-      ('tensor_array', tf.constant([1] * 3), [('', tf.constant([1] * 3))]),
+      ('str', 'abc', [('', 'abc')]),
       ('numpy_int', np.int32(1), [('', np.int32(1))]),
       (
           'numpy_array',
@@ -201,14 +205,14 @@ class FlattenWithNameTest(parameterized.TestCase):
           [
               True,
               1,
-              'a',
+              'abc',
               program_test_utils.TestMaterializableValueReference(2),
               program_test_utils.TestSerializable(3, 4),
           ],
           [
               ('0', True),
               ('1', 1),
-              ('2', 'a'),
+              ('2', 'abc'),
               ('3', program_test_utils.TestMaterializableValueReference(2)),
               ('4', program_test_utils.TestSerializable(3, 4)),
           ],
@@ -220,7 +224,7 @@ class FlattenWithNameTest(parameterized.TestCase):
               [
                   True,
                   1,
-                  'a',
+                  'abc',
                   program_test_utils.TestMaterializableValueReference(2),
                   program_test_utils.TestSerializable(3, 4),
               ],
@@ -229,25 +233,45 @@ class FlattenWithNameTest(parameterized.TestCase):
           [
               ('0/0', True),
               ('0/1', 1),
-              ('0/2', 'a'),
+              ('0/2', 'abc'),
               ('0/3', program_test_utils.TestMaterializableValueReference(2)),
               ('0/4', program_test_utils.TestSerializable(3, 4)),
               ('1/0', 5),
           ],
       ),
       (
-          'dict',
+          'dict_ordered',
           {
               'a': True,
               'b': 1,
-              'c': 'a',
+              'c': 'abc',
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
           [
               ('a', True),
               ('b', 1),
-              ('c', 'a'),
+              ('c', 'abc'),
+              ('d', program_test_utils.TestMaterializableValueReference(2)),
+              ('e', program_test_utils.TestSerializable(3, 4)),
+          ],
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          # Note: Flattening a mapping container will sort the keys, therefore
+          # this sequence is sorted. Unflattening the sequence will sort they
+          # keys according to the provided structure.
+          [
+              ('a', 'abc'),
+              ('b', 1),
+              ('c', True),
               ('d', program_test_utils.TestMaterializableValueReference(2)),
               ('e', program_test_utils.TestSerializable(3, 4)),
           ],
@@ -259,7 +283,7 @@ class FlattenWithNameTest(parameterized.TestCase):
               'x': {
                   'a': True,
                   'b': 1,
-                  'c': 'a',
+                  'c': 'abc',
                   'd': program_test_utils.TestMaterializableValueReference(2),
                   'e': program_test_utils.TestSerializable(3, 4),
               },
@@ -268,7 +292,7 @@ class FlattenWithNameTest(parameterized.TestCase):
           [
               ('x/a', True),
               ('x/b', 1),
-              ('x/c', 'a'),
+              ('x/c', 'abc'),
               ('x/d', program_test_utils.TestMaterializableValueReference(2)),
               ('x/e', program_test_utils.TestSerializable(3, 4)),
               ('y/a', 5),
@@ -279,14 +303,14 @@ class FlattenWithNameTest(parameterized.TestCase):
           program_test_utils.TestNamedTuple1(
               a=True,
               b=1,
-              c='a',
+              c='abc',
               d=program_test_utils.TestMaterializableValueReference(2),
               e=program_test_utils.TestSerializable(3, 4),
           ),
           [
               ('a', True),
               ('b', 1),
-              ('c', 'a'),
+              ('c', 'abc'),
               ('d', program_test_utils.TestMaterializableValueReference(2)),
               ('e', program_test_utils.TestSerializable(3, 4)),
           ],
@@ -297,7 +321,7 @@ class FlattenWithNameTest(parameterized.TestCase):
               x=program_test_utils.TestNamedTuple1(
                   a=True,
                   b=1,
-                  c='a',
+                  c='abc',
                   d=program_test_utils.TestMaterializableValueReference(2),
                   e=program_test_utils.TestSerializable(3, 4),
               ),
@@ -306,7 +330,7 @@ class FlattenWithNameTest(parameterized.TestCase):
           [
               ('x/a', True),
               ('x/b', 1),
-              ('x/c', 'a'),
+              ('x/c', 'abc'),
               ('x/d', program_test_utils.TestMaterializableValueReference(2)),
               ('x/e', program_test_utils.TestSerializable(3, 4)),
               ('y/a', 5),
@@ -430,8 +454,8 @@ class FlattenTest(parameterized.TestCase):
               'e': program_test_utils.TestSerializable(3, 4),
           },
           # Note: Flattening a mapping container will sort the keys, therefore
-          # this sequence is sorted. Unflattening the mapping container should
-          # sort they keys according to the provided structure.
+          # this sequence is sorted. Unflattening the sequence will sort they
+          # keys according to the provided structure.
           [
               'abc',
               1,
@@ -617,8 +641,8 @@ class FlattenAsTest(parameterized.TestCase):
           'dict_unordered',
           {'c': None, 'b': None, 'a': None, 'd': None, 'e': None},
           # Note: Flattening a mapping container will sort the keys, therefore
-          # this sequence is sorted. Unflattening the mapping container should
-          # sort they keys according to the provided structure.
+          # this sequence is sorted. Unflattening the sequence will sort they
+          # keys according to the provided structure.
           [
               'abc',
               1,

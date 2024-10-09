@@ -124,17 +124,6 @@ class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
 
     self.assertFalse(result)
 
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_raises_type_error_with_type_signature(self, type_signature):
-    with self.assertRaises(TypeError):
-      federated_context.contains_only_server_placed_data(type_signature)
-
 
 class CheckInFederatedContextTest(parameterized.TestCase):
 

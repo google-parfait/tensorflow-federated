@@ -19,7 +19,6 @@ from typing import Optional
 
 import numpy as np
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import data_source
@@ -45,9 +44,6 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
     Raises:
       ValueError: If `client_ids` is empty.
     """
-    py_typecheck.check_type(client_ids, Sequence)
-    for client_id in client_ids:
-      py_typecheck.check_type(client_id, str)
     if not client_ids:
       raise ValueError('Expected `client_ids` to not be empty.')
 
@@ -87,8 +83,6 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
       ValueError: If `k` is not a positive integer or if `k` is not less than
         the number of `client_ids`.
     """
-    if k is not None:
-      py_typecheck.check_type(k, int)
     if k is None or k < 0 or k > len(self._client_ids):
       raise ValueError(
           'Expected `k` to be a positive integer and less than the number of '
@@ -119,9 +113,6 @@ class ClientIdDataSource(data_source.FederatedDataSource):
     Raises:
       ValueError: If `client_ids` is empty.
     """
-    py_typecheck.check_type(client_ids, Sequence)
-    for client_id in client_ids:
-      py_typecheck.check_type(client_id, str)
     if not client_ids:
       raise ValueError('Expected `client_ids` to not be empty.')
 
