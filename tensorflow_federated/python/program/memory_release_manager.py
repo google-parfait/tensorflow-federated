@@ -16,7 +16,6 @@
 import collections
 from collections.abc import Hashable
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
@@ -50,8 +49,6 @@ class MemoryReleaseManager(
       value: A `tff.program.ReleasableStructure` to release.
       key: A hashable value used to reference the released `value`.
     """
-    py_typecheck.check_type(key, Hashable)
-
     materialized_value = await value_reference.materialize_value(value)
     self._values[key] = materialized_value
 

@@ -19,7 +19,6 @@ from typing import Union
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
@@ -58,7 +57,6 @@ class TensorBoardReleaseManager(
     Raises:
       ValueError: If `summary_dir` is an empty string.
     """
-    py_typecheck.check_type(summary_dir, (str, os.PathLike))
     if not summary_dir:
       raise ValueError('Expected `summary_dir` to not be an empty string.')
 
@@ -78,8 +76,6 @@ class TensorBoardReleaseManager(
       key: A integer used to reference the released `value`; `key` represents a
         step in a federated program.
     """
-    py_typecheck.check_type(key, (int, np.integer))
-
     materialized_value = await value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 

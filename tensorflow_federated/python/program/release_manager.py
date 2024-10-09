@@ -144,8 +144,6 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       filter_fn: A `Callable` used to filter values before they are released,
         this function has a single parameter `path` and returns a `bool`.
     """
-    py_typecheck.check_type(release_manager, ReleaseManager)
-
     self._release_manager = release_manager
     self._filter_fn = filter_fn
 
@@ -266,11 +264,8 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     Raises:
       ValueError: If `release_managers` is empty.
     """
-    py_typecheck.check_type(release_managers, Sequence)
     if not release_managers:
       raise ValueError('Expected `release_managers` to not be empty.')
-    for release_manager in release_managers:
-      py_typecheck.check_type(release_manager, ReleaseManager)
 
     self._release_managers = release_managers
 

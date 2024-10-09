@@ -44,7 +44,6 @@ py_library(
     deps = [
         ":data_source",
         ":serialization_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
@@ -75,7 +74,6 @@ py_library(
     deps = [
         ":data_source",
         ":serialization_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -98,7 +96,6 @@ py_library(
     deps = [
         ":structure_utils",
         ":value_reference",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
@@ -128,7 +125,6 @@ py_library(
         ":program_state_manager",
         ":structure_utils",
         ":value_reference",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serializable",
     ],
 )
@@ -152,7 +148,6 @@ py_library(
         ":release_manager",
         ":structure_utils",
         ":value_reference",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 
@@ -171,10 +166,7 @@ py_test(
 py_library(
     name = "file_utils",
     srcs = ["file_utils.py"],
-    deps = [
-        ":structure_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-    ],
+    deps = [":structure_utils"],
 )
 
 py_test(
@@ -207,7 +199,6 @@ py_library(
     deps = [
         ":release_manager",
         ":value_reference",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 
@@ -344,7 +335,6 @@ py_library(
         ":release_manager",
         ":structure_utils",
         ":value_reference",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 

@@ -26,10 +26,8 @@ import os.path
 from typing import Optional, Union
 
 from absl import logging
-import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
@@ -96,12 +94,8 @@ class FileProgramStateManager(
     Raises:
       ValueError: If `root_dir` is an empty string.
     """
-    py_typecheck.check_type(root_dir, (str, os.PathLike))
     if not root_dir:
       raise ValueError('Expected `root_dir` to not be an empty string.')
-    py_typecheck.check_type(prefix, str)
-    py_typecheck.check_type(keep_total, int)
-    py_typecheck.check_type(keep_first, bool)
 
     if not tf.io.gfile.exists(root_dir):
       tf.io.gfile.makedirs(root_dir)
@@ -143,8 +137,6 @@ class FileProgramStateManager(
     Args:
       path: The path to extract the version from.
     """
-    py_typecheck.check_type(path, (str, os.PathLike))
-
     basename = os.path.basename(path)
     if basename.startswith(self._prefix):
       version = basename[len(self._prefix) :]
@@ -164,8 +156,6 @@ class FileProgramStateManager(
     Args:
       version: The version used to construct the path.
     """
-    py_typecheck.check_type(version, (int, np.integer))
-
     basename = f'{self._prefix}{version}'
     return os.path.join(self._root_dir, basename)
 
@@ -184,8 +174,6 @@ class FileProgramStateManager(
       ProgramStateNotFoundError: If there is no program state for the given
         `version`.
     """
-    py_typecheck.check_type(version, int)
-
     path = self._get_path_for_version(version)
     if not await file_utils.exists(path):
       raise program_state_manager.ProgramStateNotFoundError(version)
@@ -230,8 +218,6 @@ class FileProgramStateManager(
 
   async def _remove(self, version: int) -> None:
     """Removes program state for the given `version`."""
-    py_typecheck.check_type(version, (int, np.integer))
-
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):
       await file_utils.rmtree(path)
@@ -283,8 +269,6 @@ class FileProgramStateManager(
       ProgramStateExistsError: If there is already program state for the given
         `version`.
     """
-    py_typecheck.check_type(version, (int, np.integer))
-
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):
       raise program_state_manager.ProgramStateExistsError(

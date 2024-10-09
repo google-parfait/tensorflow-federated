@@ -49,16 +49,6 @@ class ReadSavedModelTest(
 
     self.assertEqual(actual_value, 1)
 
-  @parameterized.named_parameters(
-      ('none', None),
-      ('int', 1),
-      ('bool', True),
-      ('list', []),
-  )
-  async def test_raises_type_error_with_path(self, path):
-    with self.assertRaises(TypeError):
-      await file_utils.read_saved_model(path)
-
 
 class WriteSavedModelTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
@@ -110,30 +100,6 @@ class WriteSavedModelTest(
 
     with self.assertRaises(FileExistsError):
       await file_utils.write_saved_model(value, path)
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('int', 1),
-      ('bool', True),
-      ('list', []),
-  )
-  async def test_raises_type_error_with_path(self, path):
-    value = 1
-
-    with self.assertRaises(TypeError):
-      await file_utils.write_saved_model(value, path)
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  async def test_raises_type_error_with_overwrite(self, overwrite):
-    value = 1
-    path = self.create_tempdir()
-
-    with self.assertRaises(TypeError):
-      await file_utils.write_saved_model(value, path, overwrite)
 
   async def test_does_not_raise_decode_error_with_large_value(self):
     path = self.create_tempdir()

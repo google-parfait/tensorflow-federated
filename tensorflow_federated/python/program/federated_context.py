@@ -16,7 +16,6 @@
 import abc
 from typing import Optional, Union
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
@@ -52,9 +51,8 @@ def contains_only_server_placed_data(
     `True` if `type_signature` contains only server-placed data, otherwise
     `False`.
   """
-  py_typecheck.check_type(type_signature, computation_types.Type)
 
-  def predicate(type_spec: computation_types.Type) -> bool:
+  def _predicate(type_spec: computation_types.Type) -> bool:
     return isinstance(
         type_spec,
         (
@@ -67,7 +65,7 @@ def contains_only_server_placed_data(
         and type_spec.placement is placements.SERVER
     )
 
-  return type_analysis.contains_only(type_signature, predicate)
+  return type_analysis.contains_only(type_signature, _predicate)
 
 
 class FederatedContext(context_base.SyncContext):

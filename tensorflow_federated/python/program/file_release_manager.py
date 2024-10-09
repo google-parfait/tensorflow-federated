@@ -33,7 +33,6 @@ from typing import Union
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
@@ -118,11 +117,8 @@ class CSVFileReleaseManager(
       CSVKeyFieldnameNotFoundError: If the file exists but does not contain a
         fieldname of `key_fieldname`.
     """
-    py_typecheck.check_type(file_path, (bytes, str, os.PathLike))
     if not file_path:
       raise ValueError('Expected `file_path` to not be an empty string.')
-    py_typecheck.check_type(save_mode, CSVSaveMode)
-    py_typecheck.check_type(key_fieldname, str)
     if not key_fieldname:
       raise ValueError('Expected `key_fieldname` to not be an empty string.')
 
@@ -162,19 +158,6 @@ class CSVFileReleaseManager(
       values: Iterable[Mapping[str, release_manager.ReleasableStructure]],
   ) -> None:
     """Writes `fieldnames` and `values` to the managed CSV."""
-    py_typecheck.check_type(fieldnames, Sequence)
-    if isinstance(fieldnames, str):
-      raise TypeError(
-          'Expected `fieldnames` to be a `Sequence` of `str`, found `str`.'
-      )
-    for fieldname in fieldnames:
-      py_typecheck.check_type(fieldname, str)
-    py_typecheck.check_type(values, Iterable)
-    for value in values:
-      py_typecheck.check_type(value, Mapping)
-      for key in value.keys():
-        py_typecheck.check_type(key, str)
-
     path = os.fspath(self._file_path)
 
     # Create a temporary file.
@@ -195,10 +178,6 @@ class CSVFileReleaseManager(
       self, value: Mapping[str, release_manager.ReleasableStructure]
   ) -> None:
     """Writes `value` to the managed CSV."""
-    py_typecheck.check_type(value, Mapping)
-    for key in value.keys():
-      py_typecheck.check_type(key, str)
-
     loop = asyncio.get_running_loop()
     fieldnames, values = await loop.run_in_executor(None, self._read_values)
     fieldnames.extend([x for x in value.keys() if x not in fieldnames])
@@ -209,9 +188,6 @@ class CSVFileReleaseManager(
       self, value: Mapping[str, release_manager.ReleasableStructure]
   ) -> None:
     """Appends `value` to the managed CSV."""
-    py_typecheck.check_type(value, Mapping)
-    for key in value.keys():
-      py_typecheck.check_type(key, str)
 
     def _read_fieldnames_only() -> list[str]:
       with tf.io.gfile.GFile(self._file_path, 'r') as file:
@@ -247,8 +223,6 @@ class CSVFileReleaseManager(
 
   async def _remove_values_greater_than_key(self, key: int) -> None:
     """Removes all values greater than `key` from the managed CSV."""
-    py_typecheck.check_type(key, (int, np.integer))
-
     if self._latest_key is None or key > self._latest_key:
       return
 
@@ -288,8 +262,6 @@ class CSVFileReleaseManager(
       key: An integer used to reference the released `value`; `key` represents a
         step in a federated program.
     """
-    py_typecheck.check_type(key, (int, np.integer))
-
     _, materialized_value = await asyncio.gather(
         self._remove_values_greater_than_key(key - 1),
         value_reference.materialize_value(value),
@@ -351,10 +323,8 @@ class SavedModelFileReleaseManager(
     Raises:
       ValueError: If `root_dir` is an empty string.
     """
-    py_typecheck.check_type(root_dir, (str, os.PathLike))
     if not root_dir:
       raise ValueError('Expected `root_dir` to not be an empty string.')
-    py_typecheck.check_type(prefix, str)
 
     if not tf.io.gfile.exists(root_dir):
       tf.io.gfile.makedirs(root_dir)
