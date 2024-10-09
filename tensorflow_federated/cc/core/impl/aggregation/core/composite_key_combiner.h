@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "absl/container/fixed_array.h"
-#include "absl/container/node_hash_map.h"
+#include "absl/container/flat_hash_map.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
@@ -52,11 +52,6 @@ namespace aggregation {
 // The composite key has inlined storage for 4 elements, more can be allocated
 // dynamically if needed.
 using CompositeKey = absl::FixedArray<uint64_t, 4>;
-
-// CompositeKeyOrderedVector is a vector of pointers to the data in the unique
-// CompositeKeys that are created by the CompositeKeyCombiner. The pointers are
-// ordered by the ordinal assigned to the composite key.
-using CompositeKeyOrderedVector = std::vector<const uint64_t*>;
 
 // Class operating on sets of tensors of the same shape to combine indices for
 // which the same combination of elements occurs, or in other words, indices
@@ -141,19 +136,18 @@ class CompositeKeyCombiner {
   // DPCompositeKeyCombiner::AccumulateWithBound.
   std::unique_ptr<MutableVectorData<int64_t>> CreateOrdinals(
       const InputTensorList& tensors, size_t num_elements,
-      absl::node_hash_map<CompositeKey, int64_t>& composite_key_map,
-      int64_t& current_ordinal, CompositeKeyOrderedVector& ordered_keys);
+      absl::flat_hash_map<CompositeKey, int64_t>& composite_key_map,
+      int64_t& current_ordinal);
 
   // Checks that the provided InputTensorList can be accumulated into this
   // CompositeKeyCombiner.
   StatusOr<TensorShape> CheckValidAndGetShape(const InputTensorList& tensors);
 
   // Functions to grant access to members
-  inline absl::node_hash_map<CompositeKey, int64_t>& GetCompositeKeys() {
+  inline absl::flat_hash_map<CompositeKey, int64_t>& GetCompositeKeys() {
     return composite_keys_;
   }
   inline int64_t& GetCompositeKeyNext() { return composite_key_next_; }
-  inline CompositeKeyOrderedVector& GetKeyVec() { return ordered_keys_; }
   inline std::unordered_set<std::string>& GetInternPool() {
     return intern_pool_;
   }
@@ -163,9 +157,6 @@ class CompositeKeyCombiner {
   // order.
   // TODO: b/277982238 - Use inlined vector to store the DataTypes instead.
   std::vector<DataType> dtypes_;
-  // Pointers to the byte representations of the composite keys in the order
-  // they will appear in the output tensors returned by GetOutputKeys.
-  std::vector<const uint64_t*> ordered_keys_;
   // Set of unique strings encountered in tensors of type DT_STRING on calls to
   // Accumulate.
   // Used as an optimization to avoid storing the same string multiple
@@ -175,7 +166,7 @@ class CompositeKeyCombiner {
   std::unordered_set<std::string> intern_pool_;
   // Mapping of byte representations of the composite keys seen so far to
   // their ordinal position in the output tensors returned by GetOutputKeys.
-  absl::node_hash_map<CompositeKey, int64_t> composite_keys_;
+  absl::flat_hash_map<CompositeKey, int64_t> composite_keys_;
   // Number of unique composite keys encountered so far across all calls to
   // Accumulate.
   int64_t composite_key_next_ = 0;
@@ -188,17 +179,14 @@ class CompositeKeyCombiner {
 // mapped to.
 inline int64_t SaveCompositeKeyAndGetOrdinal(
     CompositeKey&& composite_key,
-    absl::node_hash_map<CompositeKey, int64_t>& composite_key_map,
-    int64_t& current_ordinal, CompositeKeyOrderedVector& ordered_keys) {
+    absl::flat_hash_map<CompositeKey, int64_t>& composite_key_map,
+    int64_t& current_ordinal) {
   auto [it, inserted] =
       composite_key_map.insert({std::move(composite_key), current_ordinal});
   if (inserted) {
     // This is the first time this CompositeKeyCombiner has encountered this
     // particular composite key.
     current_ordinal++;
-    // Save the pointer to the composite key data in the dedicated vector so we
-    // can recover it when GetOutputKeys is called.
-    ordered_keys.push_back(it->first.data());
   }
   // return the ordinal associated with the composite key
   return it->second;

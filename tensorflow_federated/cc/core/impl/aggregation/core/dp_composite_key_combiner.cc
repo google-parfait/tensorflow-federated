@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "absl/container/fixed_array.h"
-#include "absl/container/node_hash_map.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -114,7 +114,7 @@ class LocalToGlobalInserter
     // that have not yet been assigned.
     (*(this->container))[p.second] = SaveCompositeKeyAndGetOrdinal(
         std::move(p.first), key_combiner_->GetCompositeKeys(),
-        key_combiner_->GetCompositeKeyNext(), key_combiner_->GetKeyVec());
+        key_combiner_->GetCompositeKeyNext());
     return *this;
   }
 
@@ -143,14 +143,8 @@ StatusOr<Tensor> DPCompositeKeyCombiner::Accumulate(
 
 StatusOr<Tensor> DPCompositeKeyCombiner::AccumulateWithBound(
     const InputTensorList& tensors, TensorShape& shape, size_t num_elements) {
-  // The following contains unique composite keys in the order they were first
-  // created. We call the index of a composite key in this vector its "local
-  // ordinal," as it is only meaningful within one Accumulate call.
-  std::vector<const uint64_t*> local_key_vec;
-  local_key_vec.reserve(num_elements);
-
   // The following maps a view of a composite key to its local ordinal.
-  absl::node_hash_map<CompositeKey, int64_t> composite_keys_to_local_ordinal;
+  absl::flat_hash_map<CompositeKey, int64_t> composite_keys_to_local_ordinal;
   composite_keys_to_local_ordinal.reserve(num_elements);
 
   int64_t local_ordinal = 0;
@@ -159,9 +153,8 @@ StatusOr<Tensor> DPCompositeKeyCombiner::AccumulateWithBound(
   // i-th composite key. Created the same way CompositeKeyCombiner::Accumulate
   // creates ordinals but datastructures for lookup & storage are local to this
   // function call, instead of being class members.
-  std::unique_ptr<MutableVectorData<int64_t>> local_ordinals =
-      CreateOrdinals(tensors, num_elements, composite_keys_to_local_ordinal,
-                     local_ordinal, local_key_vec);
+  std::unique_ptr<MutableVectorData<int64_t>> local_ordinals = CreateOrdinals(
+      tensors, num_elements, composite_keys_to_local_ordinal, local_ordinal);
 
   // Create a mapping from local ordinals to global ordinals.
   // Default to kNoOrdinal.

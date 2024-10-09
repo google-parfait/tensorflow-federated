@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/node_hash_map.h"
+#include "absl/container/flat_hash_map.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -121,7 +121,8 @@ TensorShape GetTensorShapeForSize(size_t size) {
 // the tensor is created by interpreting the data pointed to by the uint64_t
 // pointer at that index as type T.
 template <typename T>
-StatusOr<Tensor> GetTensorForType(const CompositeKeyOrderedVector& key_iters) {
+StatusOr<Tensor> GetTensorForType(
+    const std::vector<const uint64_t*>& key_iters) {
   auto output_tensor_data = std::make_unique<MutableVectorData<T>>();
   output_tensor_data->reserve(key_iters.size());
   for (const uint64_t* key_it : key_iters) {
@@ -141,7 +142,7 @@ StatusOr<Tensor> GetTensorForType(const CompositeKeyOrderedVector& key_iters) {
 // use after this class is destroyed.
 template <>
 StatusOr<Tensor> GetTensorForType<string_view>(
-    const CompositeKeyOrderedVector& key_iters) {
+    const std::vector<const uint64_t*>& key_iters) {
   std::vector<std::string> strings_for_output;
   for (auto key_it = key_iters.begin(); key_it != key_iters.end(); ++key_it) {
     const intptr_t* ptr_to_string_address =
@@ -182,7 +183,7 @@ StatusOr<Tensor> CompositeKeyCombiner::Accumulate(
 
   return Tensor::Create(internal::TypeTraits<int64_t>::kDataType, shape,
                         CreateOrdinals(tensors, num_elements, composite_keys_,
-                                       composite_key_next_, ordered_keys_));
+                                       composite_key_next_));
 }
 
 // Creates ordinals for composite keys spread across input tensors: in a nested
@@ -191,8 +192,8 @@ StatusOr<Tensor> CompositeKeyCombiner::Accumulate(
 std::unique_ptr<MutableVectorData<int64_t>>
 CompositeKeyCombiner::CreateOrdinals(
     const InputTensorList& tensors, size_t num_elements,
-    absl::node_hash_map<CompositeKey, int64_t>& composite_key_map,
-    int64_t& current_ordinal, CompositeKeyOrderedVector& ordered_keys) {
+    absl::flat_hash_map<CompositeKey, int64_t>& composite_key_map,
+    int64_t& current_ordinal) {
   // Initialize the ordinals vector
   auto ordinals = std::make_unique<MutableVectorData<int64_t>>();
   ordinals->reserve(num_elements);
@@ -222,9 +223,8 @@ CompositeKeyCombiner::CreateOrdinals(
 
     // Get the ordinal associated with the composite key
     // (or make new mapping if none exists)
-    auto ordinal = SaveCompositeKeyAndGetOrdinal(std::move(composite_key),
-                                                 composite_key_map,
-                                                 current_ordinal, ordered_keys);
+    auto ordinal = SaveCompositeKeyAndGetOrdinal(
+        std::move(composite_key), composite_key_map, current_ordinal);
 
     // Insert the ordinal representing the composite key into the
     // correct position in the output tensor.
@@ -239,7 +239,15 @@ OutputTensorList CompositeKeyCombiner::GetOutputKeys() const {
   // accumulated, there will always be one tensor output for each data type that
   // this CompositeKeyCombiner was configured to accept.
   output_keys.reserve(dtypes_.size());
-  std::vector<const uint64_t*> key_iters = ordered_keys_;
+  // key_iters vector is initialized to point to the first element of each
+  // composite key.
+  std::vector<const uint64_t*> key_iters(composite_keys_.size());
+  for (const auto& [key, ordinal] : composite_keys_) {
+    TFF_CHECK(ordinal < key_iters.size());
+    TFF_CHECK(key_iters[ordinal] == nullptr);
+    key_iters[ordinal] = key.data();
+  }
+
   for (DataType dtype : dtypes_) {
     StatusOr<Tensor> t;
     DTYPE_CASES(dtype, T, t = GetTensorForType<T>(key_iters));
