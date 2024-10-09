@@ -326,6 +326,406 @@ class FlattenWithNameTest(parameterized.TestCase):
       self.assertEqual(actual_value, expected_value)
 
 
+class FlattenTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      # materialized values
+      ('none', None, [None]),
+      ('bool', True, [True]),
+      ('int', 1, [1]),
+      ('str', 'abc', ['abc']),
+      ('numpy_int', np.int32(1), [np.int32(1)]),
+      (
+          'numpy_array',
+          np.array([1] * 3, np.int32),
+          [np.array([1] * 3, np.int32)],
+      ),
+      # materializable value references
+      (
+          'materializable_value_reference_tensor',
+          program_test_utils.TestMaterializableValueReference(1),
+          [program_test_utils.TestMaterializableValueReference(1)],
+      ),
+      (
+          'materializable_value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          [program_test_utils.TestMaterializableValueReference([1, 2, 3])],
+      ),
+      # serializable values
+      (
+          'serializable_value',
+          program_test_utils.TestSerializable(1, 2),
+          [program_test_utils.TestSerializable(1, 2)],
+      ),
+      # other values
+      (
+          'attrs',
+          program_test_utils.TestAttrs(1, 2),
+          [program_test_utils.TestAttrs(1, 2)],
+      ),
+      # structures
+      (
+          'list',
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+      ),
+      ('list_empty', [], []),
+      (
+          'list_nested',
+          [
+              [
+                  True,
+                  1,
+                  'abc',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+              5,
+          ],
+      ),
+      (
+          'dict_ordered',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          # Note: Flattening a mapping container will sort the keys, therefore
+          # this sequence is sorted. Unflattening the mapping container should
+          # sort they keys according to the provided structure.
+          [
+              'abc',
+              1,
+              True,
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+      ),
+      ('dict_empty', {}, []),
+      (
+          'dict_nested',
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'abc',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+              5,
+          ],
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='abc',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='abc',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+              5,
+          ],
+      ),
+  )
+  def test_returns_result(self, structure, expected_result):
+    actual_result = structure_utils.flatten(structure)
+
+    tree.assert_same_structure(actual_result, expected_result)
+    if isinstance(structure, np.ndarray):
+      np.testing.assert_array_equal(actual_result, expected_result)
+    else:
+      self.assertEqual(actual_result, expected_result)
+
+
+class FlattenAsTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      # materialized values
+      ('none', None, [None], None),
+      ('bool', None, [True], True),
+      ('int', None, [1], 1),
+      ('str', None, ['abc'], 'abc'),
+      ('numpy_int', None, [np.int32(1)], np.int32(1)),
+      (
+          'numpy_array',
+          None,
+          [np.array([1] * 3, np.int32)],
+          np.array([1] * 3, np.int32),
+      ),
+      # materializable value references
+      (
+          'materializable_value_reference_tensor',
+          None,
+          [program_test_utils.TestMaterializableValueReference(1)],
+          program_test_utils.TestMaterializableValueReference(1),
+      ),
+      (
+          'materializable_value_reference_sequence',
+          None,
+          [program_test_utils.TestMaterializableValueReference([1, 2, 3])],
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+      ),
+      # serializable values
+      (
+          'serializable_value',
+          None,
+          [program_test_utils.TestSerializable(1, 2)],
+          program_test_utils.TestSerializable(1, 2),
+      ),
+      # other values
+      (
+          'attrs',
+          None,
+          [program_test_utils.TestAttrs(1, 2)],
+          program_test_utils.TestAttrs(1, 2),
+      ),
+      # structures
+      (
+          'list',
+          [None, None, None, None, None],
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+      ),
+      ('list_empty', [], [], []),
+      (
+          'list_nested',
+          [[None, None, None, None, None], [None]],
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+              5,
+          ],
+          [
+              [
+                  True,
+                  1,
+                  'abc',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+      ),
+      (
+          'dict_ordered',
+          {'a': None, 'b': None, 'c': None, 'd': None, 'e': None},
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          {
+              'a': True,
+              'b': 1,
+              'c': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      (
+          'dict_unordered',
+          {'c': None, 'b': None, 'a': None, 'd': None, 'e': None},
+          # Note: Flattening a mapping container will sort the keys, therefore
+          # this sequence is sorted. Unflattening the mapping container should
+          # sort they keys according to the provided structure.
+          [
+              'abc',
+              1,
+              True,
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      ('dict_empty', {}, [], {}),
+      (
+          'dict_nested',
+          {
+              'x': {'a': None, 'b': None, 'c': None, 'd': None, 'e': None},
+              'y': {'a': None},
+          },
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+              5,
+          ],
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'abc',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=None,
+              b=None,
+              c=None,
+              d=None,
+              e=None,
+          ),
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='abc',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=None,
+                  b=None,
+                  c=None,
+                  d=None,
+                  e=None,
+              ),
+              y=program_test_utils.TestNamedTuple2(a=None),
+          ),
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+              5,
+          ],
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='abc',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+      ),
+  )
+  def test_returns_result(self, structure, flat_sequence, expected_result):
+    actual_result = structure_utils.unflatten_as(structure, flat_sequence)
+
+    tree.assert_same_structure(actual_result, expected_result)
+    if all(isinstance(x, np.ndarray) for x in [actual_result, expected_result]):
+      np.testing.assert_array_equal(actual_result, expected_result)
+    else:
+      self.assertEqual(actual_result, expected_result)
+
+
 class MapStructureTest(absltest.TestCase):
 
   def test_returns_result(self):
