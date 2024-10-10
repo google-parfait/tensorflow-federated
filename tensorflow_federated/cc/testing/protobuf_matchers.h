@@ -49,6 +49,7 @@
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "google/protobuf/io/tokenizer.h"
@@ -176,8 +177,8 @@ class ProtoMatcherBase {
   // Assumes that the types actually mismatch.
   std::string DescribeTypeMismatch(const google::protobuf::Message &expected,
                                    const google::protobuf::Message &actual) const {
-    return "whose type should be " + expected.GetTypeName() +
-           " but actually is " + actual.GetTypeName();
+    return absl::StrCat("whose type should be ", expected.GetTypeName(),
+                        " but actually is ", actual.GetTypeName());
   }
 
   // Provides a string describing the difference between the two given protos.
