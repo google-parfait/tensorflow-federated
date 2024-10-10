@@ -13,6 +13,11 @@ and this project adheres to
 *   `tff.StructType.items()`, this API makes it easier to iterate over
     `tff.StrucType` without having to deal with hard to discover and use
     `tff.structure.*` APIs.
+*   The abstract class `DPTensorAggregator` and the child `DPQuantileAggregator`
+    (along with the factory class). `DPQuantileAggregator` is currently a
+    skeleton; future CLs will implement the member functions.
+*   Added functionality to set and check epsilon/delta in `DPTensorAggregator` &
+    `DPQuantileAggregator`.
 
 ### Removed
 

@@ -318,6 +318,35 @@ cc_library(
 )
 
 cc_library(
+    name = "dp_tensor_aggregator",
+    hdrs = [
+        "dp_tensor_aggregator.h",
+    ],
+    deps = [
+        ":aggregator",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+    ],
+)
+
+cc_library(
+    name = "dp_quantile_aggregator",
+    srcs = ["dp_quantile_aggregator.cc"],
+    hdrs = [
+        "dp_quantile_aggregator.h",
+    ],
+    deps = [
+        ":agg_core_cc_proto",
+        ":aggregator",
+        ":dp_fedsql_constants",
+        ":dp_tensor_aggregator",
+        ":intrinsic",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+    ],
+)
+
+cc_library(
     name = "aggregation_cores",
     srcs = [
         "federated_mean.cc",
@@ -641,6 +670,23 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "dp_quantile_aggregator_test",
+    srcs = ["dp_quantile_aggregator_test.cc"],
+    deps = [
+        ":aggregator",
+        ":dp_fedsql_constants",
+        ":dp_quantile_aggregator",
+        ":intrinsic",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
     ],
 )
 
