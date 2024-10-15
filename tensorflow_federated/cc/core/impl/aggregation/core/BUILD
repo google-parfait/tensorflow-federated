@@ -720,3 +720,16 @@ cc_binary(
         "@com_google_benchmark//:benchmark",
     ],
 )
+
+cc_binary(
+    name = "composite_key_combiner_bench",
+    testonly = 1,
+    srcs = ["composite_key_combiner_bench.cc"],
+    linkstatic = 1,
+    deps = [
+        ":composite_key_combiner",
+        ":tensor",
+        ":tensor_cc_proto",
+        "@com_google_benchmark//:benchmark",
+    ],
+)
