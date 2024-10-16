@@ -17,6 +17,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 
 #include <climits>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -41,42 +42,35 @@ namespace aggregation {
 
 namespace {
 
+// Advances the pointer by sizeof(T) bytes.
 template <typename T>
-bool CheckDataTypeSupported() {
-  return sizeof(T) <= sizeof(uint64_t);
+void AdvancePtr(void*& ptr) {
+  ptr = static_cast<void*>(static_cast<uint8_t*>(ptr) + sizeof(T));
 }
 
-template <>
-bool CheckDataTypeSupported<string_view>() {
-  // We will store the representation of a pointer to the string as an integer,
-  // so ensure the size of a pointer is less than or equal to the size of a
-  // 64-bit integer.
-  return sizeof(intptr_t) == sizeof(uint64_t);
+template <typename T>
+void AdvancePtr(const void*& ptr) {
+  ptr = static_cast<const void*>(static_cast<const uint8_t*>(ptr) + sizeof(T));
 }
 
 // Copies the bytes pointed to by source_ptr to the destination pointed to by
-// dest_ptr and advances source_ptr to the next T.
+// dest_ptr and advances source_ptr and dest_ptr to the next T.
 //
 // The number of bytes copied will be the size of the type T.
 //
 // It is the responsibility of the caller to ensure that source_ptr is only used
 // in subsequent code if it still points to a valid T after being incremented.
 template <typename T>
-void CopyToDest(const void*& source_ptr, uint64_t* dest_ptr,
-                std::unordered_set<std::string>& intern_pool) {
-  auto typed_source_ptr = static_cast<const T*>(source_ptr);
-  // Cast the pointer to the destination storage to a pointer to type T and set
-  // the value it points to to the source value. This allows us to copy the
-  // number of bytes in T to the destination storage even if T is smaller than
-  // uint64_t, without copying extra bytes.
-  // It would be problematic if T is larger than uint64_t, but the Create method
-  // validated that this was not the case.
-  T* typed_dest_ptr = reinterpret_cast<T*>(dest_ptr);
-  *typed_dest_ptr = *typed_source_ptr;
-  // Set source_ptr to point to the next T assuming that it points to
-  // an array of T.
-  source_ptr = static_cast<const void*>(++typed_source_ptr);
+inline void CopyToDest(const void*& source_ptr, void*& dest_ptr,
+                       std::unordered_set<std::string>& intern_pool) {
+  // Copy the bytes pointed to by source_ptr to the destination pointed to by
+  // dest_ptr.
+  std::memcpy(dest_ptr, source_ptr, sizeof(T));
+  // Advance source_ptr and dest_ptr to the next T.
+  AdvancePtr<T>(source_ptr);
+  AdvancePtr<T>(dest_ptr);
 }
+
 // Specialization of CopyToDest for DT_STRING data type that interns the
 // string_view pointed to by value_ptr. The address of the string in the
 // intern pool is then converted to a 64 bit integer and copied to the
@@ -87,8 +81,9 @@ void CopyToDest(const void*& source_ptr, uint64_t* dest_ptr,
 // in subsequent code if it still points to a valid string_view after being
 // incremented.
 template <>
-void CopyToDest<string_view>(const void*& source_ptr, uint64_t* dest_ptr,
-                             std::unordered_set<std::string>& intern_pool) {
+inline void CopyToDest<string_view>(
+    const void*& source_ptr, void*& dest_ptr,
+    std::unordered_set<std::string>& intern_pool) {
   auto string_view_ptr = static_cast<const string_view*>(source_ptr);
   // Insert the string into the intern pool if it does not already exist. This
   // makes a copy of the string so that the intern pool owns the storage.
@@ -102,10 +97,12 @@ void CopyToDest<string_view>(const void*& source_ptr, uint64_t* dest_ptr,
   intptr_t ptr_int = reinterpret_cast<intptr_t>(interned_string_ptr);
   // Set the destination storage to the integer representation of the string
   // address.
-  *dest_ptr = static_cast<uint64_t>(ptr_int);
+  std::memcpy(dest_ptr, &ptr_int, sizeof(intptr_t));
   // Set the source_ptr to point to the next string_view assuming that it points
   // to an array of string_view.
   source_ptr = static_cast<const void*>(++string_view_ptr);
+  // Advance the dest_ptr.
+  AdvancePtr<intptr_t>(dest_ptr);
 }
 
 TensorShape GetTensorShapeForSize(size_t size) {
@@ -115,19 +112,19 @@ TensorShape GetTensorShapeForSize(size_t size) {
   return TensorShape({static_cast<int64_t>(size)});
 }
 
-// Given a vector of uint64_t pointers, where the data pointed to can be safely
+// Given a vector of void* pointers, where the data pointed to can be safely
 // interpreted as type T, returns a Tensor of underlying data type
-// corresponding to T and the same length as the input vector. Each element of
-// the tensor is created by interpreting the data pointed to by the uint64_t
-// pointer at that index as type T.
+// corresponding to T and the same length as the input vector.
+// Each void* pointer in the input vector is incremented by size(T) bytes.
 template <typename T>
-StatusOr<Tensor> GetTensorForType(
-    const std::vector<const uint64_t*>& key_iters) {
+StatusOr<Tensor> GetTensorForType(std::vector<const void*>& key_iters) {
   auto output_tensor_data = std::make_unique<MutableVectorData<T>>();
   output_tensor_data->reserve(key_iters.size());
-  for (const uint64_t* key_it : key_iters) {
-    const T* ptr = reinterpret_cast<const T*>(key_it);
-    output_tensor_data->push_back(*ptr);
+  for (const void*& key_it : key_iters) {
+    T value;
+    std::memcpy(&value, key_it, sizeof(T));
+    output_tensor_data->push_back(value);
+    AdvancePtr<T>(key_it);
   }
   return Tensor::Create(internal::TypeTraits<T>::kDataType,
                         GetTensorShapeForSize(key_iters.size()),
@@ -135,42 +132,52 @@ StatusOr<Tensor> GetTensorForType(
 }
 
 // Specialization of GetTensorForType for DT_STRING data type.
-// Given a vector of char pointers, where the data pointed to can be safely
+// Given a vector of void* pointers, where the data pointed to can be safely
 // interpreted as a pointer to a string, returns a tensor of type DT_STRING
 // and the same length as the input vector containing these strings.
-// The returned tensor will own all strings it refers to and is thus safe to
-// use after this class is destroyed.
+// Each void* pointer in the input vector is incremented by size(intptr_tß)
+// bytes. The returned tensor will own all strings it refers to and is thus safe
+// to use after this class is destroyed.
 template <>
 StatusOr<Tensor> GetTensorForType<string_view>(
-    const std::vector<const uint64_t*>& key_iters) {
+    std::vector<const void*>& key_iters) {
   std::vector<std::string> strings_for_output;
-  for (auto key_it = key_iters.begin(); key_it != key_iters.end(); ++key_it) {
-    const intptr_t* ptr_to_string_address =
-        reinterpret_cast<const intptr_t*>(*key_it);
+  for (const void*& key_it : key_iters) {
+    intptr_t ptr_int;
+    std::memcpy(&ptr_int, key_it, sizeof(intptr_t));
     // The integer stored to represent a string is the address of the string
     // stored in the intern_pool_. Thus this integer can be safely cast to a
     // pointer and dereferenced to obtain the string.
-    const std::string* ptr =
-        reinterpret_cast<const std::string*>(*ptr_to_string_address);
+    const std::string* ptr = reinterpret_cast<const std::string*>(ptr_int);
     strings_for_output.push_back(*ptr);
+    AdvancePtr<intptr_t>(key_it);
   }
   return Tensor::Create(
       DT_STRING, GetTensorShapeForSize(key_iters.size()),
       std::make_unique<VectorStringData>(std::move(strings_for_output)));
 }
 
+// Size needed to store a key in the composite key.
+template <typename T>
+size_t GetKeySize() {
+  return sizeof(T);
+}
+
+// Specialization of GetKeySize for DT_STRING data type.
+// The size of a key of type DT_STRING is the size of a pointer to the interned
+// string.
+template <>
+size_t GetKeySize<string_view>() {
+  return sizeof(intptr_t);
+}
+
 }  // namespace
 
 CompositeKeyCombiner::CompositeKeyCombiner(std::vector<DataType> dtypes)
-    : dtypes_(dtypes) {
+    : dtypes_(dtypes), composite_key_size_(0) {
+  // Calculate the size of a composite key for the given data types.
   for (DataType dtype : dtypes) {
-    // Initialize to false to satisfy compiler that all cases in the DTYPE_CASES
-    // switch statement are covered, even though the cases that don't result in
-    // a value for data_type_supported will actually crash the program.
-    bool data_type_supported = false;
-    DTYPE_CASES(dtype, T, data_type_supported = CheckDataTypeSupported<T>());
-    TFF_CHECK(data_type_supported)
-        << "Unsupported data type for CompositeKeyCombiner: " << dtype;
+    DTYPE_CASES(dtype, T, composite_key_size_ += GetKeySize<T>());
   }
 }
 
@@ -207,18 +214,16 @@ CompositeKeyCombiner::CreateOrdinals(
   }
 
   while (ordinals->size() != num_elements) {
-    // Iterate over all the TensorDataIterators at once to get the value for the
-    // composite key.
-    CompositeKey composite_key(tensors.size(), 0);
+    CompositeKey composite_key = NewCompositeKey();
     // Construct a composite key by iterating through tensors and copying the
-    // 64-bit representation of data elements.
-    uint64_t* key_ptr = composite_key.data();
+    // representation of data elements.
+    void* key_ptr = composite_key.data();
     auto data_type_iter = dtypes_.begin();
     for (auto& itr : iterators) {
       // Copy the 64-bit representation of the element into the position in the
       // composite key data corresponding to this tensor.
       DTYPE_CASES(*(data_type_iter++), T,
-                  CopyToDest<T>(itr, key_ptr++, intern_pool_));
+                  CopyToDest<T>(itr, key_ptr, intern_pool_));
     }
 
     // Get the ordinal associated with the composite key
@@ -239,9 +244,9 @@ OutputTensorList CompositeKeyCombiner::GetOutputKeys() const {
   // accumulated, there will always be one tensor output for each data type that
   // this CompositeKeyCombiner was configured to accept.
   output_keys.reserve(dtypes_.size());
-  // key_iters vector is initialized to point to the first element of each
+  // key_iters vector is initialized to point to the first byte of each
   // composite key.
-  std::vector<const uint64_t*> key_iters(composite_keys_.size());
+  std::vector<const void*> key_iters(composite_keys_.size());
   for (const auto& [key, ordinal] : composite_keys_) {
     TFF_CHECK(ordinal < key_iters.size());
     TFF_CHECK(key_iters[ordinal] == nullptr);
@@ -253,9 +258,6 @@ OutputTensorList CompositeKeyCombiner::GetOutputKeys() const {
     DTYPE_CASES(dtype, T, t = GetTensorForType<T>(key_iters));
     TFF_CHECK(t.status().ok()) << t.status().message();
     output_keys.push_back(std::move(t.value()));
-    for (auto key_it = key_iters.begin(); key_it != key_iters.end(); ++key_it) {
-      ++*key_it;
-    }
   }
   return output_keys;
 }

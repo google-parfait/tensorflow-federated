@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -41,24 +42,32 @@
 namespace tensorflow_federated {
 namespace aggregation {
 namespace {
+// Advances the pointer by T bytes.
+template <typename T>
+void AdvancePtr(void*& ptr) {
+  ptr = static_cast<void*>(static_cast<uint8_t*>(ptr) + sizeof(T));
+}
+
 // In order to MakeCompositeKeyFromDomainTensors, we need a variant of
 // CopyToDest that takes an index. That is, we need to be able to retrieve the
 // datum at a given index of the array that a source_ptr points to, then copy it
 // to a dest_ptr. We do not advance source_ptr because we have indexing.
 template <typename T>
-void IndexedCopyToDest(const void* source_ptr, size_t index, uint64_t* dest_ptr,
+void IndexedCopyToDest(const void* source_ptr, size_t index, void*& dest_ptr,
                        std::unordered_set<std::string>& intern_pool) {
   const T& source_data = static_cast<const T*>(source_ptr)[index];
-  // Copy the 64-bit representation of the element into the position in the
-  // composite key data corresponding to this tensor.
-  T* typed_dest_ptr = reinterpret_cast<T*>(dest_ptr);
-  *typed_dest_ptr = source_data;
+  // Copy the bytes pointed to by source_ptr to the destination pointed to by
+  // dest_ptr.
+  std::memcpy(dest_ptr, &source_data, sizeof(T));
+  // Advance dest_ptr to the next T.
+  AdvancePtr<T>(dest_ptr);
 }
+
 // Specialization of IndexedCopyToDest for DT_STRING data type that interns the
 // string_view.
 template <>
 void IndexedCopyToDest<string_view>(
-    const void* source_ptr, size_t index, uint64_t* dest_ptr,
+    const void* source_ptr, size_t index, void*& dest_ptr,
     std::unordered_set<std::string>& intern_pool) {
   const string_view& source_data =
       static_cast<const string_view*>(source_ptr)[index];
@@ -74,7 +83,9 @@ void IndexedCopyToDest<string_view>(
   intptr_t ptr_int = reinterpret_cast<intptr_t>(interned_string_ptr);
   // Set the destination storage to the integer representation of the string
   // address.
-  *dest_ptr = static_cast<uint64_t>(ptr_int);
+  std::memcpy(dest_ptr, &ptr_int, sizeof(intptr_t));
+  // Advance the dest_ptr.
+  AdvancePtr<intptr_t>(dest_ptr);
 }
 }  // namespace
 
@@ -219,13 +230,13 @@ CompositeKey DPCompositeKeyCombiner::MakeCompositeKeyFromDomainTensors(
 
   auto index_iter = indices.begin();
   data_type_iter = dtypes().begin();
-  CompositeKey composite_key(dtypes().size(), 0);
-  uint64_t* dest_ptr = composite_key.data();
+  CompositeKey composite_key = NewCompositeKey();
+  void* dest_ptr = composite_key.data();
   for (auto& domain_tensor : domain_tensors) {
     // Copy over data from the current tensor at the given index.
     const void* source_ptr = domain_tensor.data().data();
     DTYPE_CASES(*data_type_iter, T,
-                IndexedCopyToDest<T>(source_ptr, *index_iter, dest_ptr++,
+                IndexedCopyToDest<T>(source_ptr, *index_iter, dest_ptr,
                                      GetInternPool()));
 
     // Advance the data-type and tensor iterators.
