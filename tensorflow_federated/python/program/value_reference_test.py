@@ -202,6 +202,7 @@ class MaterializeValueTest(
     actual_value = await value_reference.materialize_value(value)
 
     tree.assert_same_structure(actual_value, expected_value)
+    program_test_utils.assert_same_key_order(actual_value, expected_value)
     actual_value = program_test_utils.to_python(actual_value)
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import asyncio
-import collections
 import unittest
 from unittest import mock
 
@@ -22,7 +21,6 @@ from absl.testing import parameterized
 import numpy as np
 import tree
 
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -145,26 +143,17 @@ class CreateStructureOfReferencesTest(
           computation_types.StructWithPythonType(
               [np.bool_, np.int32, np.str_], list
           ),
-          lambda: structure.Struct([
-              (
-                  None,
-                  native_platform.NativeValueReference(
-                      _create_task(True), computation_types.TensorType(np.bool_)
-                  ),
+          lambda: [
+              native_platform.NativeValueReference(
+                  _create_task(True), computation_types.TensorType(np.bool_)
               ),
-              (
-                  None,
-                  native_platform.NativeValueReference(
-                      _create_task(1), computation_types.TensorType(np.int32)
-                  ),
+              native_platform.NativeValueReference(
+                  _create_task(1), computation_types.TensorType(np.int32)
               ),
-              (
-                  None,
-                  native_platform.NativeValueReference(
-                      _create_task('abc'), computation_types.TensorType(np.str_)
-                  ),
+              native_platform.NativeValueReference(
+                  _create_task('abc'), computation_types.TensorType(np.str_)
               ),
-          ]),
+          ],
       ),
       (
           'struct_named',
@@ -175,28 +164,19 @@ class CreateStructureOfReferencesTest(
                   ('b', np.int32),
                   ('c', np.str_),
               ],
-              collections.OrderedDict,
+              dict,
           ),
-          lambda: structure.Struct([
-              (
-                  'a',
-                  native_platform.NativeValueReference(
-                      _create_task(True), computation_types.TensorType(np.bool_)
-                  ),
+          lambda: {
+              'a': native_platform.NativeValueReference(
+                  _create_task(True), computation_types.TensorType(np.bool_)
               ),
-              (
-                  'b',
-                  native_platform.NativeValueReference(
-                      _create_task(1), computation_types.TensorType(np.int32)
-                  ),
+              'b': native_platform.NativeValueReference(
+                  _create_task(1), computation_types.TensorType(np.int32)
               ),
-              (
-                  'c',
-                  native_platform.NativeValueReference(
-                      _create_task('abc'), computation_types.TensorType(np.str_)
-                  ),
+              'c': native_platform.NativeValueReference(
+                  _create_task('abc'), computation_types.TensorType(np.str_)
               ),
-          ]),
+          },
       ),
       (
           'struct_nested',
@@ -210,7 +190,7 @@ class CreateStructureOfReferencesTest(
                               ('a', np.bool_),
                               ('b', np.int32),
                           ],
-                          collections.OrderedDict,
+                          dict,
                       ),
                   ),
                   (
@@ -219,45 +199,30 @@ class CreateStructureOfReferencesTest(
                           [
                               ('c', np.str_),
                           ],
-                          collections.OrderedDict,
+                          dict,
                       ),
                   ),
               ],
-              collections.OrderedDict,
+              dict,
           ),
-          lambda: structure.Struct([
-              (
-                  'x',
-                  structure.Struct([
-                      (
-                          'a',
-                          native_platform.NativeValueReference(
-                              _create_task(True),
-                              computation_types.TensorType(np.bool_),
-                          ),
-                      ),
-                      (
-                          'b',
-                          native_platform.NativeValueReference(
-                              _create_task(1),
-                              computation_types.TensorType(np.int32),
-                          ),
-                      ),
-                  ]),
-              ),
-              (
-                  'y',
-                  structure.Struct([
-                      (
-                          'c',
-                          native_platform.NativeValueReference(
-                              _create_task('abc'),
-                              computation_types.TensorType(np.str_),
-                          ),
-                      ),
-                  ]),
-              ),
-          ]),
+          lambda: {
+              'x': {
+                  'a': native_platform.NativeValueReference(
+                      _create_task(True),
+                      computation_types.TensorType(np.bool_),
+                  ),
+                  'b': native_platform.NativeValueReference(
+                      _create_task(1),
+                      computation_types.TensorType(np.int32),
+                  ),
+              },
+              'y': {
+                  'c': native_platform.NativeValueReference(
+                      _create_task('abc'),
+                      computation_types.TensorType(np.str_),
+                  ),
+              },
+          },
       ),
   )
   async def test_returns_value(
@@ -269,14 +234,10 @@ class CreateStructureOfReferencesTest(
     )
 
     expected_value = expected_value_factory()
-    if isinstance(actual_value, structure.Struct) and isinstance(
-        expected_value, structure.Struct
-    ):
-      actual_value = structure.flatten(actual_value)
-      expected_value = structure.flatten(expected_value)
     actual_value = await value_reference.materialize_value(actual_value)
     expected_value = await value_reference.materialize_value(expected_value)
     tree.assert_same_structure(actual_value, expected_value)
+    program_test_utils.assert_same_key_order(actual_value, expected_value)
     actual_value = program_test_utils.to_python(actual_value)
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
@@ -296,167 +257,6 @@ class CreateStructureOfReferencesTest(
 
     with self.assertRaises(NotImplementedError):
       native_platform._create_structure_of_references(task, type_signature)
-
-
-class MaterializeStructureOfValueReferencesTest(
-    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
-):
-
-  @parameterized.named_parameters(
-      (
-          'tensor',
-          lambda: native_platform.NativeValueReference(
-              _create_task(1), computation_types.TensorType(np.int32)
-          ),
-          computation_types.TensorType(np.int32),
-          1,
-      ),
-      (
-          'sequence',
-          lambda: native_platform.NativeValueReference(
-              _create_task([1, 2, 3]),
-              computation_types.SequenceType(np.int32),
-          ),
-          computation_types.SequenceType(np.int32),
-          [1, 2, 3],
-      ),
-      (
-          'federated_server',
-          lambda: native_platform.NativeValueReference(
-              _create_task(1), computation_types.TensorType(np.int32)
-          ),
-          computation_types.FederatedType(np.int32, placements.SERVER),
-          1,
-      ),
-      (
-          'federated_clients',
-          lambda: native_platform.NativeValueReference(
-              _create_task(1), computation_types.TensorType(np.int32)
-          ),
-          computation_types.FederatedType(np.int32, placements.CLIENTS),
-          1,
-      ),
-      (
-          'struct_unnamed',
-          lambda: [
-              native_platform.NativeValueReference(
-                  _create_task(True), computation_types.TensorType(np.bool_)
-              ),
-              native_platform.NativeValueReference(
-                  _create_task(1), computation_types.TensorType(np.int32)
-              ),
-              native_platform.NativeValueReference(
-                  _create_task('abc'), computation_types.TensorType(np.str_)
-              ),
-          ],
-          computation_types.StructWithPythonType(
-              [np.bool_, np.int32, np.str_], list
-          ),
-          structure.Struct([(None, True), (None, 1), (None, 'abc')]),
-      ),
-      (
-          'struct_named',
-          lambda: {
-              'a': native_platform.NativeValueReference(
-                  _create_task(True), computation_types.TensorType(np.bool_)
-              ),
-              'b': native_platform.NativeValueReference(
-                  _create_task(1), computation_types.TensorType(np.int32)
-              ),
-              'c': native_platform.NativeValueReference(
-                  _create_task('abc'), computation_types.TensorType(np.str_)
-              ),
-          },
-          computation_types.StructWithPythonType(
-              [('a', np.bool_), ('b', np.int32), ('c', np.str_)],
-              collections.OrderedDict,
-          ),
-          structure.Struct([('a', True), ('b', 1), ('c', 'abc')]),
-      ),
-      (
-          'struct_nested',
-          lambda: {
-              'x': {
-                  'a': native_platform.NativeValueReference(
-                      _create_task(True), computation_types.TensorType(np.bool_)
-                  ),
-                  'b': native_platform.NativeValueReference(
-                      _create_task(1), computation_types.TensorType(np.int32)
-                  ),
-              },
-              'y': {
-                  'c': native_platform.NativeValueReference(
-                      _create_task('abc'), computation_types.TensorType(np.str_)
-                  ),
-              },
-          },
-          computation_types.StructWithPythonType(
-              [
-                  (
-                      'x',
-                      computation_types.StructWithPythonType(
-                          [
-                              ('a', np.bool_),
-                              ('b', np.int32),
-                          ],
-                          collections.OrderedDict,
-                      ),
-                  ),
-                  (
-                      'y',
-                      computation_types.StructWithPythonType(
-                          [
-                              ('c', np.str_),
-                          ],
-                          collections.OrderedDict,
-                      ),
-                  ),
-              ],
-              collections.OrderedDict,
-          ),
-          structure.Struct([
-              (
-                  'x',
-                  structure.Struct([
-                      ('a', True),
-                      ('b', 1),
-                  ]),
-              ),
-              (
-                  'y',
-                  structure.Struct([
-                      ('c', 'abc'),
-                  ]),
-              ),
-          ]),
-      ),
-  )
-  async def test_returns_value(
-      self, value_factory, type_signature, expected_value
-  ):
-    value = value_factory()
-    actual_value = await native_platform._materialize_structure_of_references(
-        value, type_signature
-    )
-
-    tree.assert_same_structure(actual_value, expected_value)
-    actual_value = program_test_utils.to_python(actual_value)
-    expected_value = program_test_utils.to_python(expected_value)
-    self.assertEqual(actual_value, expected_value)
-
-  @parameterized.named_parameters(
-      ('function', computation_types.FunctionType(np.int32, np.int32)),
-      ('placement', computation_types.PlacementType()),
-  )
-  async def test_raises_not_implemented_error_with_type_signature(
-      self, type_signature
-  ):
-    value = 1
-
-    with self.assertRaises(NotImplementedError):
-      await native_platform._materialize_structure_of_references(
-          value, type_signature
-      )
 
 
 class NativeFederatedContextTest(
@@ -499,15 +299,34 @@ class NativeFederatedContextTest(
           [True, 1, b'abc'],
       ),
       (
-          'struct_named',
+          'struct_named_ordered',
           _create_identity_federated_computation(
               computation_types.StructWithPythonType(
-                  [('a', np.bool_), ('b', np.int32), ('c', np.str_)],
-                  collections.OrderedDict,
+                  [
+                      ('a', np.bool_),
+                      ('b', np.int32),
+                      ('c', np.str_),
+                  ],
+                  dict,
               )
           ),
           {'a': True, 'b': 1, 'c': 'abc'},
           {'a': True, 'b': 1, 'c': b'abc'},
+      ),
+      (
+          'struct_named_unordered',
+          _create_identity_federated_computation(
+              computation_types.StructWithPythonType(
+                  [
+                      ('c', np.str_),
+                      ('b', np.int32),
+                      ('a', np.bool_),
+                  ],
+                  dict,
+              )
+          ),
+          {'c': 'abc', 'b': 1, 'a': True},
+          {'c': b'abc', 'b': 1, 'a': True},
       ),
   )
   async def test_invoke_returns_result(self, comp, arg, expected_value):
@@ -519,6 +338,7 @@ class NativeFederatedContextTest(
       actual_value = await value_reference.materialize_value(result)
 
     tree.assert_same_structure(actual_value, expected_value)
+    program_test_utils.assert_same_key_order(actual_value, expected_value)
     actual_value = program_test_utils.to_python(actual_value)
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
@@ -536,7 +356,7 @@ class NativeFederatedContextTest(
                                   ('a', np.bool_),
                                   ('b', np.int32),
                               ],
-                              collections.OrderedDict,
+                              dict,
                           ),
                       ),
                       (
@@ -545,11 +365,11 @@ class NativeFederatedContextTest(
                               [
                                   ('c', np.str_),
                               ],
-                              collections.OrderedDict,
+                              dict,
                           ),
                       ),
                   ],
-                  collections.OrderedDict,
+                  dict,
               )
           ),
           {'x': {'a': True, 'b': 1}, 'y': {'c': 'abc'}},
@@ -567,17 +387,12 @@ class NativeFederatedContextTest(
                                   ('a', np.bool_),
                                   ('b', np.int32),
                               ],
-                              collections.OrderedDict,
+                              dict,
                           ),
                       ),
-                      (
-                          'y',
-                          computation_types.StructWithPythonType(
-                              [], collections.OrderedDict
-                          ),
-                      ),
+                      ('y', computation_types.StructWithPythonType([], dict)),
                   ],
-                  collections.OrderedDict,
+                  dict,
               )
           ),
           {'x': {'a': True, 'b': 1}, 'y': {}},
@@ -615,7 +430,7 @@ class NativeFederatedContextTest(
                                   ('a', np.bool_),
                                   ('b', np.int32),
                               ],
-                              collections.OrderedDict,
+                              dict,
                           ),
                       ),
                       (
@@ -624,11 +439,11 @@ class NativeFederatedContextTest(
                               [
                                   ('c', np.str_),
                               ],
-                              collections.OrderedDict,
+                              dict,
                           ),
                       ),
                   ],
-                  collections.OrderedDict,
+                  dict,
               )
           ),
           {'x': {'a': True, 'b': 1}, 'y': {'c': 'abc'}},
@@ -646,17 +461,12 @@ class NativeFederatedContextTest(
                                   ('a', np.bool_),
                                   ('b', np.int32),
                               ],
-                              collections.OrderedDict,
+                              dict,
                           ),
                       ),
-                      (
-                          'y',
-                          computation_types.StructWithPythonType(
-                              [], collections.OrderedDict
-                          ),
-                      ),
+                      ('y', computation_types.StructWithPythonType([], dict)),
                   ],
-                  collections.OrderedDict,
+                  dict,
               )
           ),
           {'x': {'a': True, 'b': 1}, 'y': {}},
@@ -692,7 +502,7 @@ class NativeFederatedContextTest(
                                   ('a', np.bool_),
                                   ('b', np.int32),
                               ],
-                              collections.OrderedDict,
+                              dict,
                           ),
                       ),
                       (
@@ -701,11 +511,11 @@ class NativeFederatedContextTest(
                               [
                                   ('c', np.str_),
                               ],
-                              collections.OrderedDict,
+                              dict,
                           ),
                       ),
                   ],
-                  collections.OrderedDict,
+                  dict,
               )
           ),
           {'x': {'a': True, 'b': 1}, 'y': {'c': 'abc'}},
@@ -723,17 +533,12 @@ class NativeFederatedContextTest(
                                   ('a', np.bool_),
                                   ('b', np.int32),
                               ],
-                              collections.OrderedDict,
+                              dict,
                           ),
                       ),
-                      (
-                          'y',
-                          computation_types.StructWithPythonType(
-                              [], collections.OrderedDict
-                          ),
-                      ),
+                      ('y', computation_types.StructWithPythonType([], dict)),
                   ],
-                  collections.OrderedDict,
+                  dict,
               )
           ),
           {'x': {'a': True, 'b': 1}, 'y': {}},
@@ -773,9 +578,7 @@ class NativeFederatedContextTest(
       (
           'struct_named_empty',
           _create_identity_federated_computation(
-              computation_types.StructWithPythonType(
-                  [], collections.OrderedDict
-              )
+              computation_types.StructWithPythonType([], dict)
           ),
           {},
           {},
@@ -785,20 +588,10 @@ class NativeFederatedContextTest(
           _create_identity_federated_computation(
               computation_types.StructWithPythonType(
                   [
-                      (
-                          'x',
-                          computation_types.StructWithPythonType(
-                              [], collections.OrderedDict
-                          ),
-                      ),
-                      (
-                          'y',
-                          computation_types.StructWithPythonType(
-                              [], collections.OrderedDict
-                          ),
-                      ),
+                      ('x', computation_types.StructWithPythonType([], dict)),
+                      ('y', computation_types.StructWithPythonType([], dict)),
                   ],
-                  collections.OrderedDict,
+                  dict,
               )
           ),
           {'x': {}, 'y': {}},

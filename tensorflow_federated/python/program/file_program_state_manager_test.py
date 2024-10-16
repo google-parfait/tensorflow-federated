@@ -380,6 +380,7 @@ class FileProgramStateManagerLoadTest(
     actual_state = await program_state_mngr.load(version, structure)
 
     tree.assert_same_structure(actual_state, expected_state)
+    program_test_utils.assert_same_key_order(actual_state, expected_state)
     actual_state = program_test_utils.to_python(actual_state)
     expected_state = program_test_utils.to_python(expected_state)
     self.assertEqual(actual_state, expected_state)
@@ -833,6 +834,7 @@ class FileProgramStateManagerSaveTest(
       _, args, kwargs = call
       actual_value, actual_path = args
       tree.assert_same_structure(actual_value, expected_value)
+      program_test_utils.assert_same_key_order(actual_value, expected_value)
       actual_value = program_test_utils.to_python(actual_value)
       expected_value = program_test_utils.to_python(expected_value)
       self.assertEqual(actual_value, expected_value)

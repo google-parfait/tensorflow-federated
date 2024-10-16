@@ -14,6 +14,7 @@
 
 import collections
 from collections.abc import Mapping
+from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -35,6 +36,12 @@ class _TestTypedObject(typed_object.TypedObject):
   @property
   def type_signature(self) -> computation_types.Type:
     return self._type_signature
+
+
+class _TestNamedTuple(NamedTuple):
+  a: int
+  b: int
+  c: int
 
 
 class InferTypeTest(parameterized.TestCase):
@@ -200,6 +207,158 @@ class InferTypeTest(parameterized.TestCase):
   def test_with_empty_tuple(self):
     t = type_conversions.infer_type(())
     self.assertEqual(t, computation_types.StructWithPythonType([], tuple))
+
+
+class ToStructureWithTypeTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('value', 1, computation_types.TensorType(np.int32), 1),
+      (
+          'list_to_list',
+          [1, 2, 3],
+          computation_types.StructType([np.int32] * 3),
+          [1, 2, 3],
+      ),
+      (
+          'list_to_dict',
+          [1, 2, 3],
+          computation_types.StructType([
+              ('a', np.int32),
+              ('b', np.int32),
+              ('c', np.int32),
+          ]),
+          {'a': 1, 'b': 2, 'c': 3},
+      ),
+      (
+          'list_to_named_tuple',
+          [1, 2, 3],
+          computation_types.StructWithPythonType(
+              [
+                  ('a', np.int32),
+                  ('b', np.int32),
+                  ('c', np.int32),
+              ],
+              container_type=_TestNamedTuple,
+          ),
+          _TestNamedTuple(1, 2, 3),
+      ),
+      (
+          'dict_to_list',
+          {'a': 1, 'b': 2, 'c': 3},
+          computation_types.StructType([np.int32] * 3),
+          [1, 2, 3],
+      ),
+      (
+          'dict_to_dict',
+          {'a': 1, 'b': 2, 'c': 3},
+          computation_types.StructType([
+              ('a', np.int32),
+              ('b', np.int32),
+              ('c', np.int32),
+          ]),
+          {'a': 1, 'b': 2, 'c': 3},
+      ),
+      (
+          'dict_to_named_tuple',
+          {'a': 1, 'b': 2, 'c': 3},
+          computation_types.StructWithPythonType(
+              [
+                  ('a', np.int32),
+                  ('b', np.int32),
+                  ('c', np.int32),
+              ],
+              container_type=_TestNamedTuple,
+          ),
+          _TestNamedTuple(1, 2, 3),
+      ),
+      (
+          'named_tuple_to_list',
+          _TestNamedTuple(1, 2, 3),
+          computation_types.StructType([np.int32] * 3),
+          [1, 2, 3],
+      ),
+      (
+          'named_tuple_to_dict',
+          _TestNamedTuple(1, 2, 3),
+          computation_types.StructType([
+              ('a', np.int32),
+              ('b', np.int32),
+              ('c', np.int32),
+          ]),
+          {'a': 1, 'b': 2, 'c': 3},
+      ),
+      (
+          'named_tuple_to_named_tuple',
+          _TestNamedTuple(1, 2, 3),
+          computation_types.StructWithPythonType(
+              [
+                  ('a', np.int32),
+                  ('b', np.int32),
+                  ('c', np.int32),
+              ],
+              container_type=_TestNamedTuple,
+          ),
+          _TestNamedTuple(1, 2, 3),
+      ),
+      (
+          'federated_value',
+          1,
+          computation_types.FederatedType(np.int32, placements.CLIENTS),
+          1,
+      ),
+      (
+          'federated_value_in_structure',
+          [1, 2, 3],
+          computation_types.StructType([
+              computation_types.FederatedType(np.int32, placements.CLIENTS),
+              computation_types.FederatedType(np.int32, placements.CLIENTS),
+              computation_types.FederatedType(np.int32, placements.CLIENTS),
+          ]),
+          [1, 2, 3],
+      ),
+      (
+          'federated_structure',
+          [1, 2, 3],
+          computation_types.FederatedType([np.int32] * 3, placements.CLIENTS),
+          [1, 2, 3],
+      ),
+      (
+          'federated_structure_nested',
+          [[1, 2], [3]],
+          computation_types.FederatedType(
+              [[np.int32] * 2, [np.int32]], placements.CLIENTS
+          ),
+          [[1, 2], [3]],
+      ),
+  )
+  def test_returns_result(self, obj, type_spec, expected):
+    actual = type_conversions.to_structure_with_type(obj, type_spec)
+    self.assertEqual(actual, expected)
+
+  @parameterized.named_parameters(
+      (
+          'wrong_type_spec',
+          [1, 2, 3],
+          computation_types.TensorType(np.int32),
+      ),
+      (
+          'wrong_type_spec_nested',
+          [[1, 2], [3]],
+          computation_types.StructType([np.int32] * 3),
+      ),
+      (
+          'partially_named',
+          [1, 2, 3],
+          computation_types.StructType([
+              ('a', np.int32),
+              ('b', np.int32),
+              (None, np.int32),
+          ]),
+      ),
+  )
+  def test_raises_value_error(self, obj, type_spec):
+    with self.assertRaises(ValueError):
+      type_conversions.to_structure_with_type(obj, type_spec)
 
 
 class TypeToPyContainerTest(absltest.TestCase):

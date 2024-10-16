@@ -14,11 +14,14 @@
 """Utilities for working with structured data."""
 
 from collections.abc import Callable, Iterable, Mapping, Sequence
+import functools
 import typing
 from typing import Optional, TypeVar, Union
 
 import attrs
 import tree
+
+from tensorflow_federated.python.common_libs import py_typecheck
 
 
 T = TypeVar('T')
@@ -35,7 +38,7 @@ Structure = Union[
 def _filter_structure(structure: Structure[object]) -> Structure[object]:
   """Returns a filtered `tff.program.Structure`.
 
-  Containers that are not explicity supported by `tff.program.Structure` are
+  Containers that are not explicitly supported by `tff.program.Structure` are
   filtered out (by converting them to `None`) and objects are converted to
   `None`.
 
@@ -103,21 +106,21 @@ def map_structure(
     raise ValueError('Expected at least one structure.')
   filtered_structures = [_filter_structure(x) for x in structures]
   first_structure, *other_structures = filtered_structures
-  if other_structures:
-    check_types = kwargs.get('check_types', True)
-    for structure in other_structures:
-      tree.assert_same_structure(first_structure, structure, check_types)
-  return tree.map_structure_up_to(first_structure, fn, *structures, **kwargs)
+  check_types = kwargs.get('check_types', True)
+  for structure in other_structures:
+    tree.assert_same_structure(first_structure, structure, check_types)
+
+  return tree.map_structure_up_to(first_structure, fn, *structures)
 
 
 def map_structure_up_to(
     shallow_structure: Structure[T],
     fn: Callable[..., T],
     *structures: Structure[T],
-    **kwargs: object
 ) -> Structure[T]:
   """Maps `fn` through the `structures` up to `shallow_structure`."""
   if not structures:
     raise ValueError('Expected at least one structure.')
   filtered_structure = _filter_structure(shallow_structure)
-  return tree.map_structure_up_to(filtered_structure, fn, *structures, **kwargs)
+
+  return tree.map_structure_up_to(filtered_structure, fn, *structures)

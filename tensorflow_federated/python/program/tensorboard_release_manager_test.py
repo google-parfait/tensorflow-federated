@@ -122,7 +122,7 @@ class TensorBoardReleaseManagerReleaseTest(
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
-          # Note: Flattening a mapping container will sort the keys, and the
+          # Note: Flattening a Mapping container will sort the keys, and the
           # `tff.program.TensorBoardReleaseManager`` flattens values before they
           # are released.
           [('b', 1), ('c', True), ('d', 2)],
@@ -183,6 +183,8 @@ class TensorBoardReleaseManagerReleaseTest(
         actual_name, actual_value = args
         expected_name, expected_value = expected_args
         self.assertEqual(actual_name, expected_name)
+        tree.assert_same_structure(actual_value, expected_value)
+        program_test_utils.assert_same_key_order(actual_value, expected_value)
         self.assertEqual(actual_value, expected_value)
         self.assertEqual(kwargs, {'step': key})
 

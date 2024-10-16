@@ -13,11 +13,12 @@
 # limitations under the License.
 """Utilities for testing the program library."""
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 import contextlib
+import functools
 import struct
 import sys
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, TypeVar, Union
 import warnings
 
 import attrs
@@ -25,9 +26,13 @@ import numpy as np
 import tensorflow as tf
 import tree
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import value_reference
+
+
+T = TypeVar('T')
 
 
 class TestMaterializableValueReference(
@@ -140,7 +145,7 @@ def to_python(value: object) -> object:
 def assert_not_warns(
     category: type[Warning],
 ) -> Iterator[Iterable[warnings.WarningMessage]]:
-  """Yields a context manager used to test if a warning is not triggered."""
+  """Yields a context manager used to assert a warning is not triggered."""
 
   # The `__warningregistry__`'s need to be in a pristine state for tests to
   # work properly. This code replicates the standard library implementation of
@@ -157,3 +162,33 @@ def assert_not_warns(
     for warning in w:
       if issubclass(warning.category, category):
         raise AssertionError(f'Warned `{category.__name__}` unexpectedly.')
+
+
+def assert_same_key_order(a: object, b: object) -> None:
+  """Asserts that two structures contain the same order for keys."""
+
+  def _get_item(
+      structure: Union[Sequence[T], Mapping[str, T]], key: Union[str, int]
+  ) -> T:
+    if isinstance(structure, py_typecheck.SupportsNamedTuple):
+      return getattr(structure, key)
+    else:
+      return structure[key]
+
+  def _fn(path: tuple[Union[str, int], ...], obj: object) -> None:
+    if isinstance(obj, Mapping):
+      other = functools.reduce(_get_item, path, b)
+      if not isinstance(other, Mapping):
+        raise AssertionError(
+            f'Expected `other` to be a `Mapping` type, found {type(other)}.'
+        )
+      first_keys = list(obj.keys())
+      second_keys = list(other.keys())
+      if first_keys != second_keys:
+        raise AssertionError(
+            'Expected the order of the keys in the structures to match,'
+            f' {first_keys} != {second_keys}.'
+        )
+    return None
+
+  tree.traverse_with_path(_fn, a)

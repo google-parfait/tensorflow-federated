@@ -549,12 +549,14 @@ class CSVFileReleaseManagerReleaseTest(
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
+          # Note: The CSVFileReleaseManager flattens all released values, and
+          # flattening a Mapping container will sort the keys.
           [
               {
                   'key': '1',
-                  'c': 'True',
-                  'b': '1',
                   'a': 'abc',
+                  'b': '1',
+                  'c': 'True',
                   'd': '2',
                   'e': 'TestSerializable(a=3, b=4)',
               },
@@ -640,6 +642,7 @@ class CSVFileReleaseManagerReleaseTest(
 
     _, actual_value = _read_values_from_csv(file_path)
     tree.assert_same_structure(actual_value, expected_value)
+    program_test_utils.assert_same_key_order(actual_value, expected_value)
     self.assertEqual(actual_value, expected_value)
 
   async def test_remove_values_greater_than_key_with_empty_file(self):
@@ -905,6 +908,7 @@ class SavedModelFileReleaseManagerReleaseTest(
       _, args, kwargs = call
       actual_value, actual_path = args
       tree.assert_same_structure(actual_value, expected_value)
+      program_test_utils.assert_same_key_order(actual_value, expected_value)
       actual_value = program_test_utils.to_python(actual_value)
       expected_value = program_test_utils.to_python(expected_value)
       self.assertEqual(actual_value, expected_value)
@@ -1100,6 +1104,10 @@ class SavedModelFileReleaseManagerGetValueTest(
     actual_value = await release_mngr.get_value(key)
 
     tree.assert_same_structure(actual_value, expected_value)
+    # Note: The SavedModelFileReleaseManager releases values to the file system
+    # using the SavedModel format. The SavedModel format flattens and
+    # deterministicly orders keys. This ordering can not be reversed because
+    # `get_value` does not accept the original structure.
     actual_value = program_test_utils.to_python(actual_value)
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)

@@ -104,7 +104,7 @@ class FilteringReleaseManagerTest(
           [1, 'abc'],
       ),
       (
-          'dict_filter_none',
+          'dict_ordered_filter_none',
           {
               'a': True,
               'b': 1,
@@ -122,7 +122,25 @@ class FilteringReleaseManagerTest(
           },
       ),
       (
-          'dict_filter_some',
+          'dict_unordered_filter_none',
+          {
+              'c': 'abc',
+              'b': 1,
+              'a': True,
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          lambda _: True,
+          {
+              'c': 'abc',
+              'b': 1,
+              'a': True,
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      (
+          'dict_ordered_filter_some',
           {
               'a': True,
               'b': 1,
@@ -132,6 +150,18 @@ class FilteringReleaseManagerTest(
           },
           lambda path: path == ('b',) or path == ('c',),
           {'b': 1, 'c': 'abc'},
+      ),
+      (
+          'dict_unordered_filter_some',
+          {
+              'c': 'abc',
+              'b': 1,
+              'a': True,
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          lambda path: path == ('b',) or path == ('a',),
+          {'b': 1, 'a': True},
       ),
       (
           'named_tuple_filter_none',
@@ -168,6 +198,7 @@ class FilteringReleaseManagerTest(
     _, args, kwargs = call
     (actual_value,) = args
     tree.assert_same_structure(actual_value, expected_value)
+    program_test_utils.assert_same_key_order(actual_value, expected_value)
     actual_value = program_test_utils.to_python(actual_value)
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
@@ -331,6 +362,7 @@ class FilteringReleaseManagerTest(
     _, args, kwargs = call
     (actual_value,) = args
     tree.assert_same_structure(actual_value, expected_value)
+    program_test_utils.assert_same_key_order(actual_value, expected_value)
     actual_value = program_test_utils.to_python(actual_value)
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)

@@ -235,7 +235,6 @@ py_test(
         ":program_test_utils",
         ":structure_utils",
         ":value_reference",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
@@ -268,6 +267,7 @@ py_library(
     srcs = ["program_test_utils.py"],
     deps = [
         ":value_reference",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serializable",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
@@ -317,6 +317,7 @@ py_test(
 py_library(
     name = "structure_utils",
     srcs = ["structure_utils.py"],
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_test(

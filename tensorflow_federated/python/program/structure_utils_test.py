@@ -265,7 +265,7 @@ class FlattenWithNameTest(parameterized.TestCase):
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
-          # Note: Flattening a mapping container will sort the keys, therefore
+          # Note: Flattening a Mapping container will sort the keys, therefore
           # this sequence is sorted. Unflattening the sequence will sort they
           # keys according to the provided structure.
           [
@@ -345,6 +345,7 @@ class FlattenWithNameTest(parameterized.TestCase):
       expected_path, expected_value = expected_item
       self.assertEqual(actual_path, expected_path)
       tree.assert_same_structure(actual_value, expected_value)
+      program_test_utils.assert_same_key_order(actual_result, expected_result)
       actual_value = program_test_utils.to_python(actual_value)
       expected_value = program_test_utils.to_python(expected_value)
       self.assertEqual(actual_value, expected_value)
@@ -453,7 +454,7 @@ class FlattenTest(parameterized.TestCase):
               'd': program_test_utils.TestMaterializableValueReference(2),
               'e': program_test_utils.TestSerializable(3, 4),
           },
-          # Note: Flattening a mapping container will sort the keys, therefore
+          # Note: Flattening a Mapping container will sort the keys, therefore
           # this sequence is sorted. Unflattening the sequence will sort they
           # keys according to the provided structure.
           [
@@ -529,6 +530,7 @@ class FlattenTest(parameterized.TestCase):
     actual_result = structure_utils.flatten(structure)
 
     tree.assert_same_structure(actual_result, expected_result)
+    program_test_utils.assert_same_key_order(actual_result, expected_result)
     if isinstance(structure, np.ndarray):
       np.testing.assert_array_equal(actual_result, expected_result)
     else:
@@ -640,7 +642,7 @@ class FlattenAsTest(parameterized.TestCase):
       (
           'dict_unordered',
           {'c': None, 'b': None, 'a': None, 'd': None, 'e': None},
-          # Note: Flattening a mapping container will sort the keys, therefore
+          # Note: Flattening a Mapping container will sort the keys, therefore
           # this sequence is sorted. Unflattening the sequence will sort they
           # keys according to the provided structure.
           [
@@ -744,23 +746,141 @@ class FlattenAsTest(parameterized.TestCase):
     actual_result = structure_utils.unflatten_as(structure, flat_sequence)
 
     tree.assert_same_structure(actual_result, expected_result)
+    program_test_utils.assert_same_key_order(actual_result, expected_result)
     if all(isinstance(x, np.ndarray) for x in [actual_result, expected_result]):
       np.testing.assert_array_equal(actual_result, expected_result)
     else:
       self.assertEqual(actual_result, expected_result)
 
 
-class MapStructureTest(absltest.TestCase):
+class MapStructureTest(parameterized.TestCase):
 
-  def test_returns_result(self):
+  @parameterized.named_parameters(
+      # materialized values
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('str', 'abc'),
+      ('numpy_int', np.int32(1)),
+      ('numpy_array', np.array([1] * 3, np.int32)),
+      # materializable value references
+      (
+          'materializable_value_reference_tensor',
+          program_test_utils.TestMaterializableValueReference(1),
+      ),
+      (
+          'materializable_value_reference_sequence',
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+      ),
+      # serializable values
+      ('serializable_value', program_test_utils.TestSerializable(1, 2)),
+      # other values
+      ('attrs', program_test_utils.TestAttrs(1, 2)),
+      # structures
+      (
+          'list',
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+      ),
+      ('list_empty', []),
+      (
+          'list_nested',
+          [
+              [
+                  True,
+                  1,
+                  'abc',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+      ),
+      (
+          'dict_ordered',
+          {
+              'a': True,
+              'b': 1,
+              'c': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      (
+          'dict_unordered',
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+      ),
+      ('dict_empty', {}),
+      (
+          'dict_nested',
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'abc',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='abc',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='abc',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+      ),
+  )
+  def test_returns_result(self, structure):
+    fn = lambda x: x
+
+    result = structure_utils.map_structure(fn, structure)
+
+    tree.assert_same_structure(result, structure)
+    program_test_utils.assert_same_key_order(result, structure)
+    if all(isinstance(x, np.ndarray) for x in [result, structure]):
+      np.testing.assert_array_equal(result, structure)
+    else:
+      self.assertEqual(result, structure)
+
+  def test_returns_result_multiple_structures(self):
     fn = lambda x, y: (x, y)
     structure1 = [1, 2, 3]
-    structure2 = [4, 5, program_test_utils.TestAttrs(1, 2)]
+    structure2 = [4, 5, 6]
 
-    result = structure_utils.map_structure(fn, structure1, structure2)
-    self.assertEqual(
-        result, [(1, 4), (2, 5), (3, program_test_utils.TestAttrs(1, 2))]
-    )
+    actual_result = structure_utils.map_structure(fn, structure1, structure2)
+
+    expected_result = [(1, 4), (2, 5), (3, 6)]
+    tree.assert_same_structure(actual_result, expected_result)
+    self.assertEqual(actual_result, expected_result)
 
   def test_raises_value_error_with_no_structures(self):
     fn = lambda x, y: (x, y)
@@ -771,7 +891,7 @@ class MapStructureTest(absltest.TestCase):
   def test_raises_value_error_with_different_structures(self):
     fn = lambda x, y: (x, y)
     structure1 = [1, 2, 3]
-    structure2 = [4, 5]
+    structure2 = [4]
 
     with self.assertRaises(ValueError):
       structure_utils.map_structure(fn, structure1, structure2)
@@ -781,7 +901,12 @@ class MapStructureTest(absltest.TestCase):
     structure1 = [1, 2, 3]
     structure2 = (4, 5, 6)
 
-    structure_utils.map_structure(fn, structure1, structure2, check_types=False)
+    try:
+      structure_utils.map_structure(
+          fn, structure1, structure2, check_types=False
+      )
+    except TypeError:
+      self.fail('Raised `TypeError` unexpectedly.')
 
   def test_raises_type_error_with_different_types(self):
     fn = lambda x, y: (x, y)
@@ -794,42 +919,228 @@ class MapStructureTest(absltest.TestCase):
 
 class MapStructureUpToTest(parameterized.TestCase):
 
-  def test_returns_result(self):
-    shallow = [[None], None]
-    fn = lambda x, y: (x, y)
-    structure1 = [[1, 2], 3]
-    structure2 = [[3, 4], program_test_utils.TestAttrs(1, 2)]
+  @parameterized.named_parameters(
+      # materialized values
+      ('none', None, None, None),
+      ('bool', None, True, True),
+      ('int', None, 1, 1),
+      ('str', None, 'abc', 'abc'),
+      ('numpy_int', None, np.int32(1), np.int32(1)),
+      (
+          'numpy_array',
+          None,
+          np.array([1] * 3, np.int32),
+          np.array([1] * 3, np.int32),
+      ),
+      # materializable value references
+      (
+          'materializable_value_reference_tensor',
+          None,
+          program_test_utils.TestMaterializableValueReference(1),
+          program_test_utils.TestMaterializableValueReference(1),
+      ),
+      (
+          'materializable_value_reference_sequence',
+          None,
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+          program_test_utils.TestMaterializableValueReference([1, 2, 3]),
+      ),
+      # serializable values
+      (
+          'serializable_value',
+          None,
+          program_test_utils.TestSerializable(1, 2),
+          program_test_utils.TestSerializable(1, 2),
+      ),
+      # other values
+      (
+          'attrs',
+          None,
+          program_test_utils.TestAttrs(1, 2),
+          program_test_utils.TestAttrs(1, 2),
+      ),
+      # structures
+      (
+          'list',
+          [None, None],
+          [
+              True,
+              1,
+              'abc',
+              program_test_utils.TestMaterializableValueReference(2),
+              program_test_utils.TestSerializable(3, 4),
+          ],
+          [True, 1],
+      ),
+      ('list_empty', [], [], []),
+      (
+          'list_nested',
+          [[None, None], [None]],
+          [
+              [
+                  True,
+                  1,
+                  'abc',
+                  program_test_utils.TestMaterializableValueReference(2),
+                  program_test_utils.TestSerializable(3, 4),
+              ],
+              [5],
+          ],
+          [[True, 1], [5]],
+      ),
+      (
+          'dict_ordered',
+          {'a': None, 'b': None},
+          {
+              'a': True,
+              'b': 1,
+              'c': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          {'a': True, 'b': 1},
+      ),
+      (
+          'dict_unordered',
+          {'c': None, 'b': None},
+          {
+              'c': True,
+              'b': 1,
+              'a': 'abc',
+              'd': program_test_utils.TestMaterializableValueReference(2),
+              'e': program_test_utils.TestSerializable(3, 4),
+          },
+          {'c': True, 'b': 1},
+      ),
+      ('dict_empty', {}, {}, {}),
+      (
+          'dict_nested',
+          {'x': {'a': None, 'b': None}, 'y': {'a': None}},
+          {
+              'x': {
+                  'a': True,
+                  'b': 1,
+                  'c': 'abc',
+                  'd': program_test_utils.TestMaterializableValueReference(2),
+                  'e': program_test_utils.TestSerializable(3, 4),
+              },
+              'y': {'a': 5},
+          },
+          {'x': {'a': True, 'b': 1}, 'y': {'a': 5}},
+      ),
+      (
+          'named_tuple',
+          program_test_utils.TestNamedTuple1(
+              a=None,
+              b=None,
+              c=None,
+              d=None,
+              e=None,
+          ),
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='abc',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+          program_test_utils.TestNamedTuple1(
+              a=True,
+              b=1,
+              c='abc',
+              d=program_test_utils.TestMaterializableValueReference(2),
+              e=program_test_utils.TestSerializable(3, 4),
+          ),
+      ),
+      (
+          'named_tuple_nested',
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=None,
+                  b=None,
+                  c=None,
+                  d=None,
+                  e=None,
+              ),
+              y=program_test_utils.TestNamedTuple2(a=None),
+          ),
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='abc',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+          program_test_utils.TestNamedTuple3(
+              x=program_test_utils.TestNamedTuple1(
+                  a=True,
+                  b=1,
+                  c='abc',
+                  d=program_test_utils.TestMaterializableValueReference(2),
+                  e=program_test_utils.TestSerializable(3, 4),
+              ),
+              y=program_test_utils.TestNamedTuple2(a=5),
+          ),
+      ),
+  )
+  def test_returns_result(self, shallow, structure, expected_result):
+    fn = lambda x: x
 
-    result = structure_utils.map_structure_up_to(
+    actual_result = structure_utils.map_structure_up_to(shallow, fn, structure)
+
+    tree.assert_same_structure(actual_result, expected_result)
+    program_test_utils.assert_same_key_order(actual_result, expected_result)
+    if all(isinstance(x, np.ndarray) for x in [actual_result, expected_result]):
+      np.testing.assert_array_equal(actual_result, expected_result)
+    else:
+      self.assertEqual(actual_result, expected_result)
+
+  def test_returns_result_multiple_structures(self):
+    shallow = [None, None]
+    fn = lambda x, y: (x, y)
+    structure1 = [1, 2, 3]
+    structure2 = [4, 5, 6]
+
+    actual_result = structure_utils.map_structure_up_to(
         shallow, fn, structure1, structure2
     )
-    self.assertEqual(
-        result, [[(1, 3)], (3, program_test_utils.TestAttrs(1, 2))]
-    )
+
+    expected_result = [(1, 4), (2, 5)]
+    tree.assert_same_structure(actual_result, expected_result)
+    self.assertEqual(actual_result, expected_result)
 
   def test_raises_value_error_with_no_structures(self):
-    shallow = [None, None, None]
+    shallow = [None, None]
     fn = lambda x, y: (x, y)
 
     with self.assertRaises(ValueError):
       structure_utils.map_structure_up_to(shallow, fn)
 
-  def test_raises_value_error_with_different_structures(self):
-    shallow = [None, None, None]
-    fn = lambda x, y: (x, y)
-    structure1 = [1, 2, 3]
-    structure2 = [4, 5]
+  @parameterized.named_parameters(
+      ('index', [None, None], [1]),
+      ('key', {'a': None, 'b': None}, {'a': 1}),
+  )
+  def test_raises_value_error_with_different_structures(
+      self, shallow, structure
+  ):
+    fn = lambda x: x
 
     with self.assertRaises(ValueError):
-      structure_utils.map_structure_up_to(shallow, fn, structure1, structure2)
+      structure_utils.map_structure_up_to(shallow, fn, structure)
 
   def test_does_not_raises_type_error_with_different_types(self):
-    shallow = [None, None, None]
+    shallow = [None, None]
     fn = lambda x, y: (x, y)
     structure1 = [1, 2, 3]
     structure2 = (4, 5, 6)
 
-    structure_utils.map_structure_up_to(shallow, fn, structure1, structure2)
+    try:
+      structure_utils.map_structure_up_to(shallow, fn, structure1, structure2)
+    except TypeError:
+      self.fail('Raised `TypeError` unexpectedly.')
 
 
 if __name__ == '__main__':

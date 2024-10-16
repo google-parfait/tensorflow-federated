@@ -362,6 +362,10 @@ class SavedModelFileReleaseManager(
   ) -> release_manager.ReleasableStructure:
     """Returns the value for the given `key`.
 
+    The SavedModel format flattens and deterministicly orders keys. This
+    ordering can not be reversed because `get_value` does not accept the
+    original structure.
+
     Args:
       key: Used to reference the released `value`.
 

@@ -14,7 +14,10 @@
 """A federated platform implemented using native TFF components."""
 
 import asyncio
-from typing import Optional, TypeVar, Union
+from collections.abc import Mapping
+from typing import Optional, Union
+
+import tree
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -25,17 +28,6 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
-
-
-_T = TypeVar('_T')
-# This type defines values of type `_T` nested in a structure of
-# `tff.structure.Struct`'s.
-# TODO: b/232433269 - Update `tff.structure.Struct` to be able to define nested
-# homogeneous structures of `tff.structure.Struct`s.
-_StructStructure = Union[
-    _T,
-    structure.Struct,
-]
 
 
 class NativeValueReference(value_reference.MaterializableValueReference):
@@ -81,7 +73,7 @@ class NativeValueReference(value_reference.MaterializableValueReference):
 def _create_structure_of_references(
     task: asyncio.Task,
     type_signature: computation_types.Type,
-) -> _StructStructure[NativeValueReference]:
+) -> structure_utils.Structure[NativeValueReference]:
   """Returns a structure of `tff.program.NativeValueReference`s.
 
   Args:
@@ -93,29 +85,43 @@ def _create_structure_of_references(
   Raises:
     NotImplementedError: If `type_signature` contains an unexpected type.
   """
-
   if isinstance(type_signature, computation_types.StructType):
 
-    async def _to_structure(task: asyncio.Task) -> structure.Struct:
-      value = await task
-      return structure.from_container(value)
-
-    coro = _to_structure(task)
-    task = asyncio.create_task(coro)
+    def _get_container_cls(
+        type_spec: computation_types.StructType,
+    ) -> type[object]:
+      container_cls = type_spec.python_container
+      if container_cls is None:
+        has_names = [name is not None for name, _ in type_spec.items()]
+        if any(has_names):
+          if not all(has_names):
+            raise ValueError(
+                'Expected `type_spec` to have either all named or unnamed'
+                f' elements, found {type_spec}.'
+            )
+          container_cls = dict
+        else:
+          container_cls = list
+      return container_cls
 
     async def _get_item(
-        task: asyncio.Task, index: int
+        task: asyncio.Task, key: Union[str, int]
     ) -> value_reference.MaterializedValue:
       value = await task
-      return value[index]
+      return value[key]
 
     elements = []
     for index, (name, element_type) in enumerate(type_signature.items()):
-      element = _get_item(task, index)
+      container_cls = _get_container_cls(type_signature)
+      if issubclass(container_cls, Mapping):
+        key = name
+      else:
+        key = index
+      element = _get_item(task, key)
       element_task = asyncio.create_task(element)
       element = _create_structure_of_references(element_task, element_type)
-      elements.append((name, element))
-    return structure.Struct(elements)
+      elements.append(element)
+    return type_conversions.to_structure_with_type(elements, type_signature)
   elif (
       isinstance(type_signature, computation_types.FederatedType)
       and type_signature.placement == placements.SERVER
@@ -125,42 +131,6 @@ def _create_structure_of_references(
     return NativeValueReference(task, type_signature)
   elif isinstance(type_signature, computation_types.TensorType):
     return NativeValueReference(task, type_signature)
-  else:
-    raise NotImplementedError(f'Unexpected type found: {type_signature}.')
-
-
-async def _materialize_structure_of_references(
-    value: value_reference.MaterializableStructure,
-    type_signature: computation_types.Type,
-) -> _StructStructure[value_reference.MaterializedValue]:
-  """Returns a structure of materialized values."""
-
-  async def _materialize(
-      value: value_reference.MaterializableValue,
-  ) -> value_reference.MaterializedValue:
-    if isinstance(value, value_reference.MaterializableValueReference):
-      return await value.get_value()
-    else:
-      return value
-
-  if isinstance(type_signature, computation_types.StructType):
-    value = structure.from_container(value)
-    element_types = list(type_signature.items())
-    element_awaitables = [
-        _materialize_structure_of_references(v, t)
-        for v, (_, t) in zip(value, element_types)
-    ]
-    elements = await asyncio.gather(*element_awaitables)
-    elements = [(n, v) for v, (n, _) in zip(elements, element_types)]
-    return structure.Struct(elements)
-  elif isinstance(type_signature, computation_types.FederatedType):
-    return await _materialize_structure_of_references(
-        value, type_signature.member
-    )
-  elif isinstance(type_signature, computation_types.SequenceType):
-    return await _materialize(value)
-  elif isinstance(type_signature, computation_types.TensorType):
-    return await _materialize(value)
   else:
     raise NotImplementedError(f'Unexpected type found: {type_signature}.')
 
@@ -214,13 +184,18 @@ class NativeFederatedContext(federated_context.FederatedContext):
         arg: value_reference.MaterializableStructure,
     ) -> value_reference.MaterializedStructure:
       if comp.type_signature.parameter is not None:
-        arg = await _materialize_structure_of_references(
-            arg, comp.type_signature.parameter
-        )
+
+        def _to_python(obj):
+          if isinstance(obj, structure.Struct):
+            return structure.to_odict_or_tuple(obj)
+          else:
+            return None
+
+        arg = tree.traverse(_to_python, arg)
+        arg = await value_reference.materialize_value(arg)
+
       return await context.invoke(comp, arg)
 
     coro = _invoke(self._context, comp, arg)
     task = asyncio.create_task(coro)
-    result = _create_structure_of_references(task, result_type)
-    result = type_conversions.type_to_py_container(result, result_type)
-    return result
+    return _create_structure_of_references(task, result_type)
