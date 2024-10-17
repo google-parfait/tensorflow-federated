@@ -34,7 +34,7 @@ from typing import Protocol, TypeVar
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
-from tensorflow_federated.python.common_libs import serializable as serializable_lib
+from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.program import structure_utils
@@ -139,11 +139,11 @@ def unpack_sequence_from(
   return sequence, length_size + length
 
 
-def pack_serializable(serializable: serializable_lib.Serializable) -> bytes:
+def pack_serializable(value: serializable.Serializable) -> bytes:
   """Packs a `tff.Serializable` as bytes."""
-  module_name_bytes = pack_str(type(serializable).__module__)
-  class_name_bytes = pack_str(type(serializable).__name__)
-  serializable_bytes = serializable.to_bytes()
+  module_name_bytes = pack_str(type(value).__module__)
+  class_name_bytes = pack_str(type(value).__name__)
+  serializable_bytes = value.to_bytes()
   serializable_length_bytes = _pack_length(serializable_bytes)
   return (
       module_name_bytes
@@ -155,7 +155,7 @@ def pack_serializable(serializable: serializable_lib.Serializable) -> bytes:
 
 def unpack_serializable_from(
     buffer: bytes, offset: int = 0
-) -> tuple[serializable_lib.Serializable, int]:
+) -> tuple[serializable.Serializable, int]:
   """Unpacks a `tff.Serializable` from bytes.
 
   Args:
