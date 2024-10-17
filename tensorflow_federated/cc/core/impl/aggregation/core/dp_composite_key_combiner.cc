@@ -23,12 +23,12 @@
 #include <iterator>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "absl/container/fixed_array.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/node_hash_set.h"
 #include "absl/random/random.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -54,7 +54,7 @@ void AdvancePtr(void*& ptr) {
 // to a dest_ptr. We do not advance source_ptr because we have indexing.
 template <typename T>
 void IndexedCopyToDest(const void* source_ptr, size_t index, void*& dest_ptr,
-                       std::unordered_set<std::string>& intern_pool) {
+                       absl::node_hash_set<std::string>& intern_pool) {
   const T& source_data = static_cast<const T*>(source_ptr)[index];
   // Copy the bytes pointed to by source_ptr to the destination pointed to by
   // dest_ptr.
@@ -68,15 +68,15 @@ void IndexedCopyToDest(const void* source_ptr, size_t index, void*& dest_ptr,
 template <>
 void IndexedCopyToDest<string_view>(
     const void* source_ptr, size_t index, void*& dest_ptr,
-    std::unordered_set<std::string>& intern_pool) {
+    absl::node_hash_set<std::string>& intern_pool) {
   const string_view& source_data =
       static_cast<const string_view*>(source_ptr)[index];
   // Insert the string into the intern pool if it does not already exist. This
   // makes a copy of the string so that the intern pool owns the storage.
   auto it = intern_pool.emplace(source_data).first;
-  // The iterator of an unordered set may be invalidated by inserting more
+  // The iterator of a node_hash_set set may be invalidated by inserting more
   // elements, but the pointer to the underlying element is guaranteed to be
-  // stable. https://en.cppreference.com/w/cpp/container/unordered_set
+  // stable.
   // Thus, get the address of the string after dereferencing the iterator.
   const std::string* interned_string_ptr = &*it;
   // The stable address of the string can be interpreted as a 64-bit integer.

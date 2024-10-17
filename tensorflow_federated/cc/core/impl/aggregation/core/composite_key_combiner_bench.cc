@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -26,9 +27,11 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -38,17 +41,27 @@ constexpr static int64_t kNumTensors = 1000;
 constexpr static int64_t kTensorLength = 1000;
 
 template <typename T>
-std::unique_ptr<MutableVectorData<T>> CreateRandomTestData() {
+std::unique_ptr<TensorData> CreateRandomTestData() {
   auto test_data = std::make_unique<MutableVectorData<T>>(kTensorLength);
   std::generate(test_data->begin(), test_data->end(),
                 []() { return std::rand() % 10000; });
   return test_data;
 }
 
+template <>
+std::unique_ptr<TensorData> CreateRandomTestData<string_view>() {
+  auto test_data = std::make_unique<MutableStringData>(kTensorLength);
+  for (int i = 0; i < kTensorLength; ++i) {
+    // Add random strings with lengths ranging from 21 to 25 bytes.
+    test_data->Add(std::string(20, 'x') + std::to_string(std::rand() % 10000));
+  }
+  return test_data;
+}
+
 std::vector<Tensor> CreateRandomTensors(DataType dtype) {
   std::vector<Tensor> tensors(kNumTensors);
   for (int i = 0; i < kNumTensors; ++i) {
-    NUMERICAL_ONLY_DTYPE_CASES(
+    DTYPE_CASES(
         dtype, T,
         tensors[i] = std::move(Tensor::Create(dtype, {kTensorLength},
                                               CreateRandomTestData<T>()))
@@ -89,7 +102,10 @@ BENCHMARK(BM_CombineKeys)
     ->Args({16, DT_INT32})
     ->Args({1, DT_INT64})
     ->Args({4, DT_INT64})
-    ->Args({16, DT_INT64});
+    ->Args({16, DT_INT64})
+    ->Args({1, DT_STRING})
+    ->Args({4, DT_STRING})
+    ->Args({16, DT_STRING});
 
 }  // namespace
 }  // namespace aggregation

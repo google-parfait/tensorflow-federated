@@ -22,11 +22,11 @@
 #include <cstring>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/node_hash_set.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -62,7 +62,7 @@ void AdvancePtr(const void*& ptr) {
 // in subsequent code if it still points to a valid T after being incremented.
 template <typename T>
 inline void CopyToDest(const void*& source_ptr, void*& dest_ptr,
-                       std::unordered_set<std::string>& intern_pool) {
+                       absl::node_hash_set<std::string>& intern_pool) {
   // Copy the bytes pointed to by source_ptr to the destination pointed to by
   // dest_ptr.
   std::memcpy(dest_ptr, source_ptr, sizeof(T));
@@ -83,14 +83,14 @@ inline void CopyToDest(const void*& source_ptr, void*& dest_ptr,
 template <>
 inline void CopyToDest<string_view>(
     const void*& source_ptr, void*& dest_ptr,
-    std::unordered_set<std::string>& intern_pool) {
+    absl::node_hash_set<std::string>& intern_pool) {
   auto string_view_ptr = static_cast<const string_view*>(source_ptr);
   // Insert the string into the intern pool if it does not already exist. This
   // makes a copy of the string so that the intern pool owns the storage.
   auto it = intern_pool.emplace(*string_view_ptr).first;
-  // The iterator of an unordered set may be invalidated by inserting more
+  // The iterator of a node_hash_set may be invalidated by inserting more
   // elements, but the pointer to the underlying element is guaranteed to be
-  // stable. https://en.cppreference.com/w/cpp/container/unordered_set
+  // stable.
   // Thus, get the address of the string after dereferencing the iterator.
   const std::string* interned_string_ptr = &*it;
   // The stable address of the string can be interpreted as a 64-bit integer.

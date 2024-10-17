@@ -21,11 +21,11 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/node_hash_set.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
@@ -139,7 +139,7 @@ class CompositeKeyCombiner {
     return composite_keys_;
   }
   inline int64_t& GetCompositeKeyNext() { return composite_key_next_; }
-  inline std::unordered_set<std::string>& GetInternPool() {
+  inline absl::node_hash_set<std::string>& GetInternPool() {
     return intern_pool_;
   }
   // Creates a new composite key.
@@ -157,7 +157,7 @@ class CompositeKeyCombiner {
   // Accumulate.
   // Used as an optimization to avoid storing the same string multiple
   // times even if it appears in many composite keys.
-  std::unordered_set<std::string> intern_pool_;
+  absl::node_hash_set<std::string> intern_pool_;
   // Mapping of byte representations of the composite keys seen so far to
   // their ordinal position in the output tensors returned by GetOutputKeys.
   absl::flat_hash_map<CompositeKey, int64_t> composite_keys_;

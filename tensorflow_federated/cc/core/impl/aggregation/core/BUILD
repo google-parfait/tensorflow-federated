@@ -159,6 +159,7 @@ cc_library(
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:node_hash_set",
     ],
 )
 
@@ -175,6 +176,7 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:fixed_array",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/types:span",
     ],
@@ -727,6 +729,7 @@ cc_binary(
     linkstatic = 1,
     deps = [
         ":composite_key_combiner",
+        ":mutable_string_data",
         ":tensor",
         ":tensor_cc_proto",
         "@com_google_benchmark//:benchmark",
