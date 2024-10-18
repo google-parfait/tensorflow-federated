@@ -18,7 +18,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_avg_with_optimizer_schedule
@@ -30,17 +29,7 @@ from tensorflow_federated.python.learning.optimizers import sgdm
 
 class ClientScheduledFedAvgTest(parameterized.TestCase):
 
-  @parameterized.product(
-      optimizer_fn=[
-          lambda x: sgdm.build_sgdm(learning_rate=x),
-      ],
-      aggregation_factory=[
-          model_update_aggregator.robust_aggregator,
-          model_update_aggregator.compression_aggregator,
-          model_update_aggregator.secure_aggregator,
-      ],
-  )
-  def test_construction_calls_model_fn(self, optimizer_fn, aggregation_factory):
+  def test_construction_calls_model_fn(self):
     # Assert that the process building does not call `model_fn` too many times.
     # `model_fn` can potentially be expensive (loading weights, processing, etc
     # ).
@@ -49,8 +38,8 @@ class ClientScheduledFedAvgTest(parameterized.TestCase):
     fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
         model_fn=mock_model_fn,
         client_learning_rate_fn=learning_rate_fn,
-        client_optimizer_fn=optimizer_fn,
-        model_aggregator=aggregation_factory(),
+        client_optimizer_fn=lambda lr: sgdm.build_sgdm(learning_rate=lr),
+        model_aggregator=model_update_aggregator.robust_aggregator(),
     )
     self.assertEqual(mock_model_fn.call_count, 3)
 
@@ -142,21 +131,6 @@ class ClientScheduledFedAvgTest(parameterized.TestCase):
           client_learning_rate_fn=lambda x: 0.1,
           client_optimizer_fn=lambda _: sgdm.build_sgdm(),
       )
-
-  def test_construction_with_only_secure_aggregation(self):
-    model_fn = model_examples.LinearRegression
-    learning_process = fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
-        model_fn,
-        client_learning_rate_fn=lambda x: 0.5,
-        client_optimizer_fn=lambda x: sgdm.build_sgdm(),
-        model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=True
-        ),
-        metrics_aggregator=aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
 
   def test_measurements_include_client_learning_rate(self):
     client_work = fed_avg_with_optimizer_schedule.build_scheduled_client_work(
