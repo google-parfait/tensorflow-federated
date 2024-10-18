@@ -61,9 +61,6 @@ py_library(
     name = "model_update_aggregator",
     srcs = ["model_update_aggregator.py"],
     deps = [
-        "//tensorflow_federated/python/aggregators:differential_privacy",
-        "//tensorflow_federated/python/aggregators:distributed_dp",
-        "//tensorflow_federated/python/aggregators:encoded",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
@@ -88,7 +85,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/core/test:static_assert",
     ],
 )
 
