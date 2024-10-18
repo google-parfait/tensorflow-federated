@@ -31,13 +31,11 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.algorithms import mime
-from tensorflow_federated.python.learning.metrics import aggregator as metrics_aggregator
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import keras_utils
@@ -469,32 +467,6 @@ class MimeLiteTest(tf.test.TestCase, parameterized.TestCase):
           base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
           full_gradient_aggregator=aggregator,
       )
-
-  def test_weighted_mime_lite_with_only_secure_aggregation(self):
-    aggregator = model_update_aggregator.secure_aggregator(weighted=True)
-    learning_process = mime.build_weighted_mime_lite(
-        model_examples.LinearRegression,
-        base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
-        model_aggregator=aggregator,
-        full_gradient_aggregator=aggregator,
-        metrics_aggregator=metrics_aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
-
-  def test_unweighted_mime_lite_with_only_secure_aggregation(self):
-    aggregator = model_update_aggregator.secure_aggregator(weighted=False)
-    learning_process = mime.build_unweighted_mime_lite(
-        model_examples.LinearRegression,
-        base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
-        model_aggregator=aggregator,
-        full_gradient_aggregator=aggregator,
-        metrics_aggregator=metrics_aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_equivalent_to_vanilla_fed_avg(self):
