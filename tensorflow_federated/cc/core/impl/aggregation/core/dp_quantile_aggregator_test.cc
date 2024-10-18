@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -26,9 +27,11 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
@@ -189,11 +192,86 @@ TEST(DPQuantileAggregatorTest, WrongOutputType) {
               HasSubstr("Output type must be double"));
 }
 
-// The second batch of tests is on aggregating and merging data.
+// The second batch of tests is on aggregating data.
 
-// The third batch of tests is on ReportWithEpsilonAndDelta: the DP quantile
-// algorithm should produce an output that reasonably approximate the target
+StatusOr<std::unique_ptr<TensorAggregator>> CreateDPQuantileAggregator(
+    DataType dtype, double target_quantile = 0.5) {
+  Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
+                                  {CreateTensorSpec("value", dtype)},
+                                  {CreateTensorSpec("value", DT_DOUBLE)},
+                                  {CreateDPQuantileParameters(target_quantile)},
+                                  {}};
+  return CreateTensorAggregator(intrinsic);
+}
+
+// Cannot aggregate multiple tensors.
+TEST(DPQuantileAggregatorTest, AggregateMultipleTensors) {
+  auto aggregator_status = CreateDPQuantileAggregator(DT_INT32);
+  TFF_EXPECT_OK(aggregator_status);
+  auto aggregator = std::move(aggregator_status.value());
+  Tensor t1 =
+      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+  Tensor t2 =
+      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({2})).value();
+  auto accumulate_stauts = aggregator->Accumulate(InputTensorList({&t1, &t2}));
+  EXPECT_THAT(accumulate_stauts, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(accumulate_stauts.message(),
+              HasSubstr("Expected exactly one tensor, but got 2"));
+}
+
+// Cannot aggregate a tensor with the wrong shape.
+TEST(DPQuantileAggregatorTest, AggregateTensorWithWrongShape) {
+  auto aggregator_status = CreateDPQuantileAggregator(DT_INT64);
+  TFF_EXPECT_OK(aggregator_status);
+  auto aggregator = std::move(aggregator_status.value());
+  Tensor t =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 1})).value();
+  auto accumulate_stauts = aggregator->Accumulate(InputTensorList({&t}));
+  EXPECT_THAT(accumulate_stauts, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      accumulate_stauts.message(),
+      HasSubstr("Expected a scalar tensor, but got a tensor with 2 elements"));
+}
+
+// Cannot aggregate a tensor with the wrong dtype.
+TEST(DPQuantileAggregatorTest, AggregateTensorWithWrongDtype) {
+  auto aggregator_status = CreateDPQuantileAggregator(DT_FLOAT);
+  TFF_EXPECT_OK(aggregator_status);
+  auto aggregator = std::move(aggregator_status.value());
+  Tensor t =
+      Tensor::Create(DT_DOUBLE, {1}, CreateTestData<double>({1.01})).value();
+  auto accumulate_stauts = aggregator->Accumulate(InputTensorList({&t}));
+  EXPECT_THAT(accumulate_stauts, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(accumulate_stauts.message(),
+              HasSubstr("Expected a DT_FLOAT tensor, but got a DT_DOUBLE"
+                        " tensor"));
+}
+
+// Can aggregate scalars. Expect buffer size to be <= kDPQuantileMaxInputs.
+TEST(DPQuantileAggregatorTest, AggregateTensorsSuccessful) {
+  auto aggregator_status = CreateDPQuantileAggregator(DT_DOUBLE);
+  TFF_EXPECT_OK(aggregator_status);
+  auto& aggregator =
+      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status.value());
+
+  for (int i = 1; i < kDPQuantileMaxInputs + 10; ++i) {
+    double val = 0.5 + i;
+    Tensor t =
+        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})).value();
+    auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
+    TFF_EXPECT_OK(accumulate_status);
+    EXPECT_EQ(aggregator.GetBufferSize(),
+              i < kDPQuantileMaxInputs ? i : kDPQuantileMaxInputs);
+    EXPECT_EQ(aggregator.GetNumInputs(), i);
+  }
+}
+
+// The third batch of tests is on merging with another DPQuantileAggregator.
+// The fourth batch of tests is on ReportWithEpsilonAndDelta. The DP quantile
+// algorithm should produce an output that reasonably approximates the target
 // quantile.
+
+// The fifth batch of tests is on serialization & deserialization.
 
 }  // namespace
 }  // namespace aggregation

@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/random/random.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_tensor_aggregator.h"
@@ -48,12 +49,14 @@ class DPQuantileAggregator final : public DPTensorAggregator {
       : DPTensorAggregator(),
         target_quantile_(target_quantile),
         num_inputs_(0),
-        buffer_() {
+        output_consumed_(false) {
     TFF_CHECK(target_quantile > 0 && target_quantile < 1)
         << "Target quantile must be in (0, 1).";
   }
 
-  int GetNumInputs() const override { return num_inputs_; }
+  inline int GetNumInputs() const override { return num_inputs_; }
+
+  inline int GetBufferSize() const { return buffer_.size(); }
 
   // To MergeWith another DPQuantileAggregator, we will insert as many elements
   // from the other aggregator's buffer as possible into our buffer, without
@@ -81,9 +84,16 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   Status CheckValid() const override;
 
  private:
+  // Implements Vitter's reservoir sampling algorithm.
+  // https://en.wikipedia.org/wiki/Reservoir_sampling#Simple:_Algorithm_R
+  // Called by AggregateTensors and MergeWith when buffer_ is full.
+  inline void InsertWithReservoirSampling(T value);
+
   double target_quantile_;
   int num_inputs_;
   std::vector<T> buffer_;
+  absl::BitGen bit_gen_;
+  bool output_consumed_;
 };
 
 // This factory class makes DPQuantileAggregator, defined in the cc file.

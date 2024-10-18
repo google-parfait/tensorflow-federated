@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/random/random.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -34,6 +35,14 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
+
+template <typename T>
+inline void DPQuantileAggregator<T>::InsertWithReservoirSampling(T value) {
+  int index = absl::Uniform(bit_gen_, 0, num_inputs_);
+  if (index < buffer_.size()) {
+    buffer_[index] = value;
+  }
+}
 
 // To merge, we insert up to capacity and then perform reservoir sampling.
 template <typename T>
@@ -51,13 +60,53 @@ StatusOr<std::string> DPQuantileAggregator<T>::Serialize() && {
 // Push back the input into the buffer or perform reservoir sampling.
 template <typename T>
 Status DPQuantileAggregator<T>::AggregateTensors(InputTensorList tensors) {
-  return TFF_STATUS(UNIMPLEMENTED) << "Will be implemented in a follow-up CL.";
+  TFF_RETURN_IF_ERROR(CheckValid());
+  // Ensure that there is exactly one tensor.
+  if (tensors.size() != 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPQuantileAggregator::AggregateTensors: Expected exactly one "
+              "tensor, but got "
+           << tensors.size();
+  }
+  // Ensure that the tensor only has one element.
+  auto num_elements_in_tensor = tensors[0]->num_elements();
+  if (num_elements_in_tensor != 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPQuantileAggregator::AggregateTensors: Expected a scalar "
+              "tensor, but got a tensor with "
+           << num_elements_in_tensor << " elements.";
+  }
+
+  // Ensure that the tensor is of the correct type.
+  DataType dtype = tensors[0]->dtype();
+  DataType expected_dtype = internal::TypeTraits<T>::kDataType;
+  if (dtype != expected_dtype) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPQuantileAggregator::AggregateTensors: Expected a "
+           << DataType_Name(expected_dtype) << " tensor, but got a "
+           << DataType_Name(dtype) << " tensor.";
+  }
+
+  num_inputs_++;
+  T value = tensors[0]->CastToScalar<T>();
+  if (buffer_.size() < kDPQuantileMaxInputs) {
+    buffer_.push_back(value);
+  } else {
+    InsertWithReservoirSampling(value);
+  }
+
+  return TFF_STATUS(OK);
 }
 
 // Checks if the output has not already been consumed.
 template <typename T>
 Status DPQuantileAggregator<T>::CheckValid() const {
-  return TFF_STATUS(UNIMPLEMENTED) << "Will be implemented in a follow-up CL.";
+  if (output_consumed_) {
+    return TFF_STATUS(FAILED_PRECONDITION)
+           << "DPQuantileAggregator::CheckValid: Output has already been "
+              "consumed.";
+  }
+  return TFF_STATUS(OK);
 }
 
 // Trigger execution of the DP quantile algorithm.

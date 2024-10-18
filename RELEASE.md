@@ -16,6 +16,9 @@ and this project adheres to
 *   The abstract class `DPTensorAggregator` and the child `DPQuantileAggregator`
     (along with the factory class). `DPQuantileAggregator` is currently a
     skeleton; future CLs will implement the member functions.
+*   `DPQuantileAggregator::AggregateTensors` performs either a `push_back` or
+    reservoir sampling, depending on size of member `buffer_`. The reservoir
+    sampling functionality is performed by `::InsertWithReservoirSampling`.
 
 ### Removed
 
