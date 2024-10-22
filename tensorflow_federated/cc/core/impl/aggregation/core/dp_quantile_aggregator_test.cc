@@ -16,6 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_quantile_aggregator.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -254,7 +255,7 @@ TEST(DPQuantileAggregatorTest, AggregateTensorsSuccessful) {
   auto& aggregator =
       dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status.value());
 
-  for (int i = 1; i < kDPQuantileMaxInputs + 10; ++i) {
+  for (int i = 1; i <= kDPQuantileMaxInputs + 10; ++i) {
     double val = 0.5 + i;
     Tensor t =
         Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})).value();
@@ -264,9 +265,107 @@ TEST(DPQuantileAggregatorTest, AggregateTensorsSuccessful) {
               i < kDPQuantileMaxInputs ? i : kDPQuantileMaxInputs);
     EXPECT_EQ(aggregator.GetNumInputs(), i);
   }
+  EXPECT_EQ(aggregator.GetReservoirSamplingCount(), 10);
 }
 
 // The third batch of tests is on merging with another DPQuantileAggregator.
+
+// Cannot merge with the wrong type.
+TEST(DPQuantileAggregatorTest, MergeWithWrongType) {
+  // Cannot merge DPQualtileAggregator<double> with DPQuantileAggregator<float>.
+  auto aggregator_status = CreateDPQuantileAggregator(DT_DOUBLE);
+  TFF_EXPECT_OK(aggregator_status);
+  auto& aggregator = *aggregator_status.value();
+
+  auto mismatched_aggregator_status1 = CreateDPQuantileAggregator(DT_FLOAT);
+  TFF_EXPECT_OK(mismatched_aggregator_status1);
+  auto& mismatched_aggregator1 = *mismatched_aggregator_status1.value();
+  auto merge_status = aggregator.MergeWith(std::move(mismatched_aggregator1));
+  EXPECT_THAT(merge_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(merge_status.message(),
+              HasSubstr("Can only merge with another DPQuantileAggregator of"
+                        " the same input type."));
+
+  // Cannot merge DPQualtileAggregator<double> with DPGroupingFederatedSum.
+  std::vector<Tensor> parameters;
+  for (int i = 0; i < 3; ++i) {
+    parameters.push_back(
+        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({10})).value());
+  }
+  Intrinsic intrinsic = Intrinsic{kDPSumUri,
+                                  {CreateTensorSpec("value", DT_INT64)},
+                                  {CreateTensorSpec("value", DT_INT64)},
+                                  std::move(parameters),
+                                  {}};
+  auto mismatched_aggregator_status2 = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(mismatched_aggregator_status2);
+  auto& mismatched_aggregator2 = *mismatched_aggregator_status2.value();
+  merge_status = aggregator.MergeWith(std::move(mismatched_aggregator2));
+  EXPECT_THAT(merge_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(merge_status.message(),
+              HasSubstr("Can only merge with another DPQuantileAggregator of"
+                        " the same input type."));
+}
+
+// Cannot merge with a different target quantile.
+TEST(DPQuantileAggregatorTest, MergeWithDifferentTargetQuantile) {
+  auto aggregator_status1 = CreateDPQuantileAggregator(DT_DOUBLE, 0.5);
+  TFF_EXPECT_OK(aggregator_status1);
+  auto& aggregator1 = *aggregator_status1.value();
+
+  auto aggregator_status2 = CreateDPQuantileAggregator(DT_DOUBLE, 0.75);
+  TFF_EXPECT_OK(aggregator_status2);
+  auto& aggregator2 = *aggregator_status2.value();
+  auto merge_status = aggregator1.MergeWith(std::move(aggregator2));
+  EXPECT_THAT(merge_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(merge_status.message(),
+              HasSubstr("Target quantiles must match."));
+}
+
+// Can merge with the same target quantile. The size of the buffer should grow
+// but stay <= kDPQuantileMaxInputs. The total number of inputs should be the
+// sum of the two aggregators' input counts.
+TEST(DPQuantileAggregatorTest, MergeWithSameTargetQuantile) {
+  auto aggregator_status1 = CreateDPQuantileAggregator(DT_DOUBLE, 0.5);
+  TFF_EXPECT_OK(aggregator_status1);
+  auto& aggregator1 =
+      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status1.value());
+  int kNumInputs1 = kDPQuantileMaxInputs - 10;
+  for (int i = 0; i < kNumInputs1; ++i) {
+    double val = 0.5 + i;
+    Tensor t =
+        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})).value();
+    auto accumulate_status = aggregator1.Accumulate(InputTensorList({&t}));
+    TFF_EXPECT_OK(accumulate_status);
+  }
+  EXPECT_EQ(aggregator1.GetBufferSize(),
+            std::min(kNumInputs1, kDPQuantileMaxInputs));
+
+  auto aggregator_status2 = CreateDPQuantileAggregator(DT_DOUBLE, 0.5);
+  TFF_EXPECT_OK(aggregator_status2);
+  auto& aggregator2 =
+      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status2.value());
+  int kNumInputs2 = kDPQuantileMaxInputs + 10;
+  for (int i = 0; i < kNumInputs2; ++i) {
+    double val = 0.5 + i;
+    Tensor t =
+        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})).value();
+    auto accumulate_status = aggregator2.Accumulate(InputTensorList({&t}));
+    TFF_EXPECT_OK(accumulate_status);
+  }
+  EXPECT_EQ(aggregator2.GetBufferSize(),
+            std::min(kNumInputs2, kDPQuantileMaxInputs));
+
+  auto aggregator2_buffer_size = aggregator2.GetBufferSize();
+  auto merge_status = aggregator1.MergeWith(std::move(aggregator2));
+  TFF_EXPECT_OK(merge_status);
+  EXPECT_EQ(aggregator1.GetBufferSize(), kDPQuantileMaxInputs);
+  EXPECT_EQ(aggregator1.GetNumInputs(), kNumInputs1 + kNumInputs2);
+  EXPECT_EQ(aggregator1.GetReservoirSamplingCount(),
+            std::max(0, kNumInputs1 + aggregator2_buffer_size -
+                            kDPQuantileMaxInputs));
+}
+
 // The fourth batch of tests is on ReportWithEpsilonAndDelta. The DP quantile
 // algorithm should produce an output that reasonably approximates the target
 // quantile.

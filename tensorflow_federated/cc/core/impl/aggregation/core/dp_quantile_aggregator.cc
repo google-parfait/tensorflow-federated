@@ -42,14 +42,47 @@ inline void DPQuantileAggregator<T>::InsertWithReservoirSampling(T value) {
   if (index < buffer_.size()) {
     buffer_[index] = value;
   }
+  reservoir_sampling_count_++;
 }
 
 // To merge, we insert up to capacity and then perform reservoir sampling.
 template <typename T>
 Status DPQuantileAggregator<T>::MergeWith(TensorAggregator&& other) {
-  // Ensure that the other aggregator is of the same type.
-  // Then use std::vector<T>::insert
-  return TFF_STATUS(UNIMPLEMENTED) << "Will be implemented in a follow-up CL.";
+  // Check validity and that the types match.
+  TFF_RETURN_IF_ERROR(CheckValid());
+  auto* other_ptr = dynamic_cast<DPQuantileAggregator<T>*>(&other);
+  if (other_ptr == nullptr) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPQuantileAggregator::MergeWith: Can only merge with "
+              "another DPQuantileAggregator of the same input type.";
+  }
+  TFF_RETURN_IF_ERROR(other_ptr->CheckValid());
+
+  // Ensure that the other aggregator has the same target quantile.
+  if (target_quantile_ != other_ptr->target_quantile_) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPQuantileAggregator::MergeWith: Target quantiles must match.";
+  }
+
+  // Then use std::vector<T>::insert to copy as much as possible to our buffer.
+  int remaining_capacity = kDPQuantileMaxInputs - buffer_.size();
+  int other_buffer_size = other_ptr->GetBufferSize();
+  int num_to_insert = remaining_capacity < other_buffer_size
+                          ? remaining_capacity
+                          : other_buffer_size;
+  buffer_.insert(buffer_.end(), other_ptr->buffer_.begin(),
+                 other_ptr->buffer_.begin() + num_to_insert);
+
+  // For any remaining elements, call InsertWithReservoirSampling.
+  auto itr = other_ptr->buffer_.begin() + num_to_insert;
+  while (itr != other_ptr->buffer_.end()) {
+    InsertWithReservoirSampling(*itr);
+    itr++;
+  }
+
+  num_inputs_ += other_ptr->GetNumInputs();
+
+  return TFF_STATUS(OK);
 }
 
 template <typename T>
@@ -101,6 +134,12 @@ Status DPQuantileAggregator<T>::AggregateTensors(InputTensorList tensors) {
 // Checks if the output has not already been consumed.
 template <typename T>
 Status DPQuantileAggregator<T>::CheckValid() const {
+  if (buffer_.size() > kDPQuantileMaxInputs) {
+    return TFF_STATUS(FAILED_PRECONDITION)
+           << "DPQuantileAggregator::CheckValid: Buffer size is "
+           << buffer_.size() << " which is greater than capacity "
+           << kDPQuantileMaxInputs << ".";
+  }
   if (output_consumed_) {
     return TFF_STATUS(FAILED_PRECONDITION)
            << "DPQuantileAggregator::CheckValid: Output has already been "

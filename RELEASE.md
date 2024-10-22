@@ -19,6 +19,9 @@ and this project adheres to
 *   `DPQuantileAggregator::AggregateTensors` performs either a `push_back` or
     reservoir sampling, depending on size of member `buffer_`. The reservoir
     sampling functionality is performed by `::InsertWithReservoirSampling`.
+*   `DPQuantileAggregator::MergeWith` copies as much data over from the other
+    aggregator's `buffer_` until capacity is hit, then performs reservoir
+    sampling.
 
 ### Removed
 

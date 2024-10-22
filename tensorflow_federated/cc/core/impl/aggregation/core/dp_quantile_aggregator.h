@@ -49,6 +49,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
       : DPTensorAggregator(),
         target_quantile_(target_quantile),
         num_inputs_(0),
+        reservoir_sampling_count_(0),
         output_consumed_(false) {
     TFF_CHECK(target_quantile > 0 && target_quantile < 1)
         << "Target quantile must be in (0, 1).";
@@ -57,6 +58,10 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   inline int GetNumInputs() const override { return num_inputs_; }
 
   inline int GetBufferSize() const { return buffer_.size(); }
+
+  inline int GetReservoirSamplingCount() const {
+    return reservoir_sampling_count_;
+  }
 
   // To MergeWith another DPQuantileAggregator, we will insert as many elements
   // from the other aggregator's buffer as possible into our buffer, without
@@ -90,7 +95,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   inline void InsertWithReservoirSampling(T value);
 
   double target_quantile_;
-  int num_inputs_;
+  int num_inputs_, reservoir_sampling_count_;
   std::vector<T> buffer_;
   absl::BitGen bit_gen_;
   bool output_consumed_;

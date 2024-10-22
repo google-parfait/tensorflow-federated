@@ -681,6 +681,7 @@ cc_test(
     deps = [
         ":aggregator",
         ":dp_fedsql_constants",
+        ":dp_grouping_federated_sum",
         ":dp_quantile_aggregator",
         ":intrinsic",
         ":tensor",
