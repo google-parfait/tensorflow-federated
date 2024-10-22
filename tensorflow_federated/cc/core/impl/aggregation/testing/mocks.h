@@ -41,7 +41,7 @@ class MockCheckpointParser : public CheckpointParser {
 class MockCheckpointParserFactory : public CheckpointParserFactory {
  public:
   MOCK_METHOD(absl::StatusOr<std::unique_ptr<CheckpointParser>>, Create,
-              (const absl::Cord& serialized_checkpoint), (const override));
+              (const absl::Cord& serialized_checkpoint), (const, override));
 };
 
 class MockCheckpointBuilder : public CheckpointBuilder {
@@ -53,7 +53,8 @@ class MockCheckpointBuilder : public CheckpointBuilder {
 
 class MockCheckpointBuilderFactory : public CheckpointBuilderFactory {
  public:
-  MOCK_METHOD(std::unique_ptr<CheckpointBuilder>, Create, (), (const override));
+  MOCK_METHOD(std::unique_ptr<CheckpointBuilder>, Create, (),
+              (const, override));
 };
 
 class MockResourceResolver : public ResourceResolver {
