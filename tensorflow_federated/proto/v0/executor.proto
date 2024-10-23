@@ -152,7 +152,7 @@ message Value {
 
     // A representation of a sequence of values.
     message Element {
-      repeated Array flat_value = 1;
+      repeated tensorflow_federated.v0.Array flat_value = 1;
     }
     repeated Element element = 4;
 
@@ -172,12 +172,12 @@ message Value {
 
   oneof value {
     // An array value.
-    Array array = 6;
+    tensorflow_federated.v0.Array array = 6;
 
     // A serialized TFF computation; this is the canonical (and currently only)
     // way to pass any functional constructs, but the computation included here
     // does not necessarily have to be of a functional type.
-    Computation computation = 2;
+    tensorflow_federated.v0.Computation computation = 2;
 
     // A struct of values.
     Struct struct = 3;
