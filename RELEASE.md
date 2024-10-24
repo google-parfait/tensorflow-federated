@@ -22,6 +22,8 @@ and this project adheres to
 *   `DPQuantileAggregator::MergeWith` copies as much data over from the other
     aggregator's `buffer_` until capacity is hit, then performs reservoir
     sampling.
+*   `tff.program.ComputationArg`, which is helpful when creating a federated
+    platform.
 
 ### Removed
 

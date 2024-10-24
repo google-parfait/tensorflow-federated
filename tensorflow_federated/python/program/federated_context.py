@@ -26,7 +26,7 @@ from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
-ComputationArgValue = Union[
+ComputationArg = Union[
     value_reference.MaterializableStructure,
     object,
     computation_base.Computation,
@@ -139,7 +139,7 @@ class FederatedContext(context_base.SyncContext):
   def invoke(
       self,
       comp: computation_base.Computation,
-      arg: Optional[ComputationArgValue],
+      arg: Optional[ComputationArg],
   ) -> structure_utils.Structure[value_reference.MaterializableValueReference]:
     """Invokes the `comp` with the argument `arg`.
 

@@ -21,6 +21,7 @@ from tensorflow_federated.python.program.data_source import FederatedDataSourceI
 from tensorflow_federated.python.program.dataset_data_source import DatasetDataSource
 from tensorflow_federated.python.program.dataset_data_source import DatasetDataSourceIterator
 from tensorflow_federated.python.program.federated_context import check_in_federated_context
+from tensorflow_federated.python.program.federated_context import ComputationArg
 from tensorflow_federated.python.program.federated_context import contains_only_server_placed_data
 from tensorflow_federated.python.program.federated_context import FederatedContext
 from tensorflow_federated.python.program.file_program_state_manager import FileProgramStateManager
