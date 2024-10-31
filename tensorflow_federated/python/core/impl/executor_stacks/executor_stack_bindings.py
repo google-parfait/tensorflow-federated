@@ -21,6 +21,16 @@ from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.types import placements
 
 
+def filter_to_live_channels(
+    channels: Sequence[executor_bindings.GRPCChannel],
+    wait_connected_duration_millis: int = 1000,
+) -> Sequence[executor_bindings.GRPCChannel]:
+  """Waits and filters channels that are ready or idle."""
+  return executor_stack_bindings.filter_to_live_channels(
+      channels, wait_connected_duration_millis
+  )
+
+
 def create_remote_executor_stack(
     channels: Sequence[executor_bindings.GRPCChannel],
     cardinalities: Mapping[placements.PlacementLiteral, int],

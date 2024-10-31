@@ -24,6 +24,7 @@ and this project adheres to
     sampling.
 *   `tff.program.ComputationArg`, which is helpful when creating a federated
     platform.
+*   Add `FilterToLiveChannels` to pybindings.
 
 ### Removed
 
