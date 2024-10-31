@@ -44,9 +44,9 @@ namespace tensorflow_federated {
 // which are ready or idle. This function blocks up to
 // `wait_connected_duration_millis` milliseconds, awaiting all channels in
 // `channels` to be ready.
-std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels_(
+std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
-    int wait_connected_duration_millis = 1000) {
+    int wait_connected_duration_millis) {
   std::vector<std::shared_ptr<grpc::ChannelInterface>> live_channels;
   auto wait_connected =
       [&wait_connected_duration_millis](
@@ -154,7 +154,7 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
   }
 
   const std::vector<std::shared_ptr<grpc::ChannelInterface>> live_channels =
-      FilterToLiveChannels_(channels);
+      FilterToLiveChannels(channels);
   if (live_channels.empty()) {
     return absl::UnavailableError(
         "No TFF workers are ready; try again to reconnect");
