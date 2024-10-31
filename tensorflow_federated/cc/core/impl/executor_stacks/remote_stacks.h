@@ -35,6 +35,10 @@ using ComposingChildFn = std::function<absl::StatusOr<ComposingChild>(
 using ComposingExecutorFn = std::function<std::shared_ptr<Executor>(
     std::shared_ptr<Executor>, std::vector<ComposingChild>)>;
 
+std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels(
+    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
+    int wait_connected_duration_millis = 1000);
+
 // Creates an executor stack which proxies for a group of remote workers.
 //
 // Upon object construction, the channels which represent connections to these

@@ -33,6 +33,12 @@ namespace py = ::pybind11;
 namespace {
 
 PYBIND11_MODULE(executor_stack_bindings, m) {
+  m.def("filter_to_live_channels",
+        py::overload_cast<
+            const std::vector<std::shared_ptr<grpc::ChannelInterface>>&, int>(
+            &FilterToLiveChannels),
+        "Wait and filter channels that are ready or idle.");
+
   m.def("create_remote_executor_stack",
         py::overload_cast<
             const std::vector<std::shared_ptr<grpc::ChannelInterface>>&,
