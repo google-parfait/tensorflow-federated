@@ -8,6 +8,8 @@ and this project adheres to
 
 ## Unreleased
 
+## Release 0.89.0
+
 ### Added
 
 *   `tff.StructType.items()`, this API makes it easier to iterate over
