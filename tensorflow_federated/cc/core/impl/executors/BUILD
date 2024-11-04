@@ -1153,8 +1153,8 @@ cc_library(
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
         "@org_tensorflow//tensorflow/compiler/xla/service",
         "@org_tensorflow//tensorflow/compiler/xla/service:hlo_proto_cc",
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor:multi_platform_manager",
+        "@org_tensorflow//tensorflow/compiler/xla/stream_executor:platform",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
@@ -1190,7 +1190,7 @@ tff_cc_cpu_gpu_test(
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
         "@org_tensorflow//tensorflow/compiler/xla/service:platform_util",
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor",
+        "@org_tensorflow//tensorflow/compiler/xla/stream_executor:platform",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/platform:statusor",
@@ -1228,7 +1228,7 @@ cc_test(
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
         "@org_tensorflow//tensorflow/compiler/xla/service:platform_util",
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor",
+        "@org_tensorflow//tensorflow/compiler/xla/stream_executor:platform",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor/cuda:cuda_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on GPU.
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
