@@ -8,6 +8,8 @@ and this project adheres to
 
 ## Unreleased
 
+*   Updated `MeasuredProcessOutput` to be a `NamedTuple`.
+
 ### Added
 
 *   `tff.StructType.items()`, this API makes it easier to iterate over

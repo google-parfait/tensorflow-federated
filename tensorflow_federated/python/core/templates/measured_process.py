@@ -14,9 +14,8 @@
 """Define a template for a stateful process that produces metrics."""
 
 import collections
-from typing import Optional
+from typing import NamedTuple, Optional
 
-import attrs
 import tree
 
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -28,8 +27,7 @@ from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 
 
-@attrs.define(frozen=True, eq=False)
-class MeasuredProcessOutput:
+class MeasuredProcessOutput(NamedTuple):
   """A structure containing the output of a `MeasuredProcess.next` computation.
 
   Attributes:
