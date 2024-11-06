@@ -25,7 +25,6 @@ from tensorflow_federated.python.core.environments.tensorflow_backend import ten
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -477,7 +476,9 @@ class CreateIdentityTest(parameterized.TestCase):
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = type_factory.unary_op(type_signature)
+    expected_type = computation_types.FunctionType(
+        type_signature, type_signature
+    )
     self.assertEqual(actual_type, expected_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(
         proto, value
