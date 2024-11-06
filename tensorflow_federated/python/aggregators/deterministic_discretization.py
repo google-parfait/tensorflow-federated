@@ -119,10 +119,8 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
       )
 
     if self._distortion_aggregation_factory is not None:
-      distortion_aggregation_process = (
-          self._distortion_aggregation_factory.create(
-              computation_types.to_type(np.float32)
-          )  # pytype: disable=wrong-arg-types
+      distortion_aggregation_process = self._distortion_aggregation_factory.create(
+          computation_types.to_type(np.float32)  # pytype: disable=wrong-arg-types
       )
 
     @tensorflow_computation.tf_computation(value_type, np.float32)
