@@ -20,10 +20,11 @@ import portpicker
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python.core.impl.compiler import computation_factory
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.executors import value_serialization
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 
 
 def create_stub():
@@ -50,6 +51,11 @@ class _StubRpcError(grpc.RpcError, grpc.Call):
     raise NotImplementedError()
 
 
+@federated_computation.federated_computation()
+def _empty_struct():
+  return ()
+
+
 class GrpcConnectivityTest(absltest.TestCase):
 
   def fake_channel_subscribe(self, callback, try_to_connect=True):
@@ -67,8 +73,8 @@ class GrpcConnectivityTest(absltest.TestCase):
 class RemoteExecutorGrpcStubTest(absltest.TestCase):
 
   def test_compute_returns_result(self, mock_executor_grpc_stub):
-    comp = computation_factory.create_lambda_empty_struct()
-    value = executor_pb2.Value(computation=comp)
+    proto = computation_impl.ConcreteComputation.get_proto(_empty_struct)
+    value = executor_pb2.Value(computation=proto)
     response = executor_pb2.ComputeResponse(value=value)
     instance = mock_executor_grpc_stub.return_value
     instance.Compute = mock.Mock(side_effect=[response])
@@ -83,7 +89,7 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     instance.Compute.assert_called_once()
 
     value, _ = value_serialization.deserialize_value(result.value)
-    self.assertEqual(value, comp)
+    self.assertEqual(value, proto)
 
   def test_compute_raises_retryable_error_on_grpc_error_unavailable(
       self, mock_executor_grpc_stub

@@ -22,10 +22,8 @@ import numpy as np
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.compiler import computation_factory
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import value_serialization
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -39,6 +37,11 @@ class _TestNamedTuple(NamedTuple):
   a: int
   b: int
   c: int
+
+
+@federated_computation.federated_computation(np.int32)
+def _identity(x):
+  return x
 
 
 TENSOR_SERIALIZATION_TEST_PARAMS = [
@@ -267,16 +270,7 @@ class ValueSerializationTest(parameterized.TestCase):
       value_serialization.serialize_value(value, type_spec)
 
   def test_serialize_deserialize_computation_value(self):
-
-    proto = computation_factory.create_lambda_identity(
-        computation_types.TensorType(np.int32)
-    )
-    comp = computation_impl.ConcreteComputation(
-        computation_proto=proto,
-        context_stack=context_stack_impl.context_stack,
-    )
-
-    value_proto, value_type = value_serialization.serialize_value(comp)
+    value_proto, value_type = value_serialization.serialize_value(_identity)
     self.assertEqual(value_proto.WhichOneof('value'), 'computation')
     type_test_utils.assert_types_identical(
         value_type,

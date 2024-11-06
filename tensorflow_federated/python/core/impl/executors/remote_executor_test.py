@@ -22,9 +22,10 @@ import numpy as np
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.compiler import computation_factory
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -45,6 +46,11 @@ def _set_cardinalities_with_mock(
   executor.set_cardinalities({placements.CLIENTS: 3})
 
 
+@federated_computation.federated_computation()
+def _empty_struct():
+  return ()
+
+
 class RemoteValueTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -55,8 +61,8 @@ class RemoteValueTest(parameterized.TestCase):
   def test_compute_returns_result_with_stream_structs(
       self, stream_structs, mock_stub
   ):
-    comp = computation_factory.create_lambda_empty_struct()
-    value = executor_pb2.Value(computation=comp)
+    proto = computation_impl.ConcreteComputation.get_proto(_empty_struct)
+    value = executor_pb2.Value(computation=proto)
     mock_stub.compute.return_value = executor_pb2.ComputeResponse(value=value)
     executor = remote_executor.RemoteExecutor(
         mock_stub, stream_structs=stream_structs
@@ -70,7 +76,7 @@ class RemoteValueTest(parameterized.TestCase):
 
     result = asyncio.run(remote_value.compute())
     mock_stub.compute.assert_called_once()
-    self.assertEqual(result, comp)
+    self.assertEqual(result, proto)
 
   @parameterized.named_parameters(
       ('false', False),
