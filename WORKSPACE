@@ -18,61 +18,63 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "bazel_skylib",
-    url = "https://github.com/bazelbuild/bazel-skylib/archive/refs/tags/1.3.0.tar.gz",
     sha256 = "3b620033ca48fcd6f5ef2ac85e0f6ec5639605fa2f627968490e52fc91a9932f",
     strip_prefix = "bazel-skylib-1.3.0",
+    url = "https://github.com/bazelbuild/bazel-skylib/archive/refs/tags/1.3.0.tar.gz",
 )
 
 http_archive(
     name = "com_github_grpc_grpc",
-    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.50.0.tar.gz",
     sha256 = "76900ab068da86378395a8e125b5cc43dfae671e09ff6462ddfef18676e2165a",
     strip_prefix = "grpc-1.50.0",
+    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.50.0.tar.gz",
 )
 
 http_archive(
     name = "com_google_benchmark",
-    url = "https://github.com/google/benchmark/archive/refs/tags/v1.8.3.tar.gz",
     sha256 = "6bc180a57d23d4d9515519f92b0c83d61b05b5bab188961f36ac7b06b0d9e9ce",
     strip_prefix = "benchmark-1.8.3",
+    url = "https://github.com/google/benchmark/archive/refs/tags/v1.8.3.tar.gz",
 )
 
 http_archive(
-  name = "com_google_cc_differential_privacy",
-  url = "https://github.com/google/differential-privacy/archive/refs/tags/v3.0.0.tar.gz",
-  sha256 = "6e6e1cd7a819695caae408f4fa938129ab7a86e83fe2410137c85e50131abbe0",
-  strip_prefix = "differential-privacy-3.0.0/cc",
+    name = "com_google_cc_differential_privacy",
+    sha256 = "6e6e1cd7a819695caae408f4fa938129ab7a86e83fe2410137c85e50131abbe0",
+    strip_prefix = "differential-privacy-3.0.0/cc",
+    url = "https://github.com/google/differential-privacy/archive/refs/tags/v3.0.0.tar.gz",
 )
 
 http_archive(
-  name = "com_google_differential_privacy",
-  url = "https://github.com/google/differential-privacy/archive/refs/tags/v3.0.0.tar.gz",
-  sha256 = "6e6e1cd7a819695caae408f4fa938129ab7a86e83fe2410137c85e50131abbe0",
-  strip_prefix = "differential-privacy-3.0.0",
+    name = "com_google_differential_privacy",
+    sha256 = "6e6e1cd7a819695caae408f4fa938129ab7a86e83fe2410137c85e50131abbe0",
+    strip_prefix = "differential-privacy-3.0.0",
+    url = "https://github.com/google/differential-privacy/archive/refs/tags/v3.0.0.tar.gz",
 )
 
 # This commit is determined by
 # https://github.com/tensorflow/tensorflow/blob/v2.16.1/third_party/absl/workspace.bzl#L10.
 http_archive(
     name = "com_google_absl",
-    url = "https://github.com/abseil/abseil-cpp/archive/fb3621f4f897824c0dbe0615fa94543df6192f30.tar.gz",
     sha256 = "0320586856674d16b0b7a4d4afb22151bdc798490bb7f295eddd8f6a62b46fea",
     strip_prefix = "abseil-cpp-fb3621f4f897824c0dbe0615fa94543df6192f30",
+    url = "https://github.com/abseil/abseil-cpp/archive/fb3621f4f897824c0dbe0615fa94543df6192f30.tar.gz",
 )
 
 http_archive(
     name = "com_google_googletest",
-    url = "https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz",
     sha256 = "81964fe578e9bd7c94dfdb09c8e4d6e6759e19967e397dbea48d1c10e45d0df2",
     strip_prefix = "googletest-release-1.12.1",
+    url = "https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz",
 )
 
-http_archive(
-    name = "com_google_protobuf",
-    url = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.21.9.tar.gz",
-    sha256 = "1add10f9bd92775b91f326da259f243881e904dd509367d5031d4c782ba82810",
-    strip_prefix = "protobuf-3.21.9",
-)
+# TODO: b/333391041 - Temporarily disable the direct dependency on
+# `com_google_protobuf`, for now we pick this dependency up from the TensorFlow workspace.
+# http_archive(
+#     name = "com_google_protobuf",
+#     url = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.21.9.tar.gz",
+#     sha256 = "1add10f9bd92775b91f326da259f243881e904dd509367d5031d4c782ba82810",
+#     strip_prefix = "protobuf-3.21.9",
+# )
 
 # TODO: b/333391041 - Temporarily disable the direct dependency on
 # `eigen`, for now we pick this dependency up from the TensorFlow workspace.
@@ -91,7 +93,6 @@ http_archive(
 # https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
 http_archive(
     name = "org_tensorflow",
-    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.14.0.tar.gz",
     patches = [
         "//third_party/tensorflow:internal_visibility.patch",
         "//third_party/tensorflow:python_toolchain.patch",
@@ -99,45 +100,46 @@ http_archive(
     ],
     sha256 = "ce357fd0728f0d1b0831d1653f475591662ec5bca736a94ff789e6b1944df19f",
     strip_prefix = "tensorflow-2.14.0",
+    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.14.0.tar.gz",
 )
 
 # This commit is determined by
 # https://github.com/tensorflow/tensorflow/blob/v2.16.1/third_party/pybind11_abseil/workspace.bzl#L11.
 http_archive(
     name = "pybind11_abseil",
-    url = "https://github.com/pybind/pybind11_abseil/archive/2c4932ed6f6204f1656e245838f4f5eae69d2e29.tar.gz",
     sha256 = "0223b647b8cc817336a51e787980ebc299c8d5e64c069829bf34b69d72337449",
     strip_prefix = "pybind11_abseil-2c4932ed6f6204f1656e245838f4f5eae69d2e29",
+    url = "https://github.com/pybind/pybind11_abseil/archive/2c4932ed6f6204f1656e245838f4f5eae69d2e29.tar.gz",
 )
 
 http_archive(
     name = "pybind11_bazel",
-    url = "https://github.com/pybind/pybind11_bazel/archive/refs/tags/v2.11.1.tar.gz",
     sha256 = "e8355ee56c2ff772334b4bfa22be17c709e5573f6d1d561c7176312156c27bd4",
     strip_prefix = "pybind11_bazel-2.11.1",
+    url = "https://github.com/pybind/pybind11_bazel/archive/refs/tags/v2.11.1.tar.gz",
 )
 
 # This commit is determined by
 # https://github.com/tensorflow/tensorflow/blob/v2.16.1/tensorflow/workspace2.bzl#L788.
 http_archive(
     name = "pybind11_protobuf",
-    url = "https://github.com/pybind/pybind11_protobuf/archive/80f3440cd8fee124e077e2e47a8a17b78b451363.tar.gz",
     sha256 = "ba2c54a8b4d1dd0a68c58159e37b1f863c0d9d1dc815558288195493bcc31682",
     strip_prefix = "pybind11_protobuf-80f3440cd8fee124e077e2e47a8a17b78b451363",
+    url = "https://github.com/pybind/pybind11_protobuf/archive/80f3440cd8fee124e077e2e47a8a17b78b451363.tar.gz",
 )
 
 http_archive(
     name = "rules_license",
-    url = "https://github.com/bazelbuild/rules_license/archive/refs/tags/0.0.8.tar.gz",
     sha256 = "8c1155797cb5f5697ea8c6eac6c154cf51aa020e368813d9d9b949558c84f2da",
     strip_prefix = "rules_license-0.0.8",
+    url = "https://github.com/bazelbuild/rules_license/archive/refs/tags/0.0.8.tar.gz",
 )
 
 http_archive(
     name = "rules_python",
-    url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.31.0.tar.gz",
     sha256 = "c68bdc4fbec25de5b5493b8819cfc877c4ea299c0dcb15c244c5a00208cde311",
     strip_prefix = "rules_python-0.31.0",
+    url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.31.0.tar.gz",
 )
 
 #
@@ -147,19 +149,19 @@ http_archive(
 # Required by pybind11_abseil and pybind11_protobuf.
 http_archive(
     name = "pybind11",
-    url = "https://github.com/pybind/pybind11/archive/refs/tags/v2.9.2.tar.gz",
+    build_file = "@pybind11_bazel//:pybind11.BUILD",
     sha256 = "6bd528c4dbe2276635dc787b6b1f2e5316cf6b49ee3e150264e455a0d68d19c1",
     strip_prefix = "pybind11-2.9.2",
-    build_file = "@pybind11_bazel//:pybind11.BUILD",
+    url = "https://github.com/pybind/pybind11/archive/refs/tags/v2.9.2.tar.gz",
 )
 
 # Required by com_github_grpc_grpc. This commit is determined by
 # https://github.com/grpc/grpc/blob/v1.50.0/bazel/grpc_deps.bzl#L344.
 http_archive(
     name = "upb",
-    url = "https://github.com/protocolbuffers/upb/archive/e4635f223e7d36dfbea3b722a4ca4807a7e882e2.tar.gz",
     sha256 = "017a7e8e4e842d01dba5dc8aa316323eee080cd1b75986a7d1f94d87220e6502",
     strip_prefix = "upb-e4635f223e7d36dfbea3b722a4ca4807a7e882e2",
+    url = "https://github.com/protocolbuffers/upb/archive/e4635f223e7d36dfbea3b722a4ca4807a7e882e2.tar.gz",
 )
 
 #

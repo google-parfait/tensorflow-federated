@@ -37,7 +37,7 @@ message Array {
   // types. The purpose of this representation is to reduce serialization
   // overhead during RPC call by avoiding serialization of many repeated small
   // items.
-  optional bytes content = 18;
+  optional bytes content = 18 [ctype = CORD];
 
   message BoolList {
     repeated bool value = 1;
