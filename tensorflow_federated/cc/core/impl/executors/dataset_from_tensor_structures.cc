@@ -32,6 +32,7 @@ limitations under the License
 #include "tensorflow/core/framework/dataset_metadata.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/graph/node_builder.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
@@ -96,7 +97,7 @@ absl::StatusOr<DTypeAndShape> GetDtypeAndShapeForStructureElement(
         return absl::UnimplementedError(absl::StrCat(
             "Attempted to create dataset with tensor elements with different "
             "dimensions. This is not yet supported. Found tensor with dtype ",
-            tensor.dtype(), "and rank ", tensor.dims(),
+            tf::DataType_Name(tensor.dtype()), " and rank ", tensor.dims(),
             ". In the first structure, this tensor has dimension ",
             shape.dim_size(dim_i), " at position ", dim_i,
             ", but in structure ", i, " this tensor has dimension ",
