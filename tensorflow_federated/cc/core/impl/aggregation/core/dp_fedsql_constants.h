@@ -47,6 +47,16 @@ constexpr double kEpsilonThreshold = 1e20;
 // The maximum number of inputs that can be stored in the DPQuantileAggregator.
 constexpr int kDPQuantileMaxInputs = 50000;
 
+// The maximum magnitude of the output of the DPQuantileAggregator.
+constexpr double kDPQuantileMaxOutputMagnitude = 1e20;
+
+// Parameters that govern how DPQuantileAggregator buckets the inputs.
+// First buckets are linear e.g. 0.0, 0.1, 0.2, ..., 100.0
+// Then buckets are exponential e.g. 100 * 1.01^k.
+constexpr double kDPQuantileLinearRate = 0.1;
+constexpr double kDPQuantileExponentialRate = 1.01;
+constexpr double kDPQuantileEndOfLinearGrowth = 100;
+
 }  // namespace aggregation
 }  // namespace tensorflow_federated
 

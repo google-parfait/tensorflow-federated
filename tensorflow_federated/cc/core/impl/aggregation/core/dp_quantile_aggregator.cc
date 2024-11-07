@@ -16,17 +16,22 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_quantile_aggregator.h"
 
+#include <cmath>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
+#include "algorithms/numerical-mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
@@ -35,6 +40,8 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
+// Wrapping around std::ceil to return an int.
+int int_ceil(double val) { return static_cast<int>(std::ceil(val)); }
 
 template <typename T>
 inline void DPQuantileAggregator<T>::InsertWithReservoirSampling(T value) {
@@ -152,7 +159,86 @@ Status DPQuantileAggregator<T>::CheckValid() const {
 template <typename T>
 StatusOr<OutputTensorList> DPQuantileAggregator<T>::ReportWithEpsilonAndDelta(
     double epsilon, double delta) && {
-  return TFF_STATUS(UNIMPLEMENTED) << "Will be implemented in a follow-up CL.";
+  TFF_RETURN_IF_ERROR(CheckValid());
+
+  // Make a histogram of buffer_'s values.
+  absl::flat_hash_map<int, int> histogram;
+  for (T& element : buffer_) {
+    // Identify the bucket that the element belongs to.
+    int bucket = GetBucket(element);
+
+    if (histogram.contains(bucket)) {
+      histogram[bucket]++;
+    } else {
+      histogram[bucket] = 1;
+    }
+  }
+
+  // Calculate the rank of the target quantile in the buffer. It will serve as
+  // the basis for a noisy threshold.
+  auto target_rank = GetTargetRank();
+
+  // Calculate the maximum bucket that we will consider.
+  auto max_bucket = GetBucket(kDPQuantileMaxOutputMagnitude);
+
+  // Get a bucket from PrefixSumAboveThreshold.
+  TFF_ASSIGN_OR_RETURN(
+      int quantile_bucket,
+      PrefixSumAboveThreshold(epsilon, histogram, target_rank, max_bucket));
+
+  // Get the quantile estimate from the bucket.
+  auto quantile_estimate = BucketUpperBound(quantile_bucket);
+
+  // Create an OutputTensorList containing the quantile estimate.
+  auto data_container = std::make_unique<MutableVectorData<double>>();
+  data_container->push_back(quantile_estimate);
+  TFF_ASSIGN_OR_RETURN(
+      auto tensor, Tensor::Create(DT_DOUBLE, {}, std::move(data_container)));
+  OutputTensorList output;
+  output.push_back(std::move(tensor));
+  return output;
+}
+
+template <>
+StatusOr<OutputTensorList>
+DPQuantileAggregator<string_view>::ReportWithEpsilonAndDelta(double epsilon,
+                                                             double delta) && {
+  return TFF_STATUS(UNIMPLEMENTED)
+         << "DPQuantileAggregator::ReportWithEpsilonAndDelta: string_view is"
+            "not a supported type.";
+}
+
+// PrefixSumAboveThreshold iterates over histogram buckets and stops when a
+// private prefix sum exceeds a noisy version of a given threshold.
+template <typename T>
+StatusOr<int> DPQuantileAggregator<T>::PrefixSumAboveThreshold(
+    double epsilon, absl::flat_hash_map<int, int>& histogram, double threshold,
+    int max_bucket) {
+  // All estimates will come from the same DP mechanism, as we are answering
+  // 1-sensitive counting queries that monotonically increase.
+  differential_privacy::LaplaceMechanism::Builder builder;
+  builder.SetL1Sensitivity(1.0);
+  builder.SetEpsilon(epsilon / 2);
+  TFF_ASSIGN_OR_RETURN(auto mechanism, builder.Build());
+
+  double noisy_threshold = mechanism->AddNoise(threshold);
+
+  int prefix_sum = 0;
+  int bucket = 0;
+  for (; bucket <= max_bucket; ++bucket) {
+    // Update prefix_sum by consulting the histogram.
+    if (histogram.contains(bucket)) {
+      prefix_sum += histogram[bucket];
+    }
+
+    // If the noisy prefix_sum is above the noisy threshold, stop the loop.
+    double noisy_prefix_sum = mechanism->AddNoise(prefix_sum);
+    if (noisy_prefix_sum >= noisy_threshold) {
+      break;
+    }
+  }
+
+  return bucket;
 }
 
 StatusOr<std::unique_ptr<TensorAggregator>>

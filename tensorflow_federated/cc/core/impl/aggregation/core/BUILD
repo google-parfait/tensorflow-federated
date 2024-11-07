@@ -344,7 +344,9 @@ cc_library(
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/random",
+        "@com_google_cc_differential_privacy//algorithms:numerical-mechanisms",
     ],
 )
 

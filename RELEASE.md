@@ -26,6 +26,8 @@ and this project adheres to
     sampling.
 *   `tff.program.ComputationArg`, which is helpful when creating a federated
     platform.
+*   `DPQuantileAggregator::ReportWithEpsilonAndDelta` implements a DP algorithm
+    to find quantiles by looping over a histogram with growing bucket size.
 
 ### Removed
 

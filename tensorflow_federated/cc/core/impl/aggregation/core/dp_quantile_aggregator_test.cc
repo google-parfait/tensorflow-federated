@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <random>
 #include <string>
 #include <utility>
 #include <vector>
@@ -369,6 +370,138 @@ TEST(DPQuantileAggregatorTest, MergeWithSameTargetQuantile) {
 // The fourth batch of tests is on ReportWithEpsilonAndDelta. The DP quantile
 // algorithm should produce an output that reasonably approximates the target
 // quantile.
+
+// Given a DPQuantileAggregator and samples that were fed into it, check that
+// its report is not too far from the target quantile.
+void AssessDPQuantile(DPQuantileAggregator<double>& aggregator,
+                      std::vector<double>& samples, double target_quantile) {
+  // Obtain the report (estimated quantile)
+  auto report_status = std::move(aggregator).ReportWithEpsilonAndDelta(1, 1e-7);
+  TFF_EXPECT_OK(report_status);
+  auto& output = report_status.value();
+  EXPECT_EQ(output.size(), 1);
+  EXPECT_EQ(output[0].dtype(), DT_DOUBLE);
+  double estimate = output[0].AsScalar<double>();
+
+  // Sort the samples and find the values whose ranks are
+  // (target_quantile - 0.05) * # samples
+  // & (target_quantile + 0.05) * # samples.
+  std::sort(samples.begin(), samples.end());
+  double left = samples[int_ceil((target_quantile - 0.05) * samples.size())];
+  double right = samples[int_ceil((target_quantile + 0.05) * samples.size())];
+  // the estimate should be in one of the following intervals:
+  // (left-kDPQuantileLinearRate, right+kDPQuantileLinearRate) or
+  // (left / kDPQuantileExponentialRate, right * kDPQuantileExponentialRate)
+  bool in_linear_interval = estimate > left - kDPQuantileLinearRate &&
+                            estimate < right + kDPQuantileLinearRate;
+  bool in_exponential_interval = estimate > left / kDPQuantileExponentialRate &&
+                                 estimate < right * kDPQuantileExponentialRate;
+  EXPECT_TRUE(in_linear_interval || in_exponential_interval);
+}
+
+// Create a DPQuantileAggregator and feed it samples from a distribution given
+// to it. Then assess the DPQuantileAggregator's report against real quantile.
+template <typename T>
+void AccumulateAndAssessDPQuantile(double target_quantile, int num_samples,
+                                   std::default_random_engine& rng,
+                                   T& distribution) {
+  // Generate & send samples into a DPQuantileAggregator. Store the samples in a
+  // vector so that we have ground truth to compare against.
+  std::vector<double> samples;
+  auto aggregator_status =
+      CreateDPQuantileAggregator(DT_DOUBLE, target_quantile);
+  TFF_EXPECT_OK(aggregator_status);
+  auto& aggregator =
+      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status.value());
+  for (int i = 0; i < num_samples; ++i) {
+    double sample = distribution(rng);
+    samples.push_back(sample);
+    Tensor t =
+        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({sample})).value();
+    auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
+    TFF_EXPECT_OK(accumulate_status);
+  }
+  // Assess
+  AssessDPQuantile(aggregator, samples, target_quantile);
+}
+
+TEST(DPQuantileAggregatorTest, GaussianData) {
+  std::default_random_engine rng;
+
+  // Vary quantile, # samples, and mean.
+  for (double target_quantile : {0.1, 0.2, 0.5, 0.8, 0.9}) {
+    for (int num_samples :
+         {kDPQuantileMaxInputs / 2, 2 * kDPQuantileMaxInputs}) {
+      for (double mean :
+           {kDPQuantileEndOfLinearGrowth / 2, kDPQuantileEndOfLinearGrowth * 2,
+            kDPQuantileEndOfLinearGrowth * 10}) {
+        for (double stddev : {mean / 5.0, mean / 4.0, mean / 3.0}) {
+          std::normal_distribution<double> distribution(mean, stddev);
+          AccumulateAndAssessDPQuantile<std::normal_distribution<double>>(
+              target_quantile, num_samples, rng, distribution);
+        }
+      }
+    }
+  }
+}
+
+TEST(DPQuantileAggregatorTest, ExponentialData) {
+  std::default_random_engine rng;
+  // Vary quantile, # samples, and scale
+  for (double target_quantile : {0.1, 0.2, 0.5, 0.8, 0.9}) {
+    for (int num_samples :
+         {kDPQuantileMaxInputs / 2, 2 * kDPQuantileMaxInputs}) {
+      for (double scale :
+           {kDPQuantileEndOfLinearGrowth / 2, kDPQuantileEndOfLinearGrowth * 2,
+            kDPQuantileEndOfLinearGrowth * 10}) {
+        std::exponential_distribution<double> distribution(scale);
+        AccumulateAndAssessDPQuantile<std::exponential_distribution<double>>(
+            target_quantile, num_samples, rng, distribution);
+      }
+    }
+  }
+}
+
+// ReportWithEpsilonAndDelta invokes some helper functions. This test
+// checks that they work as intended.
+TEST(DPQuantileAggregatorTest, CorrectHelperFunctions) {
+  auto aggregator_status = CreateDPQuantileAggregator(DT_INT32, 0.75);
+  TFF_EXPECT_OK(aggregator_status);
+  auto& aggregator =
+      dynamic_cast<DPQuantileAggregator<int32_t>&>(*aggregator_status.value());
+
+  // Check that GetBucket works as intended.
+  EXPECT_EQ(aggregator.GetBucket(0.0), 0.0);
+  EXPECT_EQ(aggregator.GetBucket(kDPQuantileLinearRate), 1);
+  EXPECT_EQ(aggregator.GetBucket(1.5 * kDPQuantileLinearRate), 2);
+  // The bucket at which the linear growth ends.
+  int liminal_bucket =
+      int_ceil(kDPQuantileEndOfLinearGrowth / kDPQuantileLinearRate);
+  EXPECT_EQ(aggregator.GetBucket(kDPQuantileEndOfLinearGrowth), liminal_bucket);
+  EXPECT_EQ(aggregator.GetBucket(kDPQuantileEndOfLinearGrowth *
+                                 kDPQuantileExponentialRate *
+                                 kDPQuantileExponentialRate),
+            liminal_bucket + 2);
+
+  // Check that BucketUpperBound works as intended.
+  EXPECT_EQ(aggregator.BucketUpperBound(1), kDPQuantileLinearRate);
+  EXPECT_EQ(aggregator.BucketUpperBound(10), 10 * kDPQuantileLinearRate);
+  EXPECT_EQ(aggregator.BucketUpperBound(liminal_bucket),
+            kDPQuantileEndOfLinearGrowth);
+  EXPECT_EQ(aggregator.BucketUpperBound(liminal_bucket + 2),
+            kDPQuantileEndOfLinearGrowth * kDPQuantileExponentialRate *
+                kDPQuantileExponentialRate);
+
+  // Check that GetTargetRank works as intended.
+  EXPECT_EQ(aggregator.GetTargetRank(), 0.0);
+  for (int i = 0; i < 1000; ++i) {
+    Tensor t =
+        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({i})).value();
+    auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
+    TFF_EXPECT_OK(accumulate_status);
+  }
+  EXPECT_EQ(aggregator.GetTargetRank(), 750);
+}
 
 // The fifth batch of tests is on serialization & deserialization.
 

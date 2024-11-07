@@ -17,13 +17,16 @@
 #ifndef TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_QUANTILE_AGGREGATOR_H_
 #define TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_QUANTILE_AGGREGATOR_H_
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -33,15 +36,14 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
-// DPQuantileAggregator is a DPTensorAggregator that computes a quantile of
-// input scalars of type T, in a differentially private manner.
-// It stores the inputs in a buffer. When ReportWithEpsilonAndDelta() is called,
-// it will sort the buffer and then employ the `PrivateQuantile` algorithm by
-// Smith. See https://cs-people.bu.edu/ads22/pubs/2011/stoc194-smith.pdf.
-// Smith's analysis implicitly assumes access to an ideal functionality that
-// selects a random interval according to a bespoke probability distribution.
-// We implement this selection step by approximating Gumbel noise; the error of
-// the approximation is captured by a nonzero delta parameter.
+// Wrapping around std::ceil to return an int.
+int int_ceil(double val);
+
+// DPQuantileAggregator ingests a stream of input scalars of type T.
+// It stores the inputs in a buffer, using reservoir sampling if necessary.
+// When ReportWithEpsilonAndDelta() is called, it will employ (a variant of) the
+// algorithm by Durfee to find the quantile subject to differential privacy.
+// https://proceedings.neurips.cc/paper_files/paper/2023/file/f4b6ef2a78684dca2fb3f1c09372e041-Paper-Conference.pdf
 template <typename T>
 class DPQuantileAggregator final : public DPTensorAggregator {
  public:
@@ -71,13 +73,54 @@ class DPQuantileAggregator final : public DPTensorAggregator {
 
   StatusOr<std::string> Serialize() && override;
 
-  // Given epsilon and delta, this method will sort buffer_ and then iterate
-  // through successive pairs. For each pair, it will compute (a) the log of the
-  // number of possible values between the two elements and (b) a distance from
-  // the target quantile. These two values are added together and noised; the
-  // argmax will be the interval from which we will select a random element.
+  // Trigger execution of the DP quantile algorithm from Durfee's paper. It is
+  // an application of the textbook AboveThreshold algorithm to prefix sums:
+  // this algorithm will loop through buckets and privately estimate how much
+  // of buffer_ belongs to the buckets scanned so far.
+  // If the estimate exceeds a noisy version of
+  // (target_quantile_ * buffer_.size()), the algorithm returns the bucket.
   StatusOr<OutputTensorList>
       ReportWithEpsilonAndDelta(double epsilon, double delta) && override;
+
+  // Given a value, return the bucket that it belongs to. Buckets are partitions
+  // of the number line, indexed from 0. The bucket boundaries are at first
+  // linear (governed by kDPQuantileLinearRate), then exponential (governed by
+  // kDPQuantileExponentialRate); the error due to bucketing is additively
+  // kDPQuantileLinearRate and multiplicatively kDPQuantileExponentialRate.
+  inline int GetBucket(double value) const {
+    if (value < 0) {
+      return 0;
+    } else if (value < kDPQuantileEndOfLinearGrowth) {
+      // Find the smallest multiplier of kDPQuantileLinearRate that results in
+      // a value greater than or equal to the input.
+      return int_ceil(value / kDPQuantileLinearRate);
+    } else {
+      // Find the smallest integer exponent such that
+      // kDPQuantileEndOfLinearGrowth * (kDPQuantileExponentialRate^exponent)
+      // >= value.
+      int exponent = int_ceil(std::log(value / kDPQuantileEndOfLinearGrowth) /
+                              std::log(kDPQuantileExponentialRate));
+      return exponent +
+             int_ceil(kDPQuantileEndOfLinearGrowth / kDPQuantileLinearRate);
+    }
+  }
+
+  // A bucket corresponds to a range of values; calculate its upper bound.
+  inline double BucketUpperBound(int bucket) const {
+    double candidate = bucket * kDPQuantileLinearRate;
+    if (candidate < kDPQuantileEndOfLinearGrowth) {
+      return candidate;
+    }
+    int exponent =
+        bucket - int_ceil(kDPQuantileEndOfLinearGrowth / kDPQuantileLinearRate);
+    return kDPQuantileEndOfLinearGrowth *
+           std::pow(kDPQuantileExponentialRate, exponent);
+  }
+
+  // Calculate the rank of the target quantile in the buffer.
+  inline double GetTargetRank() const {
+    return target_quantile_ * static_cast<double>(buffer_.size());
+  }
 
  protected:
   // This DP mechanism expects one scalar tensor in the input. It pushes the
@@ -93,6 +136,15 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // https://en.wikipedia.org/wiki/Reservoir_sampling#Simple:_Algorithm_R
   // Called by AggregateTensors and MergeWith when buffer_ is full.
   inline void InsertWithReservoirSampling(T value);
+
+  // PrefixSumAboveThreshold iterates over histogram buckets and privately
+  // estimates prefix sums. If the noisy prefix sum exceeds a noisy threshold,
+  // it returns the bucket.
+  // This algorithm ensures epsilon-DP when each client contributes exactly one
+  // value to exactly one bucket of the histogram.
+  StatusOr<int> PrefixSumAboveThreshold(
+      double epsilon, absl::flat_hash_map<int, int>& histogram,
+      double threshold, int max_bucket);
 
   double target_quantile_;
   int num_inputs_, reservoir_sampling_count_;
