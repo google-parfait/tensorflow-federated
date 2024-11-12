@@ -20,7 +20,6 @@
 #include <cmath>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
@@ -30,6 +29,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
@@ -47,15 +47,21 @@ int int_ceil(double val);
 template <typename T>
 class DPQuantileAggregator final : public DPTensorAggregator {
  public:
-  explicit DPQuantileAggregator(double target_quantile)
+  explicit DPQuantileAggregator(double target_quantile, int num_inputs,
+                                int reservoir_sampling_count,
+                                std::unique_ptr<MutableVectorData<T>> buffer)
       : DPTensorAggregator(),
         target_quantile_(target_quantile),
-        num_inputs_(0),
-        reservoir_sampling_count_(0),
+        num_inputs_(num_inputs),
+        reservoir_sampling_count_(reservoir_sampling_count),
+        buffer_(*std::move(buffer)),
         output_consumed_(false) {
     TFF_CHECK(target_quantile > 0 && target_quantile < 1)
         << "Target quantile must be in (0, 1).";
   }
+  explicit DPQuantileAggregator(double target_quantile)
+      : DPQuantileAggregator(target_quantile, 0, 0,
+                             std::make_unique<MutableVectorData<T>>()) {}
 
   inline int GetNumInputs() const override { return num_inputs_; }
 
@@ -71,7 +77,13 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // other buffer, we will perform reservoir sampling.
   Status MergeWith(TensorAggregator&& other) override;
 
-  StatusOr<std::string> Serialize() && override;
+  StatusOr<std::string> Serialize() && override {
+    DPQuantileAggregatorState aggregator_state;
+    aggregator_state.set_num_inputs(num_inputs_);
+    aggregator_state.set_reservoir_sampling_count(reservoir_sampling_count_);
+    *(aggregator_state.mutable_buffer()) = buffer_.EncodeContent();
+    return aggregator_state.SerializeAsString();
+  }
 
   // Trigger execution of the DP quantile algorithm from Durfee's paper. It is
   // an application of the textbook AboveThreshold algorithm to prefix sums:
@@ -148,7 +160,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
 
   double target_quantile_;
   int num_inputs_, reservoir_sampling_count_;
-  std::vector<T> buffer_;
+  MutableVectorData<T> buffer_;
   absl::BitGen bit_gen_;
   bool output_consumed_;
 };
@@ -165,10 +177,25 @@ class DPQuantileAggregatorFactory final : public TensorAggregatorFactory {
       delete;
 
   StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
-      const Intrinsic& intrinsic, std::string serialized_state) const override;
+      const Intrinsic& intrinsic, std::string serialized_state) const override {
+    DPQuantileAggregatorState aggregator_state;
+    if (!aggregator_state.ParseFromString(serialized_state)) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "DPQuantileAggregatorFactory: Failed to parse serialized "
+                "state.";
+    }
+    return CreateInternal(intrinsic, &aggregator_state);
+  }
 
   StatusOr<std::unique_ptr<TensorAggregator>> Create(
-      const Intrinsic& intrinsic) const override;
+      const Intrinsic& intrinsic) const override {
+    return CreateInternal(intrinsic, nullptr);
+  }
+
+ private:
+  StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
+      const Intrinsic& intrinsic,
+      const DPQuantileAggregatorState* aggregator_state) const;
 };
 }  // namespace aggregation
 }  // namespace tensorflow_federated

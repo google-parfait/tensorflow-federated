@@ -28,6 +28,8 @@ and this project adheres to
     platform.
 *   `DPQuantileAggregator::ReportWithEpsilonAndDelta` implements a DP algorithm
     to find quantiles by looping over a histogram with growing bucket size.
+*   `DPQuantileAggregator::Serialize` and the corresponding
+    `DPQuantileAggregatorFactory::Deserialze` to save and load aggregator state.
 
 ### Removed
 

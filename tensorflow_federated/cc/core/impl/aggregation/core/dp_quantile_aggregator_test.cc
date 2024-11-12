@@ -357,14 +357,12 @@ TEST(DPQuantileAggregatorTest, MergeWithSameTargetQuantile) {
   EXPECT_EQ(aggregator2.GetBufferSize(),
             std::min(kNumInputs2, kDPQuantileMaxInputs));
 
-  auto aggregator2_buffer_size = aggregator2.GetBufferSize();
   auto merge_status = aggregator1.MergeWith(std::move(aggregator2));
   TFF_EXPECT_OK(merge_status);
   EXPECT_EQ(aggregator1.GetBufferSize(), kDPQuantileMaxInputs);
   EXPECT_EQ(aggregator1.GetNumInputs(), kNumInputs1 + kNumInputs2);
   EXPECT_EQ(aggregator1.GetReservoirSamplingCount(),
-            std::max(0, kNumInputs1 + aggregator2_buffer_size -
-                            kDPQuantileMaxInputs));
+            std::max(0, kNumInputs1 + kNumInputs2 - kDPQuantileMaxInputs));
 }
 
 // The fourth batch of tests is on ReportWithEpsilonAndDelta. The DP quantile
@@ -503,8 +501,48 @@ TEST(DPQuantileAggregatorTest, CorrectHelperFunctions) {
   EXPECT_EQ(aggregator.GetTargetRank(), 750);
 }
 
-// The fifth batch of tests is on serialization & deserialization.
+// The fifth batch tests serialization and deserialization.
+TEST(DPQuantileAggregatorTest, SerializeAndDeserialize) {
+  Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
+                                  {CreateTensorSpec("value", DT_DOUBLE)},
+                                  {CreateTensorSpec("value", DT_DOUBLE)},
+                                  {CreateDPQuantileParameters(0.1)},
+                                  {}};
 
+  auto aggregator_status1 = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(aggregator_status1);
+  auto& aggregator1 =
+      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status1.value());
+  for (int i = 0; i < kDPQuantileMaxInputs + 1; ++i) {
+    Tensor t =
+        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({50})).value();
+    auto accumulate_status = aggregator1.Accumulate(InputTensorList({&t}));
+    TFF_EXPECT_OK(accumulate_status);
+  }
+  auto serialized_state_statusor = std::move(aggregator1).Serialize();
+  TFF_EXPECT_OK(serialized_state_statusor);
+  auto serialized_state = serialized_state_statusor.value();
+
+  auto factory = dynamic_cast<const DPQuantileAggregatorFactory*>(
+      GetAggregatorFactory(kDPQuantileUri).value());
+  auto aggregator_status2 = factory->Deserialize(intrinsic, serialized_state);
+  TFF_EXPECT_OK(aggregator_status2);
+
+  auto& aggregator2 =
+      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status2.value());
+  EXPECT_EQ(aggregator2.GetBufferSize(), kDPQuantileMaxInputs);
+  EXPECT_EQ(aggregator2.GetNumInputs(), kDPQuantileMaxInputs + 1);
+  EXPECT_EQ(aggregator2.GetReservoirSamplingCount(), 1);
+
+  auto report_status =
+      std::move(aggregator2).ReportWithEpsilonAndDelta(1, 1e-7);
+  TFF_EXPECT_OK(report_status);
+  auto& output = report_status.value();
+  EXPECT_EQ(output.size(), 1);
+  EXPECT_EQ(output[0].dtype(), DT_DOUBLE);
+  double estimate = output[0].AsScalar<double>();
+  EXPECT_EQ(estimate, 50);
+}
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated

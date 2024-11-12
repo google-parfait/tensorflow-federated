@@ -32,3 +32,10 @@ message GroupByAggregatorState {
   repeated TensorProto keys = 2;
   repeated OneDimGroupingAggregatorState nested_aggregators = 3;
 }
+
+// Internal state representation of a DPQuantileAggregator.
+message DPQuantileAggregatorState {
+  uint64 num_inputs = 1;
+  uint64 reservoir_sampling_count = 2;
+  bytes buffer = 3;
+}

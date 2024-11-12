@@ -88,13 +88,9 @@ Status DPQuantileAggregator<T>::MergeWith(TensorAggregator&& other) {
   }
 
   num_inputs_ += other_ptr->GetNumInputs();
+  reservoir_sampling_count_ += other_ptr->GetReservoirSamplingCount();
 
   return TFF_STATUS(OK);
-}
-
-template <typename T>
-StatusOr<std::string> DPQuantileAggregator<T>::Serialize() && {
-  return TFF_STATUS(UNIMPLEMENTED) << "Will be implemented in a follow-up CL.";
 }
 
 // Push back the input into the buffer or perform reservoir sampling.
@@ -241,15 +237,11 @@ StatusOr<int> DPQuantileAggregator<T>::PrefixSumAboveThreshold(
   return bucket;
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>>
-DPQuantileAggregatorFactory::Deserialize(const Intrinsic& intrinsic,
-                                         std::string serialized_state) const {
-  return TFF_STATUS(UNIMPLEMENTED) << "Will be implemented in a follow-up CL.";
-}
-
 // The Create method of the DPQuantileAggregatorFactory.
-StatusOr<std::unique_ptr<TensorAggregator>> DPQuantileAggregatorFactory::Create(
-    const Intrinsic& intrinsic) const {
+StatusOr<std::unique_ptr<TensorAggregator>>
+DPQuantileAggregatorFactory::CreateInternal(
+    const Intrinsic& intrinsic,
+    const DPQuantileAggregatorState* aggregator_state) const {
   // First check that the parameter field has a valid target_quantile and
   // nothing else.
   if (intrinsic.parameters.size() != 1) {
@@ -292,9 +284,19 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPQuantileAggregatorFactory::Create(
            << "DPQuantileAggregatorFactory::Create: Output type must be "
               "double.";
   }
-  DTYPE_CASES(
-      input_type, T,
-      return std::make_unique<DPQuantileAggregator<T>>(target_quantile));
+
+  if (aggregator_state == nullptr) {
+    DTYPE_CASES(
+        input_type, T,
+        return std::make_unique<DPQuantileAggregator<T>>(target_quantile));
+  }
+  auto num_inputs = aggregator_state->num_inputs();
+  auto reservoir_sampling_count = aggregator_state->reservoir_sampling_count();
+  DTYPE_CASES(input_type, T,
+              return std::make_unique<DPQuantileAggregator<T>>(
+                  target_quantile, num_inputs, reservoir_sampling_count,
+                  MutableVectorData<T>::CreateFromEncodedContent(
+                      aggregator_state->buffer())));
 }
 
 REGISTER_AGGREGATOR_FACTORY(kDPQuantileUri, DPQuantileAggregatorFactory);
