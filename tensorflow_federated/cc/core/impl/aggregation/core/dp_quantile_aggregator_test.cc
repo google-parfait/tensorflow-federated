@@ -460,6 +460,34 @@ TEST(DPQuantileAggregatorTest, ExponentialData) {
   }
 }
 
+// There should be no error due to DP when epsilon >= kEpsilonThreshold.
+TEST(DPQuantileAggregatorTest, ExactQuantileForLargeEpsilon) {
+  for (double target_quantile : {0.001, 0.2, 0.8, 0.999}) {
+    auto aggregator_status =
+        CreateDPQuantileAggregator(DT_DOUBLE, target_quantile);
+    TFF_EXPECT_OK(aggregator_status);
+    auto& aggregator =
+        dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status.value());
+    for (int i = 0; i < 100; ++i) {
+      double val = 0.1 * (99 - i);
+      Tensor t =
+          Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})).value();
+      auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
+      TFF_EXPECT_OK(accumulate_status);
+    }
+    auto report_status =
+        std::move(aggregator)
+            .ReportWithEpsilonAndDelta(kEpsilonThreshold, 1e-7);
+    TFF_EXPECT_OK(report_status);
+    auto& output = report_status.value();
+    EXPECT_EQ(output.size(), 1);
+    EXPECT_EQ(output[0].dtype(), DT_DOUBLE);
+    double estimate = output[0].AsScalar<double>();
+    int target_rank = static_cast<int>(target_quantile * 100);
+    EXPECT_THAT(estimate, testing::DoubleEq(0.1 * target_rank));
+  }
+}
+
 // ReportWithEpsilonAndDelta invokes some helper functions. This test
 // checks that they work as intended.
 TEST(DPQuantileAggregatorTest, CorrectHelperFunctions) {

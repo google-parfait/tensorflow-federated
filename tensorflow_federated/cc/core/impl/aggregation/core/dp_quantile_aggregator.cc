@@ -151,11 +151,30 @@ Status DPQuantileAggregator<T>::CheckValid() const {
   return TFF_STATUS(OK);
 }
 
+// Create an OutputTensorList containing a single scalar tensor.
+StatusOr<OutputTensorList> SingleScalarTensor(double value) {
+  auto data_container = std::make_unique<MutableVectorData<double>>();
+  data_container->push_back(value);
+  TFF_ASSIGN_OR_RETURN(
+      auto tensor, Tensor::Create(DT_DOUBLE, {}, std::move(data_container)));
+  OutputTensorList output;
+  output.push_back(std::move(tensor));
+  return output;
+}
+
 // Trigger execution of the DP quantile algorithm.
 template <typename T>
 StatusOr<OutputTensorList> DPQuantileAggregator<T>::ReportWithEpsilonAndDelta(
     double epsilon, double delta) && {
   TFF_RETURN_IF_ERROR(CheckValid());
+
+  // When epsilon is above the threshold, noiselessly return the quantile.
+  if (epsilon >= kEpsilonThreshold) {
+    std::sort(buffer_.begin(), buffer_.end());
+    int quantile_rank = static_cast<int>(GetTargetRank());
+    double raw_quantile = static_cast<double>(buffer_[quantile_rank]);
+    return SingleScalarTensor(raw_quantile);
+  }
 
   // Make a histogram of buffer_'s values.
   absl::flat_hash_map<int, int> histogram;
@@ -185,14 +204,7 @@ StatusOr<OutputTensorList> DPQuantileAggregator<T>::ReportWithEpsilonAndDelta(
   // Get the quantile estimate from the bucket.
   auto quantile_estimate = BucketUpperBound(quantile_bucket);
 
-  // Create an OutputTensorList containing the quantile estimate.
-  auto data_container = std::make_unique<MutableVectorData<double>>();
-  data_container->push_back(quantile_estimate);
-  TFF_ASSIGN_OR_RETURN(
-      auto tensor, Tensor::Create(DT_DOUBLE, {}, std::move(data_container)));
-  OutputTensorList output;
-  output.push_back(std::move(tensor));
-  return output;
+  return SingleScalarTensor(quantile_estimate);
 }
 
 template <>

@@ -30,6 +30,8 @@ and this project adheres to
     to find quantiles by looping over a histogram with growing bucket size.
 *   `DPQuantileAggregator::Serialize` and the corresponding
     `DPQuantileAggregatorFactory::Deserialze` to save and load aggregator state.
+*   Ability to disable DP when `epsilon` is sufficiently large in
+    `DPQuantileAggregator::ReportWithEpsilonAndDelta`.
 
 ### Removed
 
