@@ -170,6 +170,7 @@ def _create_metrics_release_call(
     *,
     key: int,
     round_end_timestamp: Optional[float] = None,
+    num_retries: int = 0,
 ):
   return mock.call(
       {
@@ -178,10 +179,11 @@ def _create_metrics_release_call(
           'aggregator': mock.ANY,
           'finalizer': mock.ANY,
           'model_metrics': mock.ANY,
-          'round_timestamps': {
+          'program_metrics': {
               'round_end_timestamp': (
                   round_end_timestamp if round_end_timestamp else mock.ANY
               ),
+              'num_retries': num_retries,
           },
       },
       key=key,
@@ -916,7 +918,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
   @context_stack_test_utils.with_context(_create_test_context)
-  async def test_discards_and_retries_one_round(
+  async def test_retries_one_round(
       self,
   ):
     train_num_clients = 5
@@ -947,7 +949,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         ),
     ]
 
-    def test_should_discard_round(train_result):
+    def test_should_retry_round(train_result):
       return train_result.metrics['finalizer']['should_reject_update'] == 1
 
     # Create a mock state manager that returns no previous state, starting
@@ -972,7 +974,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           train_data_source=_create_mock_datasource(),
           train_per_round_clients=train_num_clients,
           train_total_rounds=training_rounds,
-          should_discard_round=test_should_discard_round,
+          should_retry_round=test_should_retry_round,
           program_state_manager=mock_program_state_manager,
           model_output_manager=mock_model_output_manager,
           train_metrics_manager=mock_train_metrics_manager,
@@ -980,11 +982,21 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           evaluation_periodicity=1,
       )
     self.assertIn(
-        'INFO:absl:Finished train round 1 with 1 discarded rounds',
+        'INFO:absl:Finished train round 1 with 1 retries.',
         log_output.output,
     )
     mock_model_output_manager.release.assert_called_once()
-    mock_train_metrics_manager.release.assert_called_once()
+    # Assert that training metrics were released once with the number of
+    # retries.
+    self.assertSequenceEqual(
+        [
+            _create_metrics_release_call(
+                key=1,
+                num_retries=1,
+            )
+        ],
+        mock_train_metrics_manager.release.call_args_list,
+    )
     # program_state_manager.save should be called for initial state (round 0)
     # and round 1.
     self.assertLen(mock_program_state_manager.save.call_args_list, 2)

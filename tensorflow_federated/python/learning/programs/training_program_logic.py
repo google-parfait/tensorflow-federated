@@ -39,8 +39,9 @@ from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
 
-_ROUND_TIMESTAMPS_KEY = 'round_timestamps'
+_PROGRAM_METRICS_KEY = 'program_metrics'
 _ROUND_END_TIMESTAMP_KEY = 'round_end_timestamp'
+_NUM_RETRIES_KEY = 'num_retries'
 
 
 class ProgramState(NamedTuple):
@@ -93,20 +94,22 @@ class TaskManager:
     self._pending_tasks.add(new_task)
 
 
-def _add_round_timestamps_to_metrics(
+def _add_program_metrics(
     metrics: Mapping[str, Any],
     round_end_time: datetime.datetime,
+    num_retries: int = 0,
 ) -> release_manager.ReleasableStructure:
-  """Adds round start and end timestamps to the metrics."""
-  if _ROUND_TIMESTAMPS_KEY in metrics:
+  """Adds program performance metrics to the metrics."""
+  if _PROGRAM_METRICS_KEY in metrics:
     raise ValueError(
-        f'The metrics already contain the key {_ROUND_TIMESTAMPS_KEY}.'
+        f'The metrics already contain the key {_PROGRAM_METRICS_KEY}.'
     )
-  metrics_with_round_timestamps = dict(metrics)
-  metrics_with_round_timestamps[_ROUND_TIMESTAMPS_KEY] = {
+  metrics_with_program_metrics = dict(metrics)
+  metrics_with_program_metrics[_PROGRAM_METRICS_KEY] = {
       _ROUND_END_TIMESTAMP_KEY: round_end_time.timestamp(),
+      _NUM_RETRIES_KEY: num_retries,
   }
-  return metrics_with_round_timestamps
+  return metrics_with_program_metrics
 
 
 # TODO: b/284509457 - Revisit this API when `initialize` is changed to be a
@@ -118,7 +121,7 @@ async def train_model(
     train_data_source: data_source.FederatedDataSource,
     train_per_round_clients: int,
     train_total_rounds: int,
-    should_discard_round: Optional[
+    should_retry_round: Optional[
         Callable[[learning_process.LearningProcessOutput], bool]
     ] = None,
     program_state_manager: program_state_manager_lib.ProgramStateManager,
@@ -165,10 +168,10 @@ async def train_model(
       data used during training.
     train_per_round_clients: The number of clients per round of training.
     train_total_rounds: Total number of rounds of training.
-    should_discard_round: A Callable that takes the
+    should_retry_round: A Callable that takes the
       `tff.learning.templates.LearningProcessOutput` returned by
-      `training_process.next` and returns whether the round should be discarded.
-      If a round should be discarded, the program will roll back to the state of
+      `training_process.next` and returns whether the round should be retried.
+      If a round should be retried, the program will roll back to the state of
       the previous round and retry this round.
     program_state_manager: A `tff.program.ProgramStateManager` used to save
       program state for fault tolerance.
@@ -299,9 +302,9 @@ async def train_model(
   # for evaluation is created for a giving training checkpoint, that will run
   # evaluation computations in parallel.
   round_num = start_round + 1
-  # Upon program restart, `num_discarded_rounds` will be reset, resulting in the
-  # loss of information regarding discarded rounds within the current round.
-  num_discarded_rounds = 0
+  # Upon program restart, `num_retries` will be reset, resulting in the loss of
+  # information regarding number of retries within the current round.
+  num_retries = 0
   while round_num <= train_total_rounds:
     logging.info('Running train round %d', round_num)
     # Keep a copy of the previous iterator to ensure each retry starts from the
@@ -314,19 +317,18 @@ async def train_model(
     train_result = await value_reference.materialize_value(
         train_process.next(train_state, round_participants_data)
     )
-    if should_discard_round is not None and should_discard_round(train_result):
-      num_discarded_rounds += 1
+    if should_retry_round is not None and should_retry_round(train_result):
+      num_retries += 1
       logging.info(
-          'The training round %d should be discarded. The program will retry '
-          'this round.',
+          'The training round %d should be retried.',
           round_num,
       )
       train_data_iterator = copy.deepcopy(previous_train_data_iterator)
       continue
     logging.info(
-        'Finished train round %d with %d discarded rounds',
+        'Finished train round %d with %d retries.',
         round_num,
-        num_discarded_rounds,
+        num_retries,
     )
     if not isinstance(train_result, learning_process.LearningProcessOutput):
       raise TypeError(
@@ -379,13 +381,14 @@ async def train_model(
         ) from e
       # TODO: b/371431768 - Clean up the timestamps in the metrics once min sep
       # policy is fixed.
-      released_train_metrics_with_timestamps = _add_round_timestamps_to_metrics(
+      released_train_metrics = _add_program_metrics(
           released_train_metrics,
           train_round_finished_time,
+          num_retries,
       )
       task_manager.add_task(
           train_metrics_manager.release(
-              released_train_metrics_with_timestamps,
+              released_train_metrics,
               key=round_num,
           )
       )
@@ -404,7 +407,7 @@ async def train_model(
           )
       )
     round_num += 1
-    num_discarded_rounds = 0
+    num_retries = 0
 
   # Wait for all pending tasks to complete before exiting the program.
   await task_manager.wait_for_all_tasks()

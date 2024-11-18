@@ -9,6 +9,8 @@ and this project adheres to
 ## Unreleased
 
 *   Updated `MeasuredProcessOutput` to be a `NamedTuple`.
+*   Added number of round retries to training metrics in
+    `tff.learning.programs.train_model`.
 
 ### Added
 
