@@ -37,6 +37,7 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
@@ -45,7 +46,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -182,7 +182,7 @@ struct TypedFederatedIntrinsic {
   FederatedIntrinsic federated_intrinsic;
 
   // The type signature of the FederatedIntrinsic.
-  v0::FunctionType type_signature;
+  federated_language::FunctionType type_signature;
 };
 using ValueVariant =
     std::variant<Unplaced, Server, Clients, Structure, TypedFederatedIntrinsic>;
@@ -589,7 +589,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicEvalAtClients(
-      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
+      ExecutorValue&& arg, const federated_language::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicEvalAtClients");
     auto fn_to_eval =
         TFF_TRY(arg.GetUnplacedFunctionProto("federated_eval_at_clients_fn"));
@@ -612,7 +612,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicAggregate(
-      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
+      ExecutorValue&& arg, const federated_language::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicAggregate");
     TFF_TRY(arg.CheckLenForUseAsArgument("federated_aggregate", 5));
     const auto& value = arg.structure()->at(0);
@@ -723,7 +723,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicMap(
-      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
+      ExecutorValue&& arg, const federated_language::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicMap");
     TFF_TRY(arg.CheckLenForUseAsArgument("federated_map", 2));
     const auto& fn = arg.structure()->at(0);
@@ -761,7 +761,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicSelect_(
-      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
+      ExecutorValue&& arg, const federated_language::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicSelect_");
     TFF_TRY(arg.CheckLenForUseAsArgument("federated_select", 4));
     const ExecutorValue& keys = arg.structure()->at(0);
@@ -847,7 +847,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicZipAtClients(
-      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
+      ExecutorValue&& arg, const federated_language::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicZipAtClients");
     v0::Value zip_at_clients;
     zip_at_clients.mutable_computation()
@@ -907,7 +907,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   absl::StatusOr<ExecutorValue> CallFederatedIntrinsic(
       TypedFederatedIntrinsic typed_intrinsic, ExecutorValue arg) {
     FederatedIntrinsic function = typed_intrinsic.federated_intrinsic;
-    const v0::FunctionType& type_pb = typed_intrinsic.type_signature;
+    const federated_language::FunctionType& type_pb =
+        typed_intrinsic.type_signature;
     switch (function) {
       case FederatedIntrinsic::VALUE_AT_SERVER: {
         return CallIntrinsicValueAtServer(std::move(arg));
@@ -1005,7 +1006,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         for (int32_t i = 0; i < total_clients_; i++) {
           *values_pb->Add() = null_value;
         }
-        v0::FederatedType* type_pb = federated_pb->mutable_type();
+        federated_language::FederatedType* type_pb =
+            federated_pb->mutable_type();
         // All-equal-ness is not stored, so must be assumed to be false.
         // If the Python type system expects the value to be all-equal, it can
         // simply extract the first element in the list.
@@ -1036,7 +1038,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       }
       case ExecutorValue::ValueType::SERVER: {
         v0::Value_Federated* federated_pb = value_pb->mutable_federated();
-        v0::FederatedType* type_pb = federated_pb->mutable_type();
+        federated_language::FederatedType* type_pb =
+            federated_pb->mutable_type();
         // Server placement is assumed to be of cardinality one, and so must
         // be all-equal.
         type_pb->set_all_equal(true);

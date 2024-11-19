@@ -17,12 +17,12 @@ limitations under the License
 //
 // IMPORTANT: many of the `v0::Value` protocol buffer messages used in the unit
 // tests in this file are not well-formed from the view of the entire execution
-// stack.  Particularly `v0::Computation` message fields that are not used by
-// the ReferenceResolvingExecutor are often ellided to assert that they are not
-// dependend on. This generally means the test protos are only valid because the
-// child executor is mocked out and returns a hardcoded result, and should not
-// be used a reference for how a real `v0::Computation` protocol buffer message
-// should look.
+// stack.  Particularly `federated_language::Computation` message fields that
+// are not used by the ReferenceResolvingExecutor are often ellided to assert
+// that they are not dependend on. This generally means the test protos are only
+// valid because the child executor is mocked out and returns a hardcoded
+// result, and should not be used a reference for how a real
+// `federated_language::Computation` protocol buffer message should look.
 
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 
@@ -42,6 +42,8 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language/proto/data_type.pb.h"
 #include "tensorflow/cc/framework/scope.h"
 #include "tensorflow/cc/ops/array_ops.h"
 #include "tensorflow/cc/ops/math_ops.h"
@@ -55,8 +57,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -97,16 +97,18 @@ MATCHER_P(HasValueId, expected_id,
 // Constructs simple graphs for testing Tensorflow backend computations.
 inline v0::Value NoArgConstantTfComputationV() {
   v0::Value value_pb;
-  v0::Computation* computation_pb = value_pb.mutable_computation();
+  federated_language::Computation* computation_pb =
+      value_pb.mutable_computation();
   // Build the graph.
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tf::ops::OnesLike ones(root, tf::Tensor(1.0));
   tensorflow::GraphDef graphdef_pb;
   QCHECK_OK(root.ToGraphDef(&graphdef_pb));
-  v0::TensorFlow* tensorflow_pb = computation_pb->mutable_tensorflow();
+  federated_language::TensorFlow* tensorflow_pb =
+      computation_pb->mutable_tensorflow();
   tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
   // Build the tensor bindings.
-  v0::TensorFlow::TensorBinding* result_binding_pb =
+  federated_language::TensorFlow::TensorBinding* result_binding_pb =
       tensorflow_pb->mutable_result()->mutable_tensor();
   result_binding_pb->set_tensor_name(ones.node()->name());
   return value_pb;
@@ -114,21 +116,24 @@ inline v0::Value NoArgConstantTfComputationV() {
 
 inline v0::Value UnarySquareTfComputationV() {
   v0::Value value_pb;
-  v0::Computation* computation_pb = value_pb.mutable_computation();
+  federated_language::Computation* computation_pb =
+      value_pb.mutable_computation();
   // Build the graph.
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tf::ops::Placeholder x(root, tf::DT_FLOAT);
   tf::ops::Square square(root, x);
   tensorflow::GraphDef graphdef_pb;
   QCHECK_OK(root.ToGraphDef(&graphdef_pb));
-  v0::TensorFlow* tensorflow_pb = computation_pb->mutable_tensorflow();
+  federated_language::TensorFlow* tensorflow_pb =
+      computation_pb->mutable_tensorflow();
   tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
   // Build the tensor bindings.
-  v0::TensorFlow::StructBinding* struct_paramter_pb =
+  federated_language::TensorFlow::StructBinding* struct_paramter_pb =
       tensorflow_pb->mutable_parameter()->mutable_struct_();
-  v0::TensorFlow::Binding* x_binding_pb = struct_paramter_pb->add_element();
+  federated_language::TensorFlow::Binding* x_binding_pb =
+      struct_paramter_pb->add_element();
   x_binding_pb->mutable_tensor()->set_tensor_name(x.node()->name());
-  v0::TensorFlow::TensorBinding* result_binding_pb =
+  federated_language::TensorFlow::TensorBinding* result_binding_pb =
       tensorflow_pb->mutable_result()->mutable_tensor();
   result_binding_pb->set_tensor_name(square.node()->name());
   return value_pb;
@@ -136,7 +141,8 @@ inline v0::Value UnarySquareTfComputationV() {
 
 inline v0::Value BinaryAddTfComputationV() {
   v0::Value value_pb;
-  v0::Computation* computation_pb = value_pb.mutable_computation();
+  federated_language::Computation* computation_pb =
+      value_pb.mutable_computation();
   // Build the graph.
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tf::ops::Placeholder x(root, tf::DT_FLOAT);
@@ -144,16 +150,19 @@ inline v0::Value BinaryAddTfComputationV() {
   tf::ops::AddV2 sum(root, x, y);
   tensorflow::GraphDef graphdef_pb;
   QCHECK_OK(root.ToGraphDef(&graphdef_pb));
-  v0::TensorFlow* tensorflow_pb = computation_pb->mutable_tensorflow();
+  federated_language::TensorFlow* tensorflow_pb =
+      computation_pb->mutable_tensorflow();
   tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
   // Build the tensor bindings.
-  v0::TensorFlow::StructBinding* struct_paramter_pb =
+  federated_language::TensorFlow::StructBinding* struct_paramter_pb =
       tensorflow_pb->mutable_parameter()->mutable_struct_();
-  v0::TensorFlow::Binding* x_binding_pb = struct_paramter_pb->add_element();
+  federated_language::TensorFlow::Binding* x_binding_pb =
+      struct_paramter_pb->add_element();
   x_binding_pb->mutable_tensor()->set_tensor_name(x.node()->name());
-  v0::TensorFlow::Binding* y_binding_pb = struct_paramter_pb->add_element();
+  federated_language::TensorFlow::Binding* y_binding_pb =
+      struct_paramter_pb->add_element();
   y_binding_pb->mutable_tensor()->set_tensor_name(y.node()->name());
-  v0::TensorFlow::TensorBinding* result_binding_pb =
+  federated_language::TensorFlow::TensorBinding* result_binding_pb =
       tensorflow_pb->mutable_result()->mutable_tensor();
   result_binding_pb->set_tensor_name(sum.node()->name());
   return value_pb;
@@ -203,11 +212,12 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueSequence) {
 TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedTensor) {
   v0::Value federated_value_pb;
   v0::Value::Federated* federated_pb = federated_value_pb.mutable_federated();
-  v0::FederatedType* type_pb = federated_pb->mutable_type();
+  federated_language::FederatedType* type_pb = federated_pb->mutable_type();
   type_pb->set_all_equal(false);
   type_pb->mutable_placement()->mutable_value()->set_uri(kTestPlacement);
-  v0::TensorType* tensor_type = type_pb->mutable_member()->mutable_tensor();
-  tensor_type->set_dtype(v0::DataType::DT_FLOAT);
+  federated_language::TensorType* tensor_type =
+      type_pb->mutable_member()->mutable_tensor();
+  tensor_type->set_dtype(federated_language::DataType::DT_FLOAT);
   constexpr int kNumClients = 3;
   for (int i = 0; i < kNumClients; ++i) {
     *federated_pb->add_value() = TensorV(i);
@@ -249,15 +259,17 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueNestedStructOfTensor) {
 TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedStructOfTensor) {
   v0::Value federated_value_pb;
   v0::Value::Federated* federated_pb = federated_value_pb.mutable_federated();
-  v0::FederatedType* type_pb = federated_pb->mutable_type();
+  federated_language::FederatedType* type_pb = federated_pb->mutable_type();
   type_pb->set_all_equal(false);
   type_pb->mutable_placement()->mutable_value()->set_uri(kTestPlacement);
-  v0::StructType* struct_type = type_pb->mutable_member()->mutable_struct_();
+  federated_language::StructType* struct_type =
+      type_pb->mutable_member()->mutable_struct_();
   constexpr int kNumFields = 3;
   for (int i = 0; i < kNumFields; ++i) {
-    v0::StructType::Element* element_pb = struct_type->add_element();
+    federated_language::StructType::Element* element_pb =
+        struct_type->add_element();
     element_pb->mutable_value()->mutable_tensor()->set_dtype(
-        v0::DataType::DT_FLOAT);
+        federated_language::DataType::DT_FLOAT);
   }
   constexpr int kNumClients = 3;
   for (int i = 0; i < kNumClients; ++i) {
@@ -308,7 +320,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationPlacement) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, NoArgLambda) {
-  v0::Computation data_pb = DataComputation("test_data_uri");
+  federated_language::Computation data_pb = DataComputation("test_data_uri");
   v0::Value lambda_pb = ComputationV(LambdaComputation(std::nullopt, data_pb));
   auto create_result = test_executor_->CreateValue(lambda_pb);
   EXPECT_THAT(create_result, IsOkAndHolds(HasValueId(0)));
@@ -383,7 +395,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaStructArgumentLazilyEmbedded) {
 
 TEST_F(ReferenceResolvingExecutorTest,
        LambdaArgumentScopeHidesBlockNamedValue) {
-  v0::Computation data_pb = DataComputation("test_data_uri");
+  federated_language::Computation data_pb = DataComputation("test_data_uri");
   v0::Value lambda_pb = ComputationV(BlockComputation(
       {{"test_arg", data_pb},
        {"test_lambda",
@@ -471,7 +483,7 @@ TEST_F(ReferenceResolvingExecutorTest,
                         {"test_ref2", DataComputation("test_data_uri2")}},
                        ReferenceComputation("test_ref")));
   ValueId child_id = 3;
-  for (const v0::Block::Local& local_pb :
+  for (const federated_language::Block::Local& local_pb :
        block_value_pb.computation().block().local()) {
     EXPECT_CALL(*mock_executor_, Dispose(child_id));
     EXPECT_CALL(*mock_executor_,
@@ -495,7 +507,7 @@ TEST_F(ReferenceResolvingExecutorTest,
                         {"test_ref", DataComputation("test_data_uri2")}},
                        ReferenceComputation("test_ref")));
   ValueId child_id = 3;
-  for (const v0::Block::Local& local_pb :
+  for (const federated_language::Block::Local& local_pb :
        block_value_pb.computation().block().local()) {
     EXPECT_CALL(*mock_executor_, Dispose(child_id));
     EXPECT_CALL(*mock_executor_,

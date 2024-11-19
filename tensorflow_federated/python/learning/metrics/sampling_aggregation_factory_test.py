@@ -16,12 +16,11 @@ import collections
 from typing import Any
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.metrics import sampling_aggregation_factory
 from tensorflow_federated.python.learning.metrics import types
 
@@ -62,15 +61,15 @@ def _create_random_unfinalized_metrics(seed: int):
           tf.random.stateless_uniform(shape=(2,), seed=[seed, seed]).numpy(),
       ],
   )
-  metrics_type = computation_types.StructWithPythonType(
+  metrics_type = federated_language.StructWithPythonType(
       [
-          ('accuracy', computation_types.TensorType(np.float32)),
-          ('loss', computation_types.TensorType(np.float32, (2,))),
+          ('accuracy', federated_language.TensorType(np.float32)),
+          ('loss', federated_language.TensorType(np.float32, (2,))),
           (
               'custom_sum',
               [
-                  computation_types.TensorType(np.float32, shape=(1,)),
-                  computation_types.TensorType(np.float32, shape=(2,)),
+                  federated_language.TensorType(np.float32, shape=(1,)),
+                  federated_language.TensorType(np.float32, shape=(2,)),
               ],
           ),
       ],
@@ -151,10 +150,12 @@ class SamplingAggregationFactoryTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(np.float32, placements.SERVER),
+          federated_language.FederatedType(
+              np.float32, federated_language.SERVER
+          ),
       ),
-      ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(np.float32)),
+      ('function_type', federated_language.FunctionType(None, ())),
+      ('sequence_type', federated_language.SequenceType(np.float32)),
   )
   def test_create_process_fails_with_invalid_unfinalized_metrics_type(
       self, bad_unfinalized_metrics_type
@@ -258,7 +259,7 @@ class SamplingAggregationFactoryTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_finalize_then_sample_returns_correct_measurements(self, sample_size):
     metric_finalizers = lambda x: x
-    unfinalized_metrics_type = computation_types.StructWithPythonType(
+    unfinalized_metrics_type = federated_language.StructWithPythonType(
         [('loss', np.float32)], collections.OrderedDict
     )
     sampling_process = sampling_aggregation_factory.FinalizeThenSampleFactory(

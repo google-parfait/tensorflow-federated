@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -20,8 +21,6 @@ from tensorflow_federated.python.core.environments.tensorflow_backend import com
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_transformations
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def _create_compiled_computation(py_fn, parameter_type):
@@ -30,7 +29,7 @@ def _create_compiled_computation(py_fn, parameter_type):
           py_fn, parameter_type
       )
   )
-  return building_blocks.CompiledComputation(
+  return federated_language.framework.CompiledComputation(
       proto, type_signature=type_signature
   )
 
@@ -38,11 +37,11 @@ def _create_compiled_computation(py_fn, parameter_type):
 class TensorFlowOptimizerTest(absltest.TestCase):
 
   def test_should_transform_compiled_computation(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     config = tf.compat.v1.ConfigProto()
@@ -52,7 +51,7 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     self.assertTrue(tf_optimizer.should_transform(compiled_computation))
 
   def test_should_not_transform_reference(self):
-    reference = building_blocks.Reference('x', np.int32)
+    reference = federated_language.framework.Reference('x', np.int32)
     config = tf.compat.v1.ConfigProto()
     tf_optimizer = compiled_computation_transformations.TensorFlowOptimizer(
         config
@@ -60,11 +59,11 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     self.assertFalse(tf_optimizer.should_transform(reference))
 
   def test_transform_compiled_computation_returns_compiled_computation(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     proto, function_type = tensorflow_computation_factory.create_identity(
         tuple_type,
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         proto, name=None, type_signature=function_type
     )
 
@@ -74,7 +73,9 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     )
     transformed_comp, mutated = tf_optimizer.transform(compiled_computation)
     self.assertTrue(mutated)
-    self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
+    self.assertIsInstance(
+        transformed_comp, federated_language.framework.CompiledComputation
+    )
     self.assertTrue(transformed_comp.proto.tensorflow.HasField('parameter'))
     self.assertFalse(transformed_comp.proto.tensorflow.initialize_op)
 
@@ -82,7 +83,7 @@ class TensorFlowOptimizerTest(absltest.TestCase):
       self,
   ):
     proto, type_signature = tensorflow_computation_factory.create_empty_tuple()
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         proto, type_signature=type_signature
     )
     config = tf.compat.v1.ConfigProto()
@@ -91,16 +92,18 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     )
     transformed_comp, mutated = tf_optimizer.transform(compiled_computation)
     self.assertTrue(mutated)
-    self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
+    self.assertIsInstance(
+        transformed_comp, federated_language.framework.CompiledComputation
+    )
     self.assertFalse(transformed_comp.proto.tensorflow.HasField('parameter'))
     self.assertFalse(transformed_comp.proto.tensorflow.initialize_op)
 
   def test_transform_compiled_computation_semantic_equivalence(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     config = tf.compat.v1.ConfigProto()
@@ -109,7 +112,9 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     )
     transformed_comp, mutated = tf_optimizer.transform(compiled_computation)
     self.assertTrue(mutated)
-    self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
+    self.assertIsInstance(
+        transformed_comp, federated_language.framework.CompiledComputation
+    )
     zero_before_transform = tensorflow_computation_test_utils.run_tensorflow(
         compiled_computation.proto, 0
     )
@@ -122,11 +127,11 @@ class TensorFlowOptimizerTest(absltest.TestCase):
 class AddUniqueIDsTest(absltest.TestCase):
 
   def test_should_transform_compiled_tf_computation(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     self.assertTrue(
@@ -136,7 +141,7 @@ class AddUniqueIDsTest(absltest.TestCase):
     )
 
   def test_should_not_transform_non_compiled_computations(self):
-    reference = building_blocks.Reference('x', np.int32)
+    reference = federated_language.framework.Reference('x', np.int32)
     self.assertFalse(
         compiled_computation_transformations.AddUniqueIDs().should_transform(
             reference
@@ -149,17 +154,17 @@ class AddUniqueIDsTest(absltest.TestCase):
     # should produce a different ID.
     proto, type_signature = (
         tensorflow_computation_factory.create_unary_operator(
-            lambda x: (), operand_type=computation_types.StructType([])
+            lambda x: (), operand_type=federated_language.StructType([])
         )
     )
-    empty_tuple_computation = building_blocks.CompiledComputation(
+    empty_tuple_computation = federated_language.framework.CompiledComputation(
         proto, type_signature=type_signature
     )
     add_ids = compiled_computation_transformations.AddUniqueIDs()
     first_transformed_comp, mutated = add_ids.transform(empty_tuple_computation)
     self.assertTrue(mutated)
     self.assertIsInstance(
-        first_transformed_comp, building_blocks.CompiledComputation
+        first_transformed_comp, federated_language.framework.CompiledComputation
     )
     self.assertTrue(
         first_transformed_comp.proto.tensorflow.HasField('cache_key')
@@ -169,18 +174,21 @@ class AddUniqueIDsTest(absltest.TestCase):
     # type_signature.
     proto, type_signature = (
         tensorflow_computation_factory.create_unary_operator(
-            lambda x: ((),), operand_type=computation_types.StructType([])
+            lambda x: ((),), operand_type=federated_language.StructType([])
         )
     )
-    nested_empty_tuple_computation = building_blocks.CompiledComputation(
-        proto, type_signature=type_signature
+    nested_empty_tuple_computation = (
+        federated_language.framework.CompiledComputation(
+            proto, type_signature=type_signature
+        )
     )
     second_transformed_comp, mutated = add_ids.transform(
         nested_empty_tuple_computation
     )
     self.assertTrue(mutated)
     self.assertIsInstance(
-        second_transformed_comp, building_blocks.CompiledComputation
+        second_transformed_comp,
+        federated_language.framework.CompiledComputation,
     )
     self.assertTrue(
         second_transformed_comp.proto.tensorflow.HasField('cache_key')
@@ -197,11 +205,11 @@ class AddUniqueIDsTest(absltest.TestCase):
   def test_transform_compiled_computation_returns_compiled_computation_with_id(
       self,
   ):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     add_ids = compiled_computation_transformations.AddUniqueIDs()
@@ -209,7 +217,8 @@ class AddUniqueIDsTest(absltest.TestCase):
       first_transformed_comp, mutated = add_ids.transform(compiled_computation)
       self.assertTrue(mutated)
       self.assertIsInstance(
-          first_transformed_comp, building_blocks.CompiledComputation
+          first_transformed_comp,
+          federated_language.framework.CompiledComputation,
       )
       self.assertTrue(
           first_transformed_comp.proto.tensorflow.HasField('cache_key')
@@ -221,7 +230,8 @@ class AddUniqueIDsTest(absltest.TestCase):
       second_transformed_comp, mutated = add_ids.transform(compiled_computation)
       self.assertTrue(mutated)
       self.assertIsInstance(
-          second_transformed_comp, building_blocks.CompiledComputation
+          second_transformed_comp,
+          federated_language.framework.CompiledComputation,
       )
       self.assertTrue(
           second_transformed_comp.proto.tensorflow.HasField('cache_key')
@@ -253,7 +263,7 @@ class AddUniqueIDsTest(absltest.TestCase):
     with self.subTest('different_computation_different_id'):
       different_compiled_computation = _create_compiled_computation(
           lambda x: x + np.float32(1.0),
-          computation_types.TensorType(np.float32),
+          federated_language.TensorType(np.float32),
       )
       different_transformed_comp, mutated = add_ids.transform(
           different_compiled_computation
@@ -274,11 +284,11 @@ class AddUniqueIDsTest(absltest.TestCase):
 class VerifyAllowedOpsTest(absltest.TestCase):
 
   def test_should_transform_tf_computation(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     self.assertTrue(
@@ -288,7 +298,7 @@ class VerifyAllowedOpsTest(absltest.TestCase):
     )
 
   def test_should_not_transform_non_compiled_computations(self):
-    reference = building_blocks.Reference('x', np.int32)
+    reference = federated_language.framework.Reference('x', np.int32)
     self.assertFalse(
         compiled_computation_transformations.VerifyAllowedOps(
             frozenset()
@@ -296,11 +306,11 @@ class VerifyAllowedOpsTest(absltest.TestCase):
     )
 
   def test_transform_only_allowed_ops(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     allowed_op_names = frozenset(
@@ -312,11 +322,11 @@ class VerifyAllowedOpsTest(absltest.TestCase):
     self.assertFalse(mutated)
 
   def test_transform_disallowed_ops(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     allowed_op_names = frozenset(['Identity'])
@@ -331,11 +341,11 @@ class VerifyAllowedOpsTest(absltest.TestCase):
 class RaiseOnDisallowedOpTest(absltest.TestCase):
 
   def test_should_transform_tf_computation(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     self.assertTrue(
@@ -345,7 +355,7 @@ class RaiseOnDisallowedOpTest(absltest.TestCase):
     )
 
   def test_should_not_transform_non_compiled_computations(self):
-    reference = building_blocks.Reference('x', np.int32)
+    reference = federated_language.framework.Reference('x', np.int32)
     self.assertFalse(
         compiled_computation_transformations.RaiseOnDisallowedOp(
             frozenset()
@@ -353,11 +363,11 @@ class RaiseOnDisallowedOpTest(absltest.TestCase):
     )
 
   def test_transform_no_disallowed_ops(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     disallowed_op_names = frozenset(['ShardedFilename'])
@@ -367,11 +377,11 @@ class RaiseOnDisallowedOpTest(absltest.TestCase):
     self.assertFalse(mutated)
 
   def test_transform_disallowed_ops(self):
-    tuple_type = computation_types.TensorType(np.int32)
+    tuple_type = federated_language.TensorType(np.int32)
     compiled_proto, compiled_type = (
         tensorflow_computation_factory.create_identity(tuple_type)
     )
-    compiled_computation = building_blocks.CompiledComputation(
+    compiled_computation = federated_language.framework.CompiledComputation(
         compiled_proto, name='a', type_signature=compiled_type
     )
     disallowed_op_names = frozenset(['Identity'])

@@ -15,6 +15,7 @@
 
 from typing import Optional
 
+import federated_language
 import numpy as np
 import tensorflow_privacy as tfp
 
@@ -23,10 +24,6 @@ from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import estimation_process
 
 
@@ -156,24 +153,30 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
     )
 
     # 2. Define federated_computations.
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
-      return intrinsics.federated_zip((
-          intrinsics.federated_eval(initial_state_fn, placements.SERVER),
+      return federated_language.federated_zip((
+          federated_language.federated_eval(
+              initial_state_fn, federated_language.SERVER
+          ),
           quantile_agg_process.initialize(),
       ))
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       quantile_query_state, agg_state = state
 
-      params = intrinsics.federated_broadcast(
-          intrinsics.federated_map(derive_sample_params, quantile_query_state)
+      params = federated_language.federated_broadcast(
+          federated_language.federated_map(
+              derive_sample_params, quantile_query_state
+          )
       )
-      quantile_record = intrinsics.federated_map(
+      quantile_record = federated_language.federated_map(
           get_quantile_record, (params, value)
       )
 
@@ -181,15 +184,15 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
           agg_state, quantile_record
       )
 
-      _, new_quantile_query_state, _ = intrinsics.federated_map(
+      _, new_quantile_query_state, _ = federated_language.federated_map(
           get_noised_result, (quantile_agg_output.result, quantile_query_state)
       )
 
-      return intrinsics.federated_zip(
+      return federated_language.federated_zip(
           (new_quantile_query_state, quantile_agg_output.state)
       )
 
-    report_fn = federated_computation.federated_computation(
+    report_fn = federated_language.federated_computation(
         lambda state: state[0].current_estimate, init_fn.type_signature.result
     )
 
@@ -200,9 +203,9 @@ def _affine_transform(multiplier, increment):
   transform_tf_comp = tensorflow_computation.tf_computation(
       lambda value: multiplier * value + increment, np.float32
   )
-  return federated_computation.federated_computation(
-      lambda value: intrinsics.federated_map(transform_tf_comp, value),
-      computation_types.FederatedType(np.float32, placements.SERVER),
+  return federated_language.federated_computation(
+      lambda value: federated_language.federated_map(transform_tf_comp, value),
+      federated_language.FederatedType(np.float32, federated_language.SERVER),
   )
 
 

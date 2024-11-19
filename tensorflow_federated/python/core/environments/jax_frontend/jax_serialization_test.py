@@ -15,17 +15,14 @@
 import collections
 
 from absl.testing import absltest
+import federated_language
+from federated_language.proto import computation_pb2 as pb
 import jax
 import numpy as np
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.jax_frontend import jax_serialization
 from tensorflow_federated.python.core.environments.xla_backend import xla_serialization
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_serialization
-from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class JaxSerializationTest(absltest.TestCase):
@@ -36,10 +33,10 @@ class JaxSerializationTest(absltest.TestCase):
     def fn(x):
       return x + 10
 
-    parameter_type = computation_types.TensorType(dtype=np.int32, shape=None)
+    parameter_type = federated_language.TensorType(dtype=np.int32, shape=None)
     with self.assertRaisesRegex(TypeError, 'fully-defined TensorShapes'):
       jax_serialization.serialize_jax_computation(
-          fn, parameter_type, context_stack_impl.context_stack
+          fn, parameter_type, federated_language.framework.global_context_stack
       )
 
   def test_serialize_jax_computation_raises_type_error_with_unknown_dimension(
@@ -48,10 +45,10 @@ class JaxSerializationTest(absltest.TestCase):
     def fn(x):
       return x + 10
 
-    parameter_type = computation_types.TensorType(dtype=np.int32, shape=[None])
+    parameter_type = federated_language.TensorType(dtype=np.int32, shape=[None])
     with self.assertRaisesRegex(TypeError, 'fully-defined TensorShapes'):
       jax_serialization.serialize_jax_computation(
-          fn, parameter_type, context_stack_impl.context_stack
+          fn, parameter_type, federated_language.framework.global_context_stack
       )
 
   def test_serialize_jax_with_noarg_to_int32(self):
@@ -60,20 +57,22 @@ class JaxSerializationTest(absltest.TestCase):
 
     parameter_type = None
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, parameter_type, context_stack_impl.context_stack
+        traced_fn,
+        parameter_type,
+        federated_language.framework.global_context_stack,
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
-    type_test_utils.assert_types_equivalent(
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    federated_language.framework.assert_types_equivalent(
         type_spec,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         annotated_type,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
@@ -87,22 +86,24 @@ class JaxSerializationTest(absltest.TestCase):
       del x
       return 10
 
-    parameter_type = computation_types.to_type(np.int32)
+    parameter_type = federated_language.to_type(np.int32)
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, parameter_type, context_stack_impl.context_stack
+        traced_fn,
+        parameter_type,
+        federated_language.framework.global_context_stack,
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
-    type_test_utils.assert_types_equivalent(
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    federated_language.framework.assert_types_equivalent(
         type_spec,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         annotated_type,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
@@ -115,22 +116,24 @@ class JaxSerializationTest(absltest.TestCase):
     def traced_fn(x):
       return x + 10
 
-    parameter_type = computation_types.to_type(np.int32)
+    parameter_type = federated_language.to_type(np.int32)
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, parameter_type, context_stack_impl.context_stack
+        traced_fn,
+        parameter_type,
+        federated_language.framework.global_context_stack,
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
-    type_test_utils.assert_types_equivalent(
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    federated_language.framework.assert_types_equivalent(
         type_spec,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         annotated_type,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
@@ -145,29 +148,31 @@ class JaxSerializationTest(absltest.TestCase):
           sum=x['foo'] + x['bar'], difference=x['bar'] - x['foo']
       )
 
-    parameter_type = computation_types.to_type(
+    parameter_type = federated_language.to_type(
         collections.OrderedDict(foo=np.int32, bar=np.int32)
     )
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, parameter_type, context_stack_impl.context_stack
+        traced_fn,
+        parameter_type,
+        federated_language.framework.global_context_stack,
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
-    type_test_utils.assert_types_equivalent(
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    federated_language.framework.assert_types_equivalent(
         type_spec,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type,
-            result=computation_types.StructType(
+            result=federated_language.StructType(
                 [('sum', np.int32), ('difference', np.int32)]
             ),
         ),
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         annotated_type,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type,
-            result=computation_types.StructWithPythonType(
+            result=federated_language.StructWithPythonType(
                 [('sum', np.int32), ('difference', np.int32)],
                 container_type=collections.OrderedDict,
             ),
@@ -198,24 +203,26 @@ class JaxSerializationTest(absltest.TestCase):
     def traced_fn(x, y):
       return x + y
 
-    parameter_type = computation_types.to_type(
+    parameter_type = federated_language.to_type(
         collections.OrderedDict(x=np.int32, y=np.int32)
     )
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, parameter_type, context_stack_impl.context_stack
+        traced_fn,
+        parameter_type,
+        federated_language.framework.global_context_stack,
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
-    type_test_utils.assert_types_equivalent(
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    federated_language.framework.assert_types_equivalent(
         type_spec,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         annotated_type,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
@@ -244,25 +251,27 @@ class JaxSerializationTest(absltest.TestCase):
     def traced_fn(x, y):
       return x[0] + y
 
-    parameter_type = computation_types.StructType([
-        (None, computation_types.StructType([(None, np.int32)])),
+    parameter_type = federated_language.StructType([
+        (None, federated_language.StructType([(None, np.int32)])),
         (None, np.int32),
     ])
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, parameter_type, context_stack_impl.context_stack
+        traced_fn,
+        parameter_type,
+        federated_language.framework.global_context_stack,
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
-    type_test_utils.assert_types_equivalent(
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    federated_language.framework.assert_types_equivalent(
         type_spec,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         annotated_type,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
@@ -271,71 +280,81 @@ class JaxSerializationTest(absltest.TestCase):
     def traced_fn(x):
       return x[0][0]
 
-    parameter_type = computation_types.to_type([(np.int32,)])
+    parameter_type = federated_language.to_type([(np.int32,)])
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, parameter_type, context_stack_impl.context_stack
+        traced_fn,
+        parameter_type,
+        federated_language.framework.global_context_stack,
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
-    type_test_utils.assert_types_equivalent(
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    federated_language.framework.assert_types_equivalent(
         type_spec,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         annotated_type,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
 
   def test_arg_ordering(self):
-    parameter_type = computation_types.to_type((
-        computation_types.TensorType(np.int32, (10,)),
-        computation_types.TensorType(np.int32),
+    parameter_type = federated_language.to_type((
+        federated_language.TensorType(np.int32, (10,)),
+        federated_language.TensorType(np.int32),
     ))
 
     def traced_fn(b, a):
       return jax.numpy.add(a, jax.numpy.sum(b))
 
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, parameter_type, context_stack_impl.context_stack
+        traced_fn,
+        parameter_type,
+        federated_language.framework.global_context_stack,
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
-    type_test_utils.assert_types_equivalent(
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    federated_language.framework.assert_types_equivalent(
         type_spec,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         annotated_type,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
         ),
     )
 
   def test_tracing_with_float64_input(self):
     self.skipTest('b/237566862')
-    parameter_type = computation_types.TensorType(np.float64)
+    parameter_type = federated_language.TensorType(np.float64)
     identity_fn = lambda x: x
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        identity_fn, parameter_type, context_stack_impl.context_stack
+        identity_fn,
+        parameter_type,
+        federated_language.framework.global_context_stack,
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
-    type_test_utils.assert_types_equivalent(
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    federated_language.framework.assert_types_equivalent(
         type_spec,
-        computation_types.FunctionType(parameter=np.float64, result=np.float64),
+        federated_language.FunctionType(
+            parameter=np.float64, result=np.float64
+        ),
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         annotated_type,
-        computation_types.FunctionType(parameter=np.float64, result=np.float64),
+        federated_language.FunctionType(
+            parameter=np.float64, result=np.float64
+        ),
     )
 
 
@@ -386,7 +405,7 @@ class XlaSerializerStructArgPytreeTest(absltest.TestCase):
 
   def test_named_struct(self):
     struct_arg = jax_serialization._XlaSerializerStructArg(
-        computation_types.StructType(
+        federated_language.StructType(
             [('a', np.float32), ('b', np.int64), ('c', np.int32)]
         ),
         [('a', 1.0), ('b', 2), ('c', 3)],
@@ -398,7 +417,7 @@ class XlaSerializerStructArgPytreeTest(absltest.TestCase):
 
   def test_unnamed_struct(self):
     struct_arg = jax_serialization._XlaSerializerStructArg(
-        computation_types.StructType([
+        federated_language.StructType([
             (None, np.float32),
             (None, np.int64),
             (None, np.int32),
@@ -412,7 +431,7 @@ class XlaSerializerStructArgPytreeTest(absltest.TestCase):
 
   def test_mixed_named_struct(self):
     struct_arg = jax_serialization._XlaSerializerStructArg(
-        computation_types.StructType([
+        federated_language.StructType([
             ('a', np.int32),
             (None, np.int32),
             ('b', np.int64),
@@ -427,15 +446,15 @@ class XlaSerializerStructArgPytreeTest(absltest.TestCase):
 
   def test_nested_structs(self):
     struct_arg = jax_serialization._XlaSerializerStructArg(
-        computation_types.StructType([
+        federated_language.StructType([
             ('a', np.int32),
             (
                 'b',
-                computation_types.StructType([
+                federated_language.StructType([
                     ('c', np.int32),
                     (
                         'd',
-                        computation_types.StructType(
+                        federated_language.StructType(
                             [(None, np.int32), (None, np.int32)]
                         ),
                     ),
@@ -448,11 +467,11 @@ class XlaSerializerStructArgPytreeTest(absltest.TestCase):
             (
                 'b',
                 jax_serialization._XlaSerializerStructArg(
-                    computation_types.StructType([
+                    federated_language.StructType([
                         ('c', np.int32),
                         (
                             'd',
-                            computation_types.StructType(
+                            federated_language.StructType(
                                 [(None, np.int32), (None, np.int32)]
                             ),
                         ),
@@ -463,7 +482,7 @@ class XlaSerializerStructArgPytreeTest(absltest.TestCase):
                         (
                             'd',
                             jax_serialization._XlaSerializerStructArg(
-                                computation_types.StructType(
+                                federated_language.StructType(
                                     [(None, np.int32), (None, np.int32)]
                                 ),
                                 elements=[(None, 5), (None, 6)],
@@ -482,13 +501,13 @@ class XlaSerializerStructArgPytreeTest(absltest.TestCase):
 
   def test_mixed_nested_structs_and_python_containers(self):
     struct_arg = jax_serialization._XlaSerializerStructArg(
-        computation_types.StructType([
+        federated_language.StructType([
             ('a', np.int32),
-            computation_types.StructType([(
+            federated_language.StructType([(
                 (None, np.int32),
                 (
                     None,
-                    computation_types.StructType(
+                    federated_language.StructType(
                         [(None, np.int32), (None, np.int32)]
                     ),
                 ),
@@ -502,7 +521,7 @@ class XlaSerializerStructArgPytreeTest(absltest.TestCase):
                 [
                     4,
                     jax_serialization._XlaSerializerStructArg(
-                        computation_types.StructType(
+                        federated_language.StructType(
                             [(None, np.int32), (None, np.int32)]
                         ),
                         elements=[(None, 5), (None, 6)],

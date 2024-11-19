@@ -17,6 +17,7 @@ import collections
 import typing
 from typing import Optional
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -24,11 +25,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -108,22 +104,26 @@ class MeanFactory(factory.WeightedAggregationFactory):
     value_sum_process = self._value_sum_factory.create(value_type)
     weight_sum_process = self._weight_sum_factory.create(weight_type)
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
       state = collections.OrderedDict(
           value_sum_process=value_sum_process.initialize(),
           weight_sum_process=weight_sum_process.initialize(),
       )
-      return intrinsics.federated_zip(state)
+      return federated_language.federated_zip(state)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
-        computation_types.FederatedType(weight_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
+        federated_language.FederatedType(
+            weight_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value, weight):
       # Client computation.
-      weighted_value = intrinsics.federated_map(_mul, (value, weight))
+      weighted_value = federated_language.federated_map(_mul, (value, weight))
 
       # Inner aggregations.
       value_output = value_sum_process.next(
@@ -134,7 +134,7 @@ class MeanFactory(factory.WeightedAggregationFactory):
       )
 
       # Server computation.
-      weighted_mean_value = intrinsics.federated_map(
+      weighted_mean_value = federated_language.federated_map(
           _div_no_nan if self._no_nan_division else _div,
           (value_output.result, weight_output.result),
       )
@@ -149,9 +149,9 @@ class MeanFactory(factory.WeightedAggregationFactory):
           mean_weight=weight_output.measurements,
       )
       return measured_process.MeasuredProcessOutput(
-          intrinsics.federated_zip(state),
+          federated_language.federated_zip(state),
           weighted_mean_value,
-          intrinsics.federated_zip(measurements),
+          federated_language.federated_zip(measurements),
       )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
@@ -211,33 +211,36 @@ class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
     _check_value_type(value_type)
     value_sum_process = self._value_sum_factory.create(value_type)
     count_sum_process = self._count_sum_factory.create(
-        computation_types.TensorType(np.int32)
+        federated_language.TensorType(np.int32)
     )
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
-      return intrinsics.federated_zip(
+      return federated_language.federated_zip(
           (value_sum_process.initialize(), count_sum_process.initialize())
       )
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       value_sum_state, count_sum_state = state
       value_sum_output = value_sum_process.next(value_sum_state, value)
       count_sum_output = count_sum_process.next(
-          count_sum_state, intrinsics.federated_value(1, placements.CLIENTS)
+          count_sum_state,
+          federated_language.federated_value(1, federated_language.CLIENTS),
       )
 
-      mean_value = intrinsics.federated_map(
+      mean_value = federated_language.federated_map(
           _div, (value_sum_output.result, count_sum_output.result)
       )
-      state = intrinsics.federated_zip(
+      state = federated_language.federated_zip(
           (value_sum_output.state, count_sum_output.state)
       )
-      measurements = intrinsics.federated_zip(
+      measurements = federated_language.federated_zip(
           collections.OrderedDict(
               mean_value=value_sum_output.measurements,
               mean_count=count_sum_output.measurements,
@@ -254,7 +257,7 @@ class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
 def _check_value_type(value_type):
   type_args = typing.get_args(factory.ValueType)
   py_typecheck.check_type(value_type, type_args)
-  if not type_analysis.is_structure_of_floats(value_type):
+  if not federated_language.framework.is_structure_of_floats(value_type):
     raise TypeError(
         'All values in provided value_type must be of floating '
         f'dtype. Provided value_type: {value_type}'

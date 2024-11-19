@@ -40,14 +40,9 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -58,12 +53,9 @@ py_test(
     deps = [
         ":iterative_process_compositions",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -84,10 +76,8 @@ py_library(
     srcs = ["training_loop.py"],
     deps = [
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/program:program_state_manager",
-        "//tensorflow_federated/python/program:release_manager",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -97,11 +87,7 @@ py_test(
     srcs = ["training_loop_test.py"],
     deps = [
         ":training_loop",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@federated_language//federated_language",
     ],
 )

@@ -16,11 +16,11 @@ import collections
 from unittest import mock
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning.algorithms import personalization_eval as p13n_eval
 from tensorflow_federated.python.learning.models import keras_utils
@@ -278,12 +278,12 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
       ),
       (
           'tff_struct_with_python_type',
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               collections.OrderedDict(
-                  x=computation_types.TensorType(
+                  x=federated_language.TensorType(
                       shape=[None, 2], dtype=np.float32
                   ),
-                  y=computation_types.TensorType(
+                  y=federated_language.TensorType(
                       shape=[None, 1], dtype=np.float32
                   ),
               ),
@@ -292,12 +292,12 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
       ),
       (
           'tff_struct_type',
-          computation_types.StructType(
+          federated_language.StructType(
               collections.OrderedDict(
-                  x=computation_types.TensorType(
+                  x=federated_language.TensorType(
                       shape=[None, 2], dtype=np.float32
                   ),
-                  y=computation_types.TensorType(
+                  y=federated_language.TensorType(
                       shape=[None, 1], dtype=np.float32
                   ),
               )

@@ -40,11 +40,8 @@ py_library(
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/analytics:data_processing",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -55,7 +52,7 @@ py_test(
         ":iblt_clipping",
         ":iblt_factory",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -111,11 +108,7 @@ py_library(
         "//tensorflow_federated/python/analytics:data_processing",
         "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -127,10 +120,7 @@ py_test(
     deps = [
         ":iblt_tff",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -162,12 +152,9 @@ py_library(
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/analytics:data_processing",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -181,7 +168,7 @@ py_test(
         "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@federated_language//federated_language",
     ],
 )
 

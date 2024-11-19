@@ -14,19 +14,19 @@
 """A stub connects to a remote executor over gRPC."""
 
 from absl import logging
+import federated_language
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 
 
-@tracing.trace(span=True)
+@federated_language.framework.trace(span=True)
 def _request(rpc_func, request):
   """Populates trace context and reraises gRPC errors with retryable info."""
-  with tracing.wrap_rpc_in_trace_context():
+  with federated_language.framework.wrap_rpc_in_trace_context():
     try:
       return rpc_func(request)
     except grpc.RpcError as e:

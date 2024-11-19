@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
@@ -24,8 +25,6 @@ from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -48,27 +47,27 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         _test_dp_query, inner_agg_factory
     )
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = factory_.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query_state_type = computation_types.StructType(
+    query_state_type = federated_language.StructType(
         [('l2_norm_clip', np.float32), ('stddev', np.float32)]
     )
     query_metrics_type = ()
     inner_state_type = np.int32 if inner_agg_factory else ()
-    dp_event_type = computation_types.StructType([
+    dp_event_type = federated_language.StructType([
         ('module_name', np.str_),
         ('class_name', np.str_),
         ('noise_multiplier', np.float32),
     ])
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, inner_state_type, dp_event_type, np.bool_
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -77,24 +76,24 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
     inner_measurements_type = np.int32 if inner_agg_factory else ()
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             dp_query_metrics=query_metrics_type, dp=inner_measurements_type
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -116,10 +115,12 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(np.float32, placements.SERVER),
+          federated_language.FederatedType(
+              np.float32, federated_language.SERVER
+          ),
       ),
-      ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(np.float32)),
+      ('function_type', federated_language.FunctionType(None, ())),
+      ('sequence_type', federated_language.SequenceType(np.float32)),
   )
   def test_incorrect_value_type_raises(self, bad_value_type):
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
@@ -161,7 +162,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_simple_sum(self):
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     process = factory_.create(value_type)
 
     # The test query has clip 1.0 and no noise, so this computes clipped sum.
@@ -174,7 +175,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_structure_sum(self):
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
-    value_type = computation_types.to_type([np.float32, np.float32])
+    value_type = federated_language.to_type([np.float32, np.float32])
     process = factory_.create(value_type)
 
     # The test query has clip 1.0 and no noise, so this computes clipped sum.
@@ -195,7 +196,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(expected_result, output.result)
 
   def test_inner_sum(self):
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     factory_ = differential_privacy.DifferentiallyPrivateFactory(
         _test_dp_query, _test_inner_agg_factory
     )
@@ -212,7 +213,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_tree_aggregation_inner_sum(self):
     l2_clip = 1.0
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     tree_factory = (
         differential_privacy.DifferentiallyPrivateFactory.tree_aggregation(
             noise_multiplier=0.0,
@@ -242,7 +243,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         geometric_update=False,
     )
     factory_ = differential_privacy.DifferentiallyPrivateFactory(query)
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     process = factory_.create(value_type)
 
     state = process.initialize()
@@ -258,7 +259,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(expected_result, output.result)
 
   def test_extract_dp_event_from_state(self):
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
     process = factory_.create(value_type)
     state = process.initialize()
@@ -275,7 +276,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(event, expected_dp_event)
 
   def test_error_when_extracting_from_initial_state(self):
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
     process = factory_.create(value_type)
     state = process.initialize()
@@ -289,7 +290,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     factory_ = differential_privacy.DifferentiallyPrivateFactory.gaussian_fixed(
         noise_multiplier=noise, clients_per_round=1.0, clip=1.0
     )
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     process = factory_.create(value_type)
 
     state = process.initialize()
@@ -362,7 +363,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     variable_shape, tolerance = [10000], 0.05
     record = np.zeros(variable_shape, np.float32)
     record_shape = variable_shape
-    record_type = computation_types.to_type((np.float32, variable_shape))
+    record_type = federated_language.to_type((np.float32, variable_shape))
     specs = tf.TensorSpec(shape=record_shape, dtype=tf.float32)
 
     tree_factory = (
@@ -417,7 +418,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         clipped_count_stddev=0.0,
         noise_seed=1,
     )
-    process = factory_.create(computation_types.TensorType(np.float32))
+    process = factory_.create(federated_language.TensorType(np.float32))
 
     state = process.initialize()
 

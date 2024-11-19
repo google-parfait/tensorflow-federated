@@ -16,38 +16,36 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
+from federated_language.proto import computation_pb2 as pb
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_test_utils
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 class CreateConstantTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('scalar_int', 10, computation_types.TensorType(np.int32, [3]), [10] * 3),
-      ('scalar_float', 10.0, computation_types.TensorType(np.float32, [3]), [10.0] * 3),
+      ('scalar_int', 10, federated_language.TensorType(np.int32, [3]), [10] * 3),
+      ('scalar_float', 10.0, federated_language.TensorType(np.float32, [3]), [10.0] * 3),
       ('scalar_with_unnamed_struct_type', 10,
-       computation_types.StructType([np.int32] * 3),
+       federated_language.StructType([np.int32] * 3),
        structure.Struct([(None, 10)] * 3)),
       ('scalar_with_named_struct_type', 10,
-       computation_types.StructType([('a', np.int32), ('b', np.int32), ('c', np.int32)]),
+       federated_language.StructType([('a', np.int32), ('b', np.int32), ('c', np.int32)]),
        structure.Struct([('a', 10), ('b', 10), ('c', 10)])),
       ('scalar_with_nested_struct_type', 10,
-       computation_types.StructType([[np.int32] * 3] * 3),
+       federated_language.StructType([[np.int32] * 3] * 3),
        structure.Struct([(None, structure.Struct([(None, 10)] * 3))] * 3)),
       ('tuple_with_struct_type', (10, 11, 12),
-       computation_types.StructType([np.int32, np.int32, np.int32]),
+       federated_language.StructType([np.int32, np.int32, np.int32]),
        structure.Struct([(None, 10), (None, 11), (None, 12)])),
       ('nested_struct_with_nested_struct_type', (10, (11, 12)),
-       computation_types.StructType([np.int32, [np.int32, np.int32]]),
+       federated_language.StructType([np.int32, [np.int32, np.int32]]),
        structure.Struct([
            (None, 10),
            (None, structure.Struct([
@@ -55,7 +53,7 @@ class CreateConstantTest(parameterized.TestCase):
        ])),
       ('nested_named_struct_with_nested_struct_type',
        collections.OrderedDict(a=10, b=collections.OrderedDict(c=11, d=12)),
-       computation_types.StructType(
+       federated_language.StructType(
            collections.OrderedDict(a=np.int32,
                                    b=collections.OrderedDict(
                                        c=np.int32, d=np.int32))),
@@ -65,7 +63,7 @@ class CreateConstantTest(parameterized.TestCase):
                ('c', 11), ('d', 12)]))
        ])),
       ('unnamed_value_named_type', (10.0,),
-       computation_types.StructType([('a', np.float32)]),
+       federated_language.StructType([('a', np.float32)]),
        structure.Struct([('a', 10.0)])),
   )
   # pyformat: enable
@@ -75,8 +73,8 @@ class CreateConstantTest(parameterized.TestCase):
     )
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(None, type_signature)
+    actual_type = federated_language.framework.deserialize_type(proto.type)
+    expected_type = federated_language.FunctionType(None, type_signature)
     expected_type.check_assignable_from(actual_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(proto)
     if isinstance(expected_result, list):
@@ -88,31 +86,31 @@ class CreateConstantTest(parameterized.TestCase):
       (
           'non_scalar_value',
           np.zeros([1]),
-          computation_types.TensorType(np.int32),
+          federated_language.TensorType(np.int32),
       ),
       ('none_type', 10, None),
       (
           'federated_type',
           10,
-          computation_types.FederatedType(np.int32, placements.SERVER),
+          federated_language.FederatedType(np.int32, federated_language.SERVER),
       ),
-      ('bad_type', 10.0, computation_types.TensorType(np.int32)),
+      ('bad_type', 10.0, federated_language.TensorType(np.int32)),
       (
           'value_structure_larger_than_type_structure',
           (10.0, 11.0),
-          computation_types.StructType([np.float32]),
+          federated_language.StructType([np.float32]),
       ),
       (
           'value_structure_smaller_than_type_structure',
           (10.0,),
-          computation_types.StructType(
+          federated_language.StructType(
               [(None, np.float32), (None, np.float32)]
           ),
       ),
       (
           'named_value_unnamed_type',
           collections.OrderedDict(a=10.0),
-          computation_types.StructType([(None, np.float32)]),
+          federated_language.StructType([(None, np.float32)]),
       ),
   )
   def test_raises_type_error(self, value, type_signature):
@@ -123,20 +121,26 @@ class CreateConstantTest(parameterized.TestCase):
 class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(
-      ('abs_int', tf.math.abs, computation_types.TensorType(np.int32), [-1], 1),
+      (
+          'abs_int',
+          tf.math.abs,
+          federated_language.TensorType(np.int32),
+          [-1],
+          1,
+      ),
       (
           'abs_float',
           tf.math.abs,
-          computation_types.TensorType(np.float32),
+          federated_language.TensorType(np.float32),
           [-1.0],
           1.0,
       ),
       (
           'abs_unnamed_tuple',
           lambda x: structure.map_structure(tf.math.abs, x),
-          computation_types.StructType([
-              computation_types.TensorType(np.int32, [2]),
-              computation_types.TensorType(np.float32, [2]),
+          federated_language.StructType([
+              federated_language.TensorType(np.int32, [2]),
+              federated_language.TensorType(np.float32, [2]),
           ]),
           [[-1, -2], [-3.0, -4.0]],
           structure.Struct([(None, [1, 2]), (None, [3.0, 4.0])]),
@@ -144,9 +148,9 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
       (
           'abs_named_tuple',
           lambda x: structure.map_structure(tf.math.abs, x),
-          computation_types.StructType([
-              ('a', computation_types.TensorType(np.int32, [2])),
-              ('b', computation_types.TensorType(np.float32, [2])),
+          federated_language.StructType([
+              ('a', federated_language.TensorType(np.int32, [2])),
+              ('b', federated_language.TensorType(np.float32, [2])),
           ]),
           [[-1, -2], [-3.0, -4.0]],
           structure.Struct([('a', [1, 2]), ('b', [3.0, 4.0])]),
@@ -154,21 +158,21 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
       (
           'reduce_sum_int',
           tf.math.reduce_sum,
-          computation_types.TensorType(np.int32, [2]),
+          federated_language.TensorType(np.int32, [2]),
           [2, 2],
           4,
       ),
       (
           'reduce_sum_float',
           tf.math.reduce_sum,
-          computation_types.TensorType(np.float32, [2]),
+          federated_language.TensorType(np.float32, [2]),
           [2.0, 2.5],
           4.5,
       ),
       (
           'log_inf',
           tf.math.log,
-          computation_types.TensorType(np.float32),
+          federated_language.TensorType(np.float32),
           [0.0],
           -np.inf,
       ),
@@ -182,8 +186,8 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
     )
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    self.assertIsInstance(actual_type, computation_types.FunctionType)
+    actual_type = federated_language.framework.deserialize_type(proto.type)
+    self.assertIsInstance(actual_type, federated_language.FunctionType)
     # Note: It is only useful to test the parameter type; the result type
     # depends on the `operator` used, not the implemenation
     # `create_unary_operator`.
@@ -195,14 +199,14 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
-      ('non_callable_operator', 1, computation_types.TensorType(np.int32)),
+      ('non_callable_operator', 1, federated_language.TensorType(np.int32)),
       ('none_type', tf.math.add, None),
       (
           'federated_type',
           tf.math.add,
-          computation_types.FederatedType(np.int32, placements.SERVER),
+          federated_language.FederatedType(np.int32, federated_language.SERVER),
       ),
-      ('sequence_type', tf.math.add, computation_types.SequenceType(np.int32)),
+      ('sequence_type', tf.math.add, federated_language.SequenceType(np.int32)),
   )
   def test_raises_type_error(self, operator, type_signature):
     with self.assertRaises(TypeError):
@@ -216,40 +220,40 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('add_int', tf.math.add,
-       computation_types.TensorType(np.int32), None,
+       federated_language.TensorType(np.int32), None,
        [1, 2], 3),
       ('add_float', tf.math.add,
-       computation_types.TensorType(np.float32), None,
+       federated_language.TensorType(np.float32), None,
        [1.0, 2.25], 3.25),
       ('add_unnamed_tuple',
        lambda x, y: structure.map_structure(tf.math.add, x, y),
-       computation_types.StructType([np.int32, np.float32]), None,
+       federated_language.StructType([np.int32, np.float32]), None,
        [[1, 1.0], [2, 2.25]],
        structure.Struct([(None, 3), (None, 3.25)])),
       ('add_named_tuple',
        lambda x, y: structure.map_structure(tf.math.add, x, y),
-       computation_types.StructType([('a', np.int32), ('b', np.float32)]), None,
+       federated_language.StructType([('a', np.int32), ('b', np.float32)]), None,
        [[1, 1.0], [2, 2.25]],
        structure.Struct([('a', 3), ('b', 3.25)])),
       ('multiply_int', tf.math.multiply,
-       computation_types.TensorType(np.int32), None,
+       federated_language.TensorType(np.int32), None,
        [2, 2], 4),
       ('multiply_float', tf.math.multiply,
-       computation_types.TensorType(np.float32), None,
+       federated_language.TensorType(np.float32), None,
        [2.0, 2.25], 4.5),
       ('divide_int', tf.math.divide,
-       computation_types.TensorType(np.int32), None,
+       federated_language.TensorType(np.int32), None,
        [4, 2], 2.0),
       ('divide_float', tf.math.divide,
-       computation_types.TensorType(np.float32), None,
+       federated_language.TensorType(np.float32), None,
        [4.0, 2.0], 2.0),
       ('divide_inf', tf.math.divide,
-       computation_types.TensorType(np.int32), None,
+       federated_language.TensorType(np.int32), None,
        [1, 0], np.inf),
       ('different_structure',
        lambda x, y: structure.map_structure(lambda v: tf.math.divide(v, y), x),
-       computation_types.StructType([np.float32, np.float32]),
-       computation_types.TensorType(np.float32),
+       federated_language.StructType([np.float32, np.float32]),
+       federated_language.TensorType(np.float32),
        [[1, 2], 2],
        structure.Struct([(None, 0.5), (None, 1.0)])),
   )
@@ -267,17 +271,17 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
     )
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    self.assertIsInstance(actual_type, computation_types.FunctionType)
+    actual_type = federated_language.framework.deserialize_type(proto.type)
+    self.assertIsInstance(actual_type, federated_language.FunctionType)
     # Note: It is only useful to test the parameter type; the result type
     # depends on the `operator` used, not the implemenation
     # `create_binary_operator`.
     if second_operand_type is None:
-      expected_parameter_type = computation_types.StructType(
+      expected_parameter_type = federated_language.StructType(
           [operand_type, operand_type]
       )
     else:
-      expected_parameter_type = computation_types.StructType(
+      expected_parameter_type = federated_language.StructType(
           [operand_type, second_operand_type]
       )
     self.assertEqual(actual_type.parameter, expected_parameter_type)
@@ -287,14 +291,14 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
-      ('non_callable_operator', 1, computation_types.TensorType(np.int32)),
+      ('non_callable_operator', 1, federated_language.TensorType(np.int32)),
       ('none_type', tf.math.add, None),
       (
           'federated_type',
           tf.math.add,
-          computation_types.FederatedType(np.int32, placements.SERVER),
+          federated_language.FederatedType(np.int32, federated_language.SERVER),
       ),
-      ('sequence_type', tf.math.add, computation_types.SequenceType(np.int32)),
+      ('sequence_type', tf.math.add, federated_language.SequenceType(np.int32)),
   )
   def test_raises_type_error(self, operator, type_signature):
     with self.assertRaises(TypeError):
@@ -312,80 +316,80 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('add_int_same_shape', tf.math.add,
-       computation_types.StructType([computation_types.TensorType(np.int32), computation_types.TensorType(np.int32)]),
+       federated_language.StructType([federated_language.TensorType(np.int32), federated_language.TensorType(np.int32)]),
        [1, 2], 3),
       ('add_int_different_shape', tf.math.add,
-       computation_types.StructType([computation_types.TensorType(np.int64, [1]), computation_types.TensorType(np.int32)]),
+       federated_language.StructType([federated_language.TensorType(np.int64, [1]), federated_language.TensorType(np.int32)]),
        [np.array([1]), 2], 3),
       ('add_int_different_types', tf.math.add,
-       computation_types.StructType([
-           computation_types.StructType([
-               computation_types.TensorType(np.int64, [1])]),
-           computation_types.TensorType(np.int32),
+       federated_language.StructType([
+           federated_language.StructType([
+               federated_language.TensorType(np.int64, [1])]),
+           federated_language.TensorType(np.int32),
        ]),
        [[np.array([1])], 2],
        structure.Struct([(None, 3)])),
       ('multiply_int_same_shape', tf.math.multiply,
-       computation_types.StructType([computation_types.TensorType(np.int32), computation_types.TensorType(np.int32)]),
+       federated_language.StructType([federated_language.TensorType(np.int32), federated_language.TensorType(np.int32)]),
        [1, 2], 2),
       ('multiply_int_different_shape', tf.math.multiply,
-       computation_types.StructType([computation_types.TensorType(np.int64, [1]), computation_types.TensorType(np.int32)]),
+       federated_language.StructType([federated_language.TensorType(np.int64, [1]), federated_language.TensorType(np.int32)]),
        [np.array([1]), 2], 2),
       ('multiply_int_different_types', tf.math.multiply,
-       computation_types.StructType([
-           computation_types.StructType([
-               computation_types.TensorType(np.int64, [1])]),
-           computation_types.TensorType(np.int32)
+       federated_language.StructType([
+           federated_language.StructType([
+               federated_language.TensorType(np.int64, [1])]),
+           federated_language.TensorType(np.int32)
        ]),
        [[np.array([1])], 2],
        structure.Struct([(None, 2)])),
       ('divide_int_same_shape', tf.math.divide,
-       computation_types.StructType([computation_types.TensorType(np.int32), computation_types.TensorType(np.int32)]),
+       federated_language.StructType([federated_language.TensorType(np.int32), federated_language.TensorType(np.int32)]),
        [1, 2], 0.5),
       ('divide_int_different_shape', tf.math.divide,
-       computation_types.StructType([computation_types.TensorType(np.int64, [1]), computation_types.TensorType(np.int32)]),
+       federated_language.StructType([federated_language.TensorType(np.int64, [1]), federated_language.TensorType(np.int32)]),
        [np.array([1]), 2], 0.5),
       ('divide_int_different_types', tf.math.divide,
-       computation_types.StructType([
-           computation_types.StructType([
-               computation_types.TensorType(np.int64, [1])]),
-           computation_types.TensorType(np.int32),
+       federated_language.StructType([
+           federated_language.StructType([
+               federated_language.TensorType(np.int64, [1])]),
+           federated_language.TensorType(np.int32),
        ]),
        [[np.array([1])], 2],
        structure.Struct([(None, 0.5)])),
       ('divide_int_same_structure', tf.math.divide,
-       computation_types.StructType([
-           computation_types.StructType([
-               computation_types.TensorType(np.int64, [1]),
-               computation_types.TensorType(np.int64, [1]),
+       federated_language.StructType([
+           federated_language.StructType([
+               federated_language.TensorType(np.int64, [1]),
+               federated_language.TensorType(np.int64, [1]),
            ]),
-           computation_types.StructType([
-               computation_types.TensorType(np.int64),
-               computation_types.TensorType(np.int64),
+           federated_language.StructType([
+               federated_language.TensorType(np.int64),
+               federated_language.TensorType(np.int64),
            ]),
        ]),
        [[np.array([1]), np.array([2])], [2, 8]],
        structure.Struct([(None, 0.5), (None, 0.25)])),
       ('add_float_unknown_shape', tf.math.add,
-       computation_types.StructType([
-           computation_types.TensorType(np.float64, [None]),
-           computation_types.TensorType(np.float64, [1])
+       federated_language.StructType([
+           federated_language.TensorType(np.float64, [None]),
+           federated_language.TensorType(np.float64, [1])
        ]),
        [np.array([1.0]), np.array([2.25])],
        np.array([3.25])),
       ('add_float_unknown_rank', tf.math.add,
-       computation_types.StructType([
-           computation_types.TensorType(np.float64, None),
-           computation_types.TensorType(np.float64, [1])
+       federated_language.StructType([
+           federated_language.TensorType(np.float64, None),
+           federated_language.TensorType(np.float64, [1])
        ]),
        [np.array([1.0]), np.array([2.25])],
        np.array([3.25])),
       ('add_float_unknown_shape_inside_struct', tf.math.add,
-       computation_types.StructType([
-           computation_types.StructType([
-               computation_types.TensorType(np.float64, [None])
+       federated_language.StructType([
+           federated_language.StructType([
+               federated_language.TensorType(np.float64, [None])
            ]),
-           computation_types.TensorType(np.float64, [1])
+           federated_language.TensorType(np.float64, [1])
        ]),
        [[np.array([1.0])], np.array([2.25])],
        structure.Struct.unnamed([np.array([3.25])])),
@@ -401,12 +405,12 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
     )
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    self.assertIsInstance(actual_type, computation_types.FunctionType)
+    actual_type = federated_language.framework.deserialize_type(proto.type)
+    self.assertIsInstance(actual_type, federated_language.FunctionType)
     # Note: It is only useful to test the parameter type; the result type
     # depends on the `operator` used, not the implemenation
     # `create_binary_operator_with_upcast`.
-    expected_parameter_type = computation_types.StructType(type_signature)
+    expected_parameter_type = federated_language.StructType(type_signature)
     self.assertEqual(actual_type.parameter, expected_parameter_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(
         proto, operands
@@ -417,22 +421,22 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
       (
           'different_structures',
           tf.math.add,
-          computation_types.StructType([
-              computation_types.StructType([
-                  computation_types.TensorType(np.int32),
+          federated_language.StructType([
+              federated_language.StructType([
+                  federated_language.TensorType(np.int32),
               ]),
-              computation_types.StructType([
-                  computation_types.TensorType(np.int32),
-                  computation_types.TensorType(np.int32),
+              federated_language.StructType([
+                  federated_language.TensorType(np.int32),
+                  federated_language.TensorType(np.int32),
               ]),
           ]),
       ),
       (
           'shape_incompatible',
           tf.math.add,
-          computation_types.StructType([
-              computation_types.TensorType(np.float64, [None]),
-              computation_types.TensorType(np.float64, [1, 1]),
+          federated_language.StructType([
+              federated_language.TensorType(np.float64, [None]),
+              federated_language.TensorType(np.float64, [1, 1]),
           ]),
       ),
   )
@@ -449,8 +453,8 @@ class CreateEmptyTupleTest(absltest.TestCase):
     proto, _ = tensorflow_computation_factory.create_empty_tuple()
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(None, [])
+    actual_type = federated_language.framework.deserialize_type(proto.type)
+    expected_type = federated_language.FunctionType(None, [])
     expected_type.check_assignable_from(actual_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(proto)
     expected_result = structure.Struct([])
@@ -461,22 +465,22 @@ class CreateIdentityTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('int', computation_types.TensorType(np.int32), 10),
+      ('int', federated_language.TensorType(np.int32), 10),
       ('unnamed_tuple',
-       computation_types.StructType([np.int32, np.float32]),
+       federated_language.StructType([np.int32, np.float32]),
        structure.Struct([(None, 10), (None, 10.0)])),
       ('named_tuple',
-       computation_types.StructType([('a', np.int32), ('b', np.float32)]),
+       federated_language.StructType([('a', np.int32), ('b', np.float32)]),
        structure.Struct([('a', 10), ('b', 10.0)])),
-      ('sequence', computation_types.SequenceType(np.int32), [10] * 3),
+      ('sequence', federated_language.SequenceType(np.int32), [10] * 3),
   )
   # pyformat: enable
   def test_returns_computation(self, type_signature, value):
     proto, _ = tensorflow_computation_factory.create_identity(type_signature)
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(
+    actual_type = federated_language.framework.deserialize_type(proto.type)
+    expected_type = federated_language.FunctionType(
         type_signature, type_signature
     )
     self.assertEqual(actual_type, expected_type)
@@ -489,7 +493,7 @@ class CreateIdentityTest(parameterized.TestCase):
       ('none', None),
       (
           'federated_type',
-          computation_types.FederatedType(np.int32, placements.SERVER),
+          federated_language.FederatedType(np.int32, federated_language.SERVER),
       ),
   )
   def test_raises_type_error(self, type_signature):
@@ -498,7 +502,7 @@ class CreateIdentityTest(parameterized.TestCase):
 
   def test_feeds_and_fetches_different(self):
     proto, _ = tensorflow_computation_factory.create_identity(
-        computation_types.TensorType(np.int32)
+        federated_language.TensorType(np.int32)
     )
     self.assertNotEqual(proto.tensorflow.parameter, proto.tensorflow.result)
 
@@ -508,15 +512,15 @@ class CreateComputationForPyFnTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('const', lambda: 10, None, None, 10),
-      ('identity', lambda x: x, computation_types.TensorType(np.int32), 10, 10),
+      ('identity', lambda x: x, federated_language.TensorType(np.int32), 10, 10),
       ('add_one',
        lambda x: x + 1,
-       computation_types.TensorType(np.int32),
+       federated_language.TensorType(np.int32),
        10,
        11),
       ('dataset_reduce',
        lambda ds: ds.reduce(np.int32(0), lambda x, y: x + y),
-       computation_types.SequenceType(np.int32),
+       federated_language.SequenceType(np.int32),
        list(range(10)),
        45),
   )
@@ -533,9 +537,9 @@ class CreateComputationForPyFnTest(parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
-      ('none_py_fn', None, computation_types.TensorType(np.int32)),
+      ('none_py_fn', None, federated_language.TensorType(np.int32)),
       ('none_type', lambda x: x, None),
-      ('unnecessary_type', lambda: 10, computation_types.TensorType(np.int32)),
+      ('unnecessary_type', lambda: 10, federated_language.TensorType(np.int32)),
   )
   def test_raises_type_error_with_none(self, py_fn, type_signature):
     with self.assertRaises(TypeError):

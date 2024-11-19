@@ -13,14 +13,9 @@
 # limitations under the License.
 """Library of compositional helpers for iterative processes."""
 
+import federated_language
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.templates import learning_process
 
@@ -38,9 +33,9 @@ class MultipleMatchingSequenceTypesError(TypeError):
 
 
 def compose_dataset_computation_with_computation(
-    dataset_computation: computation_base.Computation,
-    computation_body: computation_base.Computation,
-) -> computation_base.Computation:
+    dataset_computation: federated_language.framework.Computation,
+    computation_body: federated_language.framework.Computation,
+) -> federated_language.framework.Computation:
   """Builds a new `tff.Computation` which constructs datasets on clients.
 
   Given a `tff.Computation` that returns a `tf.data.Dataset`, and a
@@ -96,11 +91,15 @@ def compose_dataset_computation_with_computation(
     `computation_body` declares more than one sequence parameter matching the
     expected dataset type.
   """
-  py_typecheck.check_type(dataset_computation, computation_base.Computation)
-  py_typecheck.check_type(computation_body, computation_base.Computation)
+  py_typecheck.check_type(
+      dataset_computation, federated_language.framework.Computation
+  )
+  py_typecheck.check_type(
+      computation_body, federated_language.framework.Computation
+  )
 
   dataset_return_type = dataset_computation.type_signature.result
-  if not isinstance(dataset_return_type, computation_types.SequenceType):
+  if not isinstance(dataset_return_type, federated_language.SequenceType):
     raise TypeError(
         'Expected a `tff.SequenceType` to be returned from '
         '`dataset_computation`; found {} instead.'.format(dataset_return_type)
@@ -118,23 +117,25 @@ def compose_dataset_computation_with_computation(
   comp_body_param_type = computation_body.type_signature.parameter
 
   def is_desired_federated_sequence(t):
-    if not isinstance(t, computation_types.FederatedType):
+    if not isinstance(t, federated_language.FederatedType):
       return False
     return t.member.is_assignable_from(dataset_return_type)
 
   if is_desired_federated_sequence(comp_body_param_type):
     # Single argument that matches, we compose in a straightforward manner.
-    new_param_type = computation_types.FederatedType(
-        dataset_computation.type_signature.parameter, placements.CLIENTS
+    new_param_type = federated_language.FederatedType(
+        dataset_computation.type_signature.parameter, federated_language.CLIENTS
     )
 
-    @federated_computation.federated_computation(new_param_type)
+    @federated_language.federated_computation(new_param_type)
     def new_computation(param):
-      datasets_on_clients = intrinsics.federated_map(dataset_computation, param)
+      datasets_on_clients = federated_language.federated_map(
+          dataset_computation, param
+      )
       return computation_body(datasets_on_clients)
 
     return new_computation
-  elif isinstance(comp_body_param_type, computation_types.StructType):
+  elif isinstance(comp_body_param_type, federated_language.StructType):
     # If the computation has multiple arguments we need to search over them
     # recursively to find the one that matches the type signature of
     # dataset_computation's result.
@@ -144,15 +145,15 @@ def compose_dataset_computation_with_computation(
     dataset_index_path = None
     # Federated version of the dataset_computation's argument type signature to
     # use in the final computation type.
-    federated_param_type = computation_types.FederatedType(
-        dataset_computation.type_signature.parameter, placements.CLIENTS
+    federated_param_type = federated_language.FederatedType(
+        dataset_computation.type_signature.parameter, federated_language.CLIENTS
     )
     # Tracks all sequence types encountered in the recursive search for the
     # error message in case the desired argument is not found.
     sequence_types = []
 
     def build_new_param_type(
-        struct_param_type: computation_types.StructType, index_path
+        struct_param_type: federated_language.StructType, index_path
     ):
       """Builds a new struct parameter type.
 
@@ -178,8 +179,8 @@ def compose_dataset_computation_with_computation(
           structure.iter_elements(struct_param_type)
       ):
         if isinstance(
-            elem_type, computation_types.FederatedType
-        ) and isinstance(elem_type.member, computation_types.SequenceType):
+            elem_type, federated_language.FederatedType
+        ) and isinstance(elem_type.member, federated_language.SequenceType):
           sequence_types.append(elem_type.member)
 
         if is_desired_federated_sequence(elem_type):
@@ -193,13 +194,13 @@ def compose_dataset_computation_with_computation(
             )
           dataset_index_path = index_path + [idx]
           new_param_elements.append((elem_name, federated_param_type))
-        elif isinstance(elem_type, computation_types.StructType):
+        elif isinstance(elem_type, federated_language.StructType):
           new_param_elements.append(
               (elem_name, build_new_param_type(elem_type, index_path + [idx]))
           )
         else:
           new_param_elements.append((elem_name, elem_type))
-      return computation_types.StructType(new_param_elements)
+      return federated_language.StructType(new_param_elements)
 
     new_param_type = build_new_param_type(comp_body_param_type, [])
 
@@ -245,14 +246,14 @@ def compose_dataset_computation_with_computation(
         if idx != index_path[depth]:
           ret_param.append(elem)
         elif depth == len(index_path) - 1:
-          ret_param.append(intrinsics.federated_map(computation, elem))
+          ret_param.append(federated_language.federated_map(computation, elem))
         else:
           ret_param.append(
               map_at_path(elem, index_path, depth + 1, computation)
           )
       return ret_param
 
-    @federated_computation.federated_computation(new_param_type)
+    @federated_language.federated_computation(new_param_type)
     def new_computation(param):
       return computation_body(
           map_at_path(param, dataset_index_path, 0, dataset_computation)
@@ -270,7 +271,7 @@ def compose_dataset_computation_with_computation(
 
 
 def compose_dataset_computation_with_iterative_process(
-    dataset_computation: computation_base.Computation,
+    dataset_computation: federated_language.framework.Computation,
     process: iterative_process.IterativeProcess,
 ) -> iterative_process.IterativeProcess:
   """Builds a new iterative process which constructs datasets on clients.
@@ -327,11 +328,13 @@ def compose_dataset_computation_with_iterative_process(
     TypeError: If the arguments are of the wrong types, or their TFF type
     signatures are incompatible with the specification of this function.
   """
-  py_typecheck.check_type(dataset_computation, computation_base.Computation)
+  py_typecheck.check_type(
+      dataset_computation, federated_language.framework.Computation
+  )
   py_typecheck.check_type(process, iterative_process.IterativeProcess)
 
   dataset_return_type = dataset_computation.type_signature.result
-  if not isinstance(dataset_return_type, computation_types.SequenceType):
+  if not isinstance(dataset_return_type, federated_language.SequenceType):
     raise TypeError(
         'Expected a `tff.SequenceType` to be returned from '
         '`dataset_computation`; found {} instead.'.format(dataset_return_type)
@@ -347,9 +350,9 @@ def compose_dataset_computation_with_iterative_process(
     )
 
   init_fn = process.initialize
-  if type_analysis.contains(
+  if federated_language.framework.type_contains(
       init_fn.type_signature.result,
-      lambda x: isinstance(x, computation_types.SequenceType),
+      lambda x: isinstance(x, federated_language.SequenceType),
   ):
     raise TypeError(
         'Cannot construct a new iterative process if a dataset is '
@@ -366,7 +369,7 @@ def compose_dataset_computation_with_iterative_process(
 
 
 def compose_dataset_computation_with_learning_process(
-    dataset_computation: computation_base.Computation,
+    dataset_computation: federated_language.framework.Computation,
     process: learning_process.LearningProcess,
 ) -> learning_process.LearningProcess:
   """Builds a new learning process which constructs datasets on clients.

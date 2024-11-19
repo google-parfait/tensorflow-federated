@@ -22,9 +22,9 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -74,7 +74,7 @@ TEST_F(ValueValidationTest, ValidateFederatedErrorOnWrongNumberClients) {
 
 TEST_F(ValueValidationTest, ValidateFederatedErrorOnNonAllEqualServer) {
   v0::Value value_proto;
-  v0::FederatedType* type_proto =
+  federated_language::FederatedType* type_proto =
       value_proto.mutable_federated()->mutable_type();
   type_proto->set_all_equal(false);
   *type_proto->mutable_placement()->mutable_value()->mutable_uri() = "server";

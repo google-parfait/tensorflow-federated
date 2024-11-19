@@ -31,10 +31,10 @@ limitations under the License
 #include "absl/synchronization/mutex.h"
 #include "include/grpcpp/server_context.h"
 #include "include/grpcpp/support/status.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {

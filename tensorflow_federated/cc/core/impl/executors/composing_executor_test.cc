@@ -26,6 +26,8 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language/proto/data_type.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -34,8 +36,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -339,21 +339,21 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedAggregate) {
   v0::Value result_from_child = ServerV(TensorV("result from child"));
   v0::Value final_result_unfed = TensorV("final result");
 
-  v0::FunctionType intrinsic_type_pb;
-  v0::FederatedType* parameter_type_pb =
+  federated_language::FunctionType intrinsic_type_pb;
+  federated_language::FederatedType* parameter_type_pb =
       intrinsic_type_pb.mutable_parameter()->mutable_federated();
   parameter_type_pb->mutable_placement()->mutable_value()->set_uri(
       kClientsUri.data(), kClientsUri.size());
   parameter_type_pb->set_all_equal(false);
   parameter_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::DataType::DT_STRING);
-  v0::FederatedType* result_type_pb =
+      federated_language::DataType::DT_STRING);
+  federated_language::FederatedType* result_type_pb =
       intrinsic_type_pb.mutable_result()->mutable_federated();
   result_type_pb->mutable_placement()->mutable_value()->set_uri(
       kServerUri.data(), kServerUri.size());
   result_type_pb->set_all_equal(true);
   result_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::DataType::DT_STRING);
+      federated_language::DataType::DT_STRING);
 
   for (const auto& child : mock_children_) {
     auto child_value = child->ExpectCreateValue(value);
@@ -462,14 +462,14 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtClients) {
   std::vector<v0::Value> client_vals_out;
   v0::Value fn = TensorV(24601);
 
-  v0::FunctionType intrinsic_type_pb;
-  v0::FederatedType* parameter_type_pb =
+  federated_language::FunctionType intrinsic_type_pb;
+  federated_language::FederatedType* parameter_type_pb =
       intrinsic_type_pb.mutable_parameter()->mutable_federated();
   parameter_type_pb->mutable_placement()->mutable_value()->set_uri(
       kClientsUri.data(), kClientsUri.size());
   parameter_type_pb->set_all_equal(false);
   parameter_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::DataType::DT_INT32);
+      federated_language::DataType::DT_INT32);
   *intrinsic_type_pb.mutable_result()->mutable_federated() = *parameter_type_pb;
 
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
@@ -508,14 +508,14 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAllEqualAtClients) {
   std::vector<v0::Value> client_vals_out;
   v0::Value fn = TensorV(24601);
 
-  v0::FunctionType intrinsic_type_pb;
-  v0::FederatedType* parameter_type_pb =
+  federated_language::FunctionType intrinsic_type_pb;
+  federated_language::FederatedType* parameter_type_pb =
       intrinsic_type_pb.mutable_parameter()->mutable_federated();
   parameter_type_pb->mutable_placement()->mutable_value()->set_uri(
       kClientsUri.data(), kClientsUri.size());
   parameter_type_pb->set_all_equal(true);
   parameter_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::DataType::DT_INT32);
+      federated_language::DataType::DT_INT32);
   *intrinsic_type_pb.mutable_result()->mutable_federated() = *parameter_type_pb;
 
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
@@ -593,14 +593,14 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtClients) {
   v0::Value fn = TensorV(22);
   std::vector<v0::Value> client_results;
 
-  v0::FunctionType intrinsic_type_pb;
-  v0::FederatedType* result_type_pb =
+  federated_language::FunctionType intrinsic_type_pb;
+  federated_language::FederatedType* result_type_pb =
       intrinsic_type_pb.mutable_result()->mutable_federated();
   result_type_pb->mutable_placement()->mutable_value()->set_uri(
       kClientsUri.data(), kClientsUri.size());
   result_type_pb->set_all_equal(false);
   result_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::DataType::DT_INT32);
+      federated_language::DataType::DT_INT32);
 
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
@@ -647,8 +647,8 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedSelect) {
   v0::Value select_fn = TensorV("select_fn");
   mock_server_->ExpectCreateMaterialize(TensorV("server_val"));
 
-  v0::FunctionType intrinsic_type_pb;
-  v0::StructType* parameter_type_pb =
+  federated_language::FunctionType intrinsic_type_pb;
+  federated_language::StructType* parameter_type_pb =
       intrinsic_type_pb.mutable_parameter()->mutable_struct_();
   *parameter_type_pb->add_element()->mutable_value() =
       TFF_ASSERT_OK(InferTypeFromValue(keys));
@@ -708,21 +708,21 @@ TEST_F(ComposingExecutorTest,
       unplaced_id,  // select_fn
   }));
 
-  v0::FunctionType intrinsic_type_pb;
-  v0::FederatedType* parameter_type_pb =
+  federated_language::FunctionType intrinsic_type_pb;
+  federated_language::FederatedType* parameter_type_pb =
       intrinsic_type_pb.mutable_parameter()->mutable_federated();
   parameter_type_pb->mutable_placement()->mutable_value()->set_uri(
       kClientsUri.data(), kClientsUri.size());
   parameter_type_pb->set_all_equal(false);
   parameter_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::DataType::DT_INT32);
-  v0::FederatedType* result_type_pb =
+      federated_language::DataType::DT_INT32);
+  federated_language::FederatedType* result_type_pb =
       intrinsic_type_pb.mutable_result()->mutable_federated();
   result_type_pb->mutable_placement()->mutable_value()->set_uri(
       kServerUri.data(), kServerUri.size());
   result_type_pb->set_all_equal(true);
   result_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::DataType::DT_INT32);
+      federated_language::DataType::DT_INT32);
   auto agg = TFF_ASSERT_OK(
       test_executor_->CreateValue(FederatedAggregateV(intrinsic_type_pb)));
   auto res = TFF_ASSERT_OK(test_executor_->CreateCall(agg, arg));
@@ -791,20 +791,20 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsFlat) {
   auto merged_struct = StructV({TensorV(1), TensorV(2)});
   v0::Value merged = ClientsV({merged_struct}, true);
 
-  v0::FunctionType intrinsic_type_pb;
-  v0::FederatedType* parameter_type_pb =
+  federated_language::FunctionType intrinsic_type_pb;
+  federated_language::FederatedType* parameter_type_pb =
       intrinsic_type_pb.mutable_parameter()->mutable_federated();
-  v0::StructType* parameter_struct_type_pb =
+  federated_language::StructType* parameter_struct_type_pb =
       parameter_type_pb->mutable_member()->mutable_struct_();
-  v0::FederatedType* result_type_pb =
+  federated_language::FederatedType* result_type_pb =
       intrinsic_type_pb.mutable_result()->mutable_federated();
   result_type_pb->mutable_placement()->mutable_value()->set_uri(
       kClientsUri.data(), kClientsUri.size());
   result_type_pb->set_all_equal(false);
-  v0::StructType* result_struct_type_pb =
+  federated_language::StructType* result_struct_type_pb =
       result_type_pb->mutable_member()->mutable_struct_();
   for (int i = 0; i < 2; ++i) {
-    v0::FederatedType* parameter_element_type_pb =
+    federated_language::FederatedType* parameter_element_type_pb =
         parameter_struct_type_pb->add_element()
             ->mutable_value()
             ->mutable_federated();
@@ -812,11 +812,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsFlat) {
         kClientsUri.data(), kClientsUri.size());
     parameter_element_type_pb->set_all_equal(false);
     parameter_element_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-        v0::DataType::DT_INT32);
+        federated_language::DataType::DT_INT32);
     result_struct_type_pb->add_element()
         ->mutable_value()
         ->mutable_tensor()
-        ->set_dtype(v0::DataType::DT_INT32);
+        ->set_dtype(federated_language::DataType::DT_INT32);
   }
 
   for (const auto& child : mock_children_) {
@@ -848,20 +848,20 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsNested) {
   auto merged_struct = StructV({TensorV(1), StructV({TensorV(2)})});
   v0::Value merged = ClientsV({merged_struct}, true);
 
-  v0::FunctionType intrinsic_type_pb;
-  v0::FederatedType* parameter_type_pb =
+  federated_language::FunctionType intrinsic_type_pb;
+  federated_language::FederatedType* parameter_type_pb =
       intrinsic_type_pb.mutable_parameter()->mutable_federated();
-  v0::StructType* parameter_struct_type_pb =
+  federated_language::StructType* parameter_struct_type_pb =
       parameter_type_pb->mutable_member()->mutable_struct_();
-  v0::FederatedType* result_type_pb =
+  federated_language::FederatedType* result_type_pb =
       intrinsic_type_pb.mutable_result()->mutable_federated();
   result_type_pb->mutable_placement()->mutable_value()->set_uri(
       kClientsUri.data(), kClientsUri.size());
   result_type_pb->set_all_equal(false);
-  v0::StructType* result_struct_type_pb =
+  federated_language::StructType* result_struct_type_pb =
       result_type_pb->mutable_member()->mutable_struct_();
   for (int i = 0; i < 2; ++i) {
-    v0::FederatedType* parameter_element_type_pb =
+    federated_language::FederatedType* parameter_element_type_pb =
         parameter_struct_type_pb->add_element()
             ->mutable_value()
             ->mutable_federated();
@@ -869,11 +869,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsNested) {
         kClientsUri.data(), kClientsUri.size());
     parameter_element_type_pb->set_all_equal(false);
     parameter_element_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-        v0::DataType::DT_INT32);
+        federated_language::DataType::DT_INT32);
     result_struct_type_pb->add_element()
         ->mutable_value()
         ->mutable_tensor()
-        ->set_dtype(v0::DataType::DT_INT32);
+        ->set_dtype(federated_language::DataType::DT_INT32);
   }
 
   for (const auto& child : mock_children_) {

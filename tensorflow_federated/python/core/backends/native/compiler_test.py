@@ -13,33 +13,28 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.core.backends.native import compiler
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 
 class DesugarAndTransformTest(absltest.TestCase):
 
   def test_desugaring_sum_insert_id_for_tf_computations(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def fed_sum(x):
-      return intrinsics.federated_sum(x)
+      return federated_language.federated_sum(x)
 
     reduced_comp = compiler.desugar_and_transform_to_native(fed_sum)
     reduced_bb = reduced_comp.to_building_block()
 
     def _check_tf_computations_have_ids(comp):
       if (
-          isinstance(comp, building_blocks.CompiledComputation)
+          isinstance(comp, federated_language.framework.CompiledComputation)
           and comp.proto.WhichOneof('computation') == 'tensorflow'
           and not comp.proto.tensorflow.cache_key.id
       ):
@@ -50,7 +45,7 @@ class DesugarAndTransformTest(absltest.TestCase):
       return comp, False
 
     # Doesn't raise.
-    transformation_utils.transform_postorder(
+    federated_language.framework.transform_postorder(
         reduced_bb, _check_tf_computations_have_ids
     )
 

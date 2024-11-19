@@ -30,6 +30,7 @@ limitations under the License
 #include "absl/types/span.h"
 #include "include/grpcpp/grpcpp.h"
 #include "include/grpcpp/support/status.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
@@ -37,7 +38,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {

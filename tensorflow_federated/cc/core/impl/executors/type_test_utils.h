@@ -19,22 +19,23 @@ limitations under the License
 #include <cstdint>
 
 #include "absl/types/span.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language/proto/data_type.pb.h"
 
 namespace tensorflow_federated {
 namespace testing {
 
-// Construct a v0::Type of shape <T, <T, T>> for parameter T.
-inline v0::Type NestedStructT(v0::DataType dtype) {
-  v0::Type float_tensor_type;
+// Construct a federated_language::Type of shape <T, <T, T>> for parameter T.
+inline federated_language::Type NestedStructT(
+    federated_language::DataType dtype) {
+  federated_language::Type float_tensor_type;
   float_tensor_type.mutable_tensor()->set_dtype(dtype);
-  v0::Type nested_struct_type;
+  federated_language::Type nested_struct_type;
   for (int i = 0; i < 2; i++) {
     *nested_struct_type.mutable_struct_()->add_element()->mutable_value() =
         float_tensor_type;
   }
-  v0::Type return_type;
+  federated_language::Type return_type;
   *return_type.mutable_struct_()->add_element()->mutable_value() =
       float_tensor_type;
   *return_type.mutable_struct_()->add_element()->mutable_value() =
@@ -43,9 +44,9 @@ inline v0::Type NestedStructT(v0::DataType dtype) {
 }
 
 // Construct a tensor type with the provided datatype and shape specification.
-inline v0::Type TensorT(v0::DataType dtype,
-                        absl::Span<const int64_t> shape = {}) {
-  v0::Type tensor_type;
+inline federated_language::Type TensorT(federated_language::DataType dtype,
+                                        absl::Span<const int64_t> shape = {}) {
+  federated_language::Type tensor_type;
   tensor_type.mutable_tensor()->set_dtype(dtype);
   for (const int64_t& dim : shape) {
     tensor_type.mutable_tensor()->add_dims(dim);
@@ -54,42 +55,51 @@ inline v0::Type TensorT(v0::DataType dtype,
 }
 
 // Construct an unnamed struct type with the provided elements
-inline v0::Type StructT(absl::Span<const v0::Type> elements) {
-  v0::Type struct_type;
-  for (const v0::Type& el_type : elements) {
+inline federated_language::Type StructT(
+    absl::Span<const federated_language::Type> elements) {
+  federated_language::Type struct_type;
+  for (const federated_language::Type& el_type : elements) {
     *struct_type.mutable_struct_()->add_element()->mutable_value() = el_type;
   }
   return struct_type;
 }
 
-// Construct a functional v0::Type with no argument, and provided return type.
-inline v0::Type NoArgFunctionT(v0::Type return_type) {
-  v0::Type function_type;
+// Construct a functional federated_language::Type with no argument, and
+// provided return type.
+inline federated_language::Type NoArgFunctionT(
+    federated_language::Type return_type) {
+  federated_language::Type function_type;
   *function_type.mutable_function()->mutable_result() = return_type;
   return function_type;
 }
 
-// Construct a functional v0::Type with accepting and returning the same type.
-inline v0::Type IdentityFunctionT(v0::Type arg_type) {
-  v0::Type function_type;
+// Construct a functional federated_language::Type with accepting and returning
+// the same type.
+inline federated_language::Type IdentityFunctionT(
+    federated_language::Type arg_type) {
+  federated_language::Type function_type;
   *function_type.mutable_function()->mutable_parameter() = arg_type;
   *function_type.mutable_function()->mutable_result() = arg_type;
   return function_type;
 }
 
-// Construct a functional v0::Type with provided argument and return types.
-inline v0::Type FunctionT(v0::Type parameter_type, v0::Type return_type) {
-  v0::Type function_type;
+// Construct a functional federated_language::Type with provided argument and
+// return types.
+inline federated_language::Type FunctionT(
+    federated_language::Type parameter_type,
+    federated_language::Type return_type) {
+  federated_language::Type function_type;
   *function_type.mutable_function()->mutable_parameter() = parameter_type;
   *function_type.mutable_function()->mutable_result() = return_type;
   return function_type;
 }
-// Construct a v0::Type of shape <T,...> for parameter T, with num_reps
-// elements.
-inline v0::Type FlatStructT(v0::DataType dtype, int num_reps) {
-  v0::Type float_tensor_type;
+// Construct a federated_language::Type of shape <T,...> for parameter T, with
+// num_reps elements.
+inline federated_language::Type FlatStructT(federated_language::DataType dtype,
+                                            int num_reps) {
+  federated_language::Type float_tensor_type;
   float_tensor_type.mutable_tensor()->set_dtype(dtype);
-  v0::Type struct_type;
+  federated_language::Type struct_type;
   for (int i = 0; i < num_reps; i++) {
     *struct_type.mutable_struct_()->add_element()->mutable_value() =
         float_tensor_type;

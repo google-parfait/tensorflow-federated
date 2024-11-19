@@ -26,71 +26,71 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "third_party/eigen3/Eigen/Core"
-#include "tensorflow_federated/proto/v0/array.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
+#include "third_party/py/federated_language/proto/array.pb.h"
+#include "third_party/py/federated_language/proto/data_type.pb.h"
 
 namespace tensorflow_federated {
 namespace testing {
 
 template <typename T>
-inline absl::StatusOr<v0::Array> CreateArray(v0::DataType dtype,
-                                             v0::ArrayShape shape_pb,
-                                             std::initializer_list<T> values) {
-  v0::Array array_pb;
+inline absl::StatusOr<federated_language::Array> CreateArray(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
+    std::initializer_list<T> values) {
+  federated_language::Array array_pb;
   array_pb.set_dtype(dtype);
   array_pb.mutable_shape()->Swap(&shape_pb);
   switch (dtype) {
-    case v0::DataType::DT_BOOL: {
+    case federated_language::DataType::DT_BOOL: {
       array_pb.mutable_bool_list()->mutable_value()->Assign(values.begin(),
                                                             values.end());
       break;
     }
-    case v0::DataType::DT_INT8: {
+    case federated_language::DataType::DT_INT8: {
       array_pb.mutable_int8_list()->mutable_value()->Assign(values.begin(),
                                                             values.end());
       break;
     }
-    case v0::DataType::DT_INT16: {
+    case federated_language::DataType::DT_INT16: {
       array_pb.mutable_int16_list()->mutable_value()->Assign(values.begin(),
                                                              values.end());
       break;
     }
-    case v0::DataType::DT_INT32: {
+    case federated_language::DataType::DT_INT32: {
       array_pb.mutable_int32_list()->mutable_value()->Assign(values.begin(),
                                                              values.end());
       break;
     }
-    case v0::DataType::DT_INT64: {
+    case federated_language::DataType::DT_INT64: {
       array_pb.mutable_int64_list()->mutable_value()->Assign(values.begin(),
                                                              values.end());
       break;
     }
-    case v0::DataType::DT_UINT8: {
+    case federated_language::DataType::DT_UINT8: {
       array_pb.mutable_uint8_list()->mutable_value()->Assign(values.begin(),
                                                              values.end());
       break;
     }
-    case v0::DataType::DT_UINT16: {
+    case federated_language::DataType::DT_UINT16: {
       array_pb.mutable_uint16_list()->mutable_value()->Assign(values.begin(),
                                                               values.end());
       break;
     }
-    case v0::DataType::DT_UINT32: {
+    case federated_language::DataType::DT_UINT32: {
       array_pb.mutable_uint32_list()->mutable_value()->Assign(values.begin(),
                                                               values.end());
       break;
     }
-    case v0::DataType::DT_UINT64: {
+    case federated_language::DataType::DT_UINT64: {
       array_pb.mutable_uint64_list()->mutable_value()->Assign(values.begin(),
                                                               values.end());
       break;
     }
-    case v0::DataType::DT_FLOAT: {
+    case federated_language::DataType::DT_FLOAT: {
       array_pb.mutable_float32_list()->mutable_value()->Assign(values.begin(),
                                                                values.end());
       break;
     }
-    case v0::DataType::DT_DOUBLE: {
+    case federated_language::DataType::DT_DOUBLE: {
       array_pb.mutable_float64_list()->mutable_value()->Assign(values.begin(),
                                                                values.end());
       break;
@@ -103,14 +103,14 @@ inline absl::StatusOr<v0::Array> CreateArray(v0::DataType dtype,
 }
 
 // Overload for Eigen::half.
-inline absl::StatusOr<v0::Array> CreateArray(
-    v0::DataType dtype, v0::ArrayShape shape_pb,
+inline absl::StatusOr<federated_language::Array> CreateArray(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
     std::initializer_list<const Eigen::half> values) {
-  v0::Array array_pb;
+  federated_language::Array array_pb;
   array_pb.set_dtype(dtype);
   array_pb.mutable_shape()->Swap(&shape_pb);
   switch (dtype) {
-    case v0::DataType::DT_HALF: {
+    case federated_language::DataType::DT_HALF: {
       auto size = values.size();
       array_pb.mutable_float16_list()->mutable_value()->Reserve(size);
       for (auto element : values) {
@@ -128,20 +128,20 @@ inline absl::StatusOr<v0::Array> CreateArray(
 
 // Overload for complex.
 template <typename T>
-inline absl::StatusOr<v0::Array> CreateArray(
-    v0::DataType dtype, v0::ArrayShape shape_pb,
+inline absl::StatusOr<federated_language::Array> CreateArray(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
     std::initializer_list<std::complex<T>> values) {
-  v0::Array array_pb;
+  federated_language::Array array_pb;
   array_pb.set_dtype(dtype);
   array_pb.mutable_shape()->Swap(&shape_pb);
   const T* begin = reinterpret_cast<const T*>(values.begin());
   switch (dtype) {
-    case v0::DataType::DT_COMPLEX64: {
+    case federated_language::DataType::DT_COMPLEX64: {
       array_pb.mutable_complex64_list()->mutable_value()->Assign(
           begin, begin + values.size() * 2);
       break;
     }
-    case v0::DataType::DT_COMPLEX128: {
+    case federated_language::DataType::DT_COMPLEX128: {
       array_pb.mutable_complex128_list()->mutable_value()->Assign(
           begin, begin + values.size() * 2);
       break;
@@ -154,14 +154,14 @@ inline absl::StatusOr<v0::Array> CreateArray(
 }
 
 // Overload for Eigen::bfloat16.
-inline absl::StatusOr<v0::Array> CreateArray(
-    v0::DataType dtype, v0::ArrayShape shape_pb,
+inline absl::StatusOr<federated_language::Array> CreateArray(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
     std::initializer_list<const Eigen::bfloat16> values) {
-  v0::Array array_pb;
+  federated_language::Array array_pb;
   array_pb.set_dtype(dtype);
   array_pb.mutable_shape()->Swap(&shape_pb);
   switch (dtype) {
-    case v0::DataType::DT_BFLOAT16: {
+    case federated_language::DataType::DT_BFLOAT16: {
       auto size = values.size();
       array_pb.mutable_bfloat16_list()->mutable_value()->Reserve(size);
       for (auto element : values) {
@@ -178,14 +178,14 @@ inline absl::StatusOr<v0::Array> CreateArray(
 }
 
 // Overload for string.
-inline absl::StatusOr<v0::Array> CreateArray(
-    v0::DataType dtype, v0::ArrayShape shape_pb,
+inline absl::StatusOr<federated_language::Array> CreateArray(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
     std::initializer_list<const char*> values) {
-  v0::Array array_pb;
+  federated_language::Array array_pb;
   array_pb.set_dtype(dtype);
   array_pb.mutable_shape()->Swap(&shape_pb);
   switch (dtype) {
-    case v0::DT_STRING: {
+    case federated_language::DT_STRING: {
       array_pb.mutable_string_list()->mutable_value()->Assign(values.begin(),
                                                               values.end());
       break;
@@ -197,10 +197,10 @@ inline absl::StatusOr<v0::Array> CreateArray(
   return array_pb;
 }
 
-inline absl::StatusOr<v0::Array> CreateArrayContent(v0::DataType dtype,
-                                                    v0::ArrayShape shape_pb,
-                                                    std::string_view content) {
-  v0::Array array_pb;
+inline absl::StatusOr<federated_language::Array> CreateArrayContent(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
+    std::string_view content) {
+  federated_language::Array array_pb;
   array_pb.set_dtype(dtype);
   array_pb.mutable_shape()->Swap(&shape_pb);
   *array_pb.mutable_content() = content;

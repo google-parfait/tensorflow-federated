@@ -28,11 +28,7 @@ py_library(
     srcs = ["jax_computation.py"],
     deps = [
         ":jax_serialization",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -42,16 +38,14 @@ py_test(
     srcs = ["jax_computation_test.py"],
     deps = [
         ":jax_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/computation:polymorphic_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@federated_language//federated_language",
     ],
 )
 
 py_library(
     name = "jax_computation_context",
     srcs = ["jax_computation_context.py"],
-    deps = ["//tensorflow_federated/python/core/impl/context_stack:context_base"],
+    deps = ["@federated_language//federated_language"],
 )
 
 py_test(
@@ -69,16 +63,11 @@ py_library(
     srcs = ["jax_serialization.py"],
     deps = [
         ":jax_computation_context",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/xla_backend:xla_serialization",
-        "//tensorflow_federated/python/core/impl/computation:function_utils",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
-        "//tensorflow_federated/python/core/impl/types:array_shape",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:typed_object",
+        "@federated_language//federated_language",
+        "@federated_language//federated_language/proto:computation_py_pb2",
     ],
 )
 
@@ -88,12 +77,9 @@ py_test(
     srcs = ["jax_serialization_test.py"],
     deps = [
         ":jax_serialization",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/xla_backend:xla_serialization",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "@federated_language//federated_language",
+        "@federated_language//federated_language/proto:computation_py_pb2",
     ],
 )

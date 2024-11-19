@@ -15,16 +15,14 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import estimation_process
-from tensorflow_federated.python.core.test import static_assert
 
 QEProcess = quantile_estimation.PrivateQuantileEstimationProcess
 
@@ -42,10 +40,10 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
           expected_num_records=100,
           geometric_update=True,
       )
-      below_estimate_state = computation_types.StructType([
+      below_estimate_state = federated_language.StructType([
           (
               'numerator_state',
-              computation_types.StructType(
+              federated_language.StructType(
                   [('l2_norm_clip', np.float32), ('stddev', np.float32)]
               ),
           ),
@@ -59,7 +57,7 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
           geometric_update=True,
       )
       below_estimate_state = ()
-    query_state_type = computation_types.StructType([
+    query_state_type = federated_language.StructType([
         ('current_estimate', np.float32),
         ('target_quantile', np.float32),
         ('learning_rate', np.float32),
@@ -68,14 +66,14 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
     process = QEProcess(quantile_estimator_query)
 
     sum_process_state_type = ()
-    state_type = computation_types.StructType(
+    state_type = federated_language.StructType(
         [query_state_type, sum_process_state_type]
     )
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         state_type,
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type_signature = computation_types.FunctionType(
+    expected_initialize_type_signature = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -84,10 +82,10 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    estimate_type = computation_types.FederatedType(
-        np.float32, placements.SERVER
+    estimate_type = federated_language.FederatedType(
+        np.float32, federated_language.SERVER
     )
-    expected_report_type_signature = computation_types.FunctionType(
+    expected_report_type_signature = federated_language.FunctionType(
         parameter=server_state_type, result=estimate_type
     )
     self.assertTrue(
@@ -96,12 +94,12 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    client_value_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_value_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(
-            computation_types.FunctionType(
+            federated_language.FunctionType(
                 parameter=collections.OrderedDict(
                     state=server_state_type, value=client_value_type
                 ),
@@ -218,7 +216,9 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
         learning_rate=1.0,
         secure_estimation=True,
     )
-    static_assert.assert_not_contains_unsecure_aggregation(secure_process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        secure_process.next
+    )
 
 
 if __name__ == '__main__':

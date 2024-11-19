@@ -16,11 +16,11 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_ARRAY_SHAPE_UTILS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_ARRAY_SHAPE_UTILS_H_
 
-#include "tensorflow_federated/proto/v0/array.pb.h"
+#include "third_party/py/federated_language/proto/array.pb.h"
 
 namespace tensorflow_federated {
 
-inline bool IsScalar(const v0::ArrayShape& shape) {
+inline bool IsScalar(const federated_language::ArrayShape& shape) {
   return shape.dim().empty() && !shape.unknown_rank();
 }
 

@@ -22,14 +22,14 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language/proto/data_type.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_data_backend.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -56,15 +56,15 @@ class DataExecutorTest : public ExecutorTestBase {
 
 TEST_F(DataExecutorTest, CreateValueResolvesData) {
   std::string uri = "some_data_uri";
-  v0::Type data_type;
-  v0::TensorType* tensor_type = data_type.mutable_tensor();
-  tensor_type->set_dtype(v0::DataType::DT_INT32);
+  federated_language::Type data_type;
+  federated_language::TensorType* tensor_type = data_type.mutable_tensor();
+  tensor_type->set_dtype(federated_language::DataType::DT_INT32);
   tensor_type->mutable_dims()->Add(1);
   tensor_type->set_unknown_rank(false);
   v0::Value resolved_data_value = TensorV(22);
   mock_data_backend_->ExpectResolveToValue(uri, data_type, resolved_data_value);
   v0::Value unresolved_data_value;
-  v0::Computation* unresolved_data_computation =
+  federated_language::Computation* unresolved_data_computation =
       unresolved_data_value.mutable_computation();
   unresolved_data_computation->mutable_data()->set_uri(uri);
   *unresolved_data_computation->mutable_type() = data_type;

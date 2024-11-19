@@ -50,6 +50,7 @@ limitations under the License
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/public/session.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_from_tensor_structures.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -58,7 +59,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -166,14 +166,15 @@ void AddDatasetToGraphOp(tensorflow::GraphDef& graphdef_pb,
 //   │dependent│
 //   └─────────┘
 //
-// This is used on parameter bindings of `v0::TensorFlow` computations. This is
-// the reverse of `AddSerializationOpsForResults`, which is used on the result
-// bindings of the function.
+// This is used on parameter bindings of `federated_language::TensorFlow`
+// computations. This is the reverse of `AddSerializationOpsForResults`, which
+// is used on the result bindings of the function.
 absl::Status AddDeserializationOpsForParameters(
-    tensorflow::GraphDef& graphdef_pb, v0::TensorFlow::Binding& binding,
+    tensorflow::GraphDef& graphdef_pb,
+    federated_language::TensorFlow::Binding& binding,
     std::string_view prefix = "root") {
   switch (binding.binding_case()) {
-    case v0::TensorFlow::Binding::kSequence: {
+    case federated_language::TensorFlow::Binding::kSequence: {
       // Get a copy of the name of the placeholder we're operating on. We're
       // going to clear/reset the binding and  then rebuild the it but re-use
       // the placeholder op.
@@ -220,7 +221,7 @@ absl::Status AddDeserializationOpsForParameters(
           dataset_placeholder_node_name);
       return absl::OkStatus();
     }
-    case v0::TensorFlow::Binding::kStruct: {
+    case federated_language::TensorFlow::Binding::kStruct: {
       for (int i = 0; i < binding.struct_().element_size(); ++i) {
         auto& member = *binding.mutable_struct_()->mutable_element(i);
         TFF_TRY(AddDeserializationOpsForParameters(
@@ -262,16 +263,18 @@ absl::Status AddDeserializationOpsForParameters(
 //   │dataset variant tensor│
 //   └──────────────────────┘
 //
-// This is used on result bindings of `v0::TensorFlow` computations. This is
-// the reverse of `AddDeserializationOpsForParameters`, which is used on the
-// parameter bindings of the function.
-absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
-                                           v0::TensorFlow::Binding& binding,
-                                           std::string_view prefix = "root") {
+// This is used on result bindings of `federated_language::TensorFlow`
+// computations. This is the reverse of `AddDeserializationOpsForParameters`,
+// which is used on the parameter bindings of the function.
+absl::Status AddSerializationOpsForResults(
+    tensorflow::GraphDef& graphdef_pb,
+    federated_language::TensorFlow::Binding& binding,
+    std::string_view prefix = "root") {
   switch (binding.binding_case()) {
-    case v0::TensorFlow::Binding::kSequence: {
+    case federated_language::TensorFlow::Binding::kSequence: {
       if (binding.sequence().binding_case() ==
-          v0::TensorFlow::SequenceBinding::kGraphDefTensorName) {
+          federated_language::TensorFlow::SequenceBinding::
+              kGraphDefTensorName) {
         // Already using the correct binding, simply return.
         return absl::OkStatus();
       }
@@ -293,7 +296,7 @@ absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
           graph_names.graph_def_tensor_name);
       return absl::OkStatus();
     }
-    case v0::TensorFlow::Binding::kStruct: {
+    case federated_language::TensorFlow::Binding::kStruct: {
       for (int i = 0; i < binding.struct_().element_size(); ++i) {
         auto& member = *binding.mutable_struct_()->mutable_element(i);
         TFF_TRY(AddSerializationOpsForResults(graphdef_pb, member,
@@ -311,8 +314,8 @@ absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
 
 absl::Status AddDatasetSerializationToSequenceBindings(
     tensorflow::GraphDef& graphdef_pb,
-    std::optional<v0::TensorFlow::Binding>& parameter_binding,
-    v0::TensorFlow::Binding& result_binding) {
+    std::optional<federated_language::TensorFlow::Binding>& parameter_binding,
+    federated_language::TensorFlow::Binding& result_binding) {
   if (parameter_binding != std::nullopt) {
     TFF_TRY(AddDeserializationOpsForParameters(graphdef_pb,
                                                parameter_binding.value()));
@@ -326,16 +329,16 @@ absl::Status AddDatasetSerializationToSequenceBindings(
 class Computation {
  public:
   static absl::StatusOr<std::shared_ptr<Computation>> FromProto(
-      const v0::TensorFlow& comp_pb) {
+      const federated_language::TensorFlow& comp_pb) {
     tensorflow::GraphDef graphdef_pb;
     if (!comp_pb.graph_def().UnpackTo(&graphdef_pb)) {
       return absl::InternalError(ERR_LOG("Could not unpack graphdef proto"));
     }
-    std::optional<v0::TensorFlow::Binding> parameter_shape;
+    std::optional<federated_language::TensorFlow::Binding> parameter_shape;
     if (comp_pb.has_parameter()) {
       parameter_shape = comp_pb.parameter();
     }
-    v0::TensorFlow::Binding result_shape = comp_pb.result();
+    federated_language::TensorFlow::Binding result_shape = comp_pb.result();
     TFF_TRY(AddDatasetSerializationToSequenceBindings(
         graphdef_pb, parameter_shape, result_shape));
     std::vector<std::string> output_tensor_names;
@@ -348,10 +351,11 @@ class Computation {
 
   absl::StatusOr<ExecutorValue> Call(std::optional<ExecutorValue> arg);
 
-  Computation(tensorflow::GraphDef graph, std::string init_op,
-              std::optional<v0::TensorFlow::Binding> parameter_shape,
-              v0::TensorFlow::Binding output_shape,
-              std::vector<std::string> output_tensor_names)
+  Computation(
+      tensorflow::GraphDef graph, std::string init_op,
+      std::optional<federated_language::TensorFlow::Binding> parameter_shape,
+      federated_language::TensorFlow::Binding output_shape,
+      std::vector<std::string> output_tensor_names)
       : session_provider_(std::move(graph)),
         init_op_(std::move(init_op)),
         parameter_shape_(std::move(parameter_shape)),
@@ -368,20 +372,20 @@ class Computation {
 
  private:
   static absl::Status TensorNamesFromBinding(
-      const v0::TensorFlow::Binding& binding,
+      const federated_language::TensorFlow::Binding& binding,
       std::vector<std::string>* tensor_names) {
     switch (binding.binding_case()) {
-      case v0::TensorFlow::Binding::kTensor: {
+      case federated_language::TensorFlow::Binding::kTensor: {
         tensor_names->push_back(binding.tensor().tensor_name());
         return absl::OkStatus();
       }
-      case v0::TensorFlow::Binding::kStruct: {
+      case federated_language::TensorFlow::Binding::kStruct: {
         for (const auto& member : binding.struct_().element()) {
           TFF_TRY(TensorNamesFromBinding(member, tensor_names));
         }
         return absl::OkStatus();
       }
-      case v0::TensorFlow::Binding::kSequence: {
+      case federated_language::TensorFlow::Binding::kSequence: {
         tensor_names->push_back(binding.sequence().graph_def_tensor_name());
         return absl::OkStatus();
       }
@@ -400,8 +404,8 @@ class Computation {
 
   SessionProvider session_provider_;
   std::string init_op_;
-  std::optional<v0::TensorFlow::Binding> parameter_shape_;
-  v0::TensorFlow::Binding output_shape_;
+  std::optional<federated_language::TensorFlow::Binding> parameter_shape_;
+  federated_language::TensorFlow::Binding output_shape_;
   std::vector<std::string> output_tensor_names_;
 };
 
@@ -516,7 +520,7 @@ class ExecutorValue {
   Intrinsic intrinsic() const { return std::get<Intrinsic>(value_); }
 
   absl::Status Bind(
-      const v0::TensorFlow::Binding& shape,
+      const federated_language::TensorFlow::Binding& shape,
       std::vector<std::pair<std::string, tensorflow::Tensor>>* bindings) const {
     switch (type()) {
       case ValueType::TENSOR: {
@@ -595,15 +599,15 @@ class ExecutorValue {
   }
 
   static absl::StatusOr<ExecutorValue> FromTensorsAndBindingStructure(
-      const v0::TensorFlow::Binding& binding_structure,
+      const federated_language::TensorFlow::Binding& binding_structure,
       absl::Span<tensorflow::Tensor>* tensors) {
     bool is_sequence = false;
     switch (binding_structure.binding_case()) {
-      case v0::TensorFlow::Binding::kSequence: {
+      case federated_language::TensorFlow::Binding::kSequence: {
         is_sequence = true;
       }
         TF_FALLTHROUGH_INTENDED;
-      case v0::TensorFlow::Binding::kTensor: {
+      case federated_language::TensorFlow::Binding::kTensor: {
         if (tensors->empty()) {
           return absl::InternalError(
               "TensorFlow computation had fewer output tensors than expected.");
@@ -616,7 +620,7 @@ class ExecutorValue {
           return ExecutorValue(std::move(tensor));
         }
       }
-      case v0::TensorFlow::Binding::kStruct: {
+      case federated_language::TensorFlow::Binding::kStruct: {
         auto elements = std::make_shared<std::vector<ExecutorValue>>();
         elements->reserve(binding_structure.struct_().element_size());
         for (const auto& e_structure : binding_structure.struct_().element()) {
@@ -659,8 +663,9 @@ class ExecutorValue {
                std::shared_ptr<std::vector<ExecutorValue>>, Intrinsic>
       value_;
 
-  static absl::Status BindKindMismatch(const std::string_view value_kind,
-                                       const v0::TensorFlow::Binding& shape) {
+  static absl::Status BindKindMismatch(
+      const std::string_view value_kind,
+      const federated_language::TensorFlow::Binding& shape) {
     return absl::InvalidArgumentError(
         absl::StrCat("Attempted to bind ", value_kind,
                      " value to argument of kind ", shape.Utf8DebugString()));
@@ -841,9 +846,9 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CreateValueComputation(
-      const v0::Computation& comp_pb) {
+      const federated_language::Computation& comp_pb) {
     switch (comp_pb.computation_case()) {
-      case v0::Computation::kTensorflow: {
+      case federated_language::Computation::kTensorflow: {
         if (!comp_pb.tensorflow().has_cache_key() ||
             comp_pb.tensorflow().cache_key().id() == 0) {
           // No ID to use for caching, simply create a computation and skip
@@ -879,12 +884,12 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         }
         return ExecutorValue(computation);
       }
-      case v0::Computation::kLiteral: {
+      case federated_language::Computation::kLiteral: {
         const tensorflow::Tensor tensor =
             TFF_TRY(TensorFromArray(comp_pb.literal().value()));
         return ExecutorValue(std::move(tensor));
       }
-      case v0::Computation::kIntrinsic: {
+      case federated_language::Computation::kIntrinsic: {
         Intrinsic intrinsic =
             TFF_TRY(IntrinsicFromUri(comp_pb.intrinsic().uri()));
         return ExecutorValue(intrinsic);

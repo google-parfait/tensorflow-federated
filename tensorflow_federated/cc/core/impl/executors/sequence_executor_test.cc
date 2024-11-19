@@ -24,13 +24,13 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 
 namespace tensorflow_federated {
 
@@ -236,7 +236,7 @@ TEST_F(SequenceExecutorTest, EmbedFailsWithBadType) {
   v0::Value sequence_pb = SequenceV(1, dataset_len, 1);
   // We mutate the element type of this Sequence value to a non-embeddable type.
 
-  v0::Type function_type;
+  federated_language::Type function_type;
   *function_type.mutable_function()->mutable_result() =
       sequence_pb.sequence().element_type();
 
@@ -333,13 +333,13 @@ TEST_F(SequenceExecutorTest, CreateCallNestedStructureSequenceReduce) {
   // Notice that the names appear in non-sorted order in the TFF type signature;
   // we explicitly test this case to ensure that our traversal corresponds to
   // tf.nest's traversal order, where the keys of ordered dicts are sorted.
-  v0::Type sequence_element_type;
+  federated_language::Type sequence_element_type;
   *sequence_element_type.mutable_struct_()->add_element()->mutable_value() =
       MakeInt64ScalarType();
-  v0::Type* nested_struct_type =
+  federated_language::Type* nested_struct_type =
       sequence_element_type.mutable_struct_()->add_element()->mutable_value();
   for (int i = 0; i < 2; i++) {
-    v0::StructType_Element* struct_elem =
+    federated_language::StructType_Element* struct_elem =
         nested_struct_type->mutable_struct_()->add_element();
     *struct_elem->mutable_value() = MakeInt64ScalarType();
     if (i == 0) {

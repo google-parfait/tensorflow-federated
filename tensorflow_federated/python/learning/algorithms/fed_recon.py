@@ -45,6 +45,7 @@ import collections
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -54,11 +55,6 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import tensor_utils
@@ -97,8 +93,8 @@ def _build_reconstruction_client_work(
     dataset_split_fn: reconstruction_model.ReconstructionDatasetSplitFn,
     client_weighting: client_weight_lib.ClientWeightType,
     metrics_aggregator: Callable[
-        [MetricFinalizersType, computation_types.StructWithPythonType],
-        computation_base.Computation,
+        [MetricFinalizersType, federated_language.StructWithPythonType],
+        federated_language.framework.Computation,
     ],
 ) -> client_works.ClientWorkProcess:
   # pylint: enable=g-bare-generic
@@ -147,12 +143,12 @@ def _build_reconstruction_client_work(
       model_for_metadata
   )
   element_type = tensorflow_types.to_type(model_for_metadata.input_spec)
-  dataset_type = computation_types.SequenceType(element_type)
+  dataset_type = federated_language.SequenceType(element_type)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def initialize():
     # FedRecon client work is stateless (empty tuple).
-    return intrinsics.federated_value((), placements.SERVER)
+    return federated_language.federated_value((), federated_language.SERVER)
 
   # Metric finalizer functions that will be populated while tracing
   # `client_update` and used later in the federated computation.
@@ -337,26 +333,30 @@ def _build_reconstruction_client_work(
         unfinalized_metrics,
     )
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType((), placements.SERVER),
-      computation_types.FederatedType(model_weights_type, placements.CLIENTS),
-      computation_types.FederatedType(dataset_type, placements.CLIENTS),
+  @federated_language.federated_computation(
+      federated_language.FederatedType((), federated_language.SERVER),
+      federated_language.FederatedType(
+          model_weights_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(
+          dataset_type, federated_language.CLIENTS
+      ),
   )
   def next_fn(state, incoming_model_weights, client_datasets):
     del state  # Unused.
-    client_result, unfinalized_metrics = intrinsics.federated_map(
+    client_result, unfinalized_metrics = federated_language.federated_map(
         client_update, (incoming_model_weights, client_datasets)
     )
     metrics_aggregation_computation = metrics_aggregator(
         metric_finalizers, unfinalized_metrics.type_signature.member
     )
-    finalized_metrics = intrinsics.federated_zip(
+    finalized_metrics = federated_language.federated_zip(
         collections.OrderedDict(
             train=metrics_aggregation_computation(unfinalized_metrics)
         )
     )
     return measured_process_lib.MeasuredProcessOutput(
-        state=intrinsics.federated_value((), placements.SERVER),
+        state=federated_language.federated_value((), federated_language.SERVER),
         result=client_result,
         measurements=finalized_metrics,
     )
@@ -395,8 +395,8 @@ def build_fed_recon(
     model_aggregator_factory: Optional[AggregationFactory] = None,
     metrics_aggregator: Optional[
         Callable[
-            [MetricFinalizersType, computation_types.StructWithPythonType],
-            computation_base.Computation,
+            [MetricFinalizersType, federated_language.StructWithPythonType],
+            federated_language.framework.Computation,
         ]
     ] = metrics_aggregators.sum_then_finalize,
 ) -> learning_process.LearningProcess:
@@ -510,7 +510,7 @@ def build_fed_recon(
       model_aggregator_factory, factory.WeightedAggregationFactory
   )
   model_aggregator = model_aggregator_factory.create(
-      model_weights_type.trainable, computation_types.TensorType(np.float32)
+      model_weights_type.trainable, federated_language.TensorType(np.float32)
   )
 
   if dataset_split_fn is None:

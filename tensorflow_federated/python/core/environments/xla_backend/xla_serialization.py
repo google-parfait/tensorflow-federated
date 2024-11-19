@@ -16,15 +16,14 @@
 from collections.abc import Sequence
 from typing import Optional, TypeVar, Union
 
+import federated_language
+from federated_language.proto import computation_pb2 as pb
 from jax.lib import xla_client
 import numpy as np
 
 from google.protobuf import any_pb2
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_serialization
 
 _HLO_MODULE_PROTO_URI = 'type.googleapis.com/xla.HloModuleProto'
 
@@ -73,7 +72,7 @@ def unpack_xla_computation(any_pb: any_pb2.Any) -> xla_client.XlaComputation:
 
 
 def _make_xla_binding_for_type(
-    tensor_indexes: Sequence[int], type_spec: Optional[computation_types.Type]
+    tensor_indexes: Sequence[int], type_spec: Optional[federated_language.Type]
 ) -> Optional[pb.Xla.Binding]:
   """Generates an XLA binding for TFF type `type_spec`.
 
@@ -84,7 +83,7 @@ def _make_xla_binding_for_type(
     tensor_indexes: The list of tensor indexes to use in the binding, in the
       order matching the order of flattened `type_spec`.
     type_spec: The type to generate the binding for. Must be either an instance
-      of `computation_types.Type`, or `None`.
+      of `federated_language.Type`, or `None`.
 
   Returns:
     The generated binding (either `pb.Xla.Binding` or `None`).
@@ -92,13 +91,13 @@ def _make_xla_binding_for_type(
   if type_spec is None:
     return None
 
-  py_typecheck.check_type(type_spec, computation_types.Type)
+  py_typecheck.check_type(type_spec, federated_language.Type)
   py_typecheck.check_type(tensor_indexes, Sequence)
 
   def _make_starting_at_index(
-      type_spec: computation_types.Type, idx: int
+      type_spec: federated_language.Type, idx: int
   ) -> tuple[pb.Xla.Binding, int]:
-    if isinstance(type_spec, computation_types.TensorType):
+    if isinstance(type_spec, federated_language.TensorType):
       return (
           pb.Xla.Binding(
               tensor=pb.Xla.TensorBinding(index=tensor_indexes[idx])
@@ -106,7 +105,7 @@ def _make_xla_binding_for_type(
           idx + 1,
       )
 
-    if isinstance(type_spec, computation_types.StructType):
+    if isinstance(type_spec, federated_language.StructType):
       elements = []
       for _, v in structure.iter_elements(type_spec):
         binding, idx = _make_starting_at_index(v, idx)
@@ -123,10 +122,10 @@ def _make_xla_binding_for_type(
 
 _T = TypeVar(
     '_T',
-    computation_types.TensorType,
-    computation_types.StructType,
-    computation_types.StructWithPythonType,
-    computation_types.FunctionType,
+    federated_language.TensorType,
+    federated_language.StructType,
+    federated_language.StructWithPythonType,
+    federated_language.FunctionType,
 )
 
 
@@ -134,7 +133,7 @@ def _remove_struct_element_names_from_tff_type(type_spec: _T) -> _T:
   """Removes names of struct elements from `type_spec`.
 
   Args:
-    type_spec: An instance of `computation_types.Type` that must be a tensor, a
+    type_spec: An instance of `federated_language.Type` that must be a tensor, a
       (possibly) nested structure of tensors, or a function.
 
   Returns:
@@ -145,26 +144,24 @@ def _remove_struct_element_names_from_tff_type(type_spec: _T) -> _T:
   """
   if type_spec is None:
     return None
-  if isinstance(type_spec, computation_types.FunctionType):
-    return computation_types.FunctionType(
+  if isinstance(type_spec, federated_language.FunctionType):
+    return federated_language.FunctionType(
         _remove_struct_element_names_from_tff_type(type_spec.parameter),  # pytype: disable=wrong-arg-types
         _remove_struct_element_names_from_tff_type(type_spec.result),  # pytype: disable=wrong-arg-types
     )
-  if isinstance(type_spec, computation_types.TensorType):
+  if isinstance(type_spec, federated_language.TensorType):
     return type_spec
-  py_typecheck.check_type(type_spec, computation_types.StructType)
-  return computation_types.StructType(
-      [
-          (None, _remove_struct_element_names_from_tff_type(v))
-          for _, v in structure.iter_elements(type_spec)
-      ]
-  )
+  py_typecheck.check_type(type_spec, federated_language.StructType)
+  return federated_language.StructType([
+      (None, _remove_struct_element_names_from_tff_type(v))
+      for _, v in structure.iter_elements(type_spec)
+  ])
 
 
 def create_xla_tff_computation(
     xla_computation: xla_client.XlaComputation,
     tensor_indexes: Sequence[int],
-    type_spec: computation_types.FunctionType,
+    type_spec: federated_language.FunctionType,
 ) -> pb.Computation:
   """Creates an XLA TFF computation.
 
@@ -183,7 +180,7 @@ def create_xla_tff_computation(
   """
   py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
   py_typecheck.check_type(tensor_indexes, Sequence)
-  py_typecheck.check_type(type_spec, computation_types.FunctionType)
+  py_typecheck.check_type(type_spec, federated_language.FunctionType)
   parameter_binding = _make_xla_binding_for_type(
       tensor_indexes, type_spec.parameter
   )
@@ -193,7 +190,7 @@ def create_xla_tff_computation(
   reconstructed_type = xla_computation_and_bindings_to_tff_type(
       xla_computation, parameter_binding, result_binding
   )
-  py_typecheck.check_type(reconstructed_type, computation_types.FunctionType)
+  py_typecheck.check_type(reconstructed_type, federated_language.FunctionType)
   expected_type = _remove_struct_element_names_from_tff_type(type_spec)
   if not reconstructed_type.is_equivalent_to(expected_type):
     raise ValueError(
@@ -201,7 +198,7 @@ def create_xla_tff_computation(
         'TFF type {}.'.format(str(reconstructed_type), str(expected_type))
     )
   return pb.Computation(
-      type=type_serialization.serialize_type(type_spec),
+      type=federated_language.framework.serialize_type(type_spec),
       xla=pb.Xla(
           hlo_module=pack_xla_computation(xla_computation),
           parameter=parameter_binding,
@@ -214,7 +211,7 @@ def xla_computation_and_bindings_to_tff_type(
     xla_computation: xla_client.XlaComputation,
     parameter_binding: Optional[pb.Xla.Binding],
     result_binding: pb.Xla.Binding,
-) -> computation_types.FunctionType:
+) -> federated_language.FunctionType:
   """Constructs the TFF type from an `xla_client.XlaComputation` and bindings.
 
   NOTE: This is a helper function, primarily intended for use in checking the
@@ -227,7 +224,7 @@ def xla_computation_and_bindings_to_tff_type(
     result_binding: An instance of `pb.Xla.Binding` for the result.
 
   Returns:
-    An instance of `computation_types.FunctionType`.
+    An instance of `federated_language.FunctionType`.
   """
   py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
   program_shape = xla_computation.program_shape()
@@ -249,13 +246,13 @@ def xla_computation_and_bindings_to_tff_type(
         'Failed to construct TFF type from result binding:'
         f'{program_shape.result_shape()=}, {result_binding=}'
     ) from e
-  return computation_types.FunctionType(parameter_type, result_type)
+  return federated_language.FunctionType(parameter_type, result_type)
 
 
 def xla_shapes_and_binding_to_tff_type(
     xla_shapes: Sequence[xla_client.Shape], binding: Optional[pb.Xla.Binding]
 ) -> Optional[
-    Union[computation_types.TensorType, computation_types.StructType]
+    Union[federated_language.TensorType, federated_language.StructType]
 ]:
   """Constructs the TFF type from a list of `xla_client.Shape` and a binding.
 
@@ -264,7 +261,7 @@ def xla_shapes_and_binding_to_tff_type(
     binding: An instance of `pb.Xla.Binding` (or `None` if there's none).
 
   Returns:
-    An instance of `computation_types.Type` (or `None`).
+    An instance of `federated_language.Type` (or `None`).
   """
   py_typecheck.check_type(xla_shapes, Sequence)
   if binding is not None:
@@ -277,7 +274,7 @@ def xla_shapes_and_binding_to_tff_type(
   def _get_type(
       binding: Optional[pb.Xla.Binding],
   ) -> Optional[
-      Union[computation_types.TensorType, computation_types.StructType]
+      Union[federated_language.TensorType, federated_language.StructType]
   ]:
     if binding is None:
       return None
@@ -293,11 +290,11 @@ def xla_shapes_and_binding_to_tff_type(
         raise ValueError(f'Duplicate bindings referring to {index=}')
       unused_shape_indexes.remove(index)
       shape = tensor_shapes[index]
-      return computation_types.TensorType(
+      return federated_language.TensorType(
           shape.numpy_dtype(), shape.dimensions()
       )
     if kind == 'struct':
-      return computation_types.StructType(
+      return federated_language.StructType(
           [(None, _get_type(x)) for x in binding.struct.element]
       )
     if kind is None:

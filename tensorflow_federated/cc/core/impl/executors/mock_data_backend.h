@@ -21,9 +21,9 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "absl/status/status.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/data_backend.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -37,14 +37,15 @@ class MockDataBackend : public DataBackend {
  public:
   ~MockDataBackend() override = default;
   MOCK_METHOD(absl::Status, ResolveToValue,
-              (const v0::Data& data_reference, const v0::Type& type_reference,
+              (const federated_language::Data& data_reference,
+               const federated_language::Type& type_reference,
                v0::Value& data_out),
               (override));
 
   inline void ExpectResolveToValue(std::string expected_uri,
-                                   v0::Type expected_type,
+                                   federated_language::Type expected_type,
                                    v0::Value to_return) {
-    v0::Data data;
+    federated_language::Data data;
     data.set_uri(std::move(expected_uri));
     EXPECT_CALL(*this, ResolveToValue(EqualsProto(data),
                                       EqualsProto(expected_type), ::testing::_))

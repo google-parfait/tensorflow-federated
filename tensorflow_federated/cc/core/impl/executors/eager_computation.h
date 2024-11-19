@@ -24,10 +24,10 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
 #include "tensorflow/core/framework/function.pb.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 
 namespace tensorflow_federated {
 // Class responsible for converting a GraphDef into FunctionDef and executing it
@@ -45,7 +45,7 @@ class EagerComputation {
   // If non-empty Layout map is passed, a Relayout op is inserted after each
   // VarHandleOp node which has sharding spec specified.
   static absl::StatusOr<EagerComputation> FromProto(
-      const v0::TensorFlow& comp_pb);
+      const federated_language::TensorFlow& comp_pb);
 
   EagerComputation(
       tensorflow::FunctionDef main_function_def,

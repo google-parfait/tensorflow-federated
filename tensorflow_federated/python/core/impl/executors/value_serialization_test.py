@@ -17,20 +17,16 @@ from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
+from federated_language.proto import computation_pb2
 import numpy as np
 
-from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import value_serialization
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_serialization
-from tensorflow_federated.python.core.impl.types import type_test_utils
 
 # Convenience aliases.
-TensorType = computation_types.TensorType
+TensorType = federated_language.TensorType
 
 
 class _TestNamedTuple(NamedTuple):
@@ -39,7 +35,7 @@ class _TestNamedTuple(NamedTuple):
   c: int
 
 
-@federated_computation.federated_computation(np.int32)
+@federated_language.federated_computation(np.int32)
 def _identity(x):
   return x
 
@@ -66,9 +62,13 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec
     )
-    type_test_utils.assert_types_identical(value_type, serialize_type_spec)
+    federated_language.framework.assert_types_identical(
+        value_type, serialize_type_spec
+    )
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    type_test_utils.assert_types_identical(type_spec, serialize_type_spec)
+    federated_language.framework.assert_types_identical(
+        type_spec, serialize_type_spec
+    )
     self.assertEqual(y.dtype, serialize_type_spec.dtype)
     if isinstance(y, (np.ndarray, np.generic)):
       np.testing.assert_array_equal(y, x)
@@ -81,9 +81,13 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec
     )
-    type_test_utils.assert_type_assignable_from(value_type, serialize_type_spec)
+    federated_language.framework.assert_type_assignable_from(
+        value_type, serialize_type_spec
+    )
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    type_test_utils.assert_type_assignable_from(serialize_type_spec, type_spec)
+    federated_language.framework.assert_type_assignable_from(
+        serialize_type_spec, type_spec
+    )
     self.assertEqual(y.dtype, serialize_type_spec.dtype)
     if isinstance(y, (np.ndarray, np.generic)):
       np.testing.assert_array_equal(y, x, strict=True)
@@ -97,11 +101,13 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec
     )
-    type_test_utils.assert_types_identical(value_type, serialize_type_spec)
+    federated_language.framework.assert_types_identical(
+        value_type, serialize_type_spec
+    )
     y, deserialize_type_spec = value_serialization.deserialize_value(
         value_proto, type_hint=serialize_type_spec
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         deserialize_type_spec, serialize_type_spec
     )
     self.assertEqual(y.dtype, serialize_type_spec.dtype)
@@ -152,11 +158,11 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         value, type_spec
     )
-    type_test_utils.assert_types_identical(value_type, type_spec)
+    federated_language.framework.assert_types_identical(value_type, type_spec)
     result, result_type = value_serialization.deserialize_value(
         value_proto, type_spec
     )
-    type_test_utils.assert_types_identical(result_type, type_spec)
+    federated_language.framework.assert_types_identical(result_type, type_spec)
 
     if isinstance(result, (np.ndarray, np.generic)):
       np.testing.assert_array_equal(result, expected_value, strict=True)
@@ -173,11 +179,13 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, TensorType(np.int32, [3])
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         value_type, TensorType(np.int32, [3])
     )
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    type_test_utils.assert_types_identical(type_spec, TensorType(np.int32, [3]))
+    federated_language.framework.assert_types_identical(
+        type_spec, TensorType(np.int32, [3])
+    )
     if isinstance(y, (np.ndarray, np.generic)):
       np.testing.assert_array_equal(y, x, strict=True)
     else:
@@ -193,31 +201,31 @@ class ValueSerializationTest(parameterized.TestCase):
         ),
     ):
       value_serialization.serialize_value(
-          x, computation_types.StructType([('a', np.int32), ('b', np.int32)])
+          x, federated_language.StructType([('a', np.int32), ('b', np.int32)])
       )
 
   def test_serialize_sequence_raises_type_error_with_invalid_type_spec(self):
     value = [1, 2, 3]
-    type_spec = computation_types.SequenceType(np.float32)
+    type_spec = federated_language.SequenceType(np.float32)
     with self.assertRaisesRegex(TypeError, 'Failed to serialize the value'):
       value_serialization.serialize_value(value, type_spec)
 
   @parameterized.named_parameters(
-      ('scalar', [1, 2, 3], computation_types.SequenceType(np.int32)),
+      ('scalar', [1, 2, 3], federated_language.SequenceType(np.int32)),
       (
           'tuple',
           [(1, 2, 3), (4, 5, 6), (7, 8, 9)],
-          computation_types.SequenceType([np.int32, np.int32, np.int32]),
+          federated_language.SequenceType([np.int32, np.int32, np.int32]),
       ),
       (
           'tuple_empty',
           [(), (), ()],
-          computation_types.SequenceType([]),
+          federated_language.SequenceType([]),
       ),
       (
           'tuple_singleton',
           [(1,), (2,), (3,)],
-          computation_types.SequenceType([np.int32]),
+          federated_language.SequenceType([np.int32]),
       ),
       (
           'dict',
@@ -226,7 +234,7 @@ class ValueSerializationTest(parameterized.TestCase):
               {'a': 4, 'b': 5, 'c': 6},
               {'a': 7, 'b': 8, 'c': 9},
           ],
-          computation_types.SequenceType([
+          federated_language.SequenceType([
               ('a', np.int32),
               ('b', np.int32),
               ('c', np.int32),
@@ -239,8 +247,8 @@ class ValueSerializationTest(parameterized.TestCase):
               _TestNamedTuple(4, 5, 6),
               _TestNamedTuple(7, 8, 9),
           ],
-          computation_types.SequenceType(
-              computation_types.StructWithPythonType(
+          federated_language.SequenceType(
+              federated_language.StructWithPythonType(
                   [
                       ('a', np.int32),
                       ('b', np.int32),
@@ -255,16 +263,16 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         value, type_spec
     )
-    type_test_utils.assert_types_identical(value_type, type_spec)
+    federated_language.framework.assert_types_identical(value_type, type_spec)
     result, result_type = value_serialization.deserialize_value(
         value_proto, type_spec
     )
-    type_test_utils.assert_types_equivalent(result_type, type_spec)
+    federated_language.framework.assert_types_equivalent(result_type, type_spec)
     self.assertEqual(result, value)
 
   def test_serialize_deserialize_tensor_value_with_bad_shape(self):
     value = np.array([10, 20, 30], np.int32)
-    type_spec = computation_types.TensorType(np.int32)
+    type_spec = federated_language.TensorType(np.int32)
 
     with self.assertRaises(TypeError):
       value_serialization.serialize_value(value, type_spec)
@@ -272,21 +280,21 @@ class ValueSerializationTest(parameterized.TestCase):
   def test_serialize_deserialize_computation_value(self):
     value_proto, value_type = value_serialization.serialize_value(_identity)
     self.assertEqual(value_proto.WhichOneof('value'), 'computation')
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         value_type,
-        computation_types.FunctionType(parameter=np.int32, result=np.int32),
+        federated_language.FunctionType(parameter=np.int32, result=np.int32),
     )
     _, type_spec = value_serialization.deserialize_value(value_proto)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         type_spec,
-        computation_types.FunctionType(parameter=np.int32, result=np.int32),
+        federated_language.FunctionType(parameter=np.int32, result=np.int32),
     )
 
   def test_serialize_deserialize_nested_tuple_value_with_names(self):
     x = collections.OrderedDict(
         a=10, b=[20, 30], c=collections.OrderedDict(d=40)
     )
-    x_type = computation_types.StructType(
+    x_type = federated_language.StructType(
         collections.OrderedDict(
             a=np.int32,
             b=[np.int32, np.int32],
@@ -294,41 +302,48 @@ class ValueSerializationTest(parameterized.TestCase):
         )
     )
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    type_test_utils.assert_types_identical(value_type, x_type)
+    federated_language.framework.assert_types_identical(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Don't assert on the Python container since it is lost in serialization.
-    type_test_utils.assert_types_equivalent(type_spec, x_type)
+    federated_language.framework.assert_types_equivalent(type_spec, x_type)
     self.assertEqual(y, structure.from_container(x, recursive=True))
 
   def test_serialize_deserialize_nested_tuple_value_without_names(self):
     x = (10, 20)
-    x_type = computation_types.StructType([np.int32, np.int32])
+    x_type = federated_language.StructType([np.int32, np.int32])
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    type_test_utils.assert_types_identical(value_type, x_type)
+    federated_language.framework.assert_types_identical(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    type_test_utils.assert_types_equivalent(type_spec, x_type)
+    federated_language.framework.assert_types_equivalent(type_spec, x_type)
     self.assertEqual(y, structure.from_container((10, 20)))
 
   def test_serialize_deserialize_federated_at_clients(self):
     x = [10, 20]
-    x_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
+    x_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
+    )
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         value_type,
-        computation_types.FederatedType(np.int32, placements.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    type_test_utils.assert_types_identical(
-        type_spec, computation_types.FederatedType(np.int32, placements.CLIENTS)
+    federated_language.framework.assert_types_identical(
+        type_spec,
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     self.assertEqual(y, [10, 20])
 
   def test_deserialize_federated_value_with_unset_member_type(self):
     x = 10
-    x_type = computation_types.TensorType(np.int32)
+    x_type = federated_language.TensorType(np.int32)
     member_proto, _ = value_serialization.serialize_value(x, x_type)
-    fully_specified_type_at_clients = type_serialization.serialize_type(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+    fully_specified_type_at_clients = (
+        federated_language.framework.serialize_type(
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            )
+        )
     )
 
     unspecified_member_federated_type = computation_pb2.FederatedType(
@@ -344,9 +359,9 @@ class ValueSerializationTest(parameterized.TestCase):
     deserialized_federated_value, deserialized_type_spec = (
         value_serialization.deserialize_value(federated_value_proto)
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         deserialized_type_spec,
-        computation_types.FederatedType(np.int32, placements.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     self.assertEqual(deserialized_federated_value, [10])
 
@@ -354,13 +369,17 @@ class ValueSerializationTest(parameterized.TestCase):
       self,
   ):
     x = 10
-    x_type = computation_types.TensorType(np.int32)
+    x_type = federated_language.TensorType(np.int32)
     int_member_proto, _ = value_serialization.serialize_value(x, x_type)
     y = 10.0
-    y_type = computation_types.TensorType(np.float32)
+    y_type = federated_language.TensorType(np.float32)
     float_member_proto, _ = value_serialization.serialize_value(y, y_type)
-    fully_specified_type_at_clients = type_serialization.serialize_type(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+    fully_specified_type_at_clients = (
+        federated_language.framework.serialize_type(
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            )
+        )
     )
 
     unspecified_member_federated_type = computation_pb2.FederatedType(
@@ -387,36 +406,38 @@ class ValueSerializationTest(parameterized.TestCase):
             value=[tensor_value_pb] * num_clients,
             type=computation_pb2.FederatedType(
                 placement=computation_pb2.PlacementSpec(
-                    value=computation_pb2.Placement(uri=placements.CLIENTS.uri)
+                    value=computation_pb2.Placement(
+                        uri=federated_language.CLIENTS.uri
+                    )
                 )
             ),
         )
     )
-    all_equal_clients_type_hint = computation_types.FederatedType(
-        np.int32, placements.CLIENTS, all_equal=True
+    all_equal_clients_type_hint = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS, all_equal=True
     )
     deserialized_value, deserialized_type = (
         value_serialization.deserialize_value(
             value_pb, all_equal_clients_type_hint
         )
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         deserialized_type, all_equal_clients_type_hint
     )
     self.assertEqual(deserialized_value, 10)
 
   def test_deserialize_federated_value_promotes_types(self):
     x = [10]
-    smaller_type = computation_types.StructType([(None, np.int32)])
+    smaller_type = federated_language.StructType([(None, np.int32)])
     smaller_type_member_proto, _ = value_serialization.serialize_value(
         x, smaller_type
     )
-    larger_type = computation_types.StructType([('a', np.int32)])
+    larger_type = federated_language.StructType([('a', np.int32)])
     larger_type_member_proto, _ = value_serialization.serialize_value(
         x, larger_type
     )
-    type_at_clients = type_serialization.serialize_type(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+    type_at_clients = federated_language.framework.serialize_type(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
 
     unspecified_member_federated_type = computation_pb2.FederatedType(
@@ -432,20 +453,25 @@ class ValueSerializationTest(parameterized.TestCase):
     _, deserialized_type_spec = value_serialization.deserialize_value(
         federated_value_proto
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         deserialized_type_spec,
-        computation_types.FederatedType(larger_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            larger_type, federated_language.CLIENTS
+        ),
     )
 
   def test_serialize_deserialize_federated_at_server(self):
     x = 10
-    x_type = computation_types.FederatedType(np.int32, placements.SERVER)
+    x_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
+    )
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    type_test_utils.assert_types_identical(
-        value_type, computation_types.FederatedType(np.int32, placements.SERVER)
+    federated_language.framework.assert_types_identical(
+        value_type,
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
     )
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    type_test_utils.assert_types_identical(type_spec, x_type)
+    federated_language.framework.assert_types_identical(type_spec, x_type)
     self.assertEqual(y, 10)
 
 
@@ -455,8 +481,8 @@ class SerializeCardinalitiesTest(absltest.TestCase):
       self,
   ):
     client_and_server_cardinalities = {
-        placements.CLIENTS: 10,
-        placements.SERVER: 1,
+        federated_language.CLIENTS: 10,
+        federated_language.SERVER: 1,
     }
     cardinalities_list = value_serialization.serialize_cardinalities(
         client_and_server_cardinalities
@@ -471,7 +497,7 @@ class SerializeCardinalitiesTest(absltest.TestCase):
     )
 
   def test_serialize_deserialize_clients_alone(self):
-    client_cardinalities = {placements.CLIENTS: 10}
+    client_cardinalities = {federated_language.CLIENTS: 10}
     cardinalities_list = value_serialization.serialize_cardinalities(
         client_cardinalities
     )

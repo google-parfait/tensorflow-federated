@@ -15,12 +15,11 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.algorithms import kmeans_clustering
 
 _WEIGHT_DTYPE = kmeans_clustering._WEIGHT_DTYPE
@@ -142,11 +141,13 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     point_dtype = np.float32
     num_clusters = 5
     centroids_shape = (num_clusters,) + shape
-    centroids_type = computation_types.TensorType(point_dtype, centroids_shape)
-    point_type = computation_types.TensorType(point_dtype, shape)
-    data_type = computation_types.SequenceType(point_type)
-    weight_type = computation_types.TensorType(_WEIGHT_DTYPE, (num_clusters,))
-    empty_server_type = computation_types.FederatedType((), placements.SERVER)
+    centroids_type = federated_language.TensorType(point_dtype, centroids_shape)
+    point_type = federated_language.TensorType(point_dtype, shape)
+    data_type = federated_language.SequenceType(point_type)
+    weight_type = federated_language.TensorType(_WEIGHT_DTYPE, (num_clusters,))
+    empty_server_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
 
     client_work = kmeans_clustering._build_kmeans_client_work(
         centroids_type, data_type
@@ -155,19 +156,21 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     next_type = client_work.next.type_signature
     next_type.parameter[0].check_equivalent_to(empty_server_type)
     next_type.parameter[1].check_equivalent_to(
-        computation_types.FederatedType(centroids_type, placements.CLIENTS)
+        federated_language.FederatedType(
+            centroids_type, federated_language.CLIENTS
+        )
     )
     next_type.parameter[2].check_equivalent_to(
-        computation_types.FederatedType(data_type, placements.CLIENTS)
+        federated_language.FederatedType(data_type, federated_language.CLIENTS)
     )
     next_type.result[0].check_equivalent_to(empty_server_type)
     next_type.result[1].member.update.check_equivalent_to(
-        computation_types.to_type((centroids_type, weight_type))
+        federated_language.to_type((centroids_type, weight_type))
     )
 
-    expected_measurements_type = computation_types.to_type(
+    expected_measurements_type = federated_language.to_type(
         collections.OrderedDict(
-            num_examples=computation_types.TensorType(_WEIGHT_DTYPE)
+            num_examples=federated_language.TensorType(_WEIGHT_DTYPE)
         )
     )
     next_type.result[2].member.check_equivalent_to(expected_measurements_type)
@@ -182,11 +185,13 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     shape = (3, 2)
     num_clusters = 5
     centroids_shape = (num_clusters,) + shape
-    centroids_type = computation_types.TensorType(point_dtype, centroids_shape)
-    point_type = computation_types.TensorType(point_dtype, shape)
-    data_type = computation_types.SequenceType(point_type)
-    weight_type = computation_types.TensorType(_WEIGHT_DTYPE, (num_clusters,))
-    empty_server_type = computation_types.FederatedType((), placements.SERVER)
+    centroids_type = federated_language.TensorType(point_dtype, centroids_shape)
+    point_type = federated_language.TensorType(point_dtype, shape)
+    data_type = federated_language.SequenceType(point_type)
+    weight_type = federated_language.TensorType(_WEIGHT_DTYPE, (num_clusters,))
+    empty_server_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
 
     client_work = kmeans_clustering._build_kmeans_client_work(
         centroids_type, data_type
@@ -195,19 +200,21 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     next_type = client_work.next.type_signature
     next_type.parameter[0].check_equivalent_to(empty_server_type)
     next_type.parameter[1].check_equivalent_to(
-        computation_types.FederatedType(centroids_type, placements.CLIENTS)
+        federated_language.FederatedType(
+            centroids_type, federated_language.CLIENTS
+        )
     )
     next_type.parameter[2].check_equivalent_to(
-        computation_types.FederatedType(data_type, placements.CLIENTS)
+        federated_language.FederatedType(data_type, federated_language.CLIENTS)
     )
     next_type.result[0].check_equivalent_to(empty_server_type)
     next_type.result[1].member.update.check_equivalent_to(
-        computation_types.to_type((centroids_type, weight_type))
+        federated_language.to_type((centroids_type, weight_type))
     )
 
-    expected_measurements_type = computation_types.to_type(
+    expected_measurements_type = federated_language.to_type(
         collections.OrderedDict(
-            num_examples=computation_types.TensorType(_WEIGHT_DTYPE)
+            num_examples=federated_language.TensorType(_WEIGHT_DTYPE)
         )
     )
     next_type.result[2].member.check_equivalent_to(expected_measurements_type)

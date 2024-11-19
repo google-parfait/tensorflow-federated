@@ -21,6 +21,7 @@ import warnings
 
 from absl import logging
 import dp_accounting
+import federated_language
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
@@ -29,10 +30,6 @@ from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -517,49 +514,59 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         lambda event: event.to_named_tuple(), dp_event_type
     )
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
-      query_initial_state = intrinsics.federated_eval(
-          query_initial_state_fn, placements.SERVER
+      query_initial_state = federated_language.federated_eval(
+          query_initial_state_fn, federated_language.SERVER
       )
-      query_sample_state = intrinsics.federated_eval(
-          query_sample_state_fn, placements.SERVER
+      query_sample_state = federated_language.federated_eval(
+          query_sample_state_fn, federated_language.SERVER
       )
-      _, _, dp_event = intrinsics.federated_map(
+      _, _, dp_event = federated_language.federated_map(
           get_noised_result, (query_sample_state, query_initial_state)
       )
-      dp_event = intrinsics.federated_map(convert_dp_event, dp_event)
-      is_init_state = intrinsics.federated_value(True, placements.SERVER)
+      dp_event = federated_language.federated_map(convert_dp_event, dp_event)
+      is_init_state = federated_language.federated_value(
+          True, federated_language.SERVER
+      )
       init_state = DPAggregatorState(
           query_initial_state,
           record_agg_process.initialize(),
           dp_event,
           is_init_state,
       )
-      return intrinsics.federated_zip(init_state)
+      return federated_language.federated_zip(init_state)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       query_state, agg_state, _, _ = state
 
-      params = intrinsics.federated_broadcast(
-          intrinsics.federated_map(derive_sample_params, query_state)
+      params = federated_language.federated_broadcast(
+          federated_language.federated_map(derive_sample_params, query_state)
       )
-      record = intrinsics.federated_map(get_query_record, (params, value))
+      record = federated_language.federated_map(
+          get_query_record, (params, value)
+      )
 
       record_agg_output = record_agg_process.next(agg_state, record)
 
-      result, new_query_state, dp_event = intrinsics.federated_map(
+      result, new_query_state, dp_event = federated_language.federated_map(
           get_noised_result, (record_agg_output.result, query_state)
       )
-      dp_event = intrinsics.federated_map(convert_dp_event, dp_event)
+      dp_event = federated_language.federated_map(convert_dp_event, dp_event)
 
-      is_init_state = intrinsics.federated_value(False, placements.SERVER)
+      is_init_state = federated_language.federated_value(
+          False, federated_language.SERVER
+      )
 
-      query_metrics = intrinsics.federated_map(derive_metrics, new_query_state)
+      query_metrics = federated_language.federated_map(
+          derive_metrics, new_query_state
+      )
 
       new_state = DPAggregatorState(
           new_query_state,
@@ -571,9 +578,9 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
           dp_query_metrics=query_metrics, dp=record_agg_output.measurements
       )
       return measured_process.MeasuredProcessOutput(
-          intrinsics.federated_zip(new_state),
+          federated_language.federated_zip(new_state),
           result,
-          intrinsics.federated_zip(measurements),
+          federated_language.federated_zip(measurements),
       )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)

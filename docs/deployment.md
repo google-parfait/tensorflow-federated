@@ -14,7 +14,7 @@ There are two principal modes of deployment for TFF computations:
 *   **Native backends**. We're going to refer to a backend as *native* if it is
     capable of interpreting the syntactic structure of TFF computations as
     defined in
-    [`computation.proto`](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/proto/v0/computation.proto).
+    [`computation.proto`](https://github.com/google-parfait/federated-language/blob/main/tensorflow_federated/proto/computation.proto).
     A native backend does not necessarily have to support all language
     constructs or intrinsics. Native backends must implement one of the standard
     TFF *executor* interfaces, such as

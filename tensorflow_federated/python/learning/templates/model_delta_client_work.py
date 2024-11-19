@@ -23,15 +23,12 @@ import collections
 from collections.abc import Callable, Mapping
 from typing import Any, Optional
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import loop_builder
@@ -203,7 +200,7 @@ def build_model_delta_client_work(
     model = model_fn()
     metrics_aggregation_fn = metrics_aggregator(model.metric_finalizers())
   element_type = tensorflow_types.to_type(model.input_spec)
-  data_type = computation_types.SequenceType(element_type)
+  data_type = federated_language.SequenceType(element_type)
   weights_type = model_weights_lib.weights_type_from_model(model)
 
   # We initialize the optimizer for the purposes of extracting its
@@ -212,9 +209,11 @@ def build_model_delta_client_work(
   whimsy_opt_state = optimizer.initialize(whimsy_specs)
   initial_hparams = optimizer.get_hparams(whimsy_opt_state)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_value(initial_hparams, placements.SERVER)
+    return federated_language.federated_value(
+        initial_hparams, federated_language.SERVER
+    )
 
   state_type = init_fn.type_signature.result.member
   # In this case, the state is exactly equal to the hyperparameters being
@@ -242,18 +241,20 @@ def build_model_delta_client_work(
         optimizer, initial_model_weights, dataset, optimizer_hparams
     )
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(weights_type, placements.CLIENTS),
-      computation_types.FederatedType(data_type, placements.CLIENTS),
+      federated_language.FederatedType(
+          weights_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(data_type, federated_language.CLIENTS),
   )
   def next_fn(state, weights, client_data):
-    state_at_clients = intrinsics.federated_broadcast(state)
-    client_result, model_outputs = intrinsics.federated_map(
+    state_at_clients = federated_language.federated_broadcast(state)
+    client_result, model_outputs = federated_language.federated_map(
         client_update_computation, (state_at_clients, weights, client_data)
     )
     train_metrics = metrics_aggregation_fn(model_outputs)
-    measurements = intrinsics.federated_zip(
+    measurements = federated_language.federated_zip(
         collections.OrderedDict(train=train_metrics)
     )
     return measured_process.MeasuredProcessOutput(
@@ -418,7 +419,7 @@ def build_functional_model_delta_client_work(
   py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
   element_type = tensorflow_types.to_type(model.input_spec)
-  data_type = computation_types.SequenceType(element_type)
+  data_type = federated_language.SequenceType(element_type)
 
   def ndarray_to_tensorspec(ndarray):
     return tf.TensorSpec(
@@ -446,26 +447,28 @@ def build_functional_model_delta_client_work(
     )
     return client_update(optimizer, initial_model_weights, dataset)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
     # Empty tuple means "no state" / stateless.
-    return intrinsics.federated_value((), placements.SERVER)
+    return federated_language.federated_value((), federated_language.SERVER)
 
   if metrics_aggregator is None:
     metrics_aggregator = aggregator.sum_then_finalize
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType((), placements.SERVER),
-      computation_types.FederatedType(weights_type, placements.CLIENTS),
-      computation_types.FederatedType(data_type, placements.CLIENTS),
+  @federated_language.federated_computation(
+      federated_language.FederatedType((), federated_language.SERVER),
+      federated_language.FederatedType(
+          weights_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(data_type, federated_language.CLIENTS),
   )
   def next_fn(state, weights, client_data):
-    client_result, unfinalized_metrics = intrinsics.federated_map(
+    client_result, unfinalized_metrics = federated_language.federated_map(
         client_update_computation, (weights, client_data)
     )
     metrics_aggregation_fn = metrics_aggregator(model.finalize_metrics)
     finalized_training_metrics = metrics_aggregation_fn(unfinalized_metrics)
-    measurements = intrinsics.federated_zip(
+    measurements = federated_language.federated_zip(
         collections.OrderedDict(train=finalized_training_metrics)
     )
     return measured_process.MeasuredProcessOutput(

@@ -14,10 +14,8 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
-
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import client_id_data_source
 
 
@@ -28,8 +26,8 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
 
     iterator = client_id_data_source.ClientIdDataSourceIterator(client_ids)
 
-    federated_type = computation_types.FederatedType(
-        np.str_, placements.CLIENTS
+    federated_type = federated_language.FederatedType(
+        np.str_, federated_language.CLIENTS
     )
     self.assertEqual(iterator.federated_type, federated_type)
 
@@ -88,8 +86,8 @@ class ClientIdDataSourceTest(parameterized.TestCase):
 
     data_source = client_id_data_source.ClientIdDataSource(client_ids)
 
-    federated_type = computation_types.FederatedType(
-        np.str_, placements.CLIENTS
+    federated_type = federated_language.FederatedType(
+        np.str_, federated_language.CLIENTS
     )
     self.assertEqual(data_source.federated_type, federated_type)
 

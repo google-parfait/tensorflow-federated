@@ -15,12 +15,9 @@
 
 from typing import Optional
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.templates import hparams_base
@@ -40,11 +37,11 @@ class FinalizerProcess(measured_process.MeasuredProcess):
 
   def __init__(
       self,
-      initialize_fn: computation_base.Computation,
-      next_fn: computation_base.Computation,
+      initialize_fn: federated_language.framework.Computation,
+      next_fn: federated_language.framework.Computation,
       *,
-      get_hparams_fn: Optional[computation_base.Computation] = None,
-      set_hparams_fn: Optional[computation_base.Computation] = None,
+      get_hparams_fn: Optional[federated_language.framework.Computation] = None,
+      set_hparams_fn: Optional[federated_language.framework.Computation] = None,
   ):
     """Initializes a `FinalizerProcess`.
 
@@ -106,7 +103,7 @@ class FinalizerProcess(measured_process.MeasuredProcess):
     super().__init__(initialize_fn, next_fn, next_is_multi_arg=True)
 
     if not isinstance(
-        initialize_fn.type_signature.result, computation_types.FederatedType
+        initialize_fn.type_signature.result, federated_language.FederatedType
     ):
       raise errors.TemplateNotFederatedError(
           'Provided `initialize_fn` must return a federated type, but found '
@@ -118,15 +115,13 @@ class FinalizerProcess(measured_process.MeasuredProcess):
         next_fn.type_signature.parameter
     ) + structure.flatten(next_fn.type_signature.result)
     if not all(
-        [isinstance(t, computation_types.FederatedType) for t in next_types]
+        [isinstance(t, federated_language.FederatedType) for t in next_types]
     ):
-      offending_types = '\n- '.join(
-          [
-              t
-              for t in next_types
-              if not isinstance(t, computation_types.FederatedType)
-          ]
-      )
+      offending_types = '\n- '.join([
+          t
+          for t in next_types
+          if not isinstance(t, federated_language.FederatedType)
+      ])
       raise errors.TemplateNotFederatedError(
           'Provided `next_fn` must be a *federated* computation, that is, '
           'operate on `tff.FederatedType`s, but found\n'
@@ -134,7 +129,10 @@ class FinalizerProcess(measured_process.MeasuredProcess):
           f'The non-federated types are:\n {offending_types}.'
       )
 
-    if initialize_fn.type_signature.result.placement != placements.SERVER:
+    if (
+        initialize_fn.type_signature.result.placement
+        != federated_language.SERVER
+    ):
       raise errors.TemplatePlacementError(
           'The state controlled by an `FinalizerProcess` must be placed at '
           f'the SERVER, but found type: {initialize_fn.type_signature.result}.'
@@ -144,7 +142,7 @@ class FinalizerProcess(measured_process.MeasuredProcess):
     # TemplateStateNotAssignableError.
 
     next_fn_param = next_fn.type_signature.parameter
-    if not isinstance(next_fn_param, computation_types.StructType):
+    if not isinstance(next_fn_param, federated_language.StructType):
       raise errors.TemplateNextFnNumArgsError(
           'The `next_fn` must have exactly two input arguments, but found '
           f'the following input type which is not a Struct: {next_fn_param}.'
@@ -157,19 +155,19 @@ class FinalizerProcess(measured_process.MeasuredProcess):
       )
     model_weights_param = next_fn_param[1]
     update_from_clients_param = next_fn_param[2]
-    if model_weights_param.placement != placements.SERVER:
+    if model_weights_param.placement != federated_language.SERVER:
       raise errors.TemplatePlacementError(
           'The second input argument of `next_fn` must be placed at SERVER '
           f'but found {model_weights_param}.'
       )
-    if update_from_clients_param.placement != placements.SERVER:
+    if update_from_clients_param.placement != federated_language.SERVER:
       raise errors.TemplatePlacementError(
           'The third input argument of `next_fn` must be placed at SERVER '
           f'but found {update_from_clients_param}.'
       )
 
     next_fn_result = next_fn.type_signature.result
-    if next_fn_result.result.placement != placements.SERVER:
+    if next_fn_result.result.placement != federated_language.SERVER:
       raise errors.TemplatePlacementError(
           'The "result" attribute of the return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.result}.'
@@ -183,7 +181,7 @@ class FinalizerProcess(measured_process.MeasuredProcess):
           f'Second input argument: {next_fn_param[1].member}\n'
           f'Result attribute: {next_fn_result.result.member}.'
       )
-    if next_fn_result.measurements.placement != placements.SERVER:
+    if next_fn_result.measurements.placement != federated_language.SERVER:
       raise errors.TemplatePlacementError(
           'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.'
@@ -208,35 +206,39 @@ class FinalizerProcess(measured_process.MeasuredProcess):
     self._set_hparams_fn = set_hparams_fn
 
   @property
-  def get_hparams(self) -> computation_base.Computation:
+  def get_hparams(self) -> federated_language.framework.Computation:
     return self._get_hparams_fn  # pytype: disable=attribute-error
 
   @property
-  def set_hparams(self) -> computation_base.Computation:
+  def set_hparams(self) -> federated_language.framework.Computation:
     return self._set_hparams_fn  # pytype: disable=attribute-error
 
 
 def build_identity_finalizer(
-    model_weights_type: computation_types.StructType,
-    update_type: computation_types.StructType,
+    model_weights_type: federated_language.StructType,
+    update_type: federated_language.StructType,
 ) -> FinalizerProcess:
   """Builds a `FinalizerProcess` that performs no update on model weights."""
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_value((), placements.SERVER)
+    return federated_language.federated_value((), federated_language.SERVER)
 
   # The type signature of `next` function is defined so that the created
   # `tff.learning.templates.FinalizerProcess` can be used in
   # `tff.learning.templates.compose_learning_process`.
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(model_weights_type, placements.SERVER),
-      computation_types.FederatedType(update_type, placements.SERVER),
+      federated_language.FederatedType(
+          model_weights_type, federated_language.SERVER
+      ),
+      federated_language.FederatedType(update_type, federated_language.SERVER),
   )
   def next_fn(state, weights, update):
     del update
-    empty_measurements = intrinsics.federated_value((), placements.SERVER)
+    empty_measurements = federated_language.federated_value(
+        (), federated_language.SERVER
+    )
     return measured_process.MeasuredProcessOutput(
         state, weights, empty_measurements
     )

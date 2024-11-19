@@ -16,6 +16,7 @@
 import collections
 from collections.abc import Callable
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -23,62 +24,63 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def reduce_intrinsic(
     comp,
     uri,
     body_fn: Callable[
-        [building_blocks.ComputationBuildingBlock],
-        building_blocks.ComputationBuildingBlock,
+        [federated_language.framework.ComputationBuildingBlock],
+        federated_language.framework.ComputationBuildingBlock,
     ],
 ):
   """Replaces all the intrinsics with the given `uri` with a callable."""
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ComputationBuildingBlock
+  )
   py_typecheck.check_type(uri, str)
 
   def _should_transform(comp):
-    return isinstance(comp, building_blocks.Intrinsic) and comp.uri == uri
+    return (
+        isinstance(comp, federated_language.framework.Intrinsic)
+        and comp.uri == uri
+    )
 
   def _transform(comp):
     if not _should_transform(comp):
       return comp, False
-    arg_name = next(building_block_factory.unique_name_generator(comp))
-    comp_arg = building_blocks.Reference(
+    arg_name = next(federated_language.framework.unique_name_generator(comp))
+    comp_arg = federated_language.framework.Reference(
         arg_name, comp.type_signature.parameter
     )
     intrinsic_body = body_fn(comp_arg)
-    intrinsic_reduced = building_blocks.Lambda(
+    intrinsic_reduced = federated_language.framework.Lambda(
         comp_arg.name, comp_arg.type_signature, intrinsic_body
     )
     return intrinsic_reduced, True
 
-  return transformation_utils.transform_postorder(comp, _transform)
+  return federated_language.framework.transform_postorder(comp, _transform)
 
 
 def _apply_generic_op(op, arg):
   if not (
-      isinstance(arg.type_signature, computation_types.FederatedType)
-      or type_analysis.is_structure_of_tensors(arg.type_signature)
+      isinstance(arg.type_signature, federated_language.FederatedType)
+      or federated_language.framework.is_structure_of_tensors(
+          arg.type_signature
+      )
   ):
     # If there are federated elements nested in a struct, we need to zip these
     # together before passing to binary operator constructor.
-    arg = building_block_factory.create_federated_zip(arg)
+    arg = federated_language.framework.create_federated_zip(arg)
   return tensorflow_building_block_factory.apply_binary_operator_with_upcast(
       arg, op
   )
 
 
 def _initial_values(
-    initial_value_fn: Callable[[computation_types.TensorType], object],
-    member_type: computation_types.Type,
-) -> building_blocks.ComputationBuildingBlock:
+    initial_value_fn: Callable[[federated_language.TensorType], object],
+    member_type: federated_language.Type,
+) -> federated_language.framework.ComputationBuildingBlock:
   """Create a nested structure of initial values.
 
   Args:
@@ -88,30 +90,37 @@ def _initial_values(
       federated type.
 
   Returns:
-    A building_blocks.ComputationBuildingBlock representing the initial values.
+    A federated_language.framework.ComputationBuildingBlock representing the
+    initial values.
   """
 
-  def _fill(tensor_type: computation_types.TensorType) -> building_blocks.Call:
+  def _fill(
+      tensor_type: federated_language.TensorType,
+  ) -> federated_language.framework.Call:
     computation_proto, function_type = (
         tensorflow_computation_factory.create_constant(
             initial_value_fn(tensor_type), tensor_type
         )
     )
-    compiled = building_blocks.CompiledComputation(
+    compiled = federated_language.framework.CompiledComputation(
         computation_proto, type_signature=function_type
     )
-    return building_blocks.Call(compiled)
+    return federated_language.framework.Call(compiled)
 
   def _structify_bb(
       inner_value: object,
-  ) -> building_blocks.ComputationBuildingBlock:
+  ) -> federated_language.framework.ComputationBuildingBlock:
     if isinstance(inner_value, dict):
-      return building_blocks.Struct(
+      return federated_language.framework.Struct(
           [(k, _structify_bb(v)) for k, v in inner_value.items()]
       )
     if isinstance(inner_value, (tuple, list)):
-      return building_blocks.Struct([_structify_bb(v) for v in inner_value])
-    if not isinstance(inner_value, building_blocks.ComputationBuildingBlock):
+      return federated_language.framework.Struct(
+          [_structify_bb(v) for v in inner_value]
+      )
+    if not isinstance(
+        inner_value, federated_language.framework.ComputationBuildingBlock
+    ):
       raise ValueError('Encountered unexpected value: ' + str(inner_value))
     return inner_value
 
@@ -123,8 +132,8 @@ def _initial_values(
 def _get_intrinsic_reductions() -> dict[
     str,
     Callable[
-        [building_blocks.ComputationBuildingBlock],
-        building_blocks.ComputationBuildingBlock,
+        [federated_language.framework.ComputationBuildingBlock],
+        federated_language.framework.ComputationBuildingBlock,
     ],
 ]:
   """Returns map from intrinsic to reducing function.
@@ -165,41 +174,55 @@ def _get_intrinsic_reductions() -> dict[
 
   def generic_divide(arg):
     """Divides two arguments when possible."""
-    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(
+        arg, federated_language.framework.ComputationBuildingBlock
+    )
     return _apply_generic_op(tf.divide, arg)
 
   def generic_multiply(arg):
     """Multiplies two arguments when possible."""
-    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(
+        arg, federated_language.framework.ComputationBuildingBlock
+    )
     return _apply_generic_op(tf.multiply, arg)
 
   def generic_plus(arg):
     """Adds two arguments when possible."""
-    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(
+        arg, federated_language.framework.ComputationBuildingBlock
+    )
     return _apply_generic_op(tf.add, arg)
 
   def federated_weighted_mean(arg):
-    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-    w = building_blocks.Selection(arg, index=1)
+    py_typecheck.check_type(
+        arg, federated_language.framework.ComputationBuildingBlock
+    )
+    w = federated_language.framework.Selection(arg, index=1)
     multiplied = generic_multiply(arg)
-    zip_arg = building_blocks.Struct([(None, multiplied), (None, w)])
-    summed = federated_sum(building_block_factory.create_federated_zip(zip_arg))
+    zip_arg = federated_language.framework.Struct(
+        [(None, multiplied), (None, w)]
+    )
+    summed = federated_sum(
+        federated_language.framework.create_federated_zip(zip_arg)
+    )
     return generic_divide(summed)
 
   def federated_mean(arg):
-    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(
+        arg, federated_language.framework.ComputationBuildingBlock
+    )
     one = tensorflow_building_block_factory.create_generic_constant(
         arg.type_signature, 1
     )
-    mean_arg = building_blocks.Struct([(None, arg), (None, one)])
+    mean_arg = federated_language.framework.Struct([(None, arg), (None, one)])
     return federated_weighted_mean(mean_arg)
 
-  def federated_min(x: building_blocks.ComputationBuildingBlock):
-    if not isinstance(x.type_signature, computation_types.FederatedType):
+  def federated_min(x: federated_language.framework.ComputationBuildingBlock):
+    if not isinstance(x.type_signature, federated_language.FederatedType):
       raise TypeError('Expected a federated value.')
     operand_type = x.type_signature.member
 
-    def _max_fn(tensor_type: computation_types.TensorType):
+    def _max_fn(tensor_type: federated_language.TensorType):
       if np.issubdtype(tensor_type.dtype, np.integer):
         return np.iinfo(tensor_type.dtype).max
       elif np.issubdtype(tensor_type.dtype, np.floating):
@@ -213,23 +236,23 @@ def _get_intrinsic_reductions() -> dict[
     min_proto, min_type = (
         tensorflow_computation_factory.create_binary_operator_with_upcast(
             tf.minimum,
-            computation_types.StructType([operand_type, operand_type]),
+            federated_language.StructType([operand_type, operand_type]),
         )
     )
-    min_op = building_blocks.CompiledComputation(
+    min_op = federated_language.framework.CompiledComputation(
         min_proto, type_signature=min_type
     )
-    identity = building_block_factory.create_identity(operand_type)
-    return building_block_factory.create_federated_aggregate(
+    identity = federated_language.framework.create_identity(operand_type)
+    return federated_language.framework.create_federated_aggregate(
         x, zero, min_op, min_op, identity
     )
 
-  def federated_max(x: building_blocks.ComputationBuildingBlock):
-    if not isinstance(x.type_signature, computation_types.FederatedType):
+  def federated_max(x: federated_language.framework.ComputationBuildingBlock):
+    if not isinstance(x.type_signature, federated_language.FederatedType):
       raise TypeError('Expected a federated value.')
     operand_type = x.type_signature.member
 
-    def _min_fn(tensor_type: computation_types.TensorType):
+    def _min_fn(tensor_type: federated_language.TensorType):
       if np.issubdtype(tensor_type.dtype, np.integer):
         return np.iinfo(tensor_type.dtype).min
       elif np.issubdtype(tensor_type.dtype, np.floating):
@@ -243,33 +266,35 @@ def _get_intrinsic_reductions() -> dict[
     max_proto, max_type = (
         tensorflow_computation_factory.create_binary_operator_with_upcast(
             tf.maximum,
-            computation_types.StructType([operand_type, operand_type]),
+            federated_language.StructType([operand_type, operand_type]),
         )
     )
-    max_op = building_blocks.CompiledComputation(
+    max_op = federated_language.framework.CompiledComputation(
         max_proto, type_signature=max_type
     )
-    identity = building_block_factory.create_identity(operand_type)
-    return building_block_factory.create_federated_aggregate(
+    identity = federated_language.framework.create_identity(operand_type)
+    return federated_language.framework.create_federated_aggregate(
         x, zero, max_op, max_op, identity
     )
 
   def federated_sum(x):
-    py_typecheck.check_type(x, building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(
+        x, federated_language.framework.ComputationBuildingBlock
+    )
     operand_type = x.type_signature.member  # pytype: disable=attribute-error
     zero = tensorflow_building_block_factory.create_generic_constant(
         operand_type, 0
     )
     plus_proto, plus_type = (
         tensorflow_computation_factory.create_binary_operator_with_upcast(
-            tf.add, computation_types.StructType([operand_type, operand_type])
+            tf.add, federated_language.StructType([operand_type, operand_type])
         )
     )
-    plus_op = building_blocks.CompiledComputation(
+    plus_op = federated_language.framework.CompiledComputation(
         plus_proto, type_signature=plus_type
     )
-    identity = building_block_factory.create_identity(operand_type)
-    return building_block_factory.create_federated_aggregate(
+    identity = federated_language.framework.create_identity(operand_type)
+    return federated_language.framework.create_federated_aggregate(
         x, zero, plus_op, plus_op, identity
     )
 
@@ -331,14 +356,17 @@ def _get_intrinsic_reductions() -> dict[
   # - SEQUENCE_REDUCE
 
   intrinsic_bodies_by_uri = collections.OrderedDict([
-      (intrinsic_defs.FEDERATED_MEAN.uri, federated_mean),
-      (intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri, federated_weighted_mean),
-      (intrinsic_defs.FEDERATED_MIN.uri, federated_min),
-      (intrinsic_defs.FEDERATED_MAX.uri, federated_max),
-      (intrinsic_defs.FEDERATED_SUM.uri, federated_sum),
-      (intrinsic_defs.GENERIC_DIVIDE.uri, generic_divide),
-      (intrinsic_defs.GENERIC_MULTIPLY.uri, generic_multiply),
-      (intrinsic_defs.GENERIC_PLUS.uri, generic_plus),
+      (federated_language.framework.FEDERATED_MEAN.uri, federated_mean),
+      (
+          federated_language.framework.FEDERATED_WEIGHTED_MEAN.uri,
+          federated_weighted_mean,
+      ),
+      (federated_language.framework.FEDERATED_MIN.uri, federated_min),
+      (federated_language.framework.FEDERATED_MAX.uri, federated_max),
+      (federated_language.framework.FEDERATED_SUM.uri, federated_sum),
+      (federated_language.framework.GENERIC_DIVIDE.uri, generic_divide),
+      (federated_language.framework.GENERIC_MULTIPLY.uri, generic_multiply),
+      (federated_language.framework.GENERIC_PLUS.uri, generic_plus),
   ])
   return intrinsic_bodies_by_uri
 
@@ -347,7 +375,7 @@ def replace_intrinsics_with_bodies(comp):
   """Iterates over all intrinsic bodies, inlining the intrinsics in `comp`.
 
   This function operates on the AST level; meaning, it takes in a
-  `building_blocks.ComputationBuildingBlock` as an argument and
+  `federated_language.framework.ComputationBuildingBlock` as an argument and
   returns one as well. `replace_intrinsics_with_bodies` is intended to be the
   standard reduction function, which will reduce all currently implemented
   intrinsics to their bodies.
@@ -357,18 +385,20 @@ def replace_intrinsics_with_bodies(comp):
   function is ordered from more complex intrinsic to less complex intrinsics.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` in which we
-      wish to replace all intrinsics with their bodies.
+    comp: Instance of `federated_language.framework.ComputationBuildingBlock` in
+      which we wish to replace all intrinsics with their bodies.
 
   Returns:
-    Instance of `building_blocks.ComputationBuildingBlock` with all
+    Instance of `federated_language.framework.ComputationBuildingBlock` with all
     the intrinsics from `intrinsic_bodies.py` inlined with their bodies, along
     with a Boolean indicating whether there was any inlining in fact done.
 
   Raises:
     TypeError: If the types don't match.
   """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ComputationBuildingBlock
+  )
   bodies = _get_intrinsic_reductions()
   transformed = False
   for uri, body in bodies.items():

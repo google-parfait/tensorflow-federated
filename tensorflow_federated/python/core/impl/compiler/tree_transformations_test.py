@@ -16,20 +16,13 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class TransformTestBase(absltest.TestCase):
@@ -45,7 +38,7 @@ class TransformTestBase(absltest.TestCase):
         ),
     )
     if not changes_type:
-      type_test_utils.assert_types_identical(
+      federated_language.framework.assert_types_identical(
           comp.type_signature, after.type_signature
       )
     if unmodified:
@@ -56,9 +49,13 @@ class TransformTestBase(absltest.TestCase):
 
 
 def _create_chained_whimsy_federated_maps(functions, arg):
-  py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      arg, federated_language.framework.ComputationBuildingBlock
+  )
   for fn in functions:
-    py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(
+        fn, federated_language.framework.ComputationBuildingBlock
+    )
     if not fn.parameter_type.is_assignable_from(arg.type_signature.member):
       raise TypeError(
           'The parameter of the function is of type {}, and the argument is of '
@@ -66,7 +63,7 @@ def _create_chained_whimsy_federated_maps(functions, arg):
               str(fn.parameter_type), str(arg.type_signature.member)
           )
       )
-    call = building_block_factory.create_federated_map_all_equal(fn, arg)
+    call = federated_language.framework.create_federated_map_all_equal(fn, arg)
     arg = call
   return call
 
@@ -80,12 +77,12 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'federated_map',
-          intrinsic_defs.FEDERATED_MAP.uri,
+          federated_language.framework.FEDERATED_MAP.uri,
           building_block_test_utils.create_whimsy_called_federated_map,
       ),
       (
           'federated_map_all_equal',
-          intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+          federated_language.framework.FEDERATED_MAP_ALL_EQUAL.uri,
           building_block_test_utils.create_whimsy_called_federated_map_all_equal,
       ),
   )
@@ -156,14 +153,14 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
   def test_removes_federated_map_with_named_result(self):
     parameter_type = [('a', np.int32), ('b', np.int32)]
     fn = building_block_test_utils.create_identity_function('c', parameter_type)
-    arg_type = computation_types.FederatedType(
-        parameter_type, placements.CLIENTS
+    arg_type = federated_language.FederatedType(
+        parameter_type, federated_language.CLIENTS
     )
     any_proto = building_block_test_utils.create_any_proto_from_array(
         np.array(1, np.int32)
     )
-    arg = building_blocks.Data(any_proto, arg_type)
-    call = building_block_factory.create_federated_map(fn, arg)
+    arg = federated_language.framework.Data(any_proto, arg_type)
+    call = federated_language.framework.create_federated_map(fn, arg)
     comp = call
 
     transformed_comp, modified = (
@@ -205,9 +202,11 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_removes_chained_federated_maps(self):
     fn = building_block_test_utils.create_identity_function('a', np.int32)
-    arg = building_block_factory.create_federated_value(
-        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
-        placement=placements.CLIENTS,
+    arg = federated_language.framework.create_federated_value(
+        federated_language.framework.Literal(
+            1, federated_language.TensorType(np.int32)
+        ),
+        placement=federated_language.CLIENTS,
     )
     call = _create_chained_whimsy_federated_maps([fn, fn], arg)
     comp = call
@@ -246,8 +245,10 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_does_not_remove_called_lambda(self):
     fn = building_block_test_utils.create_identity_function('a', np.int32)
-    arg = building_blocks.Literal(1, computation_types.TensorType(np.int32))
-    call = building_blocks.Call(fn, arg)
+    arg = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
+    )
+    call = federated_language.framework.Call(fn, arg)
     comp = call
 
     transformed_comp, modified = (
@@ -269,31 +270,39 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     self._unused_block_remover = tree_transformations.RemoveUnusedBlockLocals()
 
   def test_should_transform_block(self):
-    blk = building_blocks.Block(
+    blk = federated_language.framework.Block(
         [(
             'x',
-            building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+            federated_language.framework.Literal(
+                1, federated_language.TensorType(np.int32)
+            ),
         )],
-        building_blocks.Literal(2, computation_types.TensorType(np.int32)),
+        federated_language.framework.Literal(
+            2, federated_language.TensorType(np.int32)
+        ),
     )
     self.assertTrue(self._unused_block_remover.should_transform(blk))
 
   def test_should_not_transform_data(self):
-    data = building_blocks.Literal(2, computation_types.TensorType(np.int32))
+    data = federated_language.framework.Literal(
+        2, federated_language.TensorType(np.int32)
+    )
     self.assertFalse(self._unused_block_remover.should_transform(data))
 
   def test_removes_block_with_unused_reference(self):
-    input_data = building_blocks.Literal(
-        2, computation_types.TensorType(np.int32)
+    input_data = federated_language.framework.Literal(
+        2, federated_language.TensorType(np.int32)
     )
-    blk = building_blocks.Block(
+    blk = federated_language.framework.Block(
         [(
             'x',
-            building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+            federated_language.framework.Literal(
+                1, federated_language.TensorType(np.int32)
+            ),
         )],
         input_data,
     )
-    data, modified = transformation_utils.transform_postorder(
+    data, modified = federated_language.framework.transform_postorder(
         blk, self._unused_block_remover.transform
     )
     self.assertTrue(modified)
@@ -302,11 +311,11 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_unwraps_block_with_empty_locals(self):
-    input_data = building_blocks.Literal(
-        1, computation_types.TensorType(np.int32)
+    input_data = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
     )
-    blk = building_blocks.Block([], input_data)
-    data, modified = transformation_utils.transform_postorder(
+    blk = federated_language.framework.Block([], input_data)
+    data, modified = federated_language.framework.transform_postorder(
         blk, self._unused_block_remover.transform
     )
     self.assertTrue(modified)
@@ -315,18 +324,22 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_removes_nested_blocks_with_unused_reference(self):
-    input_data = building_blocks.Literal(
-        2, computation_types.TensorType(np.int32)
+    input_data = federated_language.framework.Literal(
+        2, federated_language.TensorType(np.int32)
     )
-    blk = building_blocks.Block(
+    blk = federated_language.framework.Block(
         [(
             'x',
-            building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+            federated_language.framework.Literal(
+                1, federated_language.TensorType(np.int32)
+            ),
         )],
         input_data,
     )
-    higher_level_blk = building_blocks.Block([('y', input_data)], blk)
-    data, modified = transformation_utils.transform_postorder(
+    higher_level_blk = federated_language.framework.Block(
+        [('y', input_data)], blk
+    )
+    data, modified = federated_language.framework.transform_postorder(
         higher_level_blk, self._unused_block_remover.transform
     )
     self.assertTrue(modified)
@@ -335,15 +348,19 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_leaves_single_used_reference(self):
-    blk = building_blocks.Block(
+    blk = federated_language.framework.Block(
         [(
             'x',
-            building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+            federated_language.framework.Literal(
+                1, federated_language.TensorType(np.int32)
+            ),
         )],
-        building_blocks.Reference('x', np.int32),
+        federated_language.framework.Reference('x', np.int32),
     )
-    transformed_blk, modified = transformation_utils.transform_postorder(
-        blk, self._unused_block_remover.transform
+    transformed_blk, modified = (
+        federated_language.framework.transform_postorder(
+            blk, self._unused_block_remover.transform
+        )
     )
     self.assertFalse(modified)
     self.assertEqual(
@@ -351,20 +368,22 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_leaves_chained_used_references(self):
-    blk = building_blocks.Block(
+    blk = federated_language.framework.Block(
         [
             (
                 'x',
-                building_blocks.Literal(
-                    1, computation_types.TensorType(np.int32)
+                federated_language.framework.Literal(
+                    1, federated_language.TensorType(np.int32)
                 ),
             ),
-            ('y', building_blocks.Reference('x', np.int32)),
+            ('y', federated_language.framework.Reference('x', np.int32)),
         ],
-        building_blocks.Reference('y', np.int32),
+        federated_language.framework.Reference('y', np.int32),
     )
-    transformed_blk, modified = transformation_utils.transform_postorder(
-        blk, self._unused_block_remover.transform
+    transformed_blk, modified = (
+        federated_language.framework.transform_postorder(
+            blk, self._unused_block_remover.transform
+        )
     )
     self.assertFalse(modified)
     self.assertEqual(
@@ -374,23 +393,25 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
   def test_removes_locals_referencing_each_other_but_unreferenced_in_result(
       self,
   ):
-    input_data = building_blocks.Literal(
-        2, computation_types.TensorType(np.int32)
+    input_data = federated_language.framework.Literal(
+        2, federated_language.TensorType(np.int32)
     )
-    blk = building_blocks.Block(
+    blk = federated_language.framework.Block(
         [
             (
                 'x',
-                building_blocks.Literal(
-                    1, computation_types.TensorType(np.int32)
+                federated_language.framework.Literal(
+                    1, federated_language.TensorType(np.int32)
                 ),
             ),
-            ('y', building_blocks.Reference('x', np.int32)),
+            ('y', federated_language.framework.Reference('x', np.int32)),
         ],
         input_data,
     )
-    transformed_blk, modified = transformation_utils.transform_postorder(
-        blk, self._unused_block_remover.transform
+    transformed_blk, modified = (
+        federated_language.framework.transform_postorder(
+            blk, self._unused_block_remover.transform
+        )
     )
     self.assertTrue(modified)
     self.assertEqual(
@@ -399,26 +420,28 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_leaves_lone_referenced_local(self):
-    ref = building_blocks.Reference('y', np.int32)
-    blk = building_blocks.Block(
+    ref = federated_language.framework.Reference('y', np.int32)
+    blk = federated_language.framework.Block(
         [
             (
                 'x',
-                building_blocks.Literal(
-                    1, computation_types.TensorType(np.int32)
+                federated_language.framework.Literal(
+                    1, federated_language.TensorType(np.int32)
                 ),
             ),
             (
                 'y',
-                building_blocks.Literal(
-                    2, computation_types.TensorType(np.int32)
+                federated_language.framework.Literal(
+                    2, federated_language.TensorType(np.int32)
                 ),
             ),
         ],
         ref,
     )
-    transformed_blk, modified = transformation_utils.transform_postorder(
-        blk, self._unused_block_remover.transform
+    transformed_blk, modified = (
+        federated_language.framework.transform_postorder(
+            blk, self._unused_block_remover.transform
+        )
     )
     self.assertTrue(modified)
     self.assertEqual(transformed_blk.compact_representation(), '(let y=2 in y)')
@@ -436,10 +459,10 @@ class UniquifyReferenceNamesTest(TransformTestBase):
   def test_renames_lambda_but_not_unbound_reference_when_given_name_generator(
       self,
   ):
-    ref = building_blocks.Reference('x', np.int32)
-    lambda_binding_y = building_blocks.Lambda('y', np.float32, ref)
+    ref = federated_language.framework.Reference('x', np.int32)
+    lambda_binding_y = federated_language.framework.Lambda('y', np.float32, ref)
 
-    name_generator = building_block_factory.unique_name_generator(
+    name_generator = federated_language.framework.unique_name_generator(
         lambda_binding_y
     )
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
@@ -454,9 +477,13 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     self.assertTrue(modified)
 
   def test_single_level_block(self):
-    ref = building_blocks.Reference('a', np.int32)
-    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
-    block = building_blocks.Block((('a', lit), ('a', ref), ('a', ref)), ref)
+    ref = federated_language.framework.Reference('a', np.int32)
+    lit = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
+    )
+    block = federated_language.framework.Block(
+        (('a', lit), ('a', ref), ('a', ref)), ref
+    )
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
         block
@@ -467,14 +494,20 @@ class UniquifyReferenceNamesTest(TransformTestBase):
         transformed_comp.compact_representation(),
         '(let a=1,_var1=a,_var2=_var1 in _var2)',
     )
-    tree_analysis.check_has_unique_names(transformed_comp)
+    federated_language.framework.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_nested_blocks(self):
-    x_ref = building_blocks.Reference('a', np.int32)
-    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
-    block1 = building_blocks.Block([('a', lit), ('a', x_ref)], x_ref)
-    block2 = building_blocks.Block([('a', lit), ('a', x_ref)], block1)
+    x_ref = federated_language.framework.Reference('a', np.int32)
+    lit = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
+    )
+    block1 = federated_language.framework.Block(
+        [('a', lit), ('a', x_ref)], x_ref
+    )
+    block2 = federated_language.framework.Block(
+        [('a', lit), ('a', x_ref)], block1
+    )
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
         block2
@@ -488,18 +521,23 @@ class UniquifyReferenceNamesTest(TransformTestBase):
         transformed_comp.compact_representation(),
         '(let a=1,_var1=a in (let _var2=1,_var3=_var2 in _var3))',
     )
-    tree_analysis.check_has_unique_names(transformed_comp)
+    federated_language.framework.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_nested_lambdas(self):
-    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
-    input1 = building_blocks.Reference('a', lit.type_signature)
-    first_level_call = building_blocks.Call(
-        building_blocks.Lambda('a', input1.type_signature, input1), lit
+    lit = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
     )
-    input2 = building_blocks.Reference('b', first_level_call.type_signature)
-    second_level_call = building_blocks.Call(
-        building_blocks.Lambda('b', input2.type_signature, input2),
+    input1 = federated_language.framework.Reference('a', lit.type_signature)
+    first_level_call = federated_language.framework.Call(
+        federated_language.framework.Lambda('a', input1.type_signature, input1),
+        lit,
+    )
+    input2 = federated_language.framework.Reference(
+        'b', first_level_call.type_signature
+    )
+    second_level_call = federated_language.framework.Call(
+        federated_language.framework.Lambda('b', input2.type_signature, input2),
         first_level_call,
     )
 
@@ -510,20 +548,26 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     self.assertEqual(
         transformed_comp.compact_representation(), '(b -> b)((a -> a)(1))'
     )
-    tree_analysis.check_has_unique_names(transformed_comp)
+    federated_language.framework.check_has_unique_names(transformed_comp)
     self.assertFalse(modified)
 
   def test_block_lambda_block_lambda(self):
-    x_ref = building_blocks.Reference('a', np.int32)
-    inner_lambda = building_blocks.Lambda('a', np.int32, x_ref)
-    called_lambda = building_blocks.Call(inner_lambda, x_ref)
-    lower_block = building_blocks.Block(
+    x_ref = federated_language.framework.Reference('a', np.int32)
+    inner_lambda = federated_language.framework.Lambda('a', np.int32, x_ref)
+    called_lambda = federated_language.framework.Call(inner_lambda, x_ref)
+    lower_block = federated_language.framework.Block(
         [('a', x_ref), ('a', x_ref)], called_lambda
     )
-    second_lambda = building_blocks.Lambda('a', np.int32, lower_block)
-    second_call = building_blocks.Call(second_lambda, x_ref)
-    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
-    last_block = building_blocks.Block([('a', lit), ('a', x_ref)], second_call)
+    second_lambda = federated_language.framework.Lambda(
+        'a', np.int32, lower_block
+    )
+    second_call = federated_language.framework.Call(second_lambda, x_ref)
+    lit = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
+    )
+    last_block = federated_language.framework.Block(
+        [('a', lit), ('a', x_ref)], second_call
+    )
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
         last_block
@@ -540,23 +584,29 @@ class UniquifyReferenceNamesTest(TransformTestBase):
             ' (_var5 -> _var5)(_var4)))(_var1))'
         ),
     )
-    tree_analysis.check_has_unique_names(transformed_comp)
+    federated_language.framework.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_blocks_nested_inside_of_locals(self):
-    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
-    lower_block = building_blocks.Block([('a', lit)], lit)
-    middle_block = building_blocks.Block([('a', lower_block)], lit)
-    higher_block = building_blocks.Block([('a', middle_block)], lit)
-    y_ref = building_blocks.Reference('a', np.int32)
-    lower_block_with_y_ref = building_blocks.Block([('a', y_ref)], lit)
-    middle_block_with_y_ref = building_blocks.Block(
+    lit = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
+    )
+    lower_block = federated_language.framework.Block([('a', lit)], lit)
+    middle_block = federated_language.framework.Block([('a', lower_block)], lit)
+    higher_block = federated_language.framework.Block(
+        [('a', middle_block)], lit
+    )
+    y_ref = federated_language.framework.Reference('a', np.int32)
+    lower_block_with_y_ref = federated_language.framework.Block(
+        [('a', y_ref)], lit
+    )
+    middle_block_with_y_ref = federated_language.framework.Block(
         [('a', lower_block_with_y_ref)], lit
     )
-    higher_block_with_y_ref = building_blocks.Block(
+    higher_block_with_y_ref = federated_language.framework.Block(
         [('a', middle_block_with_y_ref)], lit
     )
-    multiple_bindings_highest_block = building_blocks.Block(
+    multiple_bindings_highest_block = federated_language.framework.Block(
         [('a', higher_block), ('a', higher_block_with_y_ref)],
         higher_block_with_y_ref,
     )
@@ -565,11 +615,13 @@ class UniquifyReferenceNamesTest(TransformTestBase):
         multiple_bindings_highest_block,
         'uniquify_names_blocks_nested_inside_of_locals.expected',
     )
-    tree_analysis.check_has_unique_names(transformed_comp)
+    federated_language.framework.check_has_unique_names(transformed_comp)
 
   def test_keeps_existing_nonoverlapping_names(self):
-    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
-    block = building_blocks.Block([('a', lit), ('b', lit)], lit)
+    lit = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
+    )
+    block = federated_language.framework.Block([('a', lit), ('b', lit)], lit)
     comp = block
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
@@ -590,68 +642,76 @@ class NormalizeTypesTest(absltest.TestCase):
       tree_transformations.normalize_types(None)
 
   def test_ignore_unnormalized_all_equal(self):
-    fed_type_all_equal = computation_types.FederatedType(
-        np.int32, placements.CLIENTS, all_equal=True
+    fed_type_all_equal = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS, all_equal=True
     )
     unnormalized_comp = tree_transformations.normalize_types(
-        building_blocks.Reference('x', fed_type_all_equal),
+        federated_language.framework.Reference('x', fed_type_all_equal),
         normalize_all_equal_bit=False,
     )
     self.assertEqual(unnormalized_comp.type_signature, fed_type_all_equal)
-    self.assertIsInstance(unnormalized_comp, building_blocks.Reference)
+    self.assertIsInstance(
+        unnormalized_comp, federated_language.framework.Reference
+    )
     self.assertEqual(str(unnormalized_comp), 'x')
 
   def test_converts_all_equal_at_clients_reference_to_not_equal(self):
-    fed_type_all_equal = computation_types.FederatedType(
-        np.int32, placements.CLIENTS, all_equal=True
+    fed_type_all_equal = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS, all_equal=True
     )
     normalized_comp = tree_transformations.normalize_types(
-        building_blocks.Reference('x', fed_type_all_equal)
+        federated_language.framework.Reference('x', fed_type_all_equal)
     )
     self.assertEqual(
         normalized_comp.type_signature,
-        computation_types.FederatedType(
-            np.int32, placements.CLIENTS, all_equal=False
+        federated_language.FederatedType(
+            np.int32, federated_language.CLIENTS, all_equal=False
         ),
     )
-    self.assertIsInstance(normalized_comp, building_blocks.Reference)
+    self.assertIsInstance(
+        normalized_comp, federated_language.framework.Reference
+    )
     self.assertEqual(str(normalized_comp), 'x')
 
   def test_converts_not_all_equal_at_server_reference_to_equal(self):
-    fed_type_not_all_equal = computation_types.FederatedType(
-        np.int32, placements.SERVER, all_equal=False
+    fed_type_not_all_equal = federated_language.FederatedType(
+        np.int32, federated_language.SERVER, all_equal=False
     )
     normalized_comp = tree_transformations.normalize_types(
-        building_blocks.Reference('x', fed_type_not_all_equal)
+        federated_language.framework.Reference('x', fed_type_not_all_equal)
     )
     self.assertEqual(
         normalized_comp.type_signature,
-        computation_types.FederatedType(
-            np.int32, placements.SERVER, all_equal=True
+        federated_language.FederatedType(
+            np.int32, federated_language.SERVER, all_equal=True
         ),
     )
-    self.assertIsInstance(normalized_comp, building_blocks.Reference)
+    self.assertIsInstance(
+        normalized_comp, federated_language.framework.Reference
+    )
     self.assertEqual(str(normalized_comp), 'x')
 
   def test_converts_all_equal_at_clients_lambda_parameter_to_not_equal(self):
-    fed_type_all_equal = computation_types.FederatedType(
-        np.int32, placements.CLIENTS, all_equal=True
+    fed_type_all_equal = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS, all_equal=True
     )
-    normalized_fed_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    normalized_fed_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
-    ref = building_blocks.Reference('x', fed_type_all_equal)
-    lam = building_blocks.Lambda('x', fed_type_all_equal, ref)
+    ref = federated_language.framework.Reference('x', fed_type_all_equal)
+    lam = federated_language.framework.Lambda('x', fed_type_all_equal, ref)
     normalized_lambda = tree_transformations.normalize_types(lam)
     self.assertEqual(
         lam.type_signature,
-        computation_types.FunctionType(fed_type_all_equal, fed_type_all_equal),
+        federated_language.FunctionType(fed_type_all_equal, fed_type_all_equal),
     )
-    self.assertIsInstance(normalized_lambda, building_blocks.Lambda)
+    self.assertIsInstance(
+        normalized_lambda, federated_language.framework.Lambda
+    )
     self.assertEqual(str(normalized_lambda), '(x -> x)')
     self.assertEqual(
         normalized_lambda.type_signature,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             normalized_fed_type, normalized_fed_type
         ),
     )
@@ -659,18 +719,18 @@ class NormalizeTypesTest(absltest.TestCase):
   def test_converts_all_equal_at_clients_lambda_struct_parameter_to_not_equal(
       self,
   ):
-    fed_type_all_equal = computation_types.FederatedType(
-        np.int32, placements.CLIENTS, all_equal=True
+    fed_type_all_equal = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS, all_equal=True
     )
-    normalized_fed_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    normalized_fed_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
-    lam = building_blocks.Lambda(
+    lam = federated_language.framework.Lambda(
         'x',
-        computation_types.StructType([fed_type_all_equal, fed_type_all_equal]),
-        building_blocks.Reference(
+        federated_language.StructType([fed_type_all_equal, fed_type_all_equal]),
+        federated_language.framework.Reference(
             'x',
-            computation_types.StructType(
+            federated_language.StructType(
                 [fed_type_all_equal, fed_type_all_equal]
             ),
         ),
@@ -678,24 +738,26 @@ class NormalizeTypesTest(absltest.TestCase):
     normalized_lambda = tree_transformations.normalize_types(lam)
     self.assertEqual(
         lam.type_signature,
-        computation_types.FunctionType(
-            computation_types.StructType(
+        federated_language.FunctionType(
+            federated_language.StructType(
                 [fed_type_all_equal, fed_type_all_equal]
             ),
-            computation_types.StructType(
+            federated_language.StructType(
                 [fed_type_all_equal, fed_type_all_equal]
             ),
         ),
     )
-    self.assertIsInstance(normalized_lambda, building_blocks.Lambda)
+    self.assertIsInstance(
+        normalized_lambda, federated_language.framework.Lambda
+    )
     self.assertEqual(str(normalized_lambda), '(x -> x)')
     self.assertEqual(
         normalized_lambda.type_signature,
-        computation_types.FunctionType(
-            computation_types.StructType(
+        federated_language.FunctionType(
+            federated_language.StructType(
                 [normalized_fed_type, normalized_fed_type]
             ),
-            computation_types.StructType(
+            federated_language.StructType(
                 [normalized_fed_type, normalized_fed_type]
             ),
         ),
@@ -704,93 +766,99 @@ class NormalizeTypesTest(absltest.TestCase):
   def test_converts_all_equal_at_clients_lambda_nested_struct_parameter_to_not_equal(
       self,
   ):
-    fed_type_all_equal = computation_types.FederatedType(
-        np.int32, placements.CLIENTS, all_equal=True
+    fed_type_all_equal = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS, all_equal=True
     )
-    normalized_fed_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    normalized_fed_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
-    lam = building_blocks.Lambda(
+    lam = federated_language.framework.Lambda(
         'x',
-        computation_types.StructType([
+        federated_language.StructType([
             fed_type_all_equal,
-            computation_types.StructType([fed_type_all_equal]),
+            federated_language.StructType([fed_type_all_equal]),
         ]),
-        building_blocks.Reference(
+        federated_language.framework.Reference(
             'x',
-            computation_types.StructType([
+            federated_language.StructType([
                 fed_type_all_equal,
-                computation_types.StructType([fed_type_all_equal]),
+                federated_language.StructType([fed_type_all_equal]),
             ]),
         ),
     )
     normalized_lambda = tree_transformations.normalize_types(lam)
     self.assertEqual(
         lam.type_signature,
-        computation_types.FunctionType(
-            computation_types.StructType([
+        federated_language.FunctionType(
+            federated_language.StructType([
                 fed_type_all_equal,
-                computation_types.StructType([fed_type_all_equal]),
+                federated_language.StructType([fed_type_all_equal]),
             ]),
-            computation_types.StructType([
+            federated_language.StructType([
                 fed_type_all_equal,
-                computation_types.StructType([fed_type_all_equal]),
+                federated_language.StructType([fed_type_all_equal]),
             ]),
         ),
     )
-    self.assertIsInstance(normalized_lambda, building_blocks.Lambda)
+    self.assertIsInstance(
+        normalized_lambda, federated_language.framework.Lambda
+    )
     self.assertEqual(str(normalized_lambda), '(x -> x)')
     self.assertEqual(
         normalized_lambda.type_signature,
-        computation_types.FunctionType(
-            computation_types.StructType([
+        federated_language.FunctionType(
+            federated_language.StructType([
                 normalized_fed_type,
-                computation_types.StructType([normalized_fed_type]),
+                federated_language.StructType([normalized_fed_type]),
             ]),
-            computation_types.StructType([
+            federated_language.StructType([
                 normalized_fed_type,
-                computation_types.StructType([normalized_fed_type]),
+                federated_language.StructType([normalized_fed_type]),
             ]),
         ),
     )
 
   def test_converts_not_all_equal_at_server_lambda_parameter_to_equal(self):
-    fed_type_not_all_equal = computation_types.FederatedType(
-        np.int32, placements.SERVER, all_equal=False
+    fed_type_not_all_equal = federated_language.FederatedType(
+        np.int32, federated_language.SERVER, all_equal=False
     )
-    normalized_fed_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    normalized_fed_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    ref = building_blocks.Reference('x', fed_type_not_all_equal)
-    lam = building_blocks.Lambda('x', fed_type_not_all_equal, ref)
+    ref = federated_language.framework.Reference('x', fed_type_not_all_equal)
+    lam = federated_language.framework.Lambda('x', fed_type_not_all_equal, ref)
     normalized_lambda = tree_transformations.normalize_types(lam)
     self.assertEqual(
         lam.type_signature,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             fed_type_not_all_equal, fed_type_not_all_equal
         ),
     )
-    self.assertIsInstance(normalized_lambda, building_blocks.Lambda)
+    self.assertIsInstance(
+        normalized_lambda, federated_language.framework.Lambda
+    )
     self.assertEqual(str(normalized_lambda), '(x -> x)')
     self.assertEqual(
         normalized_lambda.type_signature,
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             normalized_fed_type, normalized_fed_type
         ),
     )
 
   def test_converts_federated_map_all_equal_to_federated_map(self):
-    fed_type_all_equal = computation_types.FederatedType(
-        np.int32, placements.CLIENTS, all_equal=True
+    fed_type_all_equal = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS, all_equal=True
     )
-    normalized_fed_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    normalized_fed_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
-    int_ref = building_blocks.Reference('x', np.int32)
-    int_identity = building_blocks.Lambda('x', np.int32, int_ref)
-    federated_int_ref = building_blocks.Reference('y', fed_type_all_equal)
+    int_ref = federated_language.framework.Reference('x', np.int32)
+    int_identity = federated_language.framework.Lambda('x', np.int32, int_ref)
+    federated_int_ref = federated_language.framework.Reference(
+        'y', fed_type_all_equal
+    )
     called_federated_map_all_equal = (
-        building_block_factory.create_federated_map_all_equal(
+        federated_language.framework.create_federated_map_all_equal(
             int_identity, federated_int_ref
         )
     )
@@ -799,14 +867,18 @@ class NormalizeTypesTest(absltest.TestCase):
     )
     self.assertEqual(
         called_federated_map_all_equal.function.uri,
-        intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+        federated_language.framework.FEDERATED_MAP_ALL_EQUAL.uri,
     )
-    self.assertIsInstance(normalized_federated_map, building_blocks.Call)
     self.assertIsInstance(
-        normalized_federated_map.function, building_blocks.Intrinsic
+        normalized_federated_map, federated_language.framework.Call
+    )
+    self.assertIsInstance(
+        normalized_federated_map.function,
+        federated_language.framework.Intrinsic,
     )
     self.assertEqual(
-        normalized_federated_map.function.uri, intrinsic_defs.FEDERATED_MAP.uri
+        normalized_federated_map.function.uri,
+        federated_language.framework.FEDERATED_MAP.uri,
     )
     self.assertEqual(
         normalized_federated_map.type_signature, normalized_fed_type
@@ -816,10 +888,11 @@ class NormalizeTypesTest(absltest.TestCase):
 class ReplaceSelectionsTest(absltest.TestCase):
 
   def test_replace_selection(self):
-    comp = building_blocks.Selection(
-        building_blocks.Reference('x', [np.int32, np.int32]), index=1
+    comp = federated_language.framework.Selection(
+        federated_language.framework.Reference('x', [np.int32, np.int32]),
+        index=1,
     )
-    y = building_blocks.Reference('y', np.int32)
+    y = federated_language.framework.Reference('y', np.int32)
     path_to_replacement = {
         (1,): y,
     }
@@ -829,19 +902,22 @@ class ReplaceSelectionsTest(absltest.TestCase):
     self.assertEqual(new_comp.proto, y.proto)
 
   def test_replace_multiple_instances_of_selection(self):
-    comp = building_blocks.Struct([
-        building_blocks.Selection(
-            building_blocks.Reference('x', [np.int32, [np.int32]]), index=1
+    comp = federated_language.framework.Struct([
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('x', [np.int32, [np.int32]]),
+            index=1,
         ),
-        building_blocks.Selection(
-            building_blocks.Selection(
-                building_blocks.Reference('x', [np.int32, [np.int32]]),
+        federated_language.framework.Selection(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference(
+                    'x', [np.int32, [np.int32]]
+                ),
                 index=1,
             ),
             index=0,
         ),
     ])
-    y = building_blocks.Reference('y', [np.int32])
+    y = federated_language.framework.Reference('y', [np.int32])
     path_to_replacement = {
         (1,): y,
     }
@@ -850,16 +926,17 @@ class ReplaceSelectionsTest(absltest.TestCase):
     )
     self.assertEqual(
         new_comp.proto,
-        building_blocks.Struct(
-            [y, building_blocks.Selection(y, index=0)]
+        federated_language.framework.Struct(
+            [y, federated_language.framework.Selection(y, index=0)]
         ).proto,
     )
 
   def test_replace_selection_mismatching_ref_name(self):
-    comp = building_blocks.Selection(
-        building_blocks.Reference('x', [np.int32, np.int32]), index=1
+    comp = federated_language.framework.Selection(
+        federated_language.framework.Reference('x', [np.int32, np.int32]),
+        index=1,
     )
-    y = building_blocks.Reference('y', np.int32)
+    y = federated_language.framework.Reference('y', np.int32)
     path_to_replacement = {
         (1,): y,
     }
@@ -869,19 +946,23 @@ class ReplaceSelectionsTest(absltest.TestCase):
     self.assertEqual(new_comp.proto, comp.proto)
 
   def test_fail_replace_compiled_comp(self):
-    arg_type = computation_types.StructType([np.int32])
-    fn_type = computation_types.FunctionType(arg_type, arg_type)
+    arg_type = federated_language.StructType([np.int32])
+    fn_type = federated_language.FunctionType(arg_type, arg_type)
     mock_fn = mock.create_autospec(
-        building_blocks.CompiledComputation, spec_set=True, instance=True
+        federated_language.framework.CompiledComputation,
+        spec_set=True,
+        instance=True,
     )
     type(mock_fn).type_signature = mock.PropertyMock(
-        spec=computation_types.FunctionType, return_value=fn_type, spec_set=True
+        spec=federated_language.FunctionType,
+        return_value=fn_type,
+        spec_set=True,
     )
-    comp = building_blocks.Call(
+    comp = federated_language.framework.Call(
         mock_fn,
-        building_blocks.Reference('x', arg_type),
+        federated_language.framework.Reference('x', arg_type),
     )
-    y = building_blocks.Reference('y', np.int32)
+    y = federated_language.framework.Reference('y', np.int32)
     path_to_replacement = {
         (0,): y,
     }
@@ -889,13 +970,13 @@ class ReplaceSelectionsTest(absltest.TestCase):
       tree_transformations.replace_selections(comp, 'x', path_to_replacement)
 
   def test_no_subsequent_replacement(self):
-    comp = building_blocks.Selection(
-        building_blocks.Selection(
-            building_blocks.Reference('x', [[np.int32]]), index=0
+    comp = federated_language.framework.Selection(
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('x', [[np.int32]]), index=0
         ),
         index=0,
     )
-    replacement = building_blocks.Reference('x', [np.int32])
+    replacement = federated_language.framework.Reference('x', [np.int32])
     path_to_replacement = {
         (0,): replacement,
     }
@@ -907,8 +988,8 @@ class ReplaceSelectionsTest(absltest.TestCase):
     # type signatures would not be accurate.
     self.assertEqual(
         new_comp.proto,
-        building_blocks.Selection(
-            building_blocks.Reference('x', [np.int32]), index=0
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('x', [np.int32]), index=0
         ).proto,
     )
 
@@ -916,39 +997,43 @@ class ReplaceSelectionsTest(absltest.TestCase):
 class AsFunctionOfSomeParametersTest(absltest.TestCase):
 
   def test_empty_path(self):
-    comp = building_blocks.Lambda(
-        'x', np.int32, building_blocks.Reference('x', np.int32)
+    comp = federated_language.framework.Lambda(
+        'x', np.int32, federated_language.framework.Reference('x', np.int32)
     )
     new_comp = tree_transformations.as_function_of_some_subparameters(comp, [])
-    self.assertEqual(new_comp.parameter_type, computation_types.StructType([]))
-    unbound_references = transformation_utils.get_map_of_unbound_references(
-        new_comp
-    )[new_comp]
+    self.assertEqual(new_comp.parameter_type, federated_language.StructType([]))
+    unbound_references = (
+        federated_language.framework.get_map_of_unbound_references(new_comp)[
+            new_comp
+        ]
+    )
     self.assertEqual(unbound_references, set(['x']))
 
   def test_all_path(self):
-    comp = building_blocks.Lambda(
-        'x', np.int32, building_blocks.Reference('x', np.int32)
+    comp = federated_language.framework.Lambda(
+        'x', np.int32, federated_language.framework.Reference('x', np.int32)
     )
     new_comp = tree_transformations.as_function_of_some_subparameters(
         comp, [()]
     )
     self.assertEqual(
-        new_comp.parameter_type, computation_types.StructType([np.int32])
+        new_comp.parameter_type, federated_language.StructType([np.int32])
     )
-    unbound_references = transformation_utils.get_map_of_unbound_references(
-        new_comp
-    )[new_comp]
+    unbound_references = (
+        federated_language.framework.get_map_of_unbound_references(new_comp)[
+            new_comp
+        ]
+    )
     self.assertEmpty(unbound_references)
 
   def test_selection_path(self):
     arg_type = [[np.int32]]
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'x',
         arg_type,
-        building_blocks.Selection(
-            building_blocks.Selection(
-                building_blocks.Reference('x', arg_type), index=0
+        federated_language.framework.Selection(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('x', arg_type), index=0
             ),
             index=0,
         ),
@@ -957,41 +1042,45 @@ class AsFunctionOfSomeParametersTest(absltest.TestCase):
         comp, [(0, 0)]
     )
     self.assertEqual(
-        new_comp.parameter_type, computation_types.StructType([np.int32])
+        new_comp.parameter_type, federated_language.StructType([np.int32])
     )
-    unbound_references = transformation_utils.get_map_of_unbound_references(
-        new_comp
-    )[new_comp]
+    unbound_references = (
+        federated_language.framework.get_map_of_unbound_references(new_comp)[
+            new_comp
+        ]
+    )
     self.assertEmpty(unbound_references)
 
   def test_partial_selection_path(self):
     arg_type = [[np.int32]]
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'x',
         arg_type,
-        building_blocks.Selection(
-            building_blocks.Reference('x', arg_type), index=0
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('x', arg_type), index=0
         ),
     )
     new_comp = tree_transformations.as_function_of_some_subparameters(
         comp, [(0,)]
     )
     self.assertEqual(
-        new_comp.parameter_type, computation_types.StructType([[np.int32]])
+        new_comp.parameter_type, federated_language.StructType([[np.int32]])
     )
-    unbound_references = transformation_utils.get_map_of_unbound_references(
-        new_comp
-    )[new_comp]
+    unbound_references = (
+        federated_language.framework.get_map_of_unbound_references(new_comp)[
+            new_comp
+        ]
+    )
     self.assertEmpty(unbound_references)
 
   def test_invalid_selection_path(self):
     arg_type = [[np.int32]]
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'x',
         arg_type,
-        building_blocks.Selection(
-            building_blocks.Selection(
-                building_blocks.Reference('x', arg_type), index=0
+        federated_language.framework.Selection(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('x', arg_type), index=0
             ),
             index=0,
         ),
@@ -1001,21 +1090,22 @@ class AsFunctionOfSomeParametersTest(absltest.TestCase):
 
   def test_multiple_selection_path(self):
     arg_type = [np.int32, np.float32, [np.int32, np.str_]]
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'x',
         arg_type,
-        building_blocks.Struct([
-            building_blocks.Selection(
-                building_blocks.Reference('x', arg_type), index=1
+        federated_language.framework.Struct([
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('x', arg_type), index=1
             ),
-            building_blocks.Selection(
-                building_blocks.Selection(
-                    building_blocks.Reference('x', arg_type), index=2
+            federated_language.framework.Selection(
+                federated_language.framework.Selection(
+                    federated_language.framework.Reference('x', arg_type),
+                    index=2,
                 ),
                 index=0,
             ),
-            building_blocks.Selection(
-                building_blocks.Reference('x', arg_type), index=2
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('x', arg_type), index=2
             ),
         ]),
     )
@@ -1024,20 +1114,22 @@ class AsFunctionOfSomeParametersTest(absltest.TestCase):
     )
     self.assertEqual(
         new_comp.parameter_type,
-        computation_types.StructType([np.float32, [np.int32, np.str_]]),
+        federated_language.StructType([np.float32, [np.int32, np.str_]]),
     )
-    unbound_references = transformation_utils.get_map_of_unbound_references(
-        new_comp
-    )[new_comp]
+    unbound_references = (
+        federated_language.framework.get_map_of_unbound_references(new_comp)[
+            new_comp
+        ]
+    )
     self.assertEmpty(unbound_references)
 
   def test_unused_selection_path(self):
     arg_type = [np.int32, np.float32, [np.int32, np.str_]]
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'x',
         arg_type,
-        building_blocks.Selection(
-            building_blocks.Reference('x', arg_type), index=1
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('x', arg_type), index=1
         ),
     )
     new_comp = tree_transformations.as_function_of_some_subparameters(
@@ -1045,21 +1137,23 @@ class AsFunctionOfSomeParametersTest(absltest.TestCase):
     )
     self.assertEqual(
         new_comp.parameter_type,
-        computation_types.StructType([np.float32, [np.int32, np.str_]]),
+        federated_language.StructType([np.float32, [np.int32, np.str_]]),
     )
-    unbound_references = transformation_utils.get_map_of_unbound_references(
-        new_comp
-    )[new_comp]
+    unbound_references = (
+        federated_language.framework.get_map_of_unbound_references(new_comp)[
+            new_comp
+        ]
+    )
     self.assertEmpty(unbound_references)
 
   def test_paths_not_applied_sequentially(self):
     arg_type = [np.int32, np.float32, [np.int32, np.str_]]
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'x',
         arg_type,
-        building_blocks.Selection(
-            building_blocks.Selection(
-                building_blocks.Reference('x', arg_type), index=2
+        federated_language.framework.Selection(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('x', arg_type), index=2
             ),
             index=1,
         ),
@@ -1070,15 +1164,19 @@ class AsFunctionOfSomeParametersTest(absltest.TestCase):
     )
     self.assertEqual(
         new_comp.parameter_type,
-        computation_types.StructType([[np.int32, np.str_], np.float32]),
+        federated_language.StructType([[np.int32, np.str_], np.float32]),
     )
-    unbound_references = transformation_utils.get_map_of_unbound_references(
-        new_comp
-    )[new_comp]
+    unbound_references = (
+        federated_language.framework.get_map_of_unbound_references(new_comp)[
+            new_comp
+        ]
+    )
     self.assertEmpty(unbound_references)
-    self.assertIsInstance(new_comp.result.result, building_blocks.Selection)
     self.assertIsInstance(
-        new_comp.result.result.source, building_blocks.Selection
+        new_comp.result.result, federated_language.framework.Selection
+    )
+    self.assertIsInstance(
+        new_comp.result.result.source, federated_language.framework.Selection
     )
 
 
@@ -1086,100 +1184,110 @@ class StripPlacementTest(parameterized.TestCase):
 
   def assert_has_no_intrinsics_nor_federated_types(self, comp):
     def _check(x):
-      if isinstance(x.type_signature, computation_types.FederatedType):
+      if isinstance(x.type_signature, federated_language.FederatedType):
         raise AssertionError(f'Unexpected federated type: {x.type_signature}')
-      if isinstance(x, building_blocks.Intrinsic):
+      if isinstance(x, federated_language.framework.Intrinsic):
         raise AssertionError(f'Unexpected intrinsic: {x}')
 
-    tree_analysis.visit_postorder(comp, _check)
+    federated_language.framework.visit_postorder(comp, _check)
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
       tree_transformations.strip_placement(None)
 
   def test_computation_non_federated_type(self):
-    before = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    before = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
+    )
     after, modified = tree_transformations.strip_placement(before)
     self.assertEqual(before, after)
     self.assertFalse(modified)
 
   def test_raises_disallowed_intrinsic(self):
-    fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(np.int32, placements.SERVER)
+    fed_ref = federated_language.framework.Reference(
+        'x',
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
     )
-    broadcaster = building_blocks.Intrinsic(
-        intrinsic_defs.FEDERATED_BROADCAST.uri,
-        computation_types.FunctionType(
+    broadcaster = federated_language.framework.Intrinsic(
+        federated_language.framework.FEDERATED_BROADCAST.uri,
+        federated_language.FunctionType(
             fed_ref.type_signature,
-            computation_types.FederatedType(
+            federated_language.FederatedType(
                 fed_ref.type_signature.member,
-                placements.CLIENTS,
+                federated_language.CLIENTS,
                 all_equal=True,
             ),
         ),
     )
-    called_broadcast = building_blocks.Call(broadcaster, fed_ref)
+    called_broadcast = federated_language.framework.Call(broadcaster, fed_ref)
     with self.assertRaises(ValueError):
       tree_transformations.strip_placement(called_broadcast)
 
   def test_raises_multiple_placements(self):
-    server_placed_data = building_blocks.Reference(
-        'x', computation_types.FederatedType(np.int32, placements.SERVER)
+    server_placed_data = federated_language.framework.Reference(
+        'x',
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
     )
-    clients_placed_data = building_blocks.Reference(
-        'y', computation_types.FederatedType(np.int32, placements.CLIENTS)
+    clients_placed_data = federated_language.framework.Reference(
+        'y',
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
-    block_holding_both = building_blocks.Block(
+    block_holding_both = federated_language.framework.Block(
         [('x', server_placed_data)], clients_placed_data
     )
     with self.assertRaisesRegex(ValueError, 'multiple different placements'):
       tree_transformations.strip_placement(block_holding_both)
 
   def test_passes_unbound_type_signature_obscured_under_block(self):
-    fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(np.int32, placements.SERVER)
+    fed_ref = federated_language.framework.Reference(
+        'x',
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
     )
-    block = building_blocks.Block(
+    block = federated_language.framework.Block(
         [
             ('y', fed_ref),
             (
                 'x',
-                building_blocks.Literal(
-                    1, computation_types.TensorType(np.int32)
+                federated_language.framework.Literal(
+                    1, federated_language.TensorType(np.int32)
                 ),
             ),
-            ('z', building_blocks.Reference('x', np.int32)),
+            ('z', federated_language.framework.Reference('x', np.int32)),
         ],
-        building_blocks.Reference('y', fed_ref.type_signature),
+        federated_language.framework.Reference('y', fed_ref.type_signature),
     )
     tree_transformations.strip_placement(block)
 
   def test_passes_noarg_lambda(self):
-    lam = building_blocks.Lambda(
+    lam = federated_language.framework.Lambda(
         None,
         None,
-        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        federated_language.framework.Literal(
+            1, federated_language.TensorType(np.int32)
+        ),
     )
-    fed_int_type = computation_types.FederatedType(np.int32, placements.SERVER)
-    fed_eval = building_blocks.Intrinsic(
-        intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
-        computation_types.FunctionType(lam.type_signature, fed_int_type),
+    fed_int_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    called_eval = building_blocks.Call(fed_eval, lam)
+    fed_eval = federated_language.framework.Intrinsic(
+        federated_language.framework.FEDERATED_EVAL_AT_SERVER.uri,
+        federated_language.FunctionType(lam.type_signature, fed_int_type),
+    )
+    called_eval = federated_language.framework.Call(fed_eval, lam)
     tree_transformations.strip_placement(called_eval)
 
   def test_removes_federated_types_under_function(self):
     int_type = np.int32
-    server_int_type = computation_types.FederatedType(
-        int_type, placements.SERVER
+    server_int_type = federated_language.FederatedType(
+        int_type, federated_language.SERVER
     )
-    int_ref = building_blocks.Reference('x', int_type)
-    int_id = building_blocks.Lambda('x', int_type, int_ref)
-    fed_ref = building_blocks.Reference('x', server_int_type)
-    applied_id = building_block_factory.create_federated_map_or_apply(
+    int_ref = federated_language.framework.Reference('x', int_type)
+    int_id = federated_language.framework.Lambda('x', int_type, int_ref)
+    fed_ref = federated_language.framework.Reference('x', server_int_type)
+    applied_id = federated_language.framework.create_federated_map_or_apply(
         int_id, fed_ref
     )
-    before = building_block_factory.create_federated_map_or_apply(
+    before = federated_language.framework.create_federated_map_or_apply(
         int_id, applied_id
     )
     after, modified = tree_transformations.strip_placement(before)
@@ -1187,26 +1295,28 @@ class StripPlacementTest(parameterized.TestCase):
     self.assert_has_no_intrinsics_nor_federated_types(after)
 
   def test_strip_placement_removes_federated_applys(self):
-    int_type = computation_types.TensorType(np.int32)
-    server_int_type = computation_types.FederatedType(
-        int_type, placements.SERVER
+    int_type = federated_language.TensorType(np.int32)
+    server_int_type = federated_language.FederatedType(
+        int_type, federated_language.SERVER
     )
-    int_ref = building_blocks.Reference('x', int_type)
-    int_id = building_blocks.Lambda('x', int_type, int_ref)
-    fed_ref = building_blocks.Reference('x', server_int_type)
-    applied_id = building_block_factory.create_federated_map_or_apply(
+    int_ref = federated_language.framework.Reference('x', int_type)
+    int_id = federated_language.framework.Lambda('x', int_type, int_ref)
+    fed_ref = federated_language.framework.Reference('x', server_int_type)
+    applied_id = federated_language.framework.create_federated_map_or_apply(
         int_id, fed_ref
     )
-    before = building_block_factory.create_federated_map_or_apply(
+    before = federated_language.framework.create_federated_map_or_apply(
         int_id, applied_id
     )
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         before.type_signature, server_int_type
     )
-    type_test_utils.assert_types_identical(after.type_signature, int_type)
+    federated_language.framework.assert_types_identical(
+        after.type_signature, int_type
+    )
     self.assertEqual(
         before.compact_representation(),
         'federated_apply(<(x -> x),federated_apply(<(x -> x),x>)>)',
@@ -1214,26 +1324,28 @@ class StripPlacementTest(parameterized.TestCase):
     self.assertEqual(after.compact_representation(), '(x -> x)((x -> x)(x))')
 
   def test_strip_placement_removes_federated_maps(self):
-    int_type = computation_types.TensorType(np.int32)
-    clients_int_type = computation_types.FederatedType(
-        int_type, placements.CLIENTS
+    int_type = federated_language.TensorType(np.int32)
+    clients_int_type = federated_language.FederatedType(
+        int_type, federated_language.CLIENTS
     )
-    int_ref = building_blocks.Reference('x', int_type)
-    int_id = building_blocks.Lambda('x', int_type, int_ref)
-    fed_ref = building_blocks.Reference('x', clients_int_type)
-    applied_id = building_block_factory.create_federated_map_or_apply(
+    int_ref = federated_language.framework.Reference('x', int_type)
+    int_id = federated_language.framework.Lambda('x', int_type, int_ref)
+    fed_ref = federated_language.framework.Reference('x', clients_int_type)
+    applied_id = federated_language.framework.create_federated_map_or_apply(
         int_id, fed_ref
     )
-    before = building_block_factory.create_federated_map_or_apply(
+    before = federated_language.framework.create_federated_map_or_apply(
         int_id, applied_id
     )
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         before.type_signature, clients_int_type
     )
-    type_test_utils.assert_types_identical(after.type_signature, int_type)
+    federated_language.framework.assert_types_identical(
+        after.type_signature, int_type
+    )
     self.assertEqual(
         before.compact_representation(),
         'federated_map(<(x -> x),federated_map(<(x -> x),x>)>)',
@@ -1241,129 +1353,149 @@ class StripPlacementTest(parameterized.TestCase):
     self.assertEqual(after.compact_representation(), '(x -> x)((x -> x)(x))')
 
   def test_unwrap_removes_federated_zips_at_server(self):
-    list_type = computation_types.StructType([np.int32, np.float32] * 2)
-    server_list_type = computation_types.FederatedType(
-        list_type, placements.SERVER
+    list_type = federated_language.StructType([np.int32, np.float32] * 2)
+    server_list_type = federated_language.FederatedType(
+        list_type, federated_language.SERVER
     )
-    fed_tuple = building_blocks.Reference('tup', server_list_type)
-    unzipped = building_block_factory.create_federated_unzip(fed_tuple)
-    before = building_block_factory.create_federated_zip(unzipped)
+    fed_tuple = federated_language.framework.Reference('tup', server_list_type)
+    unzipped = federated_language.framework.create_federated_unzip(fed_tuple)
+    before = federated_language.framework.create_federated_zip(unzipped)
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         before.type_signature, server_list_type
     )
-    type_test_utils.assert_types_identical(after.type_signature, list_type)
+    federated_language.framework.assert_types_identical(
+        after.type_signature, list_type
+    )
 
   def test_unwrap_removes_federated_zips_at_clients(self):
-    list_type = computation_types.StructType([np.int32, np.float32] * 2)
-    clients_list_type = computation_types.FederatedType(
-        list_type, placements.SERVER
+    list_type = federated_language.StructType([np.int32, np.float32] * 2)
+    clients_list_type = federated_language.FederatedType(
+        list_type, federated_language.SERVER
     )
-    fed_tuple = building_blocks.Reference('tup', clients_list_type)
-    unzipped = building_block_factory.create_federated_unzip(fed_tuple)
-    before = building_block_factory.create_federated_zip(unzipped)
+    fed_tuple = federated_language.framework.Reference('tup', clients_list_type)
+    unzipped = federated_language.framework.create_federated_unzip(fed_tuple)
+    before = federated_language.framework.create_federated_zip(unzipped)
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         before.type_signature, clients_list_type
     )
-    type_test_utils.assert_types_identical(after.type_signature, list_type)
+    federated_language.framework.assert_types_identical(
+        after.type_signature, list_type
+    )
 
   def test_strip_placement_removes_federated_value_at_server(self):
-    int_data = building_blocks.Literal(
-        1, computation_types.TensorType(np.int32)
+    int_data = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
     )
-    float_data = building_blocks.Literal(
-        2.0, computation_types.TensorType(np.float32)
+    float_data = federated_language.framework.Literal(
+        2.0, federated_language.TensorType(np.float32)
     )
-    fed_int = building_block_factory.create_federated_value(
-        int_data, placements.SERVER
+    fed_int = federated_language.framework.create_federated_value(
+        int_data, federated_language.SERVER
     )
-    fed_float = building_block_factory.create_federated_value(
-        float_data, placements.SERVER
+    fed_float = federated_language.framework.create_federated_value(
+        float_data, federated_language.SERVER
     )
-    tup = building_blocks.Struct([fed_int, fed_float], container_type=tuple)
-    before = building_block_factory.create_federated_zip(tup)
+    tup = federated_language.framework.Struct(
+        [fed_int, fed_float], container_type=tuple
+    )
+    before = federated_language.framework.create_federated_zip(tup)
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    tuple_type = computation_types.StructWithPythonType(
+    tuple_type = federated_language.StructWithPythonType(
         [(None, np.int32), (None, np.float32)], tuple
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         before.type_signature,
-        computation_types.FederatedType(tuple_type, placements.SERVER),
+        federated_language.FederatedType(tuple_type, federated_language.SERVER),
     )
-    type_test_utils.assert_types_identical(after.type_signature, tuple_type)
+    federated_language.framework.assert_types_identical(
+        after.type_signature, tuple_type
+    )
 
   def test_strip_placement_federated_value_at_clients(self):
-    int_data = building_blocks.Literal(
-        1, computation_types.TensorType(np.int32)
+    int_data = federated_language.framework.Literal(
+        1, federated_language.TensorType(np.int32)
     )
-    float_data = building_blocks.Literal(
-        2.0, computation_types.TensorType(np.float32)
+    float_data = federated_language.framework.Literal(
+        2.0, federated_language.TensorType(np.float32)
     )
-    fed_int = building_block_factory.create_federated_value(
-        int_data, placements.CLIENTS
+    fed_int = federated_language.framework.create_federated_value(
+        int_data, federated_language.CLIENTS
     )
-    fed_float = building_block_factory.create_federated_value(
-        float_data, placements.CLIENTS
+    fed_float = federated_language.framework.create_federated_value(
+        float_data, federated_language.CLIENTS
     )
-    tup = building_blocks.Struct([fed_int, fed_float], container_type=tuple)
-    before = building_block_factory.create_federated_zip(tup)
+    tup = federated_language.framework.Struct(
+        [fed_int, fed_float], container_type=tuple
+    )
+    before = federated_language.framework.create_federated_zip(tup)
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    tuple_type = computation_types.StructWithPythonType(
+    tuple_type = federated_language.StructWithPythonType(
         [(None, np.int32), (None, np.float32)], tuple
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         before.type_signature,
-        computation_types.FederatedType(tuple_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            tuple_type, federated_language.CLIENTS
+        ),
     )
-    type_test_utils.assert_types_identical(after.type_signature, tuple_type)
+    federated_language.framework.assert_types_identical(
+        after.type_signature, tuple_type
+    )
 
   def test_strip_placement_with_called_lambda(self):
-    int_type = computation_types.TensorType(np.int32)
-    server_int_type = computation_types.FederatedType(
-        int_type, placements.SERVER
+    int_type = federated_language.TensorType(np.int32)
+    server_int_type = federated_language.FederatedType(
+        int_type, federated_language.SERVER
     )
-    federated_ref = building_blocks.Reference('outer', server_int_type)
-    inner_federated_ref = building_blocks.Reference('inner', server_int_type)
-    identity_lambda = building_blocks.Lambda(
+    federated_ref = federated_language.framework.Reference(
+        'outer', server_int_type
+    )
+    inner_federated_ref = federated_language.framework.Reference(
+        'inner', server_int_type
+    )
+    identity_lambda = federated_language.framework.Lambda(
         'inner', server_int_type, inner_federated_ref
     )
-    before = building_blocks.Call(identity_lambda, federated_ref)
+    before = federated_language.framework.Call(identity_lambda, federated_ref)
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         before.type_signature, server_int_type
     )
-    type_test_utils.assert_types_identical(after.type_signature, int_type)
+    federated_language.framework.assert_types_identical(
+        after.type_signature, int_type
+    )
 
   def test_strip_placement_nested_federated_type(self):
-    int_type = computation_types.TensorType(np.int32)
-    server_int_type = computation_types.FederatedType(
-        int_type, placements.SERVER
+    int_type = federated_language.TensorType(np.int32)
+    server_int_type = federated_language.FederatedType(
+        int_type, federated_language.SERVER
     )
-    tupled_int_type = computation_types.StructType([int_type, int_type])
-    tupled_server_int_type = computation_types.StructType([
+    tupled_int_type = federated_language.StructType([int_type, int_type])
+    tupled_server_int_type = federated_language.StructType([
         server_int_type,
         server_int_type,
     ])
-    fed_ref = building_blocks.Reference('x', server_int_type)
-    before = building_blocks.Struct([fed_ref, fed_ref])
+    fed_ref = federated_language.framework.Reference('x', server_int_type)
+    before = federated_language.framework.Struct([fed_ref, fed_ref])
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         before.type_signature, tupled_server_int_type
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         after.type_signature, tupled_int_type
     )
 

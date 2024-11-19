@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -22,9 +23,6 @@ from tensorflow_federated.python.aggregators import concat
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -65,40 +63,42 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_concat_type_properties_unweighted(self, value_type):
     factory = _concat_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     # Inner SumFactory has no state.
-    server_state_type = computation_types.FederatedType((), placements.SERVER)
+    server_state_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         process.initialize.type_signature, expected_initialize_type
     )
 
     # Inner SumFactory has no measurements.
-    expected_measurements_type = computation_types.FederatedType(
-        (), placements.SERVER
+    expected_measurements_type = federated_language.FederatedType(
+        (), federated_language.SERVER
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         process.next.type_signature, expected_next_type
     )
 
@@ -110,48 +110,48 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_clip_type_properties_weighted(self, value_type, weight_type):
     factory = _concat_mean()
-    value_type = computation_types.to_type(value_type)
-    weight_type = computation_types.to_type(weight_type)
+    value_type = federated_language.to_type(value_type)
+    weight_type = federated_language.to_type(weight_type)
     process = factory.create(value_type, weight_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     # State comes from the inner MeanFactory.
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         collections.OrderedDict(value_sum_process=(), weight_sum_process=()),
-        placements.SERVER,
+        federated_language.SERVER,
     )
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         process.initialize.type_signature, expected_initialize_type
     )
 
     # Measurements come from the inner mean factory.
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(mean_value=(), mean_weight=()),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
-            weight=computation_types.FederatedType(
-                weight_type, placements.CLIENTS
+            weight=federated_language.FederatedType(
+                weight_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         process.next.type_signature, expected_next_type
     )
 
@@ -163,7 +163,7 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_non_numeric_dtypes(self, value_type):
     factory = _concat_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'must all be integers or floats'):
       factory.create(value_type)
 
@@ -178,20 +178,23 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_mixed_dtypes(self, value_type):
     factory = _concat_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'should have the same dtype'):
       factory.create(value_type)
 
   @parameterized.named_parameters(
       ('plain_struct', [('a', np.int32)]),
-      ('sequence', computation_types.SequenceType(np.int32)),
-      ('function', computation_types.FunctionType(np.int32, np.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
-      ('nested_function', [computation_types.FunctionType(np.int32, np.int32)]),
+      ('sequence', federated_language.SequenceType(np.int32)),
+      ('function', federated_language.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[federated_language.SequenceType(np.int32)]]]),
+      (
+          'nested_function',
+          [federated_language.FunctionType(np.int32, np.int32)],
+      ),
   )
   def test_raises_on_bad_tff_value_types(self, value_type):
     factory = _concat_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'Expected `value_type` to be'):
       factory.create(value_type)
 
@@ -216,7 +219,7 @@ class ConcatFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_concat_sum(self, value_type, client_data, expected_sum):
     factory = _concat_sum()
-    process = factory.create(computation_types.to_type(value_type))
+    process = factory.create(federated_language.to_type(value_type))
 
     state = process.initialize()
     self.assertEqual(state, ())
@@ -255,8 +258,8 @@ class ConcatFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   ):
     factory = _concat_mean()
     process = factory.create(
-        computation_types.to_type(value_type),
-        computation_types.to_type(np.float32),
+        federated_language.to_type(value_type),
+        federated_language.to_type(np.float32),
     )
 
     expected_state = collections.OrderedDict(

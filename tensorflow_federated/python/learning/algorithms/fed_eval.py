@@ -17,17 +17,13 @@ import collections
 from collections.abc import Callable, Mapping
 from typing import Optional, Union
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import loop_builder
@@ -47,10 +43,10 @@ _AggregationProcess = aggregation_process.AggregationProcess
 
 def _build_local_evaluation(
     model_fn: Callable[[], variable.VariableModel],
-    model_weights_type: computation_types.StructType,
-    batch_type: computation_types.Type,
+    model_weights_type: federated_language.StructType,
+    batch_type: federated_language.Type,
     loop_implementation: loop_builder.LoopImplementation,
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Builds the local TFF computation for evaluation of the given model.
 
   This produces an unplaced function that evaluates a
@@ -82,7 +78,7 @@ def _build_local_evaluation(
   """
 
   @tensorflow_computation.tf_computation(
-      model_weights_type, computation_types.SequenceType(batch_type)
+      model_weights_type, federated_language.SequenceType(batch_type)
   )
   @tf.function
   def client_eval(incoming_model_weights, dataset):
@@ -122,11 +118,11 @@ def _build_local_evaluation(
 
 def _build_functional_local_evaluation(
     model: functional.FunctionalModel,
-    model_weights_type: computation_types.StructType,
+    model_weights_type: federated_language.StructType,
     batch_type: Union[
-        computation_types.StructType, computation_types.TensorType
+        federated_language.StructType, federated_language.TensorType
     ],
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Creates client evaluation logic for a functional model.
 
   This produces an unplaced function that evaluates a
@@ -154,7 +150,7 @@ def _build_functional_local_evaluation(
   """
 
   @tensorflow_computation.tf_computation(
-      model_weights_type, computation_types.SequenceType(batch_type)
+      model_weights_type, federated_language.SequenceType(batch_type)
   )
   @tf.function
   def local_eval(weights, dataset):
@@ -192,7 +188,7 @@ def _build_functional_local_evaluation(
 def _build_fed_eval_client_work(
     model_fn: Callable[[], variable.VariableModel],
     metrics_aggregation_process: Optional[_AggregationProcess],
-    model_weights_type: computation_types.StructType,
+    model_weights_type: federated_language.StructType,
     loop_implementation: loop_builder.LoopImplementation,
 ) -> client_works.ClientWorkProcess:
   """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
@@ -213,7 +209,7 @@ def _build_fed_eval_client_work(
   if metrics_aggregation_process is None:
     # TODO: b/319261270 - Avoid the need for inferring types here, if possible.
     metrics_finalizers = model.metric_finalizers()
-    unfinalized_metrics_type = computation_types.StructWithPythonType(
+    unfinalized_metrics_type = federated_language.StructWithPythonType(
         unfinalized_metrics_spec, collections.OrderedDict
     )
     factory = sum_aggregation_factory.SumThenFinalizeFactory(metrics_finalizers)
@@ -225,7 +221,7 @@ def _build_fed_eval_client_work(
         'metrics_aggregation_process',
     )
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
     return metrics_aggregation_process.initialize()
 
@@ -236,22 +232,25 @@ def _build_fed_eval_client_work(
       loop_implementation=loop_implementation,
   )
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(model_weights_type, placements.CLIENTS),
-      computation_types.FederatedType(
-          computation_types.SequenceType(batch_type), placements.CLIENTS
+      federated_language.FederatedType(
+          model_weights_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(
+          federated_language.SequenceType(batch_type),
+          federated_language.CLIENTS,
       ),
   )
   def next_fn(state, model_weights, client_data):
-    model_outputs = intrinsics.federated_map(
+    model_outputs = federated_language.federated_map(
         client_update_computation, (model_weights, client_data)
     )
     metrics_output = metrics_aggregation_process.next(
         state, model_outputs.local_outputs
     )
     current_round_metrics, total_rounds_metrics = metrics_output.result
-    measurements = intrinsics.federated_zip(
+    measurements = federated_language.federated_zip(
         collections.OrderedDict(
             eval=collections.OrderedDict(
                 current_round_metrics=current_round_metrics,
@@ -260,9 +259,9 @@ def _build_fed_eval_client_work(
         )
     )
     # Return empty result as no model update will be performed for evaluation.
-    empty_client_result = intrinsics.federated_value(
+    empty_client_result = federated_language.federated_value(
         client_works.ClientResult(update=(), update_weight=()),
-        placements.CLIENTS,
+        federated_language.CLIENTS,
     )
     return measured_process.MeasuredProcessOutput(
         metrics_output.state, empty_client_result, measurements
@@ -274,7 +273,7 @@ def _build_fed_eval_client_work(
 def _build_functional_fed_eval_client_work(
     model: functional.FunctionalModel,
     metrics_aggregation_process: Optional[_AggregationProcess],
-    model_weights_type: computation_types.StructType,
+    model_weights_type: federated_language.StructType,
 ) -> client_works.ClientWorkProcess:
   """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
 
@@ -304,34 +303,37 @@ def _build_functional_fed_eval_client_work(
         ).create(unfinalized_metrics_type)
     )
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
     return metrics_aggregation_process.initialize()
 
   @tensorflow_computation.tf_computation(
-      model_weights_type, computation_types.SequenceType(batch_type)
+      model_weights_type, federated_language.SequenceType(batch_type)
   )
   def client_update_computation(model_weights, client_data):
     # Switch to the tuple expected by FunctionalModel.
     tuple_weights = (model_weights.trainable, model_weights.non_trainable)
     return local_eval(tuple_weights, client_data)
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(model_weights_type, placements.CLIENTS),
-      computation_types.FederatedType(
-          computation_types.SequenceType(batch_type), placements.CLIENTS
+      federated_language.FederatedType(
+          model_weights_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(
+          federated_language.SequenceType(batch_type),
+          federated_language.CLIENTS,
       ),
   )
   def next_fn(state, model_weights, client_data):
-    unfinalized_metrics = intrinsics.federated_map(
+    unfinalized_metrics = federated_language.federated_map(
         client_update_computation, (model_weights, client_data)
     )
     metrics_output = metrics_aggregation_process.next(
         state, unfinalized_metrics
     )
     current_round_metrics, total_rounds_metrics = metrics_output.result
-    measurements = intrinsics.federated_zip(
+    measurements = federated_language.federated_zip(
         collections.OrderedDict(
             eval=collections.OrderedDict(
                 current_round_metrics=current_round_metrics,
@@ -340,9 +342,9 @@ def _build_functional_fed_eval_client_work(
         )
     )
     # Return empty result as no model update will be performed for evaluation.
-    empty_client_result = intrinsics.federated_value(
+    empty_client_result = federated_language.federated_value(
         client_works.ClientResult(update=(), update_weight=()),
-        placements.CLIENTS,
+        federated_language.CLIENTS,
     )
     return measured_process.MeasuredProcessOutput(
         metrics_output.state, empty_client_result, measurements
@@ -470,8 +472,9 @@ def build_fed_eval(
         loop_implementation=loop_implementation,
     )
 
-  client_work_result_type = computation_types.FederatedType(
-      client_works.ClientResult(update=(), update_weight=()), placements.CLIENTS
+  client_work_result_type = federated_language.FederatedType(
+      client_works.ClientResult(update=(), update_weight=()),
+      federated_language.CLIENTS,
   )
   model_update_type = client_work_result_type.member.update  # pytype: disable=attribute-error
   model_update_weight_type = client_work_result_type.member.update_weight  # pytype: disable=attribute-error

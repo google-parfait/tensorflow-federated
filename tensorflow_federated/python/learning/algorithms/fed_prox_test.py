@@ -16,10 +16,10 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.core.templates import iterative_process
-from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_prox
@@ -171,7 +171,7 @@ class FedProxConstructionTest(parameterized.TestCase):
         ),
         metrics_aggregator=aggregator.secure_sum_then_finalize,
     )
-    static_assert.assert_not_contains_unsecure_aggregation(
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
         learning_process.next
     )
 
@@ -186,7 +186,7 @@ class FedProxConstructionTest(parameterized.TestCase):
         ),
         metrics_aggregator=aggregator.secure_sum_then_finalize,
     )
-    static_assert.assert_not_contains_unsecure_aggregation(
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
         learning_process.next
     )
 

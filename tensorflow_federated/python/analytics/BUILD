@@ -81,11 +81,7 @@ py_library(
     srcs = ["count_distinct.py"],
     deps = [
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -101,6 +97,6 @@ py_test(
     deps = [
         ":count_distinct",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@federated_language//federated_language",
     ],
 )

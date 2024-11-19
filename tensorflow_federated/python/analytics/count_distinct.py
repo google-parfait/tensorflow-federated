@@ -17,15 +17,11 @@ See https://en.wikipedia.org/wiki/HyperLogLog for additional details on this
 algorithm.
 """
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 # See https://en.wikipedia.org/wiki/HyperLogLog for usage of these constants.
 # Setting HLL_SKETCH_SIZE = 64 is not currently supported because it is not
@@ -53,7 +49,9 @@ def _log2(u: tf.Tensor) -> tf.Tensor:
   return ans - 1
 
 
-def build_client_hyperloglog_computation() -> computation_base.Computation:
+def build_client_hyperloglog_computation() -> (
+    federated_language.framework.Computation
+):
   """Builds a `tff.Computation` for computing client hyperloglog sketches.
 
   Specifically, the returned computation consumes a dataset of integer hashes
@@ -64,7 +62,7 @@ def build_client_hyperloglog_computation() -> computation_base.Computation:
   """
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(np.int64)
+      federated_language.SequenceType(np.int64)
   )
   @tf.function
   def _client_hyperloglog(client_data: tf.data.Dataset) -> tf.Tensor:
@@ -90,7 +88,9 @@ def build_client_hyperloglog_computation() -> computation_base.Computation:
   return _client_hyperloglog
 
 
-def build_federated_secure_max_computation() -> computation_base.Computation:
+def build_federated_secure_max_computation() -> (
+    federated_language.framework.Computation
+):
   """Builds a `tff.Computation` for computing max in a secure fashion.
 
     Specifically, the returned computation consumes sketches at @CLIENTS and
@@ -108,10 +108,10 @@ def build_federated_secure_max_computation() -> computation_base.Computation:
     A `tff.Computation` for computing max of client vectors.
   """
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(
-          computation_types.TensorType(np.int64, shape=[HLL_SKETCH_SIZE]),
-          placements.CLIENTS,
+  @federated_language.federated_computation(
+      federated_language.FederatedType(
+          federated_language.TensorType(np.int64, shape=[HLL_SKETCH_SIZE]),
+          federated_language.CLIENTS,
       )
   )
   def federated_secure_max(sketch):
@@ -151,9 +151,9 @@ def build_federated_secure_max_computation() -> computation_base.Computation:
       )
       return tf.reduce_max(tf.cast(x > 0, tf.int64) * mult, axis=1)
 
-    onehot_sketches = intrinsics.federated_map(_onehot_sketch, sketch)
-    server_sketch = intrinsics.federated_secure_sum(onehot_sketches, 1)
-    maxes = intrinsics.federated_map(maxes_from_onehots, server_sketch)
+    onehot_sketches = federated_language.federated_map(_onehot_sketch, sketch)
+    server_sketch = federated_language.federated_secure_sum(onehot_sketches, 1)
+    maxes = federated_language.federated_map(maxes_from_onehots, server_sketch)
     return maxes
 
   return federated_secure_max
@@ -161,7 +161,7 @@ def build_federated_secure_max_computation() -> computation_base.Computation:
 
 def create_federated_hyperloglog_computation(
     *, use_secagg: bool = False
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Creates a `tff.Computation` to estimate the number of distinct strings.
 
   The returned computation consumes data @CLIENTS and produces an estimate of
@@ -205,19 +205,23 @@ def create_federated_hyperloglog_computation(
   client_hyperloglog = build_client_hyperloglog_computation()
   federated_secure_max = build_federated_secure_max_computation()
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(
-          computation_types.SequenceType(np.str_), placements.CLIENTS
+  @federated_language.federated_computation(
+      federated_language.FederatedType(
+          federated_language.SequenceType(np.str_), federated_language.CLIENTS
       )
   )
   def federated_hyperloglog(client_data):
-    client_hash = intrinsics.federated_map(hash_client_data, client_data)
-    sketches = intrinsics.federated_map(client_hyperloglog, client_hash)
+    client_hash = federated_language.federated_map(
+        hash_client_data, client_data
+    )
+    sketches = federated_language.federated_map(client_hyperloglog, client_hash)
     if use_secagg:
       server_sketch = federated_secure_max(sketches)
     else:
-      server_sketch = intrinsics.federated_max(sketches)
+      server_sketch = federated_language.federated_max(sketches)
 
-    return intrinsics.federated_map(estimate_count_from_sketch, server_sketch)
+    return federated_language.federated_map(
+        estimate_count_from_sketch, server_sketch
+    )
 
   return federated_hyperloglog

@@ -18,18 +18,13 @@ import math
 from typing import Optional
 import warnings
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import array_shape
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -153,14 +148,17 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
   ) -> aggregation_process.AggregationProcess:
     # Checks value_type and compute client data dimension.
     if isinstance(
-        value_type, computation_types.StructType
-    ) and type_analysis.is_structure_of_tensors(value_type):
+        value_type, federated_language.StructType
+    ) and federated_language.framework.is_structure_of_tensors(value_type):
       num_elements_struct = type_conversions.structure_from_tensor_type_tree(
-          lambda x: array_shape.num_elements_in_shape(x.shape), value_type
+          lambda x: federated_language.num_elements_in_array_shape(x.shape),
+          value_type,
       )
       client_dim = sum(tf.nest.flatten(num_elements_struct))
-    elif isinstance(value_type, computation_types.TensorType):
-      client_dim = array_shape.num_elements_in_shape(value_type.shape)
+    elif isinstance(value_type, federated_language.TensorType):
+      client_dim = federated_language.num_elements_in_array_shape(
+          value_type.shape
+      )
     else:
       raise TypeError(
           'Expected `value_type` to be `TensorType` or '
@@ -168,7 +166,7 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
           f'Found type: {repr(value_type)}'
       )
     # Checks that all values are integers.
-    if not type_analysis.is_structure_of_integers(value_type):
+    if not federated_language.framework.is_structure_of_integers(value_type):
       raise TypeError(
           'Component dtypes of `value_type` must all be integers. '
           f'Found {repr(value_type)}.'
@@ -204,32 +202,34 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
         estimate_wrapped_gaussian_stddev
     )
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         state_type,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
-      clip_lower = intrinsics.federated_value(
-          self._clip_range_lower, placements.SERVER
+      clip_lower = federated_language.federated_value(
+          self._clip_range_lower, federated_language.SERVER
       )
-      clip_upper = intrinsics.federated_value(
-          self._clip_range_upper, placements.SERVER
+      clip_upper = federated_language.federated_value(
+          self._clip_range_upper, federated_language.SERVER
       )
 
       # Modular clip values before aggregation.
-      clipped_value = intrinsics.federated_map(
+      clipped_value = federated_language.federated_map(
           modular_clip_by_value_fn,
           (
               value,
-              intrinsics.federated_broadcast(clip_lower),
-              intrinsics.federated_broadcast(clip_upper),
+              federated_language.federated_broadcast(clip_lower),
+              federated_language.federated_broadcast(clip_upper),
           ),
       )
 
       inner_agg_output = inner_agg_next(state, clipped_value)
 
       # Clip the aggregate to the same range again (not considering summands).
-      clipped_agg_output_result = intrinsics.federated_map(
+      clipped_agg_output_result = federated_language.federated_map(
           modular_clip_by_value_fn,
           (inner_agg_output.result, clip_lower, clip_upper),
       )
@@ -239,7 +239,7 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
       )
 
       if self._estimate_stddev:
-        estimate = intrinsics.federated_map(
+        estimate = federated_language.federated_map(
             estimator_fn, (clipped_agg_output_result, clip_lower, clip_upper)
         )
         measurements['estimated_stddev'] = estimate
@@ -247,7 +247,7 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
       return measured_process.MeasuredProcessOutput(
           state=inner_agg_output.state,
           result=clipped_agg_output_result,
-          measurements=intrinsics.federated_zip(measurements),
+          measurements=federated_language.federated_zip(measurements),
       )
 
     return next_fn

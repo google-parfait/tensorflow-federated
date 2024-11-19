@@ -24,6 +24,7 @@ from collections.abc import Callable
 from typing import Optional, Union
 
 from absl import logging
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -32,7 +33,6 @@ from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
@@ -207,7 +207,7 @@ def build_weighted_fed_prox(
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
   aggregator = model_aggregator.create(
-      model_update_type, computation_types.TensorType(np.float32)
+      model_update_type, federated_language.TensorType(np.float32)
   )
   process_signature = aggregator.next.type_signature
   input_client_value_type = process_signature.parameter[1]  # pytype: disable=unsupported-operands

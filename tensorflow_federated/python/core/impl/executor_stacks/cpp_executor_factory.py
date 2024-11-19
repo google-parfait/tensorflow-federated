@@ -20,15 +20,13 @@ from typing import Optional
 
 from absl import logging
 import cachetools
+import federated_language
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.executor_stacks import executor_stack_bindings
 from tensorflow_federated.python.core.impl.executors import cpp_to_python_executor
-from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executors_errors
-from tensorflow_federated.python.core.impl.types import placements
 
 # Users likely do not intend to run 4 or more TensorFlow functions sequentially;
 # we special-case to warn users explicitly in this case, in addition to
@@ -36,17 +34,20 @@ from tensorflow_federated.python.core.impl.types import placements
 _CONCURRENCY_LEVEL_TO_WARN = 4
 
 
-def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
+def _get_hashable_key(
+    cardinalities: federated_language.framework.CardinalitiesType,
+):
   return tuple(sorted((str(k), v) for k, v in cardinalities.items()))
 
 
-class CPPExecutorFactory(executor_factory.ExecutorFactory):
+class CPPExecutorFactory(federated_language.framework.ExecutorFactory):
   """An ExecutorFactory which wraps a simple executor_fn."""
 
   def __init__(
       self,
       executor_fn: Callable[
-          [executor_factory.CardinalitiesType], executor_bindings.Executor
+          [federated_language.framework.CardinalitiesType],
+          executor_bindings.Executor,
       ],
       executor_cache_size: int = 5,
   ):
@@ -55,8 +56,8 @@ class CPPExecutorFactory(executor_factory.ExecutorFactory):
     self._executors = cachetools.LRUCache(self._cache_size)
 
   def create_executor(
-      self, cardinalities: executor_factory.CardinalitiesType
-  ) -> executor_base.Executor:
+      self, cardinalities: federated_language.framework.CardinalitiesType
+  ) -> federated_language.framework.Executor:
     cardinalities_key = _get_hashable_key(cardinalities)
     if cardinalities_key not in self._executors:
       cpp_executor = self._executor_fn(cardinalities)
@@ -68,7 +69,7 @@ class CPPExecutorFactory(executor_factory.ExecutorFactory):
     return self._executors[cardinalities_key]
 
   def clean_up_executor(
-      self, cardinalities: executor_factory.CardinalitiesType
+      self, cardinalities: federated_language.framework.CardinalitiesType
   ):
     cardinalities_key = _get_hashable_key(cardinalities)
     ex = self._executors.get(cardinalities_key)
@@ -121,16 +122,16 @@ def local_cpp_executor_factory(
     client_leaf_executor_fn: Optional[
         Callable[[int], executor_bindings.Executor]
     ] = None,
-) -> executor_factory.ExecutorFactory:
+) -> federated_language.framework.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
   _check_num_clients_is_valid(default_num_clients)
 
   def _executor_fn(
-      cardinalities: executor_factory.CardinalitiesType,
+      cardinalities: federated_language.framework.CardinalitiesType,
   ) -> executor_bindings.Executor:
-    if cardinalities.get(placements.CLIENTS) is None:
-      cardinalities[placements.CLIENTS] = default_num_clients
-    num_clients = cardinalities[placements.CLIENTS]
+    if cardinalities.get(federated_language.CLIENTS) is None:
+      cardinalities[federated_language.CLIENTS] = default_num_clients
+    num_clients = cardinalities[federated_language.CLIENTS]
     if (
         max_concurrent_computation_calls > 0
         and num_clients > max_concurrent_computation_calls
@@ -189,15 +190,15 @@ def remote_cpp_executor_factory(
     default_num_clients: int = 0,
     stream_structs: bool = False,
     max_concurrent_computation_calls: int = -1,
-) -> executor_factory.ExecutorFactory:
+) -> federated_language.framework.ExecutorFactory:
   """ExecutorFactory backed by C++ Executor bindings."""
   _check_num_clients_is_valid(default_num_clients)
 
   def _executor_fn(
-      cardinalities: executor_factory.CardinalitiesType,
+      cardinalities: federated_language.framework.CardinalitiesType,
   ) -> executor_bindings.Executor:
-    if cardinalities.get(placements.CLIENTS) is None:
-      cardinalities[placements.CLIENTS] = default_num_clients
+    if cardinalities.get(federated_language.CLIENTS) is None:
+      cardinalities[federated_language.CLIENTS] = default_num_clients
     try:
       if stream_structs:
         return executor_stack_bindings.create_streaming_remote_executor_stack(

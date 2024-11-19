@@ -15,11 +15,11 @@
 import collections
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import variable
 
@@ -47,9 +47,9 @@ class TestModel(variable.VariableModel):
 
   @property
   def input_spec(self):
-    return computation_types.StructType((
-        computation_types.TensorSpec(tf.float32, [3]),
-        computation_types.TensorSpec(tf.float32, [1]),
+    return federated_language.StructType((
+        federated_language.TensorSpec(tf.float32, [3]),
+        federated_language.TensorSpec(tf.float32, [1]),
     ))
 
   def predict_on_batch(self, batch_input, training=True):
@@ -88,23 +88,23 @@ class WeightsTypeFromModelTest(absltest.TestCase):
     model = TestModel()
     weights_type = model_weights.weights_type_from_model(model)
     self.assertEqual(
-        computation_types.StructWithPythonType(
+        federated_language.StructWithPythonType(
             [
                 (
                     'trainable',
-                    computation_types.StructWithPythonType(
+                    federated_language.StructWithPythonType(
                         [
-                            computation_types.TensorType(np.float32, [3]),
-                            computation_types.TensorType(np.float32, [1]),
+                            federated_language.TensorType(np.float32, [3]),
+                            federated_language.TensorType(np.float32, [1]),
                         ],
                         list,
                     ),
                 ),
                 (
                     'non_trainable',
-                    computation_types.StructWithPythonType(
+                    federated_language.StructWithPythonType(
                         [
-                            computation_types.TensorType(np.int32),
+                            federated_language.TensorType(np.int32),
                         ],
                         list,
                     ),
@@ -118,23 +118,23 @@ class WeightsTypeFromModelTest(absltest.TestCase):
   def test_returns_model_weights_for_model_callable(self):
     weights_type = model_weights.weights_type_from_model(TestModel)
     self.assertEqual(
-        computation_types.StructWithPythonType(
+        federated_language.StructWithPythonType(
             [
                 (
                     'trainable',
-                    computation_types.StructWithPythonType(
+                    federated_language.StructWithPythonType(
                         [
-                            computation_types.TensorType(np.float32, [3]),
-                            computation_types.TensorType(np.float32, [1]),
+                            federated_language.TensorType(np.float32, [3]),
+                            federated_language.TensorType(np.float32, [1]),
                         ],
                         list,
                     ),
                 ),
                 (
                     'non_trainable',
-                    computation_types.StructWithPythonType(
+                    federated_language.StructWithPythonType(
                         [
-                            computation_types.TensorType(np.int32),
+                            federated_language.TensorType(np.int32),
                         ],
                         list,
                     ),
