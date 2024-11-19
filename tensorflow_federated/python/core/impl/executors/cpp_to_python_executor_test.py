@@ -16,13 +16,13 @@ import unittest
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import cpp_to_python_executor
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class CcToPythonExecutorTest(
@@ -40,17 +40,17 @@ class CcToPythonExecutorTest(
     )
 
   @parameterized.named_parameters(
-      ('integer', 1, computation_types.TensorType(np.int32)),
-      ('float', 1.0, computation_types.TensorType(np.float32)),
+      ('integer', 1, federated_language.TensorType(np.int32)),
+      ('float', 1.0, federated_language.TensorType(np.float32)),
       (
           'mixed_structure',
           structure.Struct.unnamed(0, 1.0),
-          computation_types.StructType([np.int32, np.float32]),
+          federated_language.StructType([np.int32, np.float32]),
       ),
       (
           'nested_structure',
           structure.Struct.unnamed(0, structure.Struct.unnamed(1, 2)),
-          computation_types.StructType([np.int32, [np.int32, np.int32]]),
+          federated_language.StructType([np.int32, [np.int32, np.int32]]),
       ),
   )
   async def test_create_value(self, value, type_spec):
@@ -66,8 +66,8 @@ class CcToPythonExecutorTest(
     fn = unittest.mock.create_autospec(
         cpp_to_python_executor.CppToPythonExecutorValue
     )
-    fn.type_signature = computation_types.FunctionType(
-        None, computation_types.TensorType(np.int32)
+    fn.type_signature = federated_language.FunctionType(
+        None, federated_language.TensorType(np.int32)
     )
     fn.reference = 1
 
@@ -84,12 +84,12 @@ class CcToPythonExecutorTest(
     fn = unittest.mock.create_autospec(
         cpp_to_python_executor.CppToPythonExecutorValue
     )
-    fn.type_signature = computation_types.FunctionType(None, np.int32)
+    fn.type_signature = federated_language.FunctionType(None, np.int32)
     fn.reference = 1
     arg = unittest.mock.create_autospec(
         cpp_to_python_executor.CppToPythonExecutorValue
     )
-    arg.type_signature = computation_types.TensorType(np.int32)
+    arg.type_signature = federated_language.TensorType(np.int32)
     arg.reference = 2
 
     constructed_call = await self._test_executor.create_call(fn, arg)
@@ -105,7 +105,7 @@ class CcToPythonExecutorTest(
     struct_element = unittest.mock.create_autospec(
         cpp_to_python_executor.CppToPythonExecutorValue
     )
-    struct_element.type_signature = computation_types.TensorType(np.int32)
+    struct_element.type_signature = federated_language.TensorType(np.int32)
     struct_element.reference = 1
 
     constructed_struct = await self._test_executor.create_struct(
@@ -123,7 +123,7 @@ class CcToPythonExecutorTest(
     source = unittest.mock.create_autospec(
         cpp_to_python_executor.CppToPythonExecutorValue
     )
-    source.type_signature = computation_types.StructType([np.int32])
+    source.type_signature = federated_language.StructType([np.int32])
     source.reference = 1
 
     selected_element = await self._test_executor.create_selection(source, 0)
@@ -135,10 +135,10 @@ class CcToPythonExecutorTest(
     owned_id = unittest.mock.create_autospec(executor_bindings.OwnedValueId)
     owned_id.ref = 1
     serialized_two, _ = value_serialization.serialize_value(
-        2, computation_types.TensorType(np.int32)
+        2, federated_language.TensorType(np.int32)
     )
     self._mock_executor.materialize.return_value = serialized_two
-    type_signature = computation_types.TensorType(np.int32)
+    type_signature = federated_language.TensorType(np.int32)
     executor_value = cpp_to_python_executor.CppToPythonExecutorValue(
         owned_id,
         type_signature,

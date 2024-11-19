@@ -13,10 +13,10 @@
 # limitations under the License.
 """The implementation of an experimental JAX computation context."""
 
-from tensorflow_federated.python.core.impl.context_stack import context_base
+import federated_language
 
 
-class JaxComputationContext(context_base.SyncContext):
+class JaxComputationContext(federated_language.framework.SyncContext):
   """An experimental context for building JAX computations."""
 
   def __init__(self):

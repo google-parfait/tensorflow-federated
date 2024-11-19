@@ -18,22 +18,18 @@ from collections.abc import Mapping
 import weakref
 
 from absl import logging
+import federated_language
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import tracing
-from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 from tensorflow_federated.python.core.impl.executors import value_serialization
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 
-class RemoteValue(executor_value_base.ExecutorValue):
+class RemoteValue(federated_language.framework.ExecutorValue):
   """A reference to a value embedded in a remotely deployed executor service."""
 
   def __init__(
@@ -48,13 +44,13 @@ class RemoteValue(executor_value_base.ExecutorValue):
     Args:
       value_ref: An instance of `executor_pb2.ValueRef` returned by the remote
         executor service.
-      type_spec: An instance of `computation_types.Type`.
+      type_spec: An instance of `federated_language.Type`.
       executor: The executor that created this value.
       dispose_at_exit: The flag to disable calling dispose on the object at
         deletion.
     """
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
-    py_typecheck.check_type(type_spec, computation_types.Type)
+    py_typecheck.check_type(type_spec, federated_language.Type)
     py_typecheck.check_type(executor, RemoteExecutor)
     self._value_ref = value_ref
     self._type_signature = type_spec
@@ -78,12 +74,12 @@ class RemoteValue(executor_value_base.ExecutorValue):
   def reference(self):
     return self._value_ref
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   async def compute(self):
     return await self._executor._compute(self._value_ref, self._type_signature)  # pylint: disable=protected-access
 
 
-class RemoteExecutor(executor_base.Executor):
+class RemoteExecutor(federated_language.framework.Executor):
   """The remote executor is a local proxy for a remote executor instance."""
 
   # TODO: b/134543154 - Switch to using an asynchronous gRPC client so we don't
@@ -152,9 +148,12 @@ class RemoteExecutor(executor_base.Executor):
     )
     self._stub.dispose(dispose_request)
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   def set_cardinalities(
-      self, cardinalities: Mapping[placements.PlacementLiteral, int]
+      self,
+      cardinalities: Mapping[
+          federated_language.framework.PlacementLiteral, int
+      ],
   ):
     if self._executor_id is not None:
       self._clear_executor()
@@ -169,14 +168,14 @@ class RemoteExecutor(executor_base.Executor):
         executor=self._executor_id
     )
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   def _clear_executor(self):
     if self._executor_id is None:
       return
     request = executor_pb2.DisposeExecutorRequest(executor=self._executor_id)
     try:
       self._stub.dispose_executor(request)
-    except (grpc.RpcError, executors_errors.RetryableError):
+    except (grpc.RpcError, federated_language.framework.RetryableError):
       logging.debug(
           'RPC error caught during attempt to clear state on the '
           'server; this likely indicates a broken connection, and '
@@ -186,9 +185,9 @@ class RemoteExecutor(executor_base.Executor):
     self._dispose_request = None
     return
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   async def create_value_stream_structs(
-      self, value, type_spec: computation_types.StructType
+      self, value, type_spec: federated_language.StructType
   ):
     value = structure.from_container(value)
     if len(value) != len(type_spec):
@@ -213,16 +212,16 @@ class RemoteExecutor(executor_base.Executor):
     value_refs = await asyncio.gather(*value_refs)
     return await self.create_struct(value_refs)
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   async def create_value(self, value, type_spec=None):
     self._check_has_executor_id()
 
-    @tracing.trace
+    @federated_language.framework.trace
     def serialize_value():
       return value_serialization.serialize_value(value, type_spec)
 
     if self._stream_structs and isinstance(
-        type_spec, computation_types.StructType
+        type_spec, federated_language.StructType
     ):
       return await self.create_value_stream_structs(value, type_spec)
 
@@ -234,11 +233,13 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateValueResponse)
     return RemoteValue(response.value_ref, type_spec, self)
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   async def create_call(self, comp, arg=None):
     self._check_has_executor_id()
     py_typecheck.check_type(comp, RemoteValue)
-    py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
+    py_typecheck.check_type(
+        comp.type_signature, federated_language.FunctionType
+    )
     if arg is not None:
       py_typecheck.check_type(arg, RemoteValue)
     create_call_request = executor_pb2.CreateCallRequest(
@@ -250,7 +251,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateCallResponse)
     return RemoteValue(response.value_ref, comp.type_signature.result, self)
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   async def create_struct(self, elements):
     self._check_has_executor_id()
     constructed_anon_tuple = structure.from_container(elements)
@@ -264,7 +265,7 @@ class RemoteExecutor(executor_base.Executor):
           )
       )
       type_elem.append((k, v.type_signature) if k else v.type_signature)
-    result_type = computation_types.StructType(type_elem)
+    result_type = federated_language.StructType(type_elem)
     request = executor_pb2.CreateStructRequest(
         executor=self._executor_id, element=proto_elem
     )
@@ -272,11 +273,13 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateStructResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   async def create_selection(self, source, index):
     self._check_has_executor_id()
     py_typecheck.check_type(source, RemoteValue)
-    py_typecheck.check_type(source.type_signature, computation_types.StructType)
+    py_typecheck.check_type(
+        source.type_signature, federated_language.StructType
+    )
     py_typecheck.check_type(index, int)
     result_type = source.type_signature[index]
     request = executor_pb2.CreateSelectionRequest(
@@ -286,9 +289,9 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateSelectionResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   async def _compute_stream_structs(
-      self, value_ref, type_spec: computation_types.StructType
+      self, value_ref, type_spec: federated_language.StructType
   ):
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     values = []
@@ -310,13 +313,13 @@ class RemoteExecutor(executor_base.Executor):
         zip(structure.name_list_with_nones(type_spec), values)
     )
 
-  @tracing.trace(span=True)
+  @federated_language.framework.trace(span=True)
   async def _compute(self, value_ref, type_spec):
     self._check_has_executor_id()
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
 
     if self._stream_structs and isinstance(
-        type_spec, computation_types.StructType
+        type_spec, federated_language.StructType
     ):
       return await self._compute_stream_structs(value_ref, type_spec)
 

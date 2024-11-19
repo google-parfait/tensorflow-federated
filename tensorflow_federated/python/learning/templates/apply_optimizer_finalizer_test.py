@@ -16,13 +16,11 @@ import collections
 import copy
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
@@ -30,13 +28,15 @@ from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import finalizers
 
-SERVER_FLOAT = computation_types.FederatedType(np.float32, placements.SERVER)
+SERVER_FLOAT = federated_language.FederatedType(
+    np.float32, federated_language.SERVER
+)
 _MODEL_WEIGHTS_SPEC = model_weights.ModelWeights(
     trainable=(np.float32,), non_trainable=(np.float32,)
 )
-_MODEL_WEIGHTS_TYPE = computation_types.to_type(_MODEL_WEIGHTS_SPEC)
-_SERVER_MODEL_WEIGHTS_TYPE = computation_types.FederatedType(
-    _MODEL_WEIGHTS_TYPE, placements.SERVER
+_MODEL_WEIGHTS_TYPE = federated_language.to_type(_MODEL_WEIGHTS_SPEC)
+_SERVER_MODEL_WEIGHTS_TYPE = federated_language.FederatedType(
+    _MODEL_WEIGHTS_TYPE, federated_language.SERVER
 )
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
@@ -82,18 +82,18 @@ class ApplyOptimizerFinalizerComputationTest(
         sgdm.build_sgdm(1.0), _MODEL_WEIGHTS_TYPE
     )
 
-    expected_state_type = computation_types.FederatedType(
-        computation_types.to_type(
+    expected_state_type = federated_language.FederatedType(
+        federated_language.to_type(
             collections.OrderedDict(
                 [(optimizer_base.LEARNING_RATE_KEY, np.float32)]
             )
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         finalizer.initialize.type_signature, expected_initialize_type
     )
 
@@ -103,22 +103,23 @@ class ApplyOptimizerFinalizerComputationTest(
     )
 
     expected_param_weights_type = _SERVER_MODEL_WEIGHTS_TYPE
-    expected_param_update_type = computation_types.FederatedType(
-        _MODEL_WEIGHTS_TYPE.trainable, placements.SERVER
+    expected_param_update_type = federated_language.FederatedType(
+        _MODEL_WEIGHTS_TYPE.trainable, federated_language.SERVER
     )
     expected_result_type = _SERVER_MODEL_WEIGHTS_TYPE
-    expected_state_type = computation_types.FederatedType(
-        computation_types.to_type(
+    expected_state_type = federated_language.FederatedType(
+        federated_language.to_type(
             collections.OrderedDict(
                 [(optimizer_base.LEARNING_RATE_KEY, np.float32)]
             )
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_measurements_type = computation_types.FederatedType(
-        collections.OrderedDict(update_non_finite=np.int32), placements.SERVER
+    expected_measurements_type = federated_language.FederatedType(
+        collections.OrderedDict(update_non_finite=np.int32),
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
             weights=expected_param_weights_type,
@@ -130,7 +131,7 @@ class ApplyOptimizerFinalizerComputationTest(
             expected_measurements_type,
         ),
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         finalizer.next.type_signature, expected_next_type
     )
 
@@ -143,10 +144,10 @@ class ApplyOptimizerFinalizerComputationTest(
         [(optimizer_base.LEARNING_RATE_KEY, np.float32)]
     )
     expected_hparams_type = expected_state_type
-    expected_get_hparams_type = computation_types.FunctionType(
+    expected_get_hparams_type = federated_language.FunctionType(
         parameter=expected_state_type, result=expected_hparams_type
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         finalizer.get_hparams.type_signature, expected_get_hparams_type
     )
 
@@ -159,36 +160,36 @@ class ApplyOptimizerFinalizerComputationTest(
         [(optimizer_base.LEARNING_RATE_KEY, np.float32)]
     )
     expected_hparams_type = expected_state_type
-    expected_set_hparams_type = computation_types.FunctionType(
-        parameter=computation_types.StructType(
+    expected_set_hparams_type = federated_language.FunctionType(
+        parameter=federated_language.StructType(
             [('state', expected_state_type), ('hparams', expected_hparams_type)]
         ),
         result=expected_state_type,
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         finalizer.set_hparams.type_signature, expected_set_hparams_type
     )
 
   @parameterized.named_parameters(
-      ('not_struct', computation_types.TensorType(np.float32)),
+      ('not_struct', federated_language.TensorType(np.float32)),
       ('federated_type', _SERVER_MODEL_WEIGHTS_TYPE),
       (
           'model_weights_of_federated_types',
-          computation_types.to_type(
+          federated_language.to_type(
               model_weights.ModelWeights(SERVER_FLOAT, SERVER_FLOAT)
           ),
       ),
       (
           'not_model_weights',
-          computation_types.to_type((np.float32, np.float32)),
+          federated_language.to_type((np.float32, np.float32)),
       ),
       (
           'function_type',
-          computation_types.FunctionType(None, _SERVER_MODEL_WEIGHTS_TYPE),
+          federated_language.FunctionType(None, _SERVER_MODEL_WEIGHTS_TYPE),
       ),
       (
           'sequence_type',
-          computation_types.SequenceType(_SERVER_MODEL_WEIGHTS_TYPE.member),
+          federated_language.SequenceType(_SERVER_MODEL_WEIGHTS_TYPE.member),
       ),
   )
   def test_incorrect_value_type_raises(self, bad_type):

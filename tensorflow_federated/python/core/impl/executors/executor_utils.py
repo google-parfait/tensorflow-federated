@@ -15,14 +15,14 @@
 
 from typing import Optional
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import typed_object
 
 
 def reconcile_value_with_type_spec(
-    value: object, type_spec: computation_types.Type
-) -> computation_types.Type:
+    value: object, type_spec: federated_language.Type
+) -> federated_language.Type:
   """Reconciles the type of `value` with the given `type_spec`.
 
   The currently implemented logic only performs reconciliation of `value` and
@@ -48,7 +48,7 @@ def reconcile_value_with_type_spec(
     TypeError: If the `value` type and `type_spec` are incompatible, or if the
       type cannot be determined..
   """
-  if isinstance(value, typed_object.TypedObject):
+  if isinstance(value, federated_language.TypedObject):
     return reconcile_value_type_with_type_spec(value.type_signature, type_spec)
   elif type_spec is not None:
     return type_spec
@@ -59,9 +59,9 @@ def reconcile_value_with_type_spec(
 
 
 def reconcile_value_type_with_type_spec(
-    value_type: computation_types.Type,
-    type_spec: Optional[computation_types.Type],
-) -> computation_types.Type:
+    value_type: federated_language.Type,
+    type_spec: Optional[federated_language.Type],
+) -> federated_language.Type:
   """Reconciles a pair of types.
 
   Args:
@@ -75,9 +75,9 @@ def reconcile_value_type_with_type_spec(
   Raises:
     TypeError: If arguments are of incompatible types.
   """
-  py_typecheck.check_type(value_type, computation_types.Type)
+  py_typecheck.check_type(value_type, federated_language.Type)
   if type_spec is not None:
-    py_typecheck.check_type(value_type, computation_types.Type)
+    py_typecheck.check_type(value_type, federated_language.Type)
     if not value_type.is_equivalent_to(type_spec):
       raise TypeError(
           'Expected a value of type {}, found {}.'.format(type_spec, value_type)

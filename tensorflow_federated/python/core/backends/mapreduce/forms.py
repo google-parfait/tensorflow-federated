@@ -16,21 +16,17 @@
 from collections.abc import Callable
 from typing import Optional
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
-from tensorflow_federated.python.core.impl.types import typed_object
 
 
 def _check_tensorflow_computation(label, comp):
-  py_typecheck.check_type(comp, computation_impl.ConcreteComputation, label)
-  comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ConcreteComputation, label
+  )
+  comp_proto = federated_language.framework.ConcreteComputation.get_proto(comp)
   which_comp = comp_proto.WhichOneof('computation')
   if which_comp != 'tensorflow':
     raise TypeError(
@@ -40,41 +36,49 @@ def _check_tensorflow_computation(label, comp):
 
 
 def _check_lambda_computation(label, comp):
-  py_typecheck.check_type(comp, computation_impl.ConcreteComputation, label)
-  comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ConcreteComputation, label
+  )
+  comp_proto = federated_language.framework.ConcreteComputation.get_proto(comp)
   which_comp = comp_proto.WhichOneof('computation')
   if which_comp != 'lambda':
     raise TypeError(
         'Expected all computations supplied as arguments to '
         'be Lambda computations, found {}.'.format(which_comp)
     )
-  tree_analysis.check_contains_no_unbound_references(comp.to_building_block())
-  tree_analysis.check_has_unique_names(comp.to_building_block())
+  federated_language.framework.check_contains_no_unbound_references(
+      comp.to_building_block()
+  )
+  federated_language.framework.check_has_unique_names(comp.to_building_block())
 
 
 def _check_flattened_intrinsic_args_are_selections_or_literals(
-    value: building_blocks.ComputationBuildingBlock,
+    value: federated_language.framework.ComputationBuildingBlock,
     expected_reference_name: str,
 ):
   """Checks the flattened args of an intrinsic are Selections or Literals."""
-  if isinstance(value, building_blocks.Struct):
+  if isinstance(value, federated_language.framework.Struct):
     inner_values = structure.flatten(value)
   else:
     inner_values = [value]
 
   for inner_value in inner_values:
     if not isinstance(
-        inner_value, (building_blocks.Literal, building_blocks.Selection)
+        inner_value,
+        (
+            federated_language.framework.Literal,
+            federated_language.framework.Selection,
+        ),
     ):
       raise TypeError(
           'Expected that all arguments to an intrinsic call are selections or'
           ' literals or structs containing only selections or literals, found'
           f' {type(inner_value)}.'
       )
-    if isinstance(inner_value, building_blocks.Selection):
+    if isinstance(inner_value, federated_language.framework.Selection):
       source = inner_value.source
       if (
-          isinstance(source, building_blocks.Reference)
+          isinstance(source, federated_language.framework.Reference)
           and source.name != expected_reference_name
       ):
         raise TypeError(
@@ -90,15 +94,15 @@ def _is_assignable_from_or_both_none(first, second):
   return first.is_assignable_from(second)
 
 
-def _is_tuple(type_signature: computation_types.Type, length: int) -> bool:
+def _is_tuple(type_signature: federated_language.Type, length: int) -> bool:
   return (
-      isinstance(type_signature, computation_types.StructType)
+      isinstance(type_signature, federated_language.StructType)
       and len(type_signature) == length
   )
 
 
 def _check_accepts_tuple(
-    label: str, comp: computation_base.Computation, length: int
+    label: str, comp: federated_language.framework.Computation, length: int
 ):
   param_type = comp.type_signature.parameter
   if not _is_tuple(param_type, length):
@@ -109,7 +113,7 @@ def _check_accepts_tuple(
 
 
 def _check_returns_tuple(
-    label: str, comp: computation_base.Computation, length: int
+    label: str, comp: federated_language.framework.Computation, length: int
 ):
   result_type = comp.type_signature.result
   if not _is_tuple(result_type, length):
@@ -220,7 +224,7 @@ WORK_SECAGG_MODULUS_INDEX = 3
 WORK_RESULT_LEN = 4
 
 
-class MapReduceForm(typed_object.TypedObject):
+class MapReduceForm(federated_language.TypedObject):
   """Standardized representation of logic deployable to MapReduce-like systems.
 
   This class docstring describes the purpose of `MapReduceForm` as a data
@@ -273,17 +277,17 @@ class MapReduceForm(typed_object.TypedObject):
 
   def __init__(
       self,
-      type_signature: computation_types.FunctionType,
-      prepare: computation_impl.ConcreteComputation,
-      work: computation_impl.ConcreteComputation,
-      zero: computation_impl.ConcreteComputation,
-      accumulate: computation_impl.ConcreteComputation,
-      merge: computation_impl.ConcreteComputation,
-      report: computation_impl.ConcreteComputation,
-      secure_sum_bitwidth: computation_impl.ConcreteComputation,
-      secure_sum_max_input: computation_impl.ConcreteComputation,
-      secure_modular_sum_modulus: computation_impl.ConcreteComputation,
-      update: computation_impl.ConcreteComputation,
+      type_signature: federated_language.FunctionType,
+      prepare: federated_language.framework.ConcreteComputation,
+      work: federated_language.framework.ConcreteComputation,
+      zero: federated_language.framework.ConcreteComputation,
+      accumulate: federated_language.framework.ConcreteComputation,
+      merge: federated_language.framework.ConcreteComputation,
+      report: federated_language.framework.ConcreteComputation,
+      secure_sum_bitwidth: federated_language.framework.ConcreteComputation,
+      secure_sum_max_input: federated_language.framework.ConcreteComputation,
+      secure_modular_sum_modulus: federated_language.framework.ConcreteComputation,
+      update: federated_language.framework.ConcreteComputation,
   ):
     """Constructs a representation of a MapReduce-like computation.
 
@@ -352,7 +356,7 @@ class MapReduceForm(typed_object.TypedObject):
 
     if (
         isinstance(
-            accumulate.type_signature.parameter, computation_types.StructType
+            accumulate.type_signature.parameter, federated_language.StructType
         )
         and len(accumulate.type_signature.parameter) != 2
     ):
@@ -381,7 +385,9 @@ class MapReduceForm(typed_object.TypedObject):
     )  # pytype: disable=unsupported-operands
 
     if (
-        isinstance(merge.type_signature.parameter, computation_types.StructType)
+        isinstance(
+            merge.type_signature.parameter, federated_language.StructType
+        )
         and len(merge.type_signature.parameter) != 2
     ):
       raise ValueError(
@@ -403,7 +409,7 @@ class MapReduceForm(typed_object.TypedObject):
         merge.type_signature.result
     )  # pytype: disable=attribute-error
 
-    expected_update_parameter_type = computation_types.to_type([
+    expected_update_parameter_type = federated_language.to_type([
         type_signature.parameter[0].member,  # pytype: disable=unsupported-operands
         [
             report.type_signature.result,
@@ -418,14 +424,14 @@ class MapReduceForm(typed_object.TypedObject):
     # input. Verifying it aligns with a tff.Computation that produces an initial
     # state should be verified outside of the constructor of the MapReduceForm.
     if not _is_assignable_from_or_both_none(
-        computation_types.to_type(update.type_signature.parameter),
+        federated_language.to_type(update.type_signature.parameter),
         expected_update_parameter_type,
     ):
       raise TypeError(
           'The `update` computation expects arguments of type {}, '
           'which does not match the expected {} as implied by the type '
           'signatures of `report` and `work`.'.format(
-              computation_types.to_type(update.type_signature.parameter[1:]),  # pytype: disable=unsupported-operands
+              federated_language.to_type(update.type_signature.parameter[1:]),  # pytype: disable=unsupported-operands
               expected_update_parameter_type,
           )
       )
@@ -458,48 +464,54 @@ class MapReduceForm(typed_object.TypedObject):
     self._server_state_label, self._client_data_label = parameter_names
 
   @property
-  def type_signature(self) -> computation_types.FunctionType:
+  def type_signature(self) -> federated_language.FunctionType:
     """Returns the TFF type of the equivalent `tff.Computation`."""
     return self._type_signature
 
   @property
-  def prepare(self) -> computation_impl.ConcreteComputation:
+  def prepare(self) -> federated_language.framework.ConcreteComputation:
     return self._prepare
 
   @property
-  def work(self) -> computation_impl.ConcreteComputation:
+  def work(self) -> federated_language.framework.ConcreteComputation:
     return self._work
 
   @property
-  def zero(self) -> computation_impl.ConcreteComputation:
+  def zero(self) -> federated_language.framework.ConcreteComputation:
     return self._zero
 
   @property
-  def accumulate(self) -> computation_impl.ConcreteComputation:
+  def accumulate(self) -> federated_language.framework.ConcreteComputation:
     return self._accumulate
 
   @property
-  def merge(self) -> computation_impl.ConcreteComputation:
+  def merge(self) -> federated_language.framework.ConcreteComputation:
     return self._merge
 
   @property
-  def report(self) -> computation_impl.ConcreteComputation:
+  def report(self) -> federated_language.framework.ConcreteComputation:
     return self._report
 
   @property
-  def secure_sum_bitwidth(self) -> computation_impl.ConcreteComputation:
+  def secure_sum_bitwidth(
+      self,
+  ) -> federated_language.framework.ConcreteComputation:
     return self._secure_sum_bitwidth
 
   @property
-  def secure_sum_max_input(self) -> computation_impl.ConcreteComputation:
+  def secure_sum_max_input(
+      self,
+  ) -> federated_language.framework.ConcreteComputation:
     return self._secure_sum_max_input
 
   @property
-  def secure_modular_sum_modulus(self) -> computation_impl.ConcreteComputation:
+  def secure_modular_sum_modulus(
+      self,
+  ) -> federated_language.framework.ConcreteComputation:
     return self._secure_modular_sum_modulus
 
   @property
-  def update(self) -> computation_impl.ConcreteComputation:
+  def update(self) -> federated_language.framework.ConcreteComputation:
     return self._update
 
   @property
@@ -523,7 +535,7 @@ class MapReduceForm(typed_object.TypedObject):
         secagg_max_input_type,
         secagg_modulus_type,
     ]:
-      if type_analysis.contains_tensor_types(secagg_type):
+      if federated_language.framework.contains_tensor_types(secagg_type):
         return True
     return False
 
@@ -555,7 +567,7 @@ class MapReduceForm(typed_object.TypedObject):
       )
 
 
-class DistributeAggregateForm(typed_object.TypedObject):
+class DistributeAggregateForm(federated_language.TypedObject):
   """Standard representation of logic deployable to a federated learning system.
 
   This class docstring describes the purpose of `DistributeAggregateForm` as a
@@ -586,12 +598,12 @@ class DistributeAggregateForm(typed_object.TypedObject):
 
   def __init__(
       self,
-      type_signature: computation_types.FunctionType,
-      server_prepare: computation_impl.ConcreteComputation,
-      server_to_client_broadcast: computation_impl.ConcreteComputation,
-      client_work: computation_impl.ConcreteComputation,
-      client_to_server_aggregation: computation_impl.ConcreteComputation,
-      server_result: computation_impl.ConcreteComputation,
+      type_signature: federated_language.FunctionType,
+      server_prepare: federated_language.framework.ConcreteComputation,
+      server_to_client_broadcast: federated_language.framework.ConcreteComputation,
+      client_work: federated_language.framework.ConcreteComputation,
+      client_to_server_aggregation: federated_language.framework.ConcreteComputation,
+      server_result: federated_language.framework.ConcreteComputation,
   ):
     """Constructs a representation of a round for a federated learning system.
 
@@ -628,8 +640,8 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # represents the server state and produce 2 results (data to broadcast and
     # temporary state). It should contain only server placements.
     _check_returns_tuple('server_prepare', server_prepare, length=2)
-    tree_analysis.check_has_single_placement(
-        server_prepare.to_building_block(), placements.SERVER
+    federated_language.framework.check_has_single_placement(
+        server_prepare.to_building_block(), federated_language.SERVER
     )
 
     # The broadcast function can take an arbitrary number of inputs and produce
@@ -641,12 +653,12 @@ class DistributeAggregateForm(typed_object.TypedObject):
         local_name,
         local_value,
     ) in server_to_client_broadcast.to_building_block().result.locals:  # pytype: disable=attribute-error
-      if not isinstance(local_value, building_blocks.Call):
+      if not isinstance(local_value, federated_language.framework.Call):
         raise ValueError(
             f'Expected a `tff.framework.Call`, found {type(local_value)}.'
         )
       local_fn = local_value.function
-      if not isinstance(local_fn, building_blocks.Intrinsic):
+      if not isinstance(local_fn, federated_language.framework.Intrinsic):
         raise ValueError(
             f'Expected a `tff.framework.Intrinsic`, found {type(local_fn)}.'
         )
@@ -663,7 +675,7 @@ class DistributeAggregateForm(typed_object.TypedObject):
       expected_return_references.append(local_name)
     if not isinstance(
         server_to_client_broadcast.to_building_block().result.result,  # pytype: disable=attribute-error
-        building_blocks.Struct,
+        federated_language.framework.Struct,
     ):
       raise ValueError(
           'Expected a `tff.framework.Struct`, found'
@@ -683,8 +695,8 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # data) and produce an output of arbitrary length that represents the data
     # to aggregate. It should contain only CLIENTS placements.
     _check_accepts_tuple('client_work', client_work, length=2)
-    tree_analysis.check_has_single_placement(
-        client_work.to_building_block(), placements.CLIENTS
+    federated_language.framework.check_has_single_placement(
+        client_work.to_building_block(), federated_language.CLIENTS
     )
 
     # The client_to_server_aggregation function should take 2 inputs (temporary
@@ -700,12 +712,12 @@ class DistributeAggregateForm(typed_object.TypedObject):
         local_name,
         local_value,
     ) in client_to_server_aggregation.to_building_block().result.locals:  # pytype: disable=attribute-error
-      if not isinstance(local_value, building_blocks.Call):
+      if not isinstance(local_value, federated_language.framework.Call):
         raise ValueError(
             f'Expected a `tff.framework.Call`, found {type(local_value)}.'
         )
       local_fn = local_value.function
-      if not isinstance(local_fn, building_blocks.Intrinsic):
+      if not isinstance(local_fn, federated_language.framework.Intrinsic):
         raise ValueError(
             f'Expected a `tff.framework.Intrinsic`, found {type(local_fn)}.'
         )
@@ -724,7 +736,9 @@ class DistributeAggregateForm(typed_object.TypedObject):
     aggregation_result_result = (
         client_to_server_aggregation.to_building_block().result.result  # pytype: disable=attribute-error
     )
-    if not isinstance(aggregation_result_result, building_blocks.Struct):
+    if not isinstance(
+        aggregation_result_result, federated_language.framework.Struct
+    ):
       raise ValueError(
           'Expected a `tff.framework.Struct`, found'
           f' {type(aggregation_result_result)}.'
@@ -743,8 +757,8 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # output). It should contain only SERVER placements.
     _check_accepts_tuple('server_result', server_result, length=2)
     _check_returns_tuple('server_result', server_result, length=2)
-    tree_analysis.check_has_single_placement(
-        server_result.to_building_block(), placements.SERVER
+    federated_language.framework.check_has_single_placement(
+        server_result.to_building_block(), federated_language.SERVER
     )
 
     # The broadcast input data types in the 'server_prepare' result and
@@ -895,30 +909,32 @@ class DistributeAggregateForm(typed_object.TypedObject):
     self._server_result = server_result
 
   @property
-  def type_signature(self) -> computation_types.FunctionType:
+  def type_signature(self) -> federated_language.FunctionType:
     """Returns the TFF type of the equivalent `tff.Computation`."""
     return self._type_signature
 
   @property
-  def server_prepare(self) -> computation_impl.ConcreteComputation:
+  def server_prepare(self) -> federated_language.framework.ConcreteComputation:
     return self._server_prepare
 
   @property
-  def server_to_client_broadcast(self) -> computation_impl.ConcreteComputation:
+  def server_to_client_broadcast(
+      self,
+  ) -> federated_language.framework.ConcreteComputation:
     return self._server_to_client_broadcast
 
   @property
-  def client_work(self) -> computation_impl.ConcreteComputation:
+  def client_work(self) -> federated_language.framework.ConcreteComputation:
     return self._client_work
 
   @property
   def client_to_server_aggregation(
       self,
-  ) -> computation_impl.ConcreteComputation:
+  ) -> federated_language.framework.ConcreteComputation:
     return self._client_to_server_aggregation
 
   @property
-  def server_result(self) -> computation_impl.ConcreteComputation:
+  def server_result(self) -> federated_language.framework.ConcreteComputation:
     return self._server_result
 
   def summary(self, print_fn: Callable[..., None] = print) -> None:

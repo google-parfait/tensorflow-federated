@@ -20,12 +20,10 @@ import time
 from typing import Any, Optional
 
 from absl import logging
+import federated_language
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
-from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
-from tensorflow_federated.python.program import release_manager as release_manager_lib
 
 MetricsType = MutableMapping[str, Any]
 
@@ -38,7 +36,7 @@ EVALUATION_TIME_KEY = 'evaluation_time_in_seconds'
 
 
 def _run_training(
-    training_fn: computation_base.Computation,
+    training_fn: federated_language.framework.Computation,
     client_selection_fn: Callable[[int], Any],
     state: Any,
     round_num: int,
@@ -80,11 +78,11 @@ def run_training_process(
     evaluation_selection_fn: Optional[Callable[[int], Any]] = None,
     rounds_per_evaluation: int = 1,
     program_state_manager: Optional[
-        program_state_manager_lib.ProgramStateManager
+        federated_language.program.ProgramStateManager
     ] = None,
     rounds_per_saving_program_state: int = 1,
     metrics_managers: Optional[
-        Iterable[release_manager_lib.ReleaseManager]
+        Iterable[federated_language.program.ReleaseManager]
     ] = None,
 ):
   """Runs a federated `training_process`.

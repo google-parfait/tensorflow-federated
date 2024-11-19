@@ -28,6 +28,8 @@ limitations under the License
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "third_party/eigen3/Eigen/Core"
+#include "federated_language/proto/array.pb.h"
+#include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
@@ -40,46 +42,44 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 namespace tensorflow_federated {
 
-absl::StatusOr<v0::DataType> DataTypeFromTensorFlowDataType(
+absl::StatusOr<federated_language::DataType> DataTypeFromTensorFlowDataType(
     tensorflow::DataType data_type_pb) {
   switch (data_type_pb) {
     case tensorflow::DataType::DT_BOOL:
-      return v0::DataType::DT_BOOL;
+      return federated_language::DataType::DT_BOOL;
     case tensorflow::DataType::DT_INT8:
-      return v0::DataType::DT_INT8;
+      return federated_language::DataType::DT_INT8;
     case tensorflow::DataType::DT_INT16:
-      return v0::DataType::DT_INT16;
+      return federated_language::DataType::DT_INT16;
     case tensorflow::DataType::DT_INT32:
-      return v0::DataType::DT_INT32;
+      return federated_language::DataType::DT_INT32;
     case tensorflow::DataType::DT_INT64:
-      return v0::DataType::DT_INT64;
+      return federated_language::DataType::DT_INT64;
     case tensorflow::DataType::DT_UINT8:
-      return v0::DataType::DT_UINT8;
+      return federated_language::DataType::DT_UINT8;
     case tensorflow::DataType::DT_UINT16:
-      return v0::DataType::DT_UINT16;
+      return federated_language::DataType::DT_UINT16;
     case tensorflow::DataType::DT_UINT32:
-      return v0::DataType::DT_UINT32;
+      return federated_language::DataType::DT_UINT32;
     case tensorflow::DataType::DT_UINT64:
-      return v0::DataType::DT_UINT64;
+      return federated_language::DataType::DT_UINT64;
     case tensorflow::DataType::DT_HALF:
-      return v0::DataType::DT_HALF;
+      return federated_language::DataType::DT_HALF;
     case tensorflow::DataType::DT_FLOAT:
-      return v0::DataType::DT_FLOAT;
+      return federated_language::DataType::DT_FLOAT;
     case tensorflow::DataType::DT_DOUBLE:
-      return v0::DataType::DT_DOUBLE;
+      return federated_language::DataType::DT_DOUBLE;
     case tensorflow::DataType::DT_COMPLEX64:
-      return v0::DataType::DT_COMPLEX64;
+      return federated_language::DataType::DT_COMPLEX64;
     case tensorflow::DataType::DT_COMPLEX128:
-      return v0::DataType::DT_COMPLEX128;
+      return federated_language::DataType::DT_COMPLEX128;
     case tensorflow::DataType::DT_BFLOAT16:
-      return v0::DataType::DT_BFLOAT16;
+      return federated_language::DataType::DT_BFLOAT16;
     case tensorflow::DataType::DT_STRING:
-      return v0::DataType::DT_STRING;
+      return federated_language::DataType::DT_STRING;
     default:
       return absl::UnimplementedError(
           absl::StrCat("Unexpected DataType found:", data_type_pb));
@@ -87,39 +87,39 @@ absl::StatusOr<v0::DataType> DataTypeFromTensorFlowDataType(
 }
 
 absl::StatusOr<tensorflow::DataType> TensorFlowDataTypeFromDataType(
-    v0::DataType data_type_pb) {
+    federated_language::DataType data_type_pb) {
   switch (data_type_pb) {
-    case v0::DataType::DT_BOOL:
+    case federated_language::DataType::DT_BOOL:
       return tensorflow::DataType::DT_BOOL;
-    case v0::DataType::DT_INT8:
+    case federated_language::DataType::DT_INT8:
       return tensorflow::DataType::DT_INT8;
-    case v0::DataType::DT_INT16:
+    case federated_language::DataType::DT_INT16:
       return tensorflow::DataType::DT_INT16;
-    case v0::DataType::DT_INT32:
+    case federated_language::DataType::DT_INT32:
       return tensorflow::DataType::DT_INT32;
-    case v0::DataType::DT_INT64:
+    case federated_language::DataType::DT_INT64:
       return tensorflow::DataType::DT_INT64;
-    case v0::DataType::DT_UINT8:
+    case federated_language::DataType::DT_UINT8:
       return tensorflow::DataType::DT_UINT8;
-    case v0::DataType::DT_UINT16:
+    case federated_language::DataType::DT_UINT16:
       return tensorflow::DataType::DT_UINT16;
-    case v0::DataType::DT_UINT32:
+    case federated_language::DataType::DT_UINT32:
       return tensorflow::DataType::DT_UINT32;
-    case v0::DataType::DT_UINT64:
+    case federated_language::DataType::DT_UINT64:
       return tensorflow::DataType::DT_UINT64;
-    case v0::DataType::DT_HALF:
+    case federated_language::DataType::DT_HALF:
       return tensorflow::DataType::DT_HALF;
-    case v0::DataType::DT_FLOAT:
+    case federated_language::DataType::DT_FLOAT:
       return tensorflow::DataType::DT_FLOAT;
-    case v0::DataType::DT_DOUBLE:
+    case federated_language::DataType::DT_DOUBLE:
       return tensorflow::DataType::DT_DOUBLE;
-    case v0::DataType::DT_COMPLEX64:
+    case federated_language::DataType::DT_COMPLEX64:
       return tensorflow::DataType::DT_COMPLEX64;
-    case v0::DataType::DT_COMPLEX128:
+    case federated_language::DataType::DT_COMPLEX128:
       return tensorflow::DataType::DT_COMPLEX128;
-    case v0::DataType::DT_BFLOAT16:
+    case federated_language::DataType::DT_BFLOAT16:
       return tensorflow::DataType::DT_BFLOAT16;
-    case v0::DataType::DT_STRING:
+    case federated_language::DataType::DT_STRING:
       return tensorflow::DataType::DT_STRING;
     default:
       return absl::UnimplementedError(
@@ -127,9 +127,9 @@ absl::StatusOr<tensorflow::DataType> TensorFlowDataTypeFromDataType(
   }
 }
 
-absl::StatusOr<v0::ArrayShape> ArrayShapeFromTensorShape(
+absl::StatusOr<federated_language::ArrayShape> ArrayShapeFromTensorShape(
     const tensorflow::TensorShape& tensor_shape) {
-  v0::ArrayShape shape_pb;
+  federated_language::ArrayShape shape_pb;
   for (int i = 0; i < tensor_shape.dims(); i++) {
     shape_pb.mutable_dim()->Add(tensor_shape.dim_size(i));
   }
@@ -138,10 +138,11 @@ absl::StatusOr<v0::ArrayShape> ArrayShapeFromTensorShape(
 }
 
 absl::StatusOr<tensorflow::TensorShape> TensorShapeFromArrayShape(
-    const v0::ArrayShape& shape_pb) {
+    const federated_language::ArrayShape& shape_pb) {
   if (shape_pb.unknown_rank()) {
     return absl::InvalidArgumentError(
-        "Expected v0::ArrayShape to have a known rank, try constructing "
+        "Expected federated_language::ArrayShape to have a known rank, try "
+        "constructing "
         "a tensorflow::PartialTensorShape using "
         "tensorflow_federated::PartialTensorShapeFromArrayShape instead.");
   }
@@ -152,7 +153,7 @@ absl::StatusOr<tensorflow::TensorShape> TensorShapeFromArrayShape(
 }
 
 tensorflow::PartialTensorShape PartialTensorShapeFromArrayShape(
-    const v0::ArrayShape& shape_pb) {
+    const federated_language::ArrayShape& shape_pb) {
   if (!shape_pb.unknown_rank()) {
     return tensorflow::PartialTensorShape(shape_pb.dim());
   } else {
@@ -160,12 +161,14 @@ tensorflow::PartialTensorShape PartialTensorShapeFromArrayShape(
   }
 }
 
-absl::StatusOr<v0::Array> ArrayFromTensor(const tensorflow::Tensor& tensor) {
-  v0::Array array_pb;
-  v0::DataType data_type =
+absl::StatusOr<federated_language::Array> ArrayFromTensor(
+    const tensorflow::Tensor& tensor) {
+  federated_language::Array array_pb;
+  federated_language::DataType data_type =
       TFF_TRY(DataTypeFromTensorFlowDataType(tensor.dtype()));
   array_pb.set_dtype(data_type);
-  v0::ArrayShape shape_pb = TFF_TRY(ArrayShapeFromTensorShape(tensor.shape()));
+  federated_language::ArrayShape shape_pb =
+      TFF_TRY(ArrayShapeFromTensorShape(tensor.shape()));
   array_pb.mutable_shape()->Swap(&shape_pb);
 
   tensorflow::TensorProto tensor_pb;
@@ -313,9 +316,10 @@ static void CopyFromRepeatedField(
   std::copy(src.begin(), src.end(), dest);
 }
 
-absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
+absl::StatusOr<tensorflow::Tensor> TensorFromArray(
+    const federated_language::Array& array_pb) {
   switch (array_pb.kind_case()) {
-    case v0::Array::kBoolList: {
+    case federated_language::Array::kBoolList: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<bool>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -323,7 +327,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<bool>().data());
       return tensor;
     }
-    case v0::Array::kInt8List: {
+    case federated_language::Array::kInt8List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<int8_t>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -331,7 +335,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<int8_t>().data());
       return tensor;
     }
-    case v0::Array::kInt16List: {
+    case federated_language::Array::kInt16List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<int16_t>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -339,7 +343,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<int16_t>().data());
       return tensor;
     }
-    case v0::Array::kInt32List: {
+    case federated_language::Array::kInt32List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<int32_t>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -347,7 +351,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<int32_t>().data());
       return tensor;
     }
-    case v0::Array::kInt64List: {
+    case federated_language::Array::kInt64List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<int64_t>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -355,7 +359,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<int64_t>().data());
       return tensor;
     }
-    case v0::Array::kUint8List: {
+    case federated_language::Array::kUint8List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<uint8_t>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -363,7 +367,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<uint8_t>().data());
       return tensor;
     }
-    case v0::Array::kUint16List: {
+    case federated_language::Array::kUint16List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<uint16_t>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -371,7 +375,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<uint16_t>().data());
       return tensor;
     }
-    case v0::Array::kUint32List: {
+    case federated_language::Array::kUint32List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<uint32_t>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -379,7 +383,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<uint32_t>().data());
       return tensor;
     }
-    case v0::Array::kUint64List: {
+    case federated_language::Array::kUint64List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<uint64_t>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -387,7 +391,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<uint64_t>().data());
       return tensor;
     }
-    case v0::Array::kFloat16List: {
+    case federated_language::Array::kFloat16List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<Eigen::half>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -395,7 +399,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<Eigen::half>().data());
       return tensor;
     }
-    case v0::Array::kFloat32List: {
+    case federated_language::Array::kFloat32List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<float>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -403,7 +407,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<float>().data());
       return tensor;
     }
-    case v0::Array::kFloat64List: {
+    case federated_language::Array::kFloat64List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<double>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -411,7 +415,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<double>().data());
       return tensor;
     }
-    case v0::Array::kComplex64List: {
+    case federated_language::Array::kComplex64List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<tensorflow::complex64>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -419,7 +423,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<tensorflow::complex64>().data());
       return tensor;
     }
-    case v0::Array::kComplex128List: {
+    case federated_language::Array::kComplex128List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<tensorflow::complex128>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -427,7 +431,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<tensorflow::complex128>().data());
       return tensor;
     }
-    case v0::Array::kBfloat16List: {
+    case federated_language::Array::kBfloat16List: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<Eigen::bfloat16>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -435,7 +439,7 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
                             tensor.flat<Eigen::bfloat16>().data());
       return tensor;
     }
-    case v0::Array::kStringList: {
+    case federated_language::Array::kStringList: {
       tensorflow::Tensor tensor(
           tensorflow::DataTypeToEnum<tensorflow::tstring>::value,
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
@@ -449,13 +453,14 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
   }
 }
 
-absl::StatusOr<v0::Array> ArrayContentFromTensor(
+absl::StatusOr<federated_language::Array> ArrayContentFromTensor(
     const tensorflow::Tensor& tensor) {
-  v0::Array array_pb;
-  v0::DataType data_type =
+  federated_language::Array array_pb;
+  federated_language::DataType data_type =
       TFF_TRY(DataTypeFromTensorFlowDataType(tensor.dtype()));
   array_pb.set_dtype(data_type);
-  v0::ArrayShape shape_pb = TFF_TRY(ArrayShapeFromTensorShape(tensor.shape()));
+  federated_language::ArrayShape shape_pb =
+      TFF_TRY(ArrayShapeFromTensorShape(tensor.shape()));
   array_pb.mutable_shape()->Swap(&shape_pb);
   tensorflow::TensorProto tensor_pb;
   tensor.AsProtoTensorContent(&tensor_pb);
@@ -465,7 +470,7 @@ absl::StatusOr<v0::Array> ArrayContentFromTensor(
 }
 
 absl::StatusOr<tensorflow::Tensor> TensorFromArrayContent(
-    const v0::Array& array_pb) {
+    const federated_language::Array& array_pb) {
   if (!array_pb.has_content()) {
     return absl::InvalidArgumentError("Expected a content field, found none.");
   }

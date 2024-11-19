@@ -15,10 +15,11 @@
 
 from collections.abc import Mapping, Sequence
 
+import federated_language
+
 from tensorflow_federated.cc.core.impl.executor_stacks import executor_stack_bindings
 from tensorflow_federated.python.core.impl.executors import data_conversions
 from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.types import placements
 
 
 def filter_to_live_channels(
@@ -33,7 +34,7 @@ def filter_to_live_channels(
 
 def create_remote_executor_stack(
     channels: Sequence[executor_bindings.GRPCChannel],
-    cardinalities: Mapping[placements.PlacementLiteral, int],
+    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
     max_concurrent_computation_calls: int = -1,
 ) -> executor_bindings.Executor:
   """Constructs a RemoteExecutor proxying services on `targets`."""
@@ -47,7 +48,7 @@ def create_remote_executor_stack(
 
 def create_streaming_remote_executor_stack(
     channels: Sequence[executor_bindings.GRPCChannel],
-    cardinalities: Mapping[placements.PlacementLiteral, int],
+    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a RemoteExecutor proxying services on `targets`."""
   uri_cardinalities = (

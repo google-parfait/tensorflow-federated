@@ -16,7 +16,7 @@
 import asyncio
 import threading
 
-from tensorflow_federated.python.common_libs import tracing
+import federated_language
 
 
 class AsyncThreadRunner:
@@ -42,7 +42,7 @@ class AsyncThreadRunner:
   def __init__(self):
     self._event_loop = asyncio.new_event_loop()
     self._event_loop.set_task_factory(
-        tracing.propagate_trace_context_task_factory
+        federated_language.framework.propagate_trace_context_task_factory
     )
 
     def target_fn():

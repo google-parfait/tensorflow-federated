@@ -17,10 +17,10 @@ from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import serialization_utils
 
@@ -214,7 +214,7 @@ class SerializationUtilsSerializableTest(parameterized.TestCase):
 class SerializationUtilsTypeSpecTest(parameterized.TestCase):
 
   def test_pack_and_unpack_type_spec(self):
-    value = computation_types.TensorType(np.int32)
+    value = federated_language.TensorType(np.int32)
 
     value_bytes = serialization_utils.pack_type_spec(value)
     actual_value, actual_size = serialization_utils.unpack_type_spec_from(
@@ -226,7 +226,7 @@ class SerializationUtilsTypeSpecTest(parameterized.TestCase):
     self.assertEqual(actual_size, expected_size)
 
   def test_pack_and_unpack_type_spec_with_offset(self):
-    value = computation_types.TensorType(np.int32)
+    value = federated_language.TensorType(np.int32)
     offset = 100
 
     value_bytes = serialization_utils.pack_type_spec(value)
@@ -244,7 +244,7 @@ class SerializationUtilsTypeSpecTest(parameterized.TestCase):
       ('too_large', 1),
   )
   def test_unpack_type_spec_from_raises_struct_error_with_offset(self, offset):
-    value = computation_types.TensorType(np.int32)
+    value = federated_language.TensorType(np.int32)
     value_bytes = serialization_utils.pack_type_spec(value)
 
     with self.assertRaises(struct.error):
@@ -257,7 +257,7 @@ class SerializationUtilsTypeSpecTest(parameterized.TestCase):
   def test_unpack_type_spec_from_raises_struct_error_with_corrupt_bytes(
       self, corrupt_fn
   ):
-    value = computation_types.TensorType(np.int32)
+    value = federated_language.TensorType(np.int32)
     value_bytes = serialization_utils.pack_type_spec(value)
     corrupt_bytes = corrupt_fn(value_bytes)
 

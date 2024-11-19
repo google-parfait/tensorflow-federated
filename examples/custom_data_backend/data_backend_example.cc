@@ -19,17 +19,17 @@ limitations under the License
 #include <utility>
 
 #include "google/protobuf/any.pb.h"
+#include "federated_language/proto/array.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
 
 namespace tensorflow_federated_examples {
 
 namespace {
 
-using ::tensorflow_federated::v0::Data;
-using ::tensorflow_federated::v0::Type;
+using ::federated_language::Data;
+using ::federated_language::Type;
 using ::tensorflow_federated::v0::Value;
 
 // Constant URIs and values resolved by `DataBackendExample`.

@@ -17,28 +17,30 @@ limitations under the License
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_XLA_UTILS_H_
 
 #include "absl/status/statusor.h"
+#include "federated_language/proto/array.pb.h"
+#include "federated_language/proto/computation.pb.h"
+#include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/compiler/xla/literal.h"
 #include "tensorflow/compiler/xla/shape.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 namespace tensorflow_federated {
 
-// Creates a xla::PrimitiveType from a ::tensorflow_federated::v0::DataType.
+// Creates a xla::PrimitiveType from a ::federated_language::DataType.
 absl::StatusOr<xla::PrimitiveType> PrimitiveTypeFromDataType(
-    v0::DataType data_type);
+    federated_language::DataType data_type);
 
-// Creates a xla::Shape from a v0::TensorType.
+// Creates a xla::Shape from a federated_language::TensorType.
 absl::StatusOr<xla::Shape> ShapeFromTensorType(
-    const v0::TensorType& tensor_type_pb);
+    const federated_language::TensorType& tensor_type_pb);
 
-// Creates a xla::Shape from a v0::ArrayShape.
-absl::StatusOr<xla::Shape> ShapeFromArrayShape(v0::DataType data_type,
-                                               const v0::ArrayShape& shape_pb);
+// Creates a xla::Shape from a federated_language::ArrayShape.
+absl::StatusOr<xla::Shape> ShapeFromArrayShape(
+    federated_language::DataType data_type,
+    const federated_language::ArrayShape& shape_pb);
 
-// Creates a xla::Literal from a v0::Array.
-absl::StatusOr<xla::Literal> LiteralFromArray(const v0::Array& array_pb);
+// Creates a xla::Literal from a federated_language::Array.
+absl::StatusOr<xla::Literal> LiteralFromArray(
+    const federated_language::Array& array_pb);
 
 }  // namespace tensorflow_federated
 

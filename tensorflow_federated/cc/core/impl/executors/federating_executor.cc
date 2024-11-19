@@ -32,6 +32,7 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/macros.h"
@@ -42,7 +43,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -787,7 +787,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     switch (value.type()) {
       case ExecutorValue::ValueType::CLIENTS: {
         v0::Value_Federated* federated_pb = value_pb->mutable_federated();
-        v0::FederatedType* type_pb = federated_pb->mutable_type();
+        federated_language::FederatedType* type_pb =
+            federated_pb->mutable_type();
         // All-equal-ness is not stored, so must be assumed to be false.
         // If the Python type system expects the value to be all-equal, it can
         // simply extract the first element in the list.
@@ -814,7 +815,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       }
       case ExecutorValue::ValueType::SERVER: {
         v0::Value_Federated* federated_pb = value_pb->mutable_federated();
-        v0::FederatedType* type_pb = federated_pb->mutable_type();
+        federated_language::FederatedType* type_pb =
+            federated_pb->mutable_type();
         // Server placement is assumed to be of cardinality one, and so must be
         // all-equal.
         type_pb->set_all_equal(true);

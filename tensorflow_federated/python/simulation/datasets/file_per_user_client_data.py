@@ -83,7 +83,8 @@ class FilePerUserClientData(client_data.ClientData):
 
     This function will create a dataset for a given client if `client_id` is
     contained in the `client_ids` property of the `FilePerUserClientData`.
-    Unlike `self.serializable_dataset_fn`, this method is not serializable.
+    Unlike `self.serializable_dataset_fn`, this method is not
+    federated_language.
 
     Args:
       client_id: The string identifier for the desired client.

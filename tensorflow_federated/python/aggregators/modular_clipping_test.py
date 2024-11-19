@@ -15,21 +15,24 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import modular_clipping
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 _test_struct_type = [(np.int32, (3,)), np.int32]
 
-_int_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
-_int_at_clients = computation_types.FederatedType(np.int32, placements.CLIENTS)
+_int_at_server = federated_language.FederatedType(
+    np.int32, federated_language.SERVER
+)
+_int_at_clients = federated_language.FederatedType(
+    np.int32, federated_language.CLIENTS
+)
 
 
 def _make_test_struct_value(x):
@@ -62,7 +65,7 @@ class ModularClippingSumFactoryComputationTest(
           {
               'value_type_1': (np.int32, [10]),
               'value_type_2': _test_struct_type,
-              'value_type_3': computation_types.StructType(
+              'value_type_3': federated_language.StructType(
                   [('a', np.int32), ('b', np.int32)]
               ),
           },
@@ -71,13 +74,15 @@ class ModularClippingSumFactoryComputationTest(
   )
   def test_type_properties_simple(self, value_type, estimate_stddev):
     factory = _test_factory(estimate_stddev=estimate_stddev)
-    process = factory.create(computation_types.to_type(value_type))
+    process = factory.create(federated_language.to_type(value_type))
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     # Inner SumFactory has no state.
-    server_state_type = computation_types.FederatedType((), placements.SERVER)
+    server_state_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
 
-    expected_init_type = computation_types.FunctionType(
+    expected_init_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -88,20 +93,20 @@ class ModularClippingSumFactoryComputationTest(
     if estimate_stddev:
       expected_measurements_type['estimated_stddev'] = np.float32
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
-            measurements=computation_types.FederatedType(
-                expected_measurements_type, placements.SERVER
+            measurements=federated_language.FederatedType(
+                expected_measurements_type, federated_language.SERVER
             ),
         ),
     )
@@ -145,18 +150,18 @@ class ModularClippingSumFactoryComputationTest(
   )
   def test_raise_on_estimate_stddev_for_single_element(self, value_type):
     factory = _test_factory(estimate_stddev=True)
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(ValueError, 'more than 1 element'):
       factory.create(value_type)
 
   @parameterized.named_parameters(
-      ('sequence', computation_types.SequenceType(np.int32)),
-      ('function', computation_types.FunctionType(np.int32, np.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
+      ('sequence', federated_language.SequenceType(np.int32)),
+      ('function', federated_language.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[federated_language.SequenceType(np.int32)]]]),
   )
   def test_tff_value_types_raise_on(self, value_type):
     factory = _test_factory()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'Expected `value_type` to be'):
       factory.create(value_type)
 
@@ -167,7 +172,7 @@ class ModularClippingSumFactoryComputationTest(
   )
   def test_component_tensor_dtypes_raise_on(self, value_type):
     factory = _test_factory()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'must all be integers'):
       factory.create(value_type)
 
@@ -206,7 +211,7 @@ class ModularClippingSumFactoryExecutionTest(
       self, clip_range_lower, clip_range_upper, client_data, expected_sum
   ):
     factory = _test_factory(clip_range_lower, clip_range_upper)
-    value_type = computation_types.TensorType(np.int32)
+    value_type = federated_language.TensorType(np.int32)
     process = factory.create(value_type)
     state = process.initialize()
     output = process.next(state, client_data)
@@ -222,7 +227,7 @@ class ModularClippingSumFactoryExecutionTest(
       self, clip_range_lower, clip_range_upper, client_data, expected_sum
   ):
     factory = _test_factory(clip_range_lower, clip_range_upper)
-    value_type = computation_types.TensorType(np.int32)
+    value_type = federated_language.TensorType(np.int32)
     process = factory.create(value_type)
     state = process.initialize()
     output = process.next(state, client_data)
@@ -238,7 +243,7 @@ class ModularClippingSumFactoryExecutionTest(
       self, clip_range_lower, clip_range_upper, client_data, expected_sum
   ):
     factory = _test_factory(clip_range_lower, clip_range_upper)
-    value_type = computation_types.to_type(_test_struct_type)
+    value_type = federated_language.to_type(_test_struct_type)
     process = factory.create(value_type)
     state = process.initialize()
     client_struct_data = [_make_test_struct_value(v) for v in client_data]

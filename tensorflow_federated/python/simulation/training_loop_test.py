@@ -17,42 +17,44 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.simulation import training_loop
 
 
-@federated_computation.federated_computation
+@federated_language.federated_computation
 def _test_init_fn():
-  return intrinsics.federated_value(0, placements.SERVER)
+  return federated_language.federated_value(0, federated_language.SERVER)
 
 
-@federated_computation.federated_computation([
-    computation_types.FederatedType(np.int32, placements.SERVER),
-    computation_types.FederatedType(np.int32, placements.CLIENTS),
+@federated_language.federated_computation([
+    federated_language.FederatedType(np.int32, federated_language.SERVER),
+    federated_language.FederatedType(np.int32, federated_language.CLIENTS),
 ])
 def _test_next_fn(state, client_data):
   del state, client_data  # Unused
-  updated_state = intrinsics.federated_value(1, placements.SERVER)
+  updated_state = federated_language.federated_value(
+      1, federated_language.SERVER
+  )
   metrics = collections.OrderedDict([('metric', 1.0)])
-  output = intrinsics.federated_value(metrics, placements.SERVER)
+  output = federated_language.federated_value(
+      metrics, federated_language.SERVER
+  )
   return updated_state, output
 
 
-@federated_computation.federated_computation([
-    computation_types.FederatedType(np.int32, placements.SERVER),
-    computation_types.FederatedType(np.int32, placements.CLIENTS),
+@federated_language.federated_computation([
+    federated_language.FederatedType(np.int32, federated_language.SERVER),
+    federated_language.FederatedType(np.int32, federated_language.CLIENTS),
 ])
 def _test_evaluation_fn(state, client_data):
   del state, client_data  # Unused
   metrics = collections.OrderedDict([('metric', 2.0)])
-  output = intrinsics.federated_value(metrics, placements.SERVER)
+  output = federated_language.federated_value(
+      metrics, federated_language.SERVER
+  )
   return output
 
 
@@ -145,7 +147,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
     training_process.next.return_value = ('update', {'metric': 1.0})
     training_selection_fn = mock.MagicMock()
     evaluation_fn = mock.create_autospec(
-        computation_base.Computation, return_value={'metric': 1.0}
+        federated_language.framework.Computation, return_value={'metric': 1.0}
     )
     evaluation_selection_fn = mock.MagicMock()
     evaluation_selection_fn.return_value = [0]

@@ -16,23 +16,20 @@
 from typing import Optional
 
 from absl import logging
+import federated_language
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.environments.tensorflow_backend import compiled_computation_transformations
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
-from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
 def transform_to_native_form(
-    comp: computation_impl.ConcreteComputation,
+    comp: federated_language.framework.ConcreteComputation,
     transform_math_to_tf: bool = False,
     grappler_config: Optional[tf.compat.v1.ConfigProto] = None,
-) -> computation_impl.ConcreteComputation:
+) -> federated_language.framework.ConcreteComputation:
   """Compiles a computation for execution in the TFF native runtime.
 
   This function transforms the proto underlying `comp` by transforming it
@@ -40,7 +37,8 @@ def transform_to_native_form(
   definition).
 
   Args:
-    comp: Instance of `computation_impl.ConcreteComputation` to compile.
+    comp: Instance of `federated_language.framework.ConcreteComputation` to
+      compile.
     transform_math_to_tf: Whether to additional transform math to TensorFlow
       graphs. Necessary if running on a execution state without
       ReferenceResolvingExecutors underneath FederatingExecutors.
@@ -49,16 +47,17 @@ def transform_to_native_form(
       optimizations wil be applied.
 
   Returns:
-    A new `computation_impl.ConcreteComputation` representing the compiled
+    A new `federated_language.framework.ConcreteComputation` representing the
+    compiled
       version of `comp`.
   """
-  proto = computation_impl.ConcreteComputation.get_proto(comp)
+  proto = federated_language.framework.ConcreteComputation.get_proto(comp)
   computation_building_block = (
-      building_blocks.ComputationBuildingBlock.from_proto(proto)
+      federated_language.framework.ComputationBuildingBlock.from_proto(proto)
   )
   try:
     logging.debug('Compiling TFF computation to CDF.')
-    with tracing.span(
+    with federated_language.framework.span(
         'transform_to_native_form', 'to_call_dominant', span=True
     ):
       call_dominant_form = transformations.to_call_dominant(
@@ -68,7 +67,7 @@ def transform_to_native_form(
     logging.debug(call_dominant_form.formatted_representation())
     if transform_math_to_tf:
       logging.debug('Compiling local computations to TensorFlow.')
-      with tracing.span(
+      with federated_language.framework.span(
           'transform_to_native_form',
           'compile_local_subcomputations_to_tensorflow',
           span=True,
@@ -81,7 +80,7 @@ def transform_to_native_form(
       logging.debug('Computation compiled to:')
       logging.debug(call_dominant_form.formatted_representation())
     if grappler_config is not None:
-      with tracing.span(
+      with federated_language.framework.span(
           'transform_to_native_form', 'optimize_tf_graphs', span=True
       ):
         call_dominant_form, _ = (
@@ -89,7 +88,7 @@ def transform_to_native_form(
                 call_dominant_form, grappler_config
             )
         )
-    with tracing.span(
+    with federated_language.framework.span(
         'transform_to_native_form',
         'transform_tf_call_ops_disable_grappler',
         span=True,
@@ -99,7 +98,7 @@ def transform_to_native_form(
               call_dominant_form
           )
       )
-    with tracing.span(
+    with federated_language.framework.span(
         'transform_to_native_form', 'transform_tf_add_ids', span=True
     ):
       form_with_ids, _ = (
@@ -107,9 +106,9 @@ def transform_to_native_form(
               disabled_grapler_form
           )
       )
-    return computation_impl.ConcreteComputation(
+    return federated_language.framework.ConcreteComputation(
         computation_proto=form_with_ids.proto,
-        context_stack=context_stack_impl.context_stack,
+        context_stack=federated_language.framework.global_context_stack,
     )
   except ValueError as e:
     logging.debug('Compilation for native runtime failed with error %s', e)
@@ -142,9 +141,9 @@ def desugar_and_transform_to_native(comp):
   # adds TF cache IDs to them. It is crucial that these transformations execute
   # in this order.
   native_form = transform_to_native_form(
-      computation_impl.ConcreteComputation(
+      federated_language.framework.ConcreteComputation(
           computation_proto=intrinsics_desugared_bb.proto,
-          context_stack=context_stack_impl.context_stack,
+          context_stack=federated_language.framework.global_context_stack,
       ),
       grappler_config=grappler_config,
   )

@@ -33,6 +33,7 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/status.h"
@@ -43,7 +44,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/struct_traversal_order.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -68,12 +68,13 @@ class SequenceIterator {
 
 // Computes the number of tensors in a nested tensor type, returning an error
 // status if a type other than tensor or structure is encountered.
-absl::StatusOr<uint32_t> NumTensorsInType(const v0::Type& type) {
+absl::StatusOr<uint32_t> NumTensorsInType(
+    const federated_language::Type& type) {
   switch (type.type_case()) {
-    case v0::Type::kTensor: {
+    case federated_language::Type::kTensor: {
       return 1;
     }
-    case v0::Type::kStruct: {
+    case federated_language::Type::kStruct: {
       uint32_t total_count = 0;
       for (const auto& el_type : type.struct_().element()) {
         total_count += TFF_TRY(NumTensorsInType(el_type.value()));
@@ -90,9 +91,9 @@ absl::StatusOr<uint32_t> NumTensorsInType(const v0::Type& type) {
 
 absl::StatusOr<Embedded> EmbedTensorsAsType(
     const absl::Span<const tensorflow::Tensor> tensors,
-    Executor& target_executor, const v0::Type& type) {
+    Executor& target_executor, const federated_language::Type& type) {
   switch (type.type_case()) {
-    case v0::Type::kTensor: {
+    case federated_language::Type::kTensor: {
       if (tensors.size() != 1) {
         return absl::InvalidArgumentError(absl::StrCat(
             "Attempted to embed a vector of tensors of length ", tensors.size(),
@@ -104,7 +105,7 @@ absl::StatusOr<Embedded> EmbedTensorsAsType(
       TFF_TRY(SerializeTensorValue(tensors.at(0), &tensor_value));
       return ShareValueId(TFF_TRY(target_executor.CreateValue(tensor_value)));
     }
-    case v0::Type::kStruct: {
+    case federated_language::Type::kStruct: {
       std::vector<uint32_t> traversal_order =
           TFF_TRY(TFNestTraversalOrderFromStruct(type.struct_()));
       uint32_t next_element_index = 0;
@@ -161,7 +162,7 @@ class DatasetIterator : public SequenceIterator {
  public:
   explicit DatasetIterator(
       std::unique_ptr<tensorflow::data::standalone::Iterator> iter,
-      v0::Type element_type)
+      federated_language::Type element_type)
       : ds_iterator_(std::move(iter)), element_type_(std::move(element_type)) {}
 
   ~DatasetIterator() final = default;
@@ -185,7 +186,7 @@ class DatasetIterator : public SequenceIterator {
  private:
   DatasetIterator() = delete;
   std::unique_ptr<tensorflow::data::standalone::Iterator> ds_iterator_;
-  v0::Type element_type_;
+  federated_language::Type element_type_;
 };
 
 class SequenceIterator;

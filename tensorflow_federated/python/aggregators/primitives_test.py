@@ -15,16 +15,12 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.test import static_assert
 
 _MIN_MAX_TEST_DTYPES = [
     ('int16', np.int16),
@@ -40,8 +36,8 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_single_value(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.float32, federated_language.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -52,8 +48,8 @@ class FederatedSampleTest(tf.test.TestCase):
   def test_federated_sample_on_nested_scalars(self):
     tuple_type = collections.OrderedDict(x=np.float32, y=np.float32)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(tuple_type, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(tuple_type, federated_language.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -78,8 +74,8 @@ class FederatedSampleTest(tf.test.TestCase):
         TypeError, r'.*argument must be a tff.Value placed at CLIENTS.*'
     ):
 
-      @federated_computation.federated_computation(
-          computation_types.FederatedType(np.bool_, placements.SERVER)
+      @federated_language.federated_computation(
+          federated_language.FederatedType(np.bool_, federated_language.SERVER)
       )
       def call_federated_sample(value):
         return primitives.federated_sample(value)
@@ -88,8 +84,8 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_max_size_is_100(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.float32, federated_language.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -100,8 +96,8 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_preserves_nan_percentage(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.float32, federated_language.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -111,8 +107,8 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_preserves_inf_percentage(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.float32, federated_language.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -121,12 +117,12 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertAlmostEqual(np.count_nonzero(np.isinf(value)), 50, delta=20)
 
   def test_federated_sample_named_tuple_type_of_ordered_dict(self):
-    dict_type = computation_types.to_type(
+    dict_type = federated_language.to_type(
         collections.OrderedDict([('x', np.float32), ('y', np.float32)])
     )
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(dict_type, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(dict_type, federated_language.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -142,7 +138,7 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_nested_named_tuples(self):
     tuple_test_type = collections.OrderedDict(x=np.float32, y=np.float32)
-    dict_test_type = computation_types.to_type(
+    dict_test_type = federated_language.to_type(
         collections.OrderedDict(a=np.float32, b=np.float32)
     )
     nested_tuple_type = collections.OrderedDict(
@@ -150,8 +146,10 @@ class FederatedSampleTest(tf.test.TestCase):
     )
     nested_test_type = collections.namedtuple('Nested', ['tuple_1', 'tuple_2'])
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(nested_tuple_type, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            nested_tuple_type, federated_language.CLIENTS
+        )
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -180,8 +178,10 @@ class SecureQuantizedSumStaticAssertsTest(
     """Tests that built computation contains at least one secure sum call."""
 
     # Bounds provided as Python constants.
-    @federated_computation.federated_computation(
-        computation_types.FederatedType((dtype, (2,)), placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            (dtype, (2,)), federated_language.CLIENTS
+        )
     )
     def comp_py_bounds(value):
       return primitives.secure_quantized_sum(
@@ -190,19 +190,25 @@ class SecureQuantizedSumStaticAssertsTest(
           np.array(1.0, dtype),
       )
 
-    static_assert.assert_not_contains_unsecure_aggregation(comp_py_bounds)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        comp_py_bounds
+    )
 
     # Bounds provided as tff values.
-    @federated_computation.federated_computation(
-        computation_types.FederatedType((dtype, (2,)), placements.CLIENTS),
-        computation_types.FederatedType(dtype, placements.SERVER),
-        computation_types.FederatedType(dtype, placements.SERVER),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            (dtype, (2,)), federated_language.CLIENTS
+        ),
+        federated_language.FederatedType(dtype, federated_language.SERVER),
+        federated_language.FederatedType(dtype, federated_language.SERVER),
     )
     def comp_tff_bounds(value, upper_bound, lower_bound):
       return primitives.secure_quantized_sum(value, upper_bound, lower_bound)
 
     try:
-      static_assert.assert_not_contains_unsecure_aggregation(comp_tff_bounds)
+      federated_language.framework.assert_not_contains_unsecure_aggregation(
+          comp_tff_bounds
+      )
     except AssertionError:
       self.fail('Computation contains non-secure aggregation.')
 
@@ -560,7 +566,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_tensor_int_type_py_range(self, int_type):
     """Tests value of integer tensor type and scalar np range."""
-    t_type = computation_types.TensorType(int_type, (2,))
+    t_type = federated_language.TensorType(int_type, (2,))
     call_secure_sum = _build_test_sum_fn_py_bounds(
         t_type, np.array(0, int_type), np.array(255, int_type)
     )
@@ -570,7 +576,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_composite_int_type_py_range(self, int_type):
     """Tests value of integer composite type and scalar np range."""
-    t_type = computation_types.to_type(((int_type, (2,)), (int_type, (3,))))
+    t_type = federated_language.to_type(((int_type, (2,)), (int_type, (3,))))
     call_secure_sum = _build_test_sum_fn_py_bounds(
         t_type, np.array(0, int_type), np.array(255, int_type)
     )
@@ -585,7 +591,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_composite_int_type_composite_py_range(self, int_type):
     """Tests value of integer composite type and composite np range."""
-    t_type = computation_types.to_type(((int_type, (2,)), (int_type, (3,))))
+    t_type = federated_language.to_type(((int_type, (2,)), (int_type, (3,))))
     call_secure_sum = _build_test_sum_fn_py_bounds(
         t_type,
         (np.array(0, int_type), np.array(63, int_type)),
@@ -612,7 +618,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_tensor_int_type_tff_range(self, int_type):
     """Tests value of integer tensor type and scalar tff range."""
     call_secure_sum = _build_test_sum_fn_tff_bounds(
-        computation_types.TensorType(int_type, (2,)), int_type, int_type
+        federated_language.TensorType(int_type, (2,)), int_type, int_type
     )
     self.assertAllEqual(
         [256, 7], call_secure_sum([[0, 0], [1, 2], [255, 5]], 0, 255)
@@ -621,7 +627,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_composite_int_type_tff_range(self, int_type):
     """Tests value of integer composite type and scalar tff range."""
-    t_type = computation_types.to_type(((int_type, (2,)), (int_type, (3,))))
+    t_type = federated_language.to_type(((int_type, (2,)), (int_type, (3,))))
     call_secure_sum = _build_test_sum_fn_tff_bounds(t_type, int_type, int_type)
     data = [((0, 0), (0, 0, 0)),
             ((1, 2), (3, 4, 5)),
@@ -634,7 +640,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_composite_int_type_composite_tff_range(self, int_type):
     """Tests value of integer composite type and composite tff range."""
-    t_type = computation_types.to_type(((int_type, (2,)), (int_type, (3,))))
+    t_type = federated_language.to_type(((int_type, (2,)), (int_type, (3,))))
     call_secure_sum = _build_test_sum_fn_tff_bounds(
         t_type, (int_type, int_type), (int_type, int_type)
     )
@@ -725,7 +731,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_tensor_float_type_py_range(self, float_type):
     """Tests value of float tensor type and scalar np range."""
-    t_type = computation_types.TensorType(float_type, (2,))
+    t_type = federated_language.TensorType(float_type, (2,))
     call_secure_sum = _build_test_sum_fn_py_bounds(
         t_type, np.array(0.0, float_type), np.array(1.0, float_type)
     )
@@ -737,7 +743,9 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_composite_float_type_py_range(self, float_type):
     """Tests value of float composite type and scalar np range."""
-    t_type = computation_types.to_type(((float_type, (2,)), (float_type, (3,))))
+    t_type = federated_language.to_type(
+        ((float_type, (2,)), (float_type, (3,)))
+    )
     call_secure_sum = _build_test_sum_fn_py_bounds(
         t_type, np.array(0.0, float_type), np.array(1.0, float_type)
     )
@@ -754,7 +762,9 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_composite_float_type_composite_py_range(self, float_type):
     """Tests value of float composite type and composite np range."""
-    t_type = computation_types.to_type(((float_type, (2,)), (float_type, (3,))))
+    t_type = federated_language.to_type(
+        ((float_type, (2,)), (float_type, (3,)))
+    )
     call_secure_sum = _build_test_sum_fn_py_bounds(
         t_type,
         (np.array(0.0, float_type), np.array(0.2, float_type)),
@@ -786,7 +796,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_tensor_float_type_tff_range(self, float_type):
     """Tests value of float tensor type and scalar tff range."""
-    t_type = computation_types.TensorType(float_type, (2,))
+    t_type = federated_language.TensorType(float_type, (2,))
     call_secure_sum = _build_test_sum_fn_tff_bounds(
         t_type, float_type, float_type
     )
@@ -798,7 +808,9 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_composite_float_type_tff_range(self, float_type):
     """Tests value of float composite type and scalar tff range."""
-    t_type = computation_types.to_type(((float_type, (2,)), (float_type, (3,))))
+    t_type = federated_language.to_type(
+        ((float_type, (2,)), (float_type, (3,)))
+    )
     call_secure_sum = _build_test_sum_fn_tff_bounds(
         t_type, float_type, float_type
     )
@@ -815,7 +827,9 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_composite_float_type_composite_tff_range(self, float_type):
     """Tests value of float composite type and composite tff range."""
-    t_type = computation_types.to_type(((float_type, (2,)), (float_type, (3,))))
+    t_type = federated_language.to_type(
+        ((float_type, (2,)), (float_type, (3,)))
+    )
     call_secure_sum = _build_test_sum_fn_tff_bounds(
         t_type, (float_type, float_type), (float_type, float_type)
     )
@@ -863,7 +877,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_mixed_type_structure(self):
     """Tests a structure consisting of different dtypes can be aggregted."""
-    t_type = computation_types.to_type(((np.int32, (2,)), (np.float32, (3,))))
+    t_type = federated_language.to_type(((np.int32, (2,)), (np.float32, (3,))))
     call_secure_sum = _build_test_sum_fn_py_bounds(t_type, (0, 0.0), (255, 1.0))
     data = [((0, 0), (0.0, 0.0, 0.0)),
             ((1, 2), (0.3, 0.4, 0.5)),
@@ -1185,11 +1199,13 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_bounds_different_types_raises(self):
     with self.assertRaises(primitives.BoundsDifferentTypesError):
 
-      @federated_computation.federated_computation(
-          computation_types.FederatedType(np.int32, placements.CLIENTS)
+      @federated_language.federated_computation(
+          federated_language.FederatedType(np.int32, federated_language.CLIENTS)
       )
       def _(value):
-        lower_bound = intrinsics.federated_value(0, placements.SERVER)
+        lower_bound = federated_language.federated_value(
+            0, federated_language.SERVER
+        )
         upper_bound = 1
         summed_value = primitives.secure_quantized_sum(
             value, lower_bound, upper_bound
@@ -1199,12 +1215,16 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_clients_placed_bounds_raises(self):
     with self.assertRaises(primitives.BoundsNotPlacedAtServerError):
 
-      @federated_computation.federated_computation(
-          computation_types.FederatedType(np.int32, placements.CLIENTS)
+      @federated_language.federated_computation(
+          federated_language.FederatedType(np.int32, federated_language.CLIENTS)
       )
       def _(value):
-        lower_bound = intrinsics.federated_value(0, placements.CLIENTS)
-        upper_bound = intrinsics.federated_value(1, placements.CLIENTS)
+        lower_bound = federated_language.federated_value(
+            0, federated_language.CLIENTS
+        )
+        upper_bound = federated_language.federated_value(
+            1, federated_language.CLIENTS
+        )
         summed_value = primitives.secure_quantized_sum(
             value, lower_bound, upper_bound
         )
@@ -1238,8 +1258,8 @@ def _build_test_sum_fn_py_bounds(value_type, lower_bound, upper_bound):
     value_type@SERVER)`.
   """
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(value_type, placements.CLIENTS)
+  @federated_language.federated_computation(
+      federated_language.FederatedType(value_type, federated_language.CLIENTS)
   )
   def call_secure_sum(value):
     summed_value = primitives.secure_quantized_sum(
@@ -1269,10 +1289,14 @@ def _build_test_sum_fn_tff_bounds(
     lower_bound_type@SERVER, upper_bound_type@SERVER) -> value_type@SERVER)`.
   """
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(value_type, placements.CLIENTS),
-      computation_types.FederatedType(lower_bound_type, placements.SERVER),
-      computation_types.FederatedType(upper_bound_type, placements.SERVER),
+  @federated_language.federated_computation(
+      federated_language.FederatedType(value_type, federated_language.CLIENTS),
+      federated_language.FederatedType(
+          lower_bound_type, federated_language.SERVER
+      ),
+      federated_language.FederatedType(
+          upper_bound_type, federated_language.SERVER
+      ),
   )
   def call_secure_sum(value, lower_bound, upper_bound):
     summed_value = primitives.secure_quantized_sum(

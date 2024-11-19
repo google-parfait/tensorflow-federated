@@ -15,12 +15,9 @@
 import collections
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
@@ -38,23 +35,23 @@ _AggregationProcessConstructionError = (
 
 def _server_zero():
   """Returns zero integer placed at SERVER."""
-  return intrinsics.federated_value(0, placements.SERVER)
+  return federated_language.federated_value(0, federated_language.SERVER)
 
 
-@federated_computation.federated_computation()
+@federated_language.federated_computation()
 def _initialize():
   return _server_zero()
 
 
-@federated_computation.federated_computation(
-    computation_types.FederatedType(np.int32, placements.SERVER),
-    computation_types.FederatedType(np.float32, placements.CLIENTS),
+@federated_language.federated_computation(
+    federated_language.FederatedType(np.int32, federated_language.SERVER),
+    federated_language.FederatedType(np.float32, federated_language.CLIENTS),
 )
 def _next(state, value):
   return measured_process.MeasuredProcessOutput(
       state,
-      intrinsics.federated_sum(value),
-      intrinsics.federated_value(1, placements.SERVER),
+      federated_language.federated_sum(value),
+      federated_language.federated_value(1, federated_language.SERVER),
   )
 
 
@@ -68,19 +65,21 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_construction_with_empty_state_does_not_raise(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_empty():
-      return intrinsics.federated_value((), placements.SERVER)
+      return federated_language.federated_value((), federated_language.SERVER)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType((), placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType((), federated_language.SERVER),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def _next_empty(state, value):
       return measured_process.MeasuredProcessOutput(
           state,
-          intrinsics.federated_sum(value),
-          intrinsics.federated_value(1, placements.SERVER),
+          federated_language.federated_sum(value),
+          federated_language.federated_value(1, federated_language.SERVER),
       )
 
     try:
@@ -90,24 +89,26 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_unknown():
-      return intrinsics.federated_value(
-          np.array([], np.str_), placements.SERVER
+      return federated_language.federated_value(
+          np.array([], np.str_), federated_language.SERVER
       )
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(
-            computation_types.TensorType(np.str_, [None]),
-            placements.SERVER,
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            federated_language.TensorType(np.str_, [None]),
+            federated_language.SERVER,
         ),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def next_fn(strings, value):
       return measured_process.MeasuredProcessOutput(
           strings,
-          intrinsics.federated_sum(value),
-          intrinsics.federated_value(1, placements.SERVER),
+          federated_language.federated_sum(value),
+          federated_language.federated_value(1, federated_language.SERVER),
       )
 
     try:
@@ -120,9 +121,11 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_construction_with_value_type_mismatch_does_not_raise(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       del value  # Unused.
@@ -155,8 +158,8 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_init_param_not_empty_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER)
     )
     def _initialize_arg(x):
       return x
@@ -166,24 +169,26 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_init_state_not_assignable(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_float():
-      return intrinsics.federated_value(0.0, placements.SERVER)
+      return federated_language.federated_value(0.0, federated_language.SERVER)
 
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       aggregation_process.AggregationProcess(_initialize_float, _next)
 
   def test_next_state_not_assignable(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def _next_float(state, value):
       del state  # Unused.
       return measured_process.MeasuredProcessOutput(
-          intrinsics.federated_value(0.0, placements.SERVER),
-          intrinsics.federated_sum(value),
+          federated_language.federated_value(0.0, federated_language.SERVER),
+          federated_language.federated_sum(value),
           _server_zero(),
       )
 
@@ -191,19 +196,23 @@ class AggregationProcessTest(absltest.TestCase):
       aggregation_process.AggregationProcess(_initialize, _next_float)
 
   def test_measured_process_output_as_state_raises(self):
-    no_value = lambda: intrinsics.federated_value((), placements.SERVER)
+    no_value = lambda: federated_language.federated_value(
+        (), federated_language.SERVER
+    )
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def initialize_fn():
-      return intrinsics.federated_zip(
+      return federated_language.federated_zip(
           measured_process.MeasuredProcessOutput(
               no_value(), no_value(), no_value()
           )
       )
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         initialize_fn.type_signature.result,
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       del state, value
@@ -216,12 +225,14 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_next_return_tuple_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def tuple_next_fn(state, value):
-      return state, intrinsics.federated_sum(value), _server_zero()
+      return state, federated_language.federated_sum(value), _server_zero()
 
     with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
       aggregation_process.AggregationProcess(_initialize, tuple_next_fn)
@@ -231,13 +242,15 @@ class AggregationProcessTest(absltest.TestCase):
         'MeasuredProcessOutput', ['state', 'result', 'measurements']
     )
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def namedtuple_next_fn(state, value):
       return measured_process_output(
-          state, intrinsics.federated_sum(value), _server_zero()
+          state, federated_language.federated_sum(value), _server_zero()
       )
 
     with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
@@ -245,14 +258,16 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_next_return_odict_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def odict_next_fn(state, value):
       return collections.OrderedDict(
           state=state,
-          result=intrinsics.federated_sum(value),
+          result=federated_language.federated_sum(value),
           measurements=_server_zero(),
       )
 
@@ -261,14 +276,16 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_federated_measured_process_output_raises(self):
     # Using federated_zip to place FederatedType at the top of the hierarchy.
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
-      return intrinsics.federated_zip(
+      return federated_language.federated_zip(
           measured_process.MeasuredProcessOutput(
-              state, intrinsics.federated_sum(value), _server_zero()
+              state, federated_language.federated_sum(value), _server_zero()
           )
       )
 
@@ -282,11 +299,11 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_non_federated_init_next_raises(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_unplaced():
       return 0
 
-    @federated_computation.federated_computation(np.int32, np.float32)
+    @federated_language.federated_computation(np.int32, np.float32)
     def _next_unplaced(state, value):
       return measured_process.MeasuredProcessOutput(state, value, ())
 
@@ -297,22 +314,28 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_init_tuple_of_federated_types_raises(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_tuple():
       return (_server_zero(), _server_zero())
 
-    @federated_computation.federated_computation(
-        computation_types.StructType([
-            computation_types.FederatedType(np.int32, placements.SERVER),
-            computation_types.FederatedType(np.int32, placements.SERVER),
+    @federated_language.federated_computation(
+        federated_language.StructType([
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
         ]),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def _next_tuple(state, value):
       return measured_process.MeasuredProcessOutput(
           state,
-          intrinsics.federated_sum(value),
-          intrinsics.federated_value(1, placements.SERVER),
+          federated_language.federated_sum(value),
+          federated_language.federated_value(1, federated_language.SERVER),
       )
 
     with self.assertRaises(aggregation_process.AggregationNotFederatedError):
@@ -320,19 +343,21 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_non_server_placed_init_state_raises(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_clients():
-      return intrinsics.federated_value(0, placements.CLIENTS)
+      return federated_language.federated_value(0, federated_language.CLIENTS)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def _next_non_server(state, value):
       return measured_process.MeasuredProcessOutput(
           state,
-          intrinsics.federated_sum(value),
-          intrinsics.federated_value(1, placements.SERVER),
+          federated_language.federated_sum(value),
+          federated_language.federated_value(1, federated_language.SERVER),
       )
 
     with self.assertRaises(aggregation_process.AggregationPlacementError):
@@ -342,14 +367,14 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_single_param_next_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     def _next_single_parameter(state):
       return measured_process.MeasuredProcessOutput(
           state,
-          intrinsics.federated_value(1.0, placements.SERVER),
-          intrinsics.federated_value(1, placements.SERVER),
+          federated_language.federated_value(1.0, federated_language.SERVER),
+          federated_language.federated_value(1, federated_language.SERVER),
       )
 
     with self.assertRaises(errors.TemplateNextFnNumArgsError):
@@ -359,15 +384,15 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_non_clients_placed_next_value_param_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.SERVER),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.float32, federated_language.SERVER),
     )
     def _next_non_clients(state, value):
       return measured_process.MeasuredProcessOutput(
           state,
           value,
-          intrinsics.federated_value(1, placements.SERVER),
+          federated_language.federated_value(1, federated_language.SERVER),
       )
 
     with self.assertRaises(aggregation_process.AggregationPlacementError):
@@ -375,15 +400,15 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_non_server_placed_next_result_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.SERVER),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.float32, federated_language.SERVER),
     )
     def _next_non_server_result(state, value):
       return measured_process.MeasuredProcessOutput(
           state,
           value,
-          intrinsics.federated_value(1, placements.SERVER),
+          federated_language.federated_value(1, federated_language.SERVER),
       )
 
     with self.assertRaises(aggregation_process.AggregationPlacementError):
@@ -393,13 +418,13 @@ class AggregationProcessTest(absltest.TestCase):
 
   def test_non_server_placed_next_measurements_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.int32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     def next_fn(state, value):
       return measured_process.MeasuredProcessOutput(
-          state, intrinsics.federated_sum(value), value
+          state, federated_language.federated_sum(value), value
       )
 
     with self.assertRaises(aggregation_process.AggregationPlacementError):
@@ -409,17 +434,21 @@ class AggregationProcessTest(absltest.TestCase):
     process = aggregation_process.AggregationProcess(_initialize, _next)
     self.assertFalse(process.is_weighted)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
-        computation_types.FederatedType(np.float32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
+        federated_language.FederatedType(
+            np.float32, federated_language.CLIENTS
+        ),
     )
     def weighted_next_fn(state, value, weight):
       del weight
       return measured_process.MeasuredProcessOutput(
           state,
-          intrinsics.federated_sum(value),
-          intrinsics.federated_value(1, placements.SERVER),
+          federated_language.federated_sum(value),
+          federated_language.federated_value(1, federated_language.SERVER),
       )
 
     process = aggregation_process.AggregationProcess(

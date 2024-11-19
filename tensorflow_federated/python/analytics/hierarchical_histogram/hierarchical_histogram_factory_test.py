@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -23,8 +24,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.analytics.hierarchical_histogram import build_tree_from_leaf
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory as hihi_factory
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -52,27 +51,27 @@ class TreeAggregationFactoryComputationTest(
         )
     )
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query_state_type = computation_types.StructType([
-        ('arity', computation_types.TensorType(np.int32)),
-        ('inner_query_state', computation_types.StructType([])),
+    query_state_type = federated_language.StructType([
+        ('arity', federated_language.TensorType(np.int32)),
+        ('inner_query_state', federated_language.StructType([])),
     ])
-    query_metrics_type = computation_types.StructType([])
+    query_metrics_type = federated_language.StructType([])
 
-    dp_event_type = computation_types.StructType([
-        ('module_name', computation_types.TensorType(np.str_)),
-        ('class_name', computation_types.TensorType(np.str_)),
+    dp_event_type = federated_language.StructType([
+        ('module_name', federated_language.TensorType(np.str_)),
+        ('class_name', federated_language.TensorType(np.str_)),
     ])
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, (), dp_event_type, np.bool_
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -90,36 +89,36 @@ class TreeAggregationFactoryComputationTest(
       )
     else:
       expected_measurements_dp = ()
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             dp_query_metrics=query_metrics_type, dp=expected_measurements_dp
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
 
     tree_depth = hihi_factory._tree_depth(value_shape, arity)
     flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
-    result_value_type = computation_types.to_type(
+    result_value_type = federated_language.to_type(
         collections.OrderedDict([
             (
                 'flat_values',
-                computation_types.to_type((np.int32, (flat_tree_shape,))),
+                federated_language.to_type((np.int32, (flat_tree_shape,))),
             ),
             ('nested_row_splits', [(np.int64, (tree_depth + 1,))]),
         ])
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
-    expected_next_type = computation_types.FunctionType(
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                result_value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                result_value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -147,35 +146,35 @@ class TreeAggregationFactoryComputationTest(
         )
     )
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query_state_type = computation_types.StructType([
-        ('arity', computation_types.TensorType(np.int32)),
+    query_state_type = federated_language.StructType([
+        ('arity', federated_language.TensorType(np.int32)),
         (
             'inner_query_state',
-            computation_types.StructType([
-                ('l2_norm_clip', computation_types.TensorType(np.float32)),
-                ('stddev', computation_types.TensorType(np.float32)),
+            federated_language.StructType([
+                ('l2_norm_clip', federated_language.TensorType(np.float32)),
+                ('stddev', federated_language.TensorType(np.float32)),
             ]),
         ),
     ])
-    query_metrics_type = computation_types.StructType([])
+    query_metrics_type = federated_language.StructType([])
 
     # template_type is not derived from value_type in this test because the
     # outer factory converts the ints to floats before they reach the query.
-    dp_event_type = computation_types.StructType([
-        ('module_name', computation_types.TensorType(np.str_)),
-        ('class_name', computation_types.TensorType(np.str_)),
+    dp_event_type = federated_language.StructType([
+        ('module_name', federated_language.TensorType(np.str_)),
+        ('class_name', federated_language.TensorType(np.str_)),
     ])
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, (), dp_event_type, np.bool_
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -193,35 +192,35 @@ class TreeAggregationFactoryComputationTest(
       )
     else:
       expected_measurements_dp = ()
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             dp_query_metrics=query_metrics_type, dp=expected_measurements_dp
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
     tree_depth = hihi_factory._tree_depth(value_shape, arity)
     flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
-    result_value_type = computation_types.to_type(
+    result_value_type = federated_language.to_type(
         collections.OrderedDict([
             (
                 'flat_values',
-                computation_types.to_type((np.float32, (flat_tree_shape,))),
+                federated_language.to_type((np.float32, (flat_tree_shape,))),
             ),
             ('nested_row_splits', [(np.int64, (tree_depth + 1,))]),
         ])
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
-    expected_next_type = computation_types.FunctionType(
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                result_value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                result_value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -249,33 +248,33 @@ class TreeAggregationFactoryComputationTest(
         )
     )
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query_state_type = computation_types.StructType([
-        ('arity', computation_types.TensorType(np.int32)),
+    query_state_type = federated_language.StructType([
+        ('arity', federated_language.TensorType(np.int32)),
         (
             'inner_query_state',
-            computation_types.StructType([
-                ('l2_norm_bound', computation_types.TensorType(np.float32)),
-                ('local_stddev', computation_types.TensorType(np.float32)),
+            federated_language.StructType([
+                ('l2_norm_bound', federated_language.TensorType(np.float32)),
+                ('local_stddev', federated_language.TensorType(np.float32)),
             ]),
         ),
     ])
-    query_metrics_type = computation_types.StructType([])
+    query_metrics_type = federated_language.StructType([])
 
-    dp_event_type = computation_types.StructType([
-        ('module_name', computation_types.TensorType(np.str_)),
-        ('class_name', computation_types.TensorType(np.str_)),
+    dp_event_type = federated_language.StructType([
+        ('module_name', federated_language.TensorType(np.str_)),
+        ('class_name', federated_language.TensorType(np.str_)),
     ])
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, (), dp_event_type, np.bool_
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -283,34 +282,34 @@ class TreeAggregationFactoryComputationTest(
             expected_initialize_type
         )
     )
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=()),
-        placements.SERVER,
+        federated_language.SERVER,
     )
 
     tree_depth = hihi_factory._tree_depth(value_shape, arity)
     flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
-    result_value_type = computation_types.to_type(
+    result_value_type = federated_language.to_type(
         collections.OrderedDict([
             (
                 'flat_values',
-                computation_types.to_type((np.int32, (flat_tree_shape,))),
+                federated_language.to_type((np.int32, (flat_tree_shape,))),
             ),
             ('nested_row_splits', [(np.int64, (tree_depth + 1,))]),
         ])
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
-    expected_next_type = computation_types.FunctionType(
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                result_value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                result_value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -506,7 +505,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=enable_secure_sum,
         )
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -561,7 +560,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=enable_secure_sum,
         )
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -621,7 +620,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=enable_secure_sum,
         )
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -684,7 +683,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=enable_secure_sum,
         )
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -744,7 +743,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=True,
         )
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -806,7 +805,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=True,
         )
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -865,7 +864,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=True,
         )
     )
-    value_type = computation_types.to_type((np.int32, (value_shape,)))
+    value_type = federated_language.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()

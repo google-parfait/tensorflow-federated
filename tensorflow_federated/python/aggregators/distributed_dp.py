@@ -18,6 +18,7 @@ import math
 from typing import Optional
 import warnings
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
@@ -33,12 +34,6 @@ from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import array_shape
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -555,10 +550,10 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     # NOTE(b/170893510): Explicitly declaring Union[float, EstimationProcess]
     # for _l2_clip or doing isinstance() check still triggers attribute-error.
     new_l2_clip = self._l2_clip.report(l2_clip_state['clipping_norm'])  # pytype: disable=attribute-error
-    agg_state = intrinsics.federated_map(
+    agg_state = federated_language.federated_map(
         _update_scale, (agg_state, new_l2_clip)
     )
-    agg_state = intrinsics.federated_map(
+    agg_state = federated_language.federated_map(
         _update_dp_params, (agg_state, new_l2_clip)
     )
     return agg_state
@@ -568,11 +563,12 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     l2_clip_metrics, _, dp_metrics = self._unpack_measurements(agg_measurements)
     dp_query_state, _, _, _ = dp_state
 
-    actual_num_clients = intrinsics.federated_secure_sum_bitwidth(
-        intrinsics.federated_value(1, placements.CLIENTS), bitwidth=1
+    actual_num_clients = federated_language.federated_secure_sum_bitwidth(
+        federated_language.federated_value(1, federated_language.CLIENTS),
+        bitwidth=1,
     )
-    padded_dim = intrinsics.federated_value(
-        int(self._padded_dim), placements.SERVER
+    padded_dim = federated_language.federated_value(
+        int(self._padded_dim), federated_language.SERVER
     )
 
     measurements = collections.OrderedDict(
@@ -585,19 +581,22 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         dp_query_metrics=dp_metrics['dp_query_metrics'],
     )
 
-    return intrinsics.federated_zip(measurements)
+    return federated_language.federated_zip(measurements)
 
   def create(self, value_type):
     # Checks value_type and compute client data dimension.
     if isinstance(
-        value_type, computation_types.StructWithPythonType
-    ) and type_analysis.is_structure_of_tensors(value_type):
+        value_type, federated_language.StructWithPythonType
+    ) and federated_language.framework.is_structure_of_tensors(value_type):
       num_elements_struct = type_conversions.structure_from_tensor_type_tree(
-          lambda x: array_shape.num_elements_in_shape(x.shape), value_type
+          lambda x: federated_language.num_elements_in_array_shape(x.shape),
+          value_type,
       )
       self._client_dim = sum(tf.nest.flatten(num_elements_struct))
-    elif isinstance(value_type, computation_types.TensorType):
-      self._client_dim = array_shape.num_elements_in_shape(value_type.shape)
+    elif isinstance(value_type, federated_language.TensorType):
+      self._client_dim = federated_language.num_elements_in_array_shape(
+          value_type.shape
+      )
     else:
       raise TypeError(
           'Expected `value_type` to be `TensorType` or '
@@ -606,8 +605,8 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       )
     # Checks that all values are integers or floats.
     if not (
-        type_analysis.is_structure_of_floats(value_type)
-        or type_analysis.is_structure_of_integers(value_type)
+        federated_language.framework.is_structure_of_floats(value_type)
+        or federated_language.framework.is_structure_of_integers(value_type)
     ):
       raise TypeError(
           'Component dtypes of `value_type` must all be integers '
@@ -617,9 +616,11 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     ddp_agg_process = self._build_aggregation_factory().create(value_type)
     init_fn = ddp_agg_process.initialize
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       agg_output = ddp_agg_process.next(state, value)

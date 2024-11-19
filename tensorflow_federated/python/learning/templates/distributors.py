@@ -17,13 +17,9 @@ This module is a minimal stab at structure which will probably live in
 `tff.distributors` and `tff.templates` later on.
 """
 
+import federated_language
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -54,7 +50,7 @@ class DistributionProcess(measured_process.MeasuredProcess):
     super().__init__(initialize_fn, next_fn, next_is_multi_arg=True)
 
     if not isinstance(
-        initialize_fn.type_signature.result, computation_types.FederatedType
+        initialize_fn.type_signature.result, federated_language.FederatedType
     ):
       raise errors.TemplateNotFederatedError(
           'Provided `initialize_fn` must return a federated type, but found '
@@ -66,15 +62,13 @@ class DistributionProcess(measured_process.MeasuredProcess):
         next_fn.type_signature.parameter
     ) + structure.flatten(next_fn.type_signature.result)
     if not all(
-        [isinstance(t, computation_types.FederatedType) for t in next_types]
+        [isinstance(t, federated_language.FederatedType) for t in next_types]
     ):
-      offending_types = '\n- '.join(
-          [
-              t
-              for t in next_types
-              if not isinstance(t, computation_types.FederatedType)
-          ]
-      )
+      offending_types = '\n- '.join([
+          t
+          for t in next_types
+          if not isinstance(t, federated_language.FederatedType)
+      ])
       raise errors.TemplateNotFederatedError(
           'Provided `next_fn` must be a *federated* computation, that is, '
           'operate on `tff.FederatedType`s, but found\n'
@@ -82,7 +76,10 @@ class DistributionProcess(measured_process.MeasuredProcess):
           f'The non-federated types are:\n {offending_types}.'
       )
 
-    if initialize_fn.type_signature.result.placement != placements.SERVER:
+    if (
+        initialize_fn.type_signature.result.placement
+        != federated_language.SERVER
+    ):
       raise errors.TemplatePlacementError(
           'The state controlled by an `DistributionProcess` must be placed at '
           f'the SERVER, but found type: {initialize_fn.type_signature.result}.'
@@ -93,7 +90,7 @@ class DistributionProcess(measured_process.MeasuredProcess):
 
     next_fn_param = next_fn.type_signature.parameter
     next_fn_result = next_fn.type_signature.result
-    if not isinstance(next_fn_param, computation_types.StructType):
+    if not isinstance(next_fn_param, federated_language.StructType):
       raise errors.TemplateNextFnNumArgsError(
           'The `next_fn` must have exactly two input arguments, but found '
           f'the following input type which is not a Struct: {next_fn_param}.'
@@ -104,18 +101,18 @@ class DistributionProcess(measured_process.MeasuredProcess):
           'The `next_fn` must have exactly two input arguments, but found '
           f'{len(next_fn_param)} input arguments:\n{next_param_str}'
       )
-    if next_fn_param[1].placement != placements.SERVER:
+    if next_fn_param[1].placement != federated_language.SERVER:
       raise errors.TemplatePlacementError(
           'The second input argument of `next_fn` must be placed at SERVER '
           f'but found {next_fn_param[1]}.'
       )
 
-    if next_fn_result.result.placement != placements.CLIENTS:
+    if next_fn_result.result.placement != federated_language.CLIENTS:
       raise errors.TemplatePlacementError(
           'The "result" attribute of return type of `next_fn` must be placed '
           f'at CLIENTS, but found {next_fn_result.result}.'
       )
-    if next_fn_result.measurements.placement != placements.SERVER:
+    if next_fn_result.measurements.placement != federated_language.SERVER:
       raise errors.TemplatePlacementError(
           'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.'
@@ -123,7 +120,7 @@ class DistributionProcess(measured_process.MeasuredProcess):
 
 
 # TODO: b/190334722 - Replace with a factory pattern similar to tff.aggregators.
-def build_broadcast_process(value_type: computation_types.Type):
+def build_broadcast_process(value_type: federated_language.Type):
   """Builds `DistributionProcess` directly broadcasting values.
 
   The created process has empty state and reports no measurements.
@@ -138,26 +135,28 @@ def build_broadcast_process(value_type: computation_types.Type):
     TypeError: If `value_type` contains a `tff.types.FederatedType`.
   """
   py_typecheck.check_type(
-      value_type, (computation_types.TensorType, computation_types.StructType)
+      value_type, (federated_language.TensorType, federated_language.StructType)
   )
-  if type_analysis.contains_federated_types(value_type):
+  if federated_language.framework.contains_federated_types(value_type):
     raise TypeError(
         'Provided value_type must not contain any tff.types.FederatedType, '
         f'but found: {value_type}'
     )
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def init_fn():
-    return intrinsics.federated_value((), placements.SERVER)
+    return federated_language.federated_value((), federated_language.SERVER)
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(value_type, placements.SERVER),
+      federated_language.FederatedType(value_type, federated_language.SERVER),
   )
   def next_fn(state, value):
-    empty_measurements = intrinsics.federated_value((), placements.SERVER)
+    empty_measurements = federated_language.federated_value(
+        (), federated_language.SERVER
+    )
     return measured_process.MeasuredProcessOutput(
-        state, intrinsics.federated_broadcast(value), empty_measurements
+        state, federated_language.federated_broadcast(value), empty_measurements
     )
 
   return DistributionProcess(init_fn, next_fn)

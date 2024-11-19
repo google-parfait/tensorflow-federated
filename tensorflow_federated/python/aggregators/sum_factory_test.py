@@ -15,14 +15,13 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -35,22 +34,24 @@ class SumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   def test_type_properties(self, value_type):
     sum_f = sum_factory.SumFactory()
     self.assertIsInstance(sum_f, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = sum_f.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    param_value_type = computation_types.FederatedType(
-        value_type, placements.CLIENTS
+    param_value_type = federated_language.FederatedType(
+        value_type, federated_language.CLIENTS
     )
-    result_value_type = computation_types.FederatedType(
-        value_type, placements.SERVER
+    result_value_type = federated_language.FederatedType(
+        value_type, federated_language.SERVER
     )
-    expected_state_type = computation_types.FederatedType((), placements.SERVER)
-    expected_measurements_type = computation_types.FederatedType(
-        (), placements.SERVER
+    expected_state_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
+    expected_measurements_type = federated_language.FederatedType(
+        (), federated_language.SERVER
     )
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -59,7 +60,7 @@ class SumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type, value=param_value_type
         ),
@@ -74,10 +75,12 @@ class SumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(np.float32, placements.SERVER),
+          federated_language.FederatedType(
+              np.float32, federated_language.SERVER
+          ),
       ),
-      ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(np.float32)),
+      ('function_type', federated_language.FunctionType(None, ())),
+      ('sequence_type', federated_language.SequenceType(np.float32)),
   )
   def test_incorrect_value_type_raises(self, bad_value_type):
     sum_f = sum_factory.SumFactory()
@@ -89,7 +92,7 @@ class SumFactoryExecutionTest(tf.test.TestCase):
 
   def test_sum_scalar(self):
     sum_f = sum_factory.SumFactory()
-    value_type = computation_types.to_type(np.float32)
+    value_type = federated_language.to_type(np.float32)
     process = sum_f.create(value_type)
 
     state = process.initialize()
@@ -103,7 +106,7 @@ class SumFactoryExecutionTest(tf.test.TestCase):
 
   def test_sum_structure(self):
     sum_f = sum_factory.SumFactory()
-    value_type = computation_types.to_type(((np.float32, (2,)), np.int32))
+    value_type = federated_language.to_type(((np.float32, (2,)), np.int32))
     process = sum_f.create(value_type)
 
     state = process.initialize()

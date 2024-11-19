@@ -16,17 +16,13 @@
 import collections
 import numbers
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -138,11 +134,11 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
 
   def create(self, value_type):
     # Validate input args and value_type and parse out the TF dtypes.
-    if isinstance(value_type, computation_types.TensorType):
+    if isinstance(value_type, federated_language.TensorType):
       tf_dtype = value_type.dtype
     elif isinstance(
-        value_type, computation_types.StructWithPythonType
-    ) and type_analysis.is_structure_of_tensors(value_type):
+        value_type, federated_language.StructWithPythonType
+    ) and federated_language.framework.is_structure_of_tensors(value_type):
       if self._prior_norm_bound:
         raise TypeError(
             'If `prior_norm_bound` is specified, `value_type` must '
@@ -159,7 +155,7 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
       )
 
     # Check that all values are floats.
-    if not type_analysis.is_structure_of_floats(value_type):
+    if not federated_language.framework.is_structure_of_floats(value_type):
       raise TypeError(
           'Component dtypes of `value_type` must all be floats. '
           f'Found {repr(value_type)}.'
@@ -178,37 +174,43 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
     inner_value_type = discretize_fn.type_signature.result
     inner_agg_process = self._inner_agg_factory.create(inner_value_type)
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
       state = collections.OrderedDict(
-          scale_factor=intrinsics.federated_value(
-              self._scale_factor, placements.SERVER
+          scale_factor=federated_language.federated_value(
+              self._scale_factor, federated_language.SERVER
           ),
-          prior_norm_bound=intrinsics.federated_value(
-              self._prior_norm_bound, placements.SERVER
+          prior_norm_bound=federated_language.federated_value(
+              self._prior_norm_bound, federated_language.SERVER
           ),
           inner_agg_process=inner_agg_process.initialize(),
       )
-      return intrinsics.federated_zip(state)
+      return federated_language.federated_zip(state)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       server_scale_factor = state['scale_factor']
-      client_scale_factor = intrinsics.federated_broadcast(server_scale_factor)
+      client_scale_factor = federated_language.federated_broadcast(
+          server_scale_factor
+      )
       server_prior_norm_bound = state['prior_norm_bound']
-      prior_norm_bound = intrinsics.federated_broadcast(server_prior_norm_bound)
+      prior_norm_bound = federated_language.federated_broadcast(
+          server_prior_norm_bound
+      )
 
-      discretized_value = intrinsics.federated_map(
+      discretized_value = federated_language.federated_map(
           discretize_fn, (value, client_scale_factor, prior_norm_bound)
       )
 
       inner_state = state['inner_agg_process']
       inner_agg_output = inner_agg_process.next(inner_state, discretized_value)
 
-      undiscretized_agg_value = intrinsics.federated_map(
+      undiscretized_agg_value = federated_language.federated_map(
           undiscretize_fn, (inner_agg_output.result, server_scale_factor)
       )
 
@@ -222,9 +224,9 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
       )
 
       return measured_process.MeasuredProcessOutput(
-          state=intrinsics.federated_zip(new_state),
+          state=federated_language.federated_zip(new_state),
           result=undiscretized_agg_value,
-          measurements=intrinsics.federated_zip(measurements),
+          measurements=federated_language.federated_zip(measurements),
       )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)

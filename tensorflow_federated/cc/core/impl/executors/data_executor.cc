@@ -55,8 +55,8 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
       // Note: `value_pb` is copied here in order to ensure that it remains
       // available for the lifetime of the resolving thread. However, it should
       // be relatively small and inexpensive (currently just a URI).
-      v0::Data data = value_pb.computation().data();
-      v0::Type data_type = value_pb.computation().type();
+      federated_language::Data data = value_pb.computation().data();
+      federated_language::Type data_type = value_pb.computation().type();
       return ThreadRun([this, data = std::move(data),
                         data_type = std::move(data_type),
                         this_keepalive =

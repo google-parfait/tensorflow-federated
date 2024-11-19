@@ -13,11 +13,9 @@
 # limitations under the License.
 """Utilities for building aggregation factories."""
 
+import federated_language
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 
 
@@ -52,10 +50,14 @@ class _UnweightedAsWeightedFactory(factory.WeightedAggregationFactory):
   def create(self, value_type, weight_type):
     aggregator = self._factory.create(value_type)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         aggregator.state_type,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
-        computation_types.FederatedType(weight_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
+        federated_language.FederatedType(
+            weight_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value, weight):
       del weight  # Unused.

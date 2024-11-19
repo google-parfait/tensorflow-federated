@@ -22,50 +22,50 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "federated_language/proto/array.pb.h"
+#include "federated_language/proto/computation.pb.h"
+#include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/compiler/xla/literal.h"
 #include "tensorflow/compiler/xla/shape.h"
 #include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/compiler/xla/types.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 namespace tensorflow_federated {
 
 absl::StatusOr<xla::PrimitiveType> PrimitiveTypeFromDataType(
-    const v0::DataType data_type) {
+    const federated_language::DataType data_type) {
   switch (data_type) {
-    case v0::DataType::DT_BOOL:
+    case federated_language::DataType::DT_BOOL:
       return xla::PRED;
-    case v0::DataType::DT_INT8:
+    case federated_language::DataType::DT_INT8:
       return xla::S8;
-    case v0::DataType::DT_INT16:
+    case federated_language::DataType::DT_INT16:
       return xla::S16;
-    case v0::DataType::DT_INT32:
+    case federated_language::DataType::DT_INT32:
       return xla::S32;
-    case v0::DataType::DT_INT64:
+    case federated_language::DataType::DT_INT64:
       return xla::S64;
-    case v0::DataType::DT_UINT8:
+    case federated_language::DataType::DT_UINT8:
       return xla::U8;
-    case v0::DataType::DT_UINT16:
+    case federated_language::DataType::DT_UINT16:
       return xla::U16;
-    case v0::DataType::DT_UINT32:
+    case federated_language::DataType::DT_UINT32:
       return xla::U32;
-    case v0::DataType::DT_UINT64:
+    case federated_language::DataType::DT_UINT64:
       return xla::U64;
-    case v0::DataType::DT_HALF:
+    case federated_language::DataType::DT_HALF:
       return xla::F16;
-    case v0::DataType::DT_FLOAT:
+    case federated_language::DataType::DT_FLOAT:
       return xla::F32;
-    case v0::DataType::DT_DOUBLE:
+    case federated_language::DataType::DT_DOUBLE:
       return xla::F64;
-    case v0::DataType::DT_COMPLEX64:
+    case federated_language::DataType::DT_COMPLEX64:
       return xla::C64;
-    case v0::DataType::DT_COMPLEX128:
+    case federated_language::DataType::DT_COMPLEX128:
       return xla::C128;
-    case v0::DataType::DT_BFLOAT16:
+    case federated_language::DataType::DT_BFLOAT16:
       return xla::BF16;
     default:
       return absl::UnimplementedError(
@@ -74,7 +74,7 @@ absl::StatusOr<xla::PrimitiveType> PrimitiveTypeFromDataType(
 }
 
 absl::StatusOr<xla::Shape> ShapeFromTensorType(
-    const v0::TensorType& tensor_type_pb) {
+    const federated_language::TensorType& tensor_type_pb) {
   if (tensor_type_pb.unknown_rank()) {
     return absl::InvalidArgumentError(
         "Shapes of unknown rank are not supported in the XLA executor.");
@@ -84,8 +84,9 @@ absl::StatusOr<xla::Shape> ShapeFromTensorType(
       tensor_type_pb.dims());
 }
 
-absl::StatusOr<xla::Shape> ShapeFromArrayShape(v0::DataType data_type,
-                                               const v0::ArrayShape& shape_pb) {
+absl::StatusOr<xla::Shape> ShapeFromArrayShape(
+    federated_language::DataType data_type,
+    const federated_language::ArrayShape& shape_pb) {
   if (shape_pb.unknown_rank()) {
     return absl::InvalidArgumentError(
         "Shapes of unknown rank are not supported in the XLA executor.");
@@ -140,109 +141,110 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   });
 }
 
-absl::StatusOr<xla::Literal> LiteralFromArray(const v0::Array& array_pb) {
+absl::StatusOr<xla::Literal> LiteralFromArray(
+    const federated_language::Array& array_pb) {
   switch (array_pb.kind_case()) {
-    case v0::Array::kBoolList: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_BOOL, array_pb.shape())));
+    case federated_language::Array::kBoolList: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_BOOL, array_pb.shape())));
       CopyFromRepeatedField(array_pb.bool_list().value(),
                             literal.data<bool>().begin());
       return literal;
     }
-    case v0::Array::kInt8List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_INT8, array_pb.shape())));
+    case federated_language::Array::kInt8List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_INT8, array_pb.shape())));
       CopyFromRepeatedField(array_pb.int8_list().value(),
                             literal.data<int8_t>().begin());
       return literal;
     }
-    case v0::Array::kInt16List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_INT16, array_pb.shape())));
+    case federated_language::Array::kInt16List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_INT16, array_pb.shape())));
       CopyFromRepeatedField(array_pb.int16_list().value(),
                             literal.data<int16_t>().begin());
       return literal;
     }
-    case v0::Array::kInt32List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_INT32, array_pb.shape())));
+    case federated_language::Array::kInt32List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_INT32, array_pb.shape())));
       CopyFromRepeatedField(array_pb.int32_list().value(),
                             literal.data<int32_t>().begin());
       return literal;
     }
-    case v0::Array::kInt64List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_INT64, array_pb.shape())));
+    case federated_language::Array::kInt64List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_INT64, array_pb.shape())));
       CopyFromRepeatedField(array_pb.int64_list().value(),
                             literal.data<int64_t>().begin());
       return literal;
     }
-    case v0::Array::kUint8List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_UINT8, array_pb.shape())));
+    case federated_language::Array::kUint8List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_UINT8, array_pb.shape())));
       CopyFromRepeatedField(array_pb.uint8_list().value(),
                             literal.data<uint8_t>().begin());
       return literal;
     }
-    case v0::Array::kUint16List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_UINT16, array_pb.shape())));
+    case federated_language::Array::kUint16List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_UINT16, array_pb.shape())));
       CopyFromRepeatedField(array_pb.uint16_list().value(),
                             literal.data<uint16_t>().begin());
       return literal;
     }
-    case v0::Array::kUint32List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_UINT32, array_pb.shape())));
+    case federated_language::Array::kUint32List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_UINT32, array_pb.shape())));
       CopyFromRepeatedField(array_pb.uint32_list().value(),
                             literal.data<uint32_t>().begin());
       return literal;
     }
-    case v0::Array::kUint64List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_UINT64, array_pb.shape())));
+    case federated_language::Array::kUint64List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_UINT64, array_pb.shape())));
       CopyFromRepeatedField(array_pb.uint64_list().value(),
                             literal.data<uint64_t>().begin());
       return literal;
     }
-    case v0::Array::kFloat16List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_HALF, array_pb.shape())));
+    case federated_language::Array::kFloat16List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_HALF, array_pb.shape())));
       CopyFromRepeatedField(array_pb.float16_list().value(),
                             literal.data<xla::half>().begin());
       return literal;
     }
-    case v0::Array::kFloat32List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_FLOAT, array_pb.shape())));
+    case federated_language::Array::kFloat32List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_FLOAT, array_pb.shape())));
       CopyFromRepeatedField(array_pb.float32_list().value(),
                             literal.data<float>().begin());
       return literal;
     }
-    case v0::Array::kFloat64List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_DOUBLE, array_pb.shape())));
+    case federated_language::Array::kFloat64List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_DOUBLE, array_pb.shape())));
       CopyFromRepeatedField(array_pb.float64_list().value(),
                             literal.data<double>().begin());
       return literal;
     }
-    case v0::Array::kComplex64List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_COMPLEX64, array_pb.shape())));
+    case federated_language::Array::kComplex64List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_COMPLEX64, array_pb.shape())));
       CopyFromRepeatedField(array_pb.complex64_list().value(),
                             literal.data<xla::complex64>().begin());
       return literal;
     }
-    case v0::Array::kComplex128List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_COMPLEX128, array_pb.shape())));
+    case federated_language::Array::kComplex128List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_COMPLEX128, array_pb.shape())));
       CopyFromRepeatedField(array_pb.complex128_list().value(),
                             literal.data<xla::complex128>().begin());
       return literal;
     }
-    case v0::Array::kBfloat16List: {
-      xla::Literal literal(TFF_TRY(
-          ShapeFromArrayShape(v0::DataType::DT_BFLOAT16, array_pb.shape())));
+    case federated_language::Array::kBfloat16List: {
+      xla::Literal literal(TFF_TRY(ShapeFromArrayShape(
+          federated_language::DataType::DT_BFLOAT16, array_pb.shape())));
       CopyFromRepeatedField(array_pb.bfloat16_list().value(),
                             literal.data<xla::bfloat16>().begin());
       return literal;

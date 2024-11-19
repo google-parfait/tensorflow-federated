@@ -17,6 +17,7 @@ import collections
 import math
 from typing import Optional
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -26,16 +27,11 @@ from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 SEED_TF_DTYPE = tf.int64
-SEED_TFF_TYPE = computation_types.TensorType(np.int64, [2])
+SEED_TFF_TYPE = federated_language.TensorType(np.int64, [2])
 OUTPUT_TF_DTYPE = np.float32
 
 
@@ -141,18 +137,20 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
           _slice_and_reshape_to_template_spec, value, value_specs
       )
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
       inner_state = inner_agg_process.initialize()
-      my_state = intrinsics.federated_eval(
+      my_state = federated_language.federated_eval(
           tensorflow_computation.tf_computation(_init_global_seed),
-          placements.SERVER,
+          federated_language.SERVER,
       )
-      return intrinsics.federated_zip((inner_state, my_state))
+      return federated_language.federated_zip((inner_state, my_state))
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       next_fn_impl = _build_next_fn(
@@ -283,18 +281,20 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
           _slice_and_reshape_to_template_spec, value, value_specs
       )
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
       inner_state = inner_agg_process.initialize()
-      my_state = intrinsics.federated_eval(
+      my_state = federated_language.federated_eval(
           tensorflow_computation.tf_computation(_init_global_seed),
-          placements.SERVER,
+          federated_language.SERVER,
       )
-      return intrinsics.federated_zip((inner_state, my_state))
+      return federated_language.federated_zip((inner_state, my_state))
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       next_fn_impl = _build_next_fn(
@@ -316,29 +316,29 @@ def _build_next_fn(
 
   def next_fn_impl(state, value):
     inner_state, my_state = state
-    client_my_state = intrinsics.federated_broadcast(my_state)
-    projected_value = intrinsics.federated_map(
+    client_my_state = federated_language.federated_broadcast(my_state)
+    projected_value = federated_language.federated_map(
         client_transform, (value, client_my_state)
     )
 
     inner_agg_output = inner_agg_process.next(inner_state, projected_value)
 
-    aggregate_value = intrinsics.federated_map(
+    aggregate_value = federated_language.federated_map(
         server_transform, (inner_agg_output.result, my_state)
     )
 
     new_state = (
         inner_agg_output.state,
-        intrinsics.federated_map(update_my_state, my_state),
+        federated_language.federated_map(update_my_state, my_state),
     )
     measurements = collections.OrderedDict(
         [(name, inner_agg_output.measurements)]
     )
 
     return measured_process.MeasuredProcessOutput(
-        state=intrinsics.federated_zip(new_state),
+        state=federated_language.federated_zip(new_state),
         result=aggregate_value,
-        measurements=intrinsics.federated_zip(measurements),
+        measurements=federated_language.federated_zip(measurements),
     )
 
   return next_fn_impl
@@ -484,10 +484,10 @@ def _pad_zeros_even(x):
 def _check_value_type(value_type):
   """Check value_type meets documented criteria."""
   if not (
-      isinstance(value_type, computation_types.TensorType)
+      isinstance(value_type, federated_language.TensorType)
       or (
-          isinstance(value_type, computation_types.StructWithPythonType)
-          and type_analysis.is_structure_of_tensors(value_type)
+          isinstance(value_type, federated_language.StructWithPythonType)
+          and federated_language.framework.is_structure_of_tensors(value_type)
       )
   ):
     raise TypeError(
@@ -497,8 +497,8 @@ def _check_value_type(value_type):
     )
 
   if not (
-      type_analysis.is_structure_of_floats(value_type)
-      or type_analysis.is_structure_of_integers(value_type)
+      federated_language.framework.is_structure_of_floats(value_type)
+      or federated_language.framework.is_structure_of_integers(value_type)
   ):
     raise TypeError(
         'Component dtypes of `value_type` must be all integers or '

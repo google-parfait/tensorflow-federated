@@ -15,14 +15,13 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.analytics.hierarchical_histogram import clipping_factory
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -40,22 +39,24 @@ class ClippingSumFactoryComputationTest(
         clip_mechanism, 1
     )
     self.assertIsInstance(clip_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.TensorType(np.int32, shape=(2,))
+    value_type = federated_language.TensorType(np.int32, shape=(2,))
     process = clip_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    param_value_type = computation_types.FederatedType(
-        value_type, placements.CLIENTS
+    param_value_type = federated_language.FederatedType(
+        value_type, federated_language.CLIENTS
     )
-    result_value_type = computation_types.FederatedType(
-        value_type, placements.SERVER
+    result_value_type = federated_language.FederatedType(
+        value_type, federated_language.SERVER
     )
-    expected_state_type = computation_types.FederatedType((), placements.SERVER)
-    expected_measurements_type = computation_types.FederatedType(
-        (), placements.SERVER
+    expected_state_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
+    expected_measurements_type = federated_language.FederatedType(
+        (), federated_language.SERVER
     )
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -64,7 +65,7 @@ class ClippingSumFactoryComputationTest(
         )
     )
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type, value=param_value_type
         ),
@@ -86,7 +87,7 @@ class ClippingSumFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_raises_value_error(
       self, clip_mechanism, max_records_per_user, value_type
   ):
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaises(ValueError):
       clip_factory = clipping_factory.HistogramClippingSumFactory(
           clip_mechanism=clip_mechanism,
@@ -99,7 +100,7 @@ class ClippingSumFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
       ('float_value_type', (np.float32, (2,))),
   )
   def test_raises_type_error(self, value_type):
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaises(TypeError):
       clip_factory = clipping_factory.HistogramClippingSumFactory()
       clip_factory.create(value_type)
@@ -155,7 +156,7 @@ class ClippingSumFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     clip_factory = clipping_factory.HistogramClippingSumFactory(
         clip_mechanism='sub-sampling', max_records_per_user=max_records_per_user
     )
-    outer_value_type = computation_types.TensorType(
+    outer_value_type = federated_language.TensorType(
         np.int32, shape=(value_shape,)
     )
     process = clip_factory.create(outer_value_type)
@@ -189,7 +190,7 @@ class ClippingSumFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         clip_mechanism='distinct', max_records_per_user=max_records_per_user
     )
 
-    value_type = computation_types.TensorType(np.int32, shape=(value_shape,))
+    value_type = federated_language.TensorType(np.int32, shape=(value_shape,))
     process = clip_factory.create(value_type)
 
     state = process.initialize()

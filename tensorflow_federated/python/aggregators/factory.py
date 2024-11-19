@@ -16,10 +16,11 @@
 import abc
 from typing import Union
 
-from tensorflow_federated.python.core.impl.types import computation_types
+import federated_language
+
 from tensorflow_federated.python.core.templates import aggregation_process
 
-ValueType = Union[computation_types.TensorType, computation_types.StructType]
+ValueType = Union[federated_language.TensorType, federated_language.StructType]
 
 
 class UnweightedAggregationFactory(abc.ABC):

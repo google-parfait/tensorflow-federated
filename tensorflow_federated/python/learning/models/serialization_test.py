@@ -17,13 +17,12 @@ import functools
 import os
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import keras_utils
 from tensorflow_federated.python.learning.models import model_examples
@@ -32,9 +31,9 @@ from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.models import variable
 
 # Convenience aliases.
-TensorType = computation_types.TensorType
-StructType = computation_types.StructType
-StructWithPythonType = computation_types.StructWithPythonType
+TensorType = federated_language.TensorType
+StructType = federated_language.StructType
+StructWithPythonType = federated_language.StructWithPythonType
 
 
 class FlattenTest(tf.test.TestCase, parameterized.TestCase):
@@ -142,7 +141,8 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
     # name here.
     self.assertEqual(type(concrete_fn).__name__, 'ConcreteFunction')
     self.assertProtoEquals(
-        type_spec, type_serialization.serialize_type(expected_type_spec)
+        type_spec,
+        federated_language.framework.serialize_type(expected_type_spec),
     )
 
 
@@ -227,9 +227,9 @@ class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
       expected_python_container,
   ):
     type_spec_var = tf.Variable(
-        type_serialization.serialize_type(result_type_spec).SerializeToString(
-            deterministic=True
-        )
+        federated_language.framework.serialize_type(
+            result_type_spec
+        ).SerializeToString(deterministic=True)
     )
 
     @tf.function

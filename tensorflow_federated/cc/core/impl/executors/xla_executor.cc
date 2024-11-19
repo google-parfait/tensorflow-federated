@@ -31,6 +31,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow/compiler/tf2xla/literal_util.h"
 #include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/xla/client/client.h"
@@ -53,7 +54,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/xla_utils.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 
 // clang-format off
 // In TF 2.17 MultiPlatformManager was renamed to PlatformManager. Remove
@@ -99,17 +99,20 @@ class ServiceTensor {
 class Computation {
  public:
   Computation(xla::ExecutionHandle&& compiled_computation,
-              v0::Xla::Binding arg_binding, v0::Xla::Binding result_binding,
-              v0::Type computation_type)
+              federated_language::Xla::Binding arg_binding,
+              federated_language::Xla::Binding result_binding,
+              federated_language::Type computation_type)
       : xla_computation_(std::move(compiled_computation)),
         arg_binding_(std::move(arg_binding)),
         result_binding_(std::move(result_binding)),
         computation_type_(std::move(computation_type)) {}
 
   const xla::ExecutionHandle& xla_computation() { return xla_computation_; }
-  const v0::Xla::Binding& arg_binding() { return arg_binding_; }
-  const v0::Xla::Binding& result_binding() { return result_binding_; }
-  const v0::Type& type() { return computation_type_; }
+  const federated_language::Xla::Binding& arg_binding() { return arg_binding_; }
+  const federated_language::Xla::Binding& result_binding() {
+    return result_binding_;
+  }
+  const federated_language::Type& type() { return computation_type_; }
 
  private:
   Computation() = delete;
@@ -120,11 +123,12 @@ class Computation {
   // TFF-JAX Python API to support unknown shapes and ranks in parameter
   // tensors, this assumption will need to be relaxed for these cases.
   // One option might involve preserving the proto and recompiling on the
-  // fly, adding to an internal cache of v0::Type to xla::ExecutionHandles.
+  // fly, adding to an internal cache of federated_language::Type to
+  // xla::ExecutionHandles.
   const xla::ExecutionHandle xla_computation_;
-  const v0::Xla::Binding arg_binding_;
-  const v0::Xla::Binding result_binding_;
-  const v0::Type computation_type_;
+  const federated_language::Xla::Binding arg_binding_;
+  const federated_language::Xla::Binding result_binding_;
+  const federated_language::Type computation_type_;
 };
 
 // Representation for values embedded in the XLA executor. Generally, this class
@@ -186,10 +190,11 @@ class XLAExecutorValue {
 template <typename F,
           typename ReturnValueType = typename std::result_of_t<F()>::value_type>
 absl::Status PopulateFlatVectorLikeBinding(
-    const v0::Type& type, const v0::Xla::Binding& binding, F processing_fn,
+    const federated_language::Type& type,
+    const federated_language::Xla::Binding& binding, F processing_fn,
     std::vector<ReturnValueType>* vector_to_populate) {
   switch (type.type_case()) {
-    case v0::Type::kTensor: {
+    case federated_language::Type::kTensor: {
       if (!binding.has_tensor()) {
         return absl::InvalidArgumentError(
             "Mismatch between tensor type and non-tensor binding while "
@@ -201,7 +206,7 @@ absl::Status PopulateFlatVectorLikeBinding(
           TFF_TRY(processing_fn(type.tensor()));
       return absl::OkStatus();
     }
-    case v0::Type::kStruct: {
+    case federated_language::Type::kStruct: {
       if (!binding.has_struct_()) {
         return absl::InvalidArgumentError(
             "Mismatch between struct type and non-struct binding while "
@@ -240,21 +245,21 @@ absl::Status PopulateFlatVectorLikeBinding(
 
 // Returns a vector of TFF TensorTypes which correspond to the vector of tensors
 // specified by the binding argument.
-absl::Status FlattenTypeToTensors(const v0::Type& type,
-                                  const v0::Xla::Binding& binding,
-                                  std::vector<v0::TensorType>* tensor_vector) {
-  auto identity =
-      [](const v0::TensorType& x) -> absl::StatusOr<v0::TensorType> {
-    return x;
-  };
+absl::Status FlattenTypeToTensors(
+    const federated_language::Type& type,
+    const federated_language::Xla::Binding& binding,
+    std::vector<federated_language::TensorType>* tensor_vector) {
+  auto identity = [](const federated_language::TensorType& x)
+      -> absl::StatusOr<federated_language::TensorType> { return x; };
   return PopulateFlatVectorLikeBinding(type, binding, identity, tensor_vector);
 }
 
 // Computes vector of xla::Shape pointers from the type argument, in flattened
 // order determined by the binding argument. Populated in flat_shapes.
-absl::Status ComputeFlatShapesFromType(const v0::Type& type,
-                                       const v0::Xla::Binding& binding,
-                                       std::vector<xla::Shape>* flat_shapes) {
+absl::Status ComputeFlatShapesFromType(
+    const federated_language::Type& type,
+    const federated_language::Xla::Binding& binding,
+    std::vector<xla::Shape>* flat_shapes) {
   return PopulateFlatVectorLikeBinding(type, binding, ShapeFromTensorType,
                                        flat_shapes);
 }
@@ -262,19 +267,21 @@ absl::Status ComputeFlatShapesFromType(const v0::Type& type,
 // Computes the number of tensor elements in a given binding. We interpret an
 // unset binding to contain 0 elements, for uniformity of handling unset
 // parameter bindings.
-int ComputeNumElementsFromBinding(const v0::Xla::Binding& binding) {
+int ComputeNumElementsFromBinding(
+    const federated_language::Xla::Binding& binding) {
   switch (binding.binding_case()) {
-    case v0::Xla::Binding::kTensor: {
+    case federated_language::Xla::Binding::kTensor: {
       return 1;
     }
-    case v0::Xla::Binding::kStruct: {
+    case federated_language::Xla::Binding::kStruct: {
       int num_elements = 0;
-      for (const v0::Xla::Binding& el_binding : binding.struct_().element()) {
+      for (const federated_language::Xla::Binding& el_binding :
+           binding.struct_().element()) {
         num_elements += ComputeNumElementsFromBinding(el_binding);
       }
       return num_elements;
     }
-    case v0::Xla::Binding::BINDING_NOT_SET: {
+    case federated_language::Xla::Binding::BINDING_NOT_SET: {
       return 0;
     }
   }
@@ -286,10 +293,10 @@ int ComputeNumElementsFromBinding(const v0::Xla::Binding& binding) {
 // indices present in the binding argument can be assigned directly to their
 // appropriate locations.
 absl::Status FlattenValuesIntoBinding(
-    const v0::Xla::Binding& binding, const XLAExecutorValue& value,
-    std::vector<xla::GlobalData*>& flat_vector) {
+    const federated_language::Xla::Binding& binding,
+    const XLAExecutorValue& value, std::vector<xla::GlobalData*>& flat_vector) {
   switch (binding.binding_case()) {
-    case v0::Xla::Binding::kTensor: {
+    case federated_language::Xla::Binding::kTensor: {
       int32_t tensor_index_in_vector = binding.tensor().index();
       if (value.type() != XLAExecutorValue::ValueType::TENSOR) {
         return absl::InvalidArgumentError(absl::StrCat(
@@ -304,7 +311,7 @@ absl::Status FlattenValuesIntoBinding(
       flat_vector[tensor_index_in_vector] = tensor_data;
       return absl::OkStatus();
     }
-    case v0::Xla::Binding::kStruct: {
+    case federated_language::Xla::Binding::kStruct: {
       if (value.type() != XLAExecutorValue::ValueType::STRUCT) {
         return absl::InvalidArgumentError(absl::StrCat(
             "Error encountered in FlattenValuesIntoBinding; encountered struct "
@@ -337,17 +344,18 @@ absl::Status FlattenValuesIntoBinding(
 // binding argument. This function is conceptually the inverse of the above.
 absl::StatusOr<XLAExecutorValue> PackageFlatValuesAsBinding(
     const std::vector<XLAExecutorValue>& flat_tensor_values,
-    const v0::Xla::Binding& binding) {
+    const federated_language::Xla::Binding& binding) {
   switch (binding.binding_case()) {
-    case v0::Xla::Binding::kTensor: {
+    case federated_language::Xla::Binding::kTensor: {
       // Simply return the (tensor) XLAExecutorValue at the index indicated by
       // the binding.
       return flat_tensor_values[binding.tensor().index()];
     }
-    case v0::Xla::Binding::kStruct: {
+    case federated_language::Xla::Binding::kStruct: {
       std::vector<XLAExecutorValue> struct_element_values;
       struct_element_values.reserve(binding.struct_().element_size());
-      for (const v0::Xla::Binding& el_binding : binding.struct_().element()) {
+      for (const federated_language::Xla::Binding& el_binding :
+           binding.struct_().element()) {
         struct_element_values.emplace_back(TFF_TRY(
             PackageFlatValuesAsBinding(flat_tensor_values, el_binding)));
       }
@@ -472,9 +480,9 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<XLAExecutorValue> CreateValueComputation(
-      const v0::Computation& comp_pb) {
+      const federated_language::Computation& comp_pb) {
     switch (comp_pb.computation_case()) {
-      case v0::Computation::kXla: {
+      case federated_language::Computation::kXla: {
         if (!comp_pb.type().has_function()) {
           return absl::InvalidArgumentError(
               absl::StrCat("Computation proto with non-functional type "
@@ -486,7 +494,8 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         xla::XlaComputation xla_comp(std::move(hlo_proto));
         // Compute the vector of flat arg shapes; these will be needed to
         // compile the computation.
-        v0::Xla::Binding arg_binding = comp_pb.xla().parameter();
+        federated_language::Xla::Binding arg_binding =
+            comp_pb.xla().parameter();
         int num_arg_elements = ComputeNumElementsFromBinding(arg_binding);
         // Preallocate this vector to num_arg_elements, so that we can
         // assign to these elements directly in the function call below.
@@ -506,12 +515,13 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         }
         // Finally, construct the representation of this computation in the
         // XLA executor.
-        v0::Xla::Binding result_binding = comp_pb.xla().result();
+        federated_language::Xla::Binding result_binding =
+            comp_pb.xla().result();
         return XLAExecutorValue(std::make_shared<Computation>(
             std::move(*computation_handle), arg_binding, result_binding,
             comp_pb.type()));
       }
-      case v0::Computation::kLiteral: {
+      case federated_language::Computation::kLiteral: {
         absl::StatusOr<std::unique_ptr<xla::GlobalData>> data =
             xla_client_->TransferToServer(
                 TFF_TRY(LiteralFromArray(comp_pb.literal().value())));
@@ -625,9 +635,10 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
           absl::StrCat("Error calling XLA computation. Message: ",
                        result.status().message()));
     }
-    const v0::Xla::Binding& result_binding = fn->result_binding();
+    const federated_language::Xla::Binding& result_binding =
+        fn->result_binding();
     switch (result_binding.binding_case()) {
-      case v0::Xla::Binding::kTensor: {
+      case federated_language::Xla::Binding::kTensor: {
         // JAX tracing always compiles results to be tuples, which would
         // result in length 1 tuples.
         absl::StatusOr<std::vector<std::unique_ptr<xla::GlobalData>>>
@@ -648,7 +659,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
             TFF_TRY(PrimitiveTypeFromDataType(
                 fn->type().function().result().tensor().dtype())));
       }
-      case v0::Xla::Binding::kStruct: {
+      case federated_language::Xla::Binding::kStruct: {
         const int num_result_elements =
             ComputeNumElementsFromBinding(result_binding);
         std::vector<std::unique_ptr<xla::GlobalData>> global_data_vector;
@@ -670,7 +681,8 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         std::vector<XLAExecutorValue> flat_value_vector;
         // Preallocate the flat types tensor as required to assign directly to
         // its elements.
-        std::vector<v0::TensorType> flat_tensor_types(num_result_elements);
+        std::vector<federated_language::TensorType> flat_tensor_types(
+            num_result_elements);
         TFF_TRY(FlattenTypeToTensors(fn->type().function().result(),
                                      result_binding, &flat_tensor_types));
         flat_value_vector.reserve(flat_tensor_types.size());

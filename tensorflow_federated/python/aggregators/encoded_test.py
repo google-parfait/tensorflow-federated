@@ -16,14 +16,13 @@ import collections
 import random
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import encoded
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
@@ -59,7 +58,9 @@ def _state_update_encoder_fn(value_spec):
   )
 
 
-_test_struct_type = computation_types.to_type(((np.float32, (20,)), np.float32))
+_test_struct_type = federated_language.to_type(
+    ((np.float32, (20,)), np.float32)
+)
 
 
 class EncodedSumFactoryComputationTest(
@@ -84,21 +85,23 @@ class EncodedSumFactoryComputationTest(
     server_state_type = process.initialize.type_signature.result
     # State structure should have one element per tensor aggregated,
     self.assertLen(server_state_type.member, 2)
-    self.assertEqual(placements.SERVER, server_state_type.placement)
+    self.assertEqual(federated_language.SERVER, server_state_type.placement)
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                _test_struct_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                _test_struct_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                _test_struct_type, placements.SERVER
+            result=federated_language.FederatedType(
+                _test_struct_type, federated_language.SERVER
             ),
-            measurements=computation_types.FederatedType((), placements.SERVER),
+            measurements=federated_language.FederatedType(
+                (), federated_language.SERVER
+            ),
         ),
     )
     self.assertTrue(
@@ -129,7 +132,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
 
   def test_simple_sum(self):
     encoded_f = encoded.EncodedSumFactory(_identity_encoder_fn)
-    process = encoded_f.create(computation_types.to_type(np.float32))
+    process = encoded_f.create(federated_language.to_type(np.float32))
 
     state = process.initialize()
 
@@ -143,7 +146,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
   def test_structure_sum(self):
     encoded_f = encoded.EncodedSumFactory(_identity_encoder_fn)
     process = encoded_f.create(
-        computation_types.to_type(((np.float32, (2,)), np.float32))
+        federated_language.to_type(((np.float32, (2,)), np.float32))
     )
 
     state = process.initialize()
@@ -163,7 +166,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
     encoded_f = encoded.EncodedSumFactory.quantize_above_threshold(
         quantization_bits=1, threshold=0
     )
-    test_type = computation_types.to_type(
+    test_type = federated_language.to_type(
         [(np.float32, (3,)), (np.float32, (5,))]
     )
     process = encoded_f.create(test_type)
@@ -179,7 +182,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
     encoded_f = encoded.EncodedSumFactory.quantize_above_threshold(
         quantization_bits=1, threshold=4
     )
-    test_type = computation_types.to_type(
+    test_type = federated_language.to_type(
         [(np.float32, (3,)), (np.float32, (5,))]
     )
     process = encoded_f.create(test_type)
@@ -197,7 +200,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
         quantization_bits=4, threshold=0
     )
     process = encoded_f.create(
-        computation_types.to_type((np.float32, (10000,)))
+        federated_language.to_type((np.float32, (10000,)))
     )
 
     # Creates random values in range [0., 15.] plus the bondaries exactly.

@@ -33,13 +33,13 @@ support [Computations](#computation) backed by other external runtimes.
 ### `Computation`
 
 A
-[pb.Computation](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/proto/v0/computation.proto)
+[pb.Computation](https://github.com/google-parfait/federated-language/blob/main/tensorflow_federated/proto/computation.proto)
 is the Proto or serialized representation of the [AST](#ast).
 
 #### TensorFlow Computation
 
 A
-[pb.Computation](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/proto/v0/computation.proto)
+[pb.Computation](https://github.com/google-parfait/federated-language/blob/main/tensorflow_federated/proto/computation.proto)
 that represents a [Computations](#computation) that will be delegated to the
 [TensorFlow](execution.md#tensorflow) runtime.
 

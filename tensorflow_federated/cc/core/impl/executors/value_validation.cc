@@ -21,8 +21,8 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {

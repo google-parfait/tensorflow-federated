@@ -39,6 +39,8 @@ limitations under the License
 #include "absl/time/time.h"
 #include "absl/types/span.h"
 #include "include/grpcpp/support/status.h"
+#include "federated_language/proto/computation.pb.h"
+#include "federated_language/proto/data_type.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
@@ -47,8 +49,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -62,7 +62,7 @@ using testing::proto::IgnoringRepeatedFieldOrdering;
 
 inline v0::Value ServerV(v0::Value unplaced_value) {
   v0::Value server_value = testing::ServerV(unplaced_value);
-  absl::StatusOr<v0::Type> inferred_type_pb =
+  absl::StatusOr<federated_language::Type> inferred_type_pb =
       InferTypeFromValue(unplaced_value);
   CHECK(inferred_type_pb.ok()) << inferred_type_pb.status();
   *server_value.mutable_federated()->mutable_type()->mutable_member() =
@@ -73,7 +73,7 @@ inline v0::Value ServerV(v0::Value unplaced_value) {
 inline v0::Value ClientsV(absl::Span<const v0::Value> unplaced_values) {
   v0::Value clients_value = testing::ClientsV(unplaced_values);
   if (!unplaced_values.empty()) {
-    absl::StatusOr<v0::Type> inferred_type_pb =
+    absl::StatusOr<federated_language::Type> inferred_type_pb =
         InferTypeFromValue(unplaced_values[0]);
     CHECK(inferred_type_pb.ok()) << inferred_type_pb.status();
     *clients_value.mutable_federated()->mutable_type()->mutable_member() =
@@ -535,21 +535,22 @@ TEST_F(StreamingRemoteExecutorTest, CreateCallFnWithStructReturnType) {
   v0::Value tensor_three = TensorV(3.0f);
   // Create a no-arg lambda that returns a structure of tensors.
   v0::Value fn_value;
-  v0::Computation* fn_computation = fn_value.mutable_computation();
-  v0::FunctionType* fn_type =
+  federated_language::Computation* fn_computation =
+      fn_value.mutable_computation();
+  federated_language::FunctionType* fn_type =
       fn_computation->mutable_type()->mutable_function();
   fn_type->mutable_parameter()->mutable_tensor()->set_dtype(
-      v0::DataType::DT_FLOAT);
-  v0::StructType* result_struct_type =
+      federated_language::DataType::DT_FLOAT);
+  federated_language::StructType* result_struct_type =
       fn_type->mutable_result()->mutable_struct_();
   result_struct_type->add_element()
       ->mutable_value()
       ->mutable_tensor()
-      ->set_dtype(v0::DataType::DT_FLOAT);
+      ->set_dtype(federated_language::DataType::DT_FLOAT);
   result_struct_type->add_element()
       ->mutable_value()
       ->mutable_tensor()
-      ->set_dtype(v0::DataType::DT_FLOAT);
+      ->set_dtype(federated_language::DataType::DT_FLOAT);
   v0::Value arg_value = TensorV(4.0f);
 
   v0::Value materialized_value;
@@ -870,7 +871,8 @@ TEST_F(StreamingRemoteExecutorTest, CreateSelectionWithError) {
 
 struct FederatedStructTestCase {
   std::function<v0::Value(std::vector<v0::Value>)> FederatedV;
-  std::function<v0::Value(v0::FunctionType)> FederatedZipIntrinsicV;
+  std::function<v0::Value(federated_language::FunctionType)>
+      FederatedZipIntrinsicV;
   std::string_view placement_uri;
   bool all_equal;
 };
@@ -927,7 +929,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
           .WillOnce(ReturnOkWithResponseId<v0::CreateStructResponse>(
               "streamed_federated_struct"));
 
-      v0::FunctionType zip_at_placement_type_pb;
+      federated_language::FunctionType zip_at_placement_type_pb;
       {
         auto* param_struct_type =
             zip_at_placement_type_pb.mutable_parameter()->mutable_struct_();
@@ -936,7 +938,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
                                            ->mutable_value()
                                            ->mutable_federated();
           param_federated_type->mutable_member()->mutable_tensor()->set_dtype(
-              v0::DataType::DT_FLOAT);
+              federated_language::DataType::DT_FLOAT);
           param_federated_type->set_all_equal(test_case.all_equal);
           param_federated_type->mutable_placement()->mutable_value()->set_uri(
               std::string(test_case.placement_uri));
@@ -952,7 +954,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
           result_struct_type->add_element()
               ->mutable_value()
               ->mutable_tensor()
-              ->set_dtype(v0::DataType::DT_FLOAT);
+              ->set_dtype(federated_language::DataType::DT_FLOAT);
         }
       }
       EXPECT_CALL(
@@ -1206,32 +1208,34 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
             .WillOnce(ReturnOkWithResponseId<v0::CreateStructResponse>(
                 std::string(struct_ref)));
 
-        v0::FunctionType zip_at_placement_type_pb;
-        v0::StructType* param_struct_type =
+        federated_language::FunctionType zip_at_placement_type_pb;
+        federated_language::StructType* param_struct_type =
             zip_at_placement_type_pb.mutable_parameter()->mutable_struct_();
-        v0::FederatedType* param_federated_type =
+        federated_language::FederatedType* param_federated_type =
             param_struct_type->add_element()
                 ->mutable_value()
                 ->mutable_federated();
         param_federated_type->set_all_equal(test_case.all_equal);
         param_federated_type->mutable_placement()->mutable_value()->set_uri(
             std::string(test_case.placement_uri));
-        v0::Type* param_value_type = param_federated_type->mutable_member();
+        federated_language::Type* param_value_type =
+            param_federated_type->mutable_member();
         if (absl::EndsWith(elem_ref, "struct")) {
           // Nested struct needs another layer.
           param_value_type = param_value_type->mutable_struct_()
                                  ->add_element()
                                  ->mutable_value();
         }
-        param_value_type->mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
-        v0::FederatedType* result_federated_type =
+        param_value_type->mutable_tensor()->set_dtype(
+            federated_language::DataType::DT_FLOAT);
+        federated_language::FederatedType* result_federated_type =
             zip_at_placement_type_pb.mutable_result()->mutable_federated();
         result_federated_type->set_all_equal(test_case.all_equal);
         result_federated_type->mutable_placement()->mutable_value()->set_uri(
             std::string(test_case.placement_uri));
-        v0::StructType* result_struct_type =
+        federated_language::StructType* result_struct_type =
             result_federated_type->mutable_member()->mutable_struct_();
-        v0::Type* result_value_type =
+        federated_language::Type* result_value_type =
             result_struct_type->add_element()->mutable_value();
         if (absl::EndsWith(elem_ref, "struct")) {
           // Nested struct needs another layer.
@@ -1239,7 +1243,8 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                                   ->add_element()
                                   ->mutable_value();
         }
-        result_value_type->mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
+        result_value_type->mutable_tensor()->set_dtype(
+            federated_language::DataType::DT_FLOAT);
         EXPECT_CALL(*mock_executor_service_,
                     CreateValue(_,
                                 EqualsProto(CreateValueRequestForValue(
@@ -1516,7 +1521,7 @@ INSTANTIATE_TEST_SUITE_P(
         {[](std::vector<v0::Value> values) -> v0::Value {
            return ClientsV(std::move(values));
          },
-         [](v0::FunctionType type_pb) -> v0::Value {
+         [](federated_language::FunctionType type_pb) -> v0::Value {
            return testing::intrinsic::FederatedZipAtClientsV(type_pb);
          },
          kClientsUri, false},
@@ -1524,7 +1529,7 @@ INSTANTIATE_TEST_SUITE_P(
         {[](std::vector<v0::Value> values) -> v0::Value {
            return ServerV(values[0]);
          },
-         [](v0::FunctionType type_pb) -> v0::Value {
+         [](federated_language::FunctionType type_pb) -> v0::Value {
            return testing::intrinsic::FederatedZipAtServerV(type_pb);
          },
          kServerUri, true},

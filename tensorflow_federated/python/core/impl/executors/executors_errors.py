@@ -16,15 +16,14 @@
 import typing
 from typing import Union
 
+import federated_language
 import grpc
 from typing_extensions import TypeGuard
 
 
-class RetryableError(Exception):
-  """Raised when execution fails and can be retried."""
-
-
-class RetryableGRPCError(RetryableError, grpc.RpcError, grpc.Call):
+class RetryableGRPCError(
+    federated_language.framework.RetryableError, grpc.RpcError, grpc.Call
+):
   """Raised when execution fails across a gRPC connection and can be retried."""
 
   def __init__(self, call: grpc.Call):
@@ -51,7 +50,7 @@ def get_grpc_retryable_error_codes() -> set[grpc.StatusCode]:
   ])
 
 
-class RetryableAbslStatusError(RetryableError):
+class RetryableAbslStatusError(federated_language.framework.RetryableError):
   """Raised when execution fails with an absl status error and can be retried."""
 
 

@@ -18,18 +18,14 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 from vizier.client import client_abc
 
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.programs import vizier_program_logic
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.program import data_source
 from tensorflow_federated.python.program import native_platform
-from tensorflow_federated.python.program import program_state_manager
-from tensorflow_federated.python.program import release_manager
 
 
 def _create_mock_context() -> mock.Mock:
@@ -68,7 +64,7 @@ class TrainModelWithVizierTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  @context_stack_test_utils.with_context(_create_mock_context)
+  @federated_language.framework.with_context(_create_mock_context)
   async def test_calls_program_components(self):
     total_trials = 10
     total_rounds = 10
@@ -99,34 +95,38 @@ class TrainModelWithVizierTest(
 
     mock_study.trials().get.side_effect = lambda: suggested_trials
     mock_update_hparams = mock.create_autospec(
-        computation_base.Computation, spec_set=True
+        federated_language.framework.Computation, spec_set=True
     )
     mock_train_model_program_logic = mock.AsyncMock()
     mock_train_process = _create_mock_train_process()
     mock_train_process_factory = mock.Mock(return_value=mock_train_process)
     mock_train_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, spec_set=True, instance=True
+        federated_language.program.FederatedDataSource,
+        spec_set=True,
+        instance=True,
     )
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, spec_set=True, instance=True
+        federated_language.program.ProgramStateManager,
+        spec_set=True,
+        instance=True,
     )
     mock_program_state_manager_factory = mock.Mock(
         return_value=mock_program_state_manager
     )
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, spec_set=True, instance=True
+        federated_language.program.ReleaseManager, spec_set=True, instance=True
     )
     mock_model_output_manager_factory = mock.Mock(
         return_value=mock_model_output_manager
     )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, spec_set=True, instance=True
+        federated_language.program.ReleaseManager, spec_set=True, instance=True
     )
     mock_train_metrics_manager_factory = mock.Mock(
         return_value=mock_train_metrics_manager
     )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, spec_set=True, instance=True
+        federated_language.program.ReleaseManager, spec_set=True, instance=True
     )
     mock_evaluation_manager = mock.create_autospec(
         evaluation_program_logic.EvaluationManager, spec_set=True, instance=True
@@ -225,7 +225,8 @@ class TrainModelWithVizierTest(
 
       if mock_train_metrics_manager_factory is not None:
         self.assertIsInstance(
-            actual_train_metrics_manager, release_manager.GroupingReleaseManager
+            actual_train_metrics_manager,
+            federated_language.program.GroupingReleaseManager,
         )
         self.assertIn(
             expected_intermediate_measurement_release_manager,
@@ -251,7 +252,7 @@ class TrainModelWithVizierTest(
       if mock_evaluation_manager.aggregated_metrics_manager is not None:
         self.assertIsInstance(
             actual_aggregated_metrics_manager,
-            release_manager.GroupingReleaseManager,
+            federated_language.program.GroupingReleaseManager,
         )
         self.assertIn(
             expected_final_measurement_release_manager,

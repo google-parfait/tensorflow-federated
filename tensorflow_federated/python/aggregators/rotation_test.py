@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -23,9 +24,6 @@ from tensorflow_federated.python.aggregators import measurements
 from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -112,40 +110,40 @@ class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_type_properties(self, name, value_type):
     factory = _hadamard_sum() if name == 'hd' else _dft_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.FederatedType(
-        ((), rotation.SEED_TFF_TYPE), placements.SERVER
+    server_state_type = federated_language.FederatedType(
+        ((), rotation.SEED_TFF_TYPE), federated_language.SERVER
     )
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         process.initialize.type_signature, expected_initialize_type
     )
 
-    expected_measurements_type = computation_types.FederatedType(
-        collections.OrderedDict([(name, ())]), placements.SERVER
+    expected_measurements_type = federated_language.FederatedType(
+        collections.OrderedDict([(name, ())]), federated_language.SERVER
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         process.next.type_signature, expected_next_type
     )
 
@@ -166,7 +164,7 @@ class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
       self, factory_fn, value_type
   ):
     factory = factory_fn()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'all integers or all floats'):
       factory.create(value_type)
 
@@ -176,28 +174,28 @@ class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
       (
           'sequence_hadamard',
           _hadamard_sum,
-          computation_types.SequenceType(np.int32),
+          federated_language.SequenceType(np.int32),
       ),
-      ('sequence_dft', _dft_sum, computation_types.SequenceType(np.int32)),
+      ('sequence_dft', _dft_sum, federated_language.SequenceType(np.int32)),
       (
           'func_hadamard',
           _hadamard_sum,
-          computation_types.FunctionType(np.int32, np.int32),
+          federated_language.FunctionType(np.int32, np.int32),
       ),
       (
           'func_dft',
           _dft_sum,
-          computation_types.FunctionType(np.int32, np.int32),
+          federated_language.FunctionType(np.int32, np.int32),
       ),
       (
           'nested_sequence',
           _dft_sum,
-          [[[computation_types.SequenceType(np.int32)]]],
+          [[[federated_language.SequenceType(np.int32)]]],
       ),
   )
   def test_raises_on_bad_tff_value_types(self, factory_fn, value_type):
     factory = factory_fn()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'Expected `value_type` to be'):
       factory.create(value_type)
 
@@ -262,7 +260,7 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_sum(self, value_type, client_data, expected_sum, factory_fn):
     """Integration test with sum for the all implementations."""
     factory = factory_fn()
-    process = factory.create(computation_types.to_type(value_type))
+    process = factory.create(federated_language.to_type(value_type))
     state = process.initialize()
 
     for _ in range(3):
@@ -325,7 +323,7 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_mean(self, value_type, client_data, expected_mean, factory_fn):
     """Integration test for the factory with mean."""
     factory = factory_fn()
-    process = factory.create(computation_types.to_type(value_type))
+    process = factory.create(federated_language.to_type(value_type))
     state = process.initialize()
 
     for _ in range(3):
@@ -346,7 +344,7 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
   ):
     factory = _measured_hadamard_sum() if name == 'hd' else _measured_dft_sum()
     process = factory.create(
-        computation_types.to_type((np.float32, input_shape))
+        federated_language.to_type((np.float32, input_shape))
     )
 
     client_input = np.ones(input_shape, np.float32)
@@ -357,7 +355,7 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('hd', 'hd'), ('dft', 'dft'))
   def test_inner_aggregation_acts_on_rotated_space(self, name):
     factory = _measured_hadamard_sum() if name == 'hd' else _measured_dft_sum()
-    process = factory.create(computation_types.TensorType(np.float32, [8]))
+    process = factory.create(federated_language.TensorType(np.float32, [8]))
 
     client_input = np.array(
         [1.0, -1.0, 2.5, -1.5, -0.5, 1.9, 2.2, -2.0], np.float32
@@ -384,7 +382,7 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_hd_spreads_information(self):
     factory = _measured_hadamard_sum()
-    process = factory.create(computation_types.TensorType(np.float32, [256]))
+    process = factory.create(federated_language.TensorType(np.float32, [256]))
 
     client_input = (
         256 * tf.one_hot(indices=17, depth=256, dtype=tf.float32).numpy()
@@ -403,7 +401,7 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_dft_spreads_information(self):
     factory = _measured_dft_sum()
-    process = factory.create(computation_types.TensorType(np.float32, [256]))
+    process = factory.create(federated_language.TensorType(np.float32, [256]))
 
     client_input = (
         256 * tf.one_hot(indices=17, depth=256, dtype=tf.float32).numpy()

@@ -28,16 +28,13 @@ then (2) with the reconstructed local variables.
 import collections
 from typing import Any, Optional
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning.algorithms import fed_recon
@@ -156,7 +153,7 @@ def build_fed_recon_eval(
     )
 
   model_weights_type = build_initial_model_weights.type_signature.result
-  dataset_type = computation_types.SequenceType(batch_type)
+  dataset_type = federated_language.SequenceType(batch_type)
 
   if model_distributor is None:
     model_distributor = distributors.build_broadcast_process(model_weights_type)
@@ -306,24 +303,28 @@ def build_fed_recon_eval(
         'metrics_aggregation_process',
     )
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def client_initialize():
     return metrics_aggregation_process.initialize()
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       client_initialize.type_signature.result,
-      computation_types.FederatedType(model_weights_type, placements.CLIENTS),
-      computation_types.FederatedType(dataset_type, placements.CLIENTS),
+      federated_language.FederatedType(
+          model_weights_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(
+          dataset_type, federated_language.CLIENTS
+      ),
   )
   def client_work(state, model_weights, client_dataset):
-    unfinalized_metrics = intrinsics.federated_map(
+    unfinalized_metrics = federated_language.federated_map(
         client_computation, (model_weights, client_dataset)
     )
     metrics_output = metrics_aggregation_process.next(
         state, unfinalized_metrics
     )
     current_round_metrics, total_rounds_metrics = metrics_output.result
-    measurements = intrinsics.federated_zip(
+    measurements = federated_language.federated_zip(
         collections.OrderedDict(
             eval=collections.OrderedDict(
                 current_round_metrics=current_round_metrics,
@@ -332,9 +333,9 @@ def build_fed_recon_eval(
         )
     )
     # Return empty result as no model update will be performed for evaluation.
-    empty_client_result = intrinsics.federated_value(
+    empty_client_result = federated_language.federated_value(
         client_works.ClientResult(update=(), update_weight=()),
-        placements.CLIENTS,
+        federated_language.CLIENTS,
     )
     return measured_process_lib.MeasuredProcessOutput(
         metrics_output.state,
@@ -348,8 +349,9 @@ def build_fed_recon_eval(
 
   # The evaluation will *not* send model updates back, only metrics; so the type
   # is simply an empty tuple.
-  empty_client_work_result_type = computation_types.FederatedType(
-      client_works.ClientResult(update=(), update_weight=()), placements.CLIENTS
+  empty_client_work_result_type = federated_language.FederatedType(
+      client_works.ClientResult(update=(), update_weight=()),
+      federated_language.CLIENTS,
   )
   empty_model_update_type = empty_client_work_result_type.member.update  # pytype: disable=attribute-error
   empty_model_update_weight_type = (

@@ -87,6 +87,19 @@ http_archive(
 #     },
 # )
 
+http_archive(
+    name = "federated_language",
+    url = "https://github.com/google-parfait/federated-language/archive/ea6526d5541bde5509464c03e722ab6df4e93d7a.tar.gz",
+    patches = [
+        "//third_party/federated_language:proto_library_load.patch",
+        "//third_party/federated_language:structure_visibility.patch",
+    ],
+    strip_prefix = "federated-language-ea6526d5541bde5509464c03e722ab6df4e93d7a",
+    repo_mapping = {
+        "@protobuf": "@com_google_protobuf",
+    },
+)
+
 # The version of TensorFlow should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
 http_archive(
@@ -195,3 +208,24 @@ protobuf_deps()
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
+
+load("@rules_python//python:repositories.bzl", "python_register_toolchains")
+
+python_register_toolchains(
+   name = "python",
+   ignore_root_user_error = True,
+   python_version = "3.11",
+)
+
+load("@python//:defs.bzl", "interpreter")
+load("@rules_python//python:pip.bzl", "pip_parse")
+
+pip_parse(
+   name = "pypi",
+   python_interpreter_target = interpreter,
+   requirements_lock = "@federated_language//:requirements_lock_3_11.txt",
+)
+
+load("@pypi//:requirements.bzl", "install_deps")
+
+install_deps()

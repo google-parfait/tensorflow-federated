@@ -17,10 +17,10 @@ import collections
 from typing import Optional
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import reconstruction_model
 
@@ -181,18 +181,18 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     global_model_weights_type = (
         reconstruction_model.global_weights_type_from_model(recon_model)
     )
-    expected_trainable = computation_types.StructWithPythonType(
+    expected_trainable = federated_language.StructWithPythonType(
         [
-            computation_types.TensorType(dtype=np.float32, shape=(5, 2)),
-            computation_types.TensorType(dtype=np.float32, shape=(2,)),
+            federated_language.TensorType(dtype=np.float32, shape=(5, 2)),
+            federated_language.TensorType(dtype=np.float32, shape=(2,)),
         ],
         list,
     )
-    expected_non_trainable = computation_types.StructWithPythonType(
+    expected_non_trainable = federated_language.StructWithPythonType(
         [],
         list,
     )
-    expected_type = computation_types.StructWithPythonType(
+    expected_type = federated_language.StructWithPythonType(
         [
             ('trainable', expected_trainable),
             ('non_trainable', expected_non_trainable),
@@ -262,20 +262,20 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     global_model_weights_type = (
         reconstruction_model.global_weights_type_from_model(recon_model)
     )
-    expected_trainable = computation_types.StructWithPythonType(
+    expected_trainable = federated_language.StructWithPythonType(
         [
-            computation_types.TensorType(dtype=np.float32, shape=(5, 5)),
-            computation_types.TensorType(dtype=np.float32, shape=(5,)),
-            computation_types.TensorType(dtype=np.float32, shape=(5, 2)),
-            computation_types.TensorType(dtype=np.float32, shape=(2,)),
+            federated_language.TensorType(dtype=np.float32, shape=(5, 5)),
+            federated_language.TensorType(dtype=np.float32, shape=(5,)),
+            federated_language.TensorType(dtype=np.float32, shape=(5, 2)),
+            federated_language.TensorType(dtype=np.float32, shape=(2,)),
         ],
         list,
     )
-    expected_non_trainable = computation_types.StructWithPythonType(
+    expected_non_trainable = federated_language.StructWithPythonType(
         [],
         list,
     )
-    expected_type = computation_types.StructWithPythonType(
+    expected_type = federated_language.StructWithPythonType(
         [
             ('trainable', expected_trainable),
             ('non_trainable', expected_non_trainable),

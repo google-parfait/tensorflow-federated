@@ -17,8 +17,7 @@ import collections
 from collections.abc import Callable
 from typing import Any, Optional, Protocol
 
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import computation_types
+import federated_language
 
 
 MetricFinalizersType = collections.OrderedDict[str, Callable[[Any], Any]]
@@ -33,7 +32,7 @@ class MetricsAggregatorType(Protocol):
       self,
       metric_finalizers: MetricFinalizersType,
       local_unfinalized_metrics_type: Optional[
-          computation_types.StructWithPythonType
+          federated_language.StructWithPythonType
       ] = None,
-  ) -> computation_base.Computation:
+  ) -> federated_language.framework.Computation:
     ...

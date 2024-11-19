@@ -31,12 +31,10 @@ import pickle
 import struct
 from typing import Protocol, TypeVar
 
+import federated_language
+from federated_language.proto import computation_pb2
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2
-from tensorflow_federated.python.common_libs import serializable
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.program import structure_utils
 
 
@@ -139,7 +137,7 @@ def unpack_sequence_from(
   return sequence, length_size + length
 
 
-def pack_serializable(value: serializable.Serializable) -> bytes:
+def pack_serializable(value: federated_language.Serializable) -> bytes:
   """Packs a `tff.Serializable` as bytes."""
   module_name_bytes = pack_str(type(value).__module__)
   class_name_bytes = pack_str(type(value).__name__)
@@ -155,7 +153,7 @@ def pack_serializable(value: serializable.Serializable) -> bytes:
 
 def unpack_serializable_from(
     buffer: bytes, offset: int = 0
-) -> tuple[serializable.Serializable, int]:
+) -> tuple[federated_language.Serializable, int]:
   """Unpacks a `tff.Serializable` from bytes.
 
   Args:
@@ -188,9 +186,9 @@ def unpack_serializable_from(
   )
 
 
-def pack_type_spec(type_spec: computation_types.Type) -> bytes:
+def pack_type_spec(type_spec: federated_language.Type) -> bytes:
   """Packs a `tff.Type` as bytes."""
-  proto = type_serialization.serialize_type(type_spec)
+  proto = federated_language.framework.serialize_type(type_spec)
   type_bytes = proto.SerializeToString()
   length_bytes = _pack_length(type_bytes)
   return length_bytes + type_bytes
@@ -198,7 +196,7 @@ def pack_type_spec(type_spec: computation_types.Type) -> bytes:
 
 def unpack_type_spec_from(
     buffer: bytes, offset: int = 0
-) -> tuple[computation_types.Type, int]:
+) -> tuple[federated_language.Type, int]:
   """Unpacks a `tff.Type` from bytes.
 
   Args:
@@ -212,7 +210,7 @@ def unpack_type_spec_from(
   offset += length_size
   type_spec_bytes, *_ = struct.unpack_from(f'!{length}s', buffer, offset=offset)
   proto = computation_pb2.Type.FromString(type_spec_bytes)
-  type_spec = type_serialization.deserialize_type(proto)
+  type_spec = federated_language.framework.deserialize_type(proto)
   return type_spec, length_size + length
 
 

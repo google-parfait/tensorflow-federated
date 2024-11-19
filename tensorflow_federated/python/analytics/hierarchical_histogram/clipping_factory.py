@@ -15,17 +15,13 @@
 
 from typing import Optional
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 
 # Supported clip mechanisms.
@@ -115,7 +111,7 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
 
     inner_value_type = value_type
     if self._cast_to_float:
-      inner_value_type = computation_types.TensorType(
+      inner_value_type = federated_language.TensorType(
           np.float32, value_type.shape
       )
     inner_agg_process = self._inner_agg_factory.create(inner_value_type)
@@ -127,22 +123,26 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
         lambda x: tf.cast(x, inner_value_type.dtype)  # pytype: disable=attribute-error
     )
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       # Clip values before aggregation.
-      clipped_value = intrinsics.federated_map(
+      clipped_value = federated_language.federated_map(
           tff_clip_fn,
           (
               value,
-              intrinsics.federated_value(
-                  self._max_records_per_user, placements.CLIENTS
+              federated_language.federated_value(
+                  self._max_records_per_user, federated_language.CLIENTS
               ),
           ),
       )
-      clipped_value = intrinsics.federated_map(tff_cast_fn, clipped_value)
+      clipped_value = federated_language.federated_map(
+          tff_cast_fn, clipped_value
+      )
 
       return inner_agg_process.next(state, clipped_value)
 
@@ -225,7 +225,7 @@ def _distinct_clip(histogram, sample_num):
 
 
 def _check_is_integer_struct(value_type, label):
-  if not type_analysis.is_structure_of_integers(value_type):
+  if not federated_language.framework.is_structure_of_integers(value_type):
     raise TypeError(
         f'Component dtypes of `{label}` must all be integers. '
         f'Found {repr(value_type)}.'
@@ -233,7 +233,7 @@ def _check_is_integer_struct(value_type, label):
 
 
 def _check_is_tensor_type(value, label):
-  if not isinstance(value, computation_types.TensorType):
+  if not isinstance(value, federated_language.TensorType):
     raise TypeError(
         f'Expected `{label}` to be `TensorType`. Found type: {repr(value)}'
     )

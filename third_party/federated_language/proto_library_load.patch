@@ -1,0 +1,13 @@
+diff --git federated_language/proto/BUILD federated_language/proto/BUILD
+index d23d7cf..004dcb2 100644
+--- federated_language/proto/BUILD
++++ federated_language/proto/BUILD
+@@ -1,6 +1,5 @@
+-load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+-load("@protobuf//bazel:proto_library.bzl", "proto_library")
+-load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
++load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_proto_library")
++load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+ load("@rules_python//python:defs.bzl", "py_library")
+ 
+ package(

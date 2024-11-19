@@ -34,14 +34,11 @@ py_library(
     name = "compiler",
     srcs = ["compiler.py"],
     deps = [
-        "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/backends/mapreduce:compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:compiled_computation_transformations",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -50,12 +47,7 @@ py_test(
     srcs = ["compiler_test.py"],
     deps = [
         ":compiler",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -69,11 +61,9 @@ py_library(
         ":compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
-        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
-        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -87,14 +77,8 @@ py_test(
         ":cpp_execution_contexts",
         ":execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
-        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
-        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -105,12 +89,9 @@ py_library(
         ":compiler",
         ":mergeable_comp_compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
-        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -122,8 +103,8 @@ py_test(
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -135,18 +116,10 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_building_block_factory",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
-        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
-        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -156,13 +129,8 @@ py_test(
     deps = [
         ":mergeable_comp_compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "@federated_language//federated_language",
     ],
 )
