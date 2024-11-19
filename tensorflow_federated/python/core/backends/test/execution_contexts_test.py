@@ -14,19 +14,18 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import grpc
 import numpy as np
 
 from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
-_CLIENTS_INT = computation_types.FederatedType(np.int32, placements.CLIENTS)
-_CLIENTS_INT_LIST = computation_types.FederatedType(
-    [np.int32, np.int32], placements.CLIENTS
+_CLIENTS_INT = federated_language.FederatedType(
+    np.int32, federated_language.CLIENTS
+)
+_CLIENTS_INT_LIST = federated_language.FederatedType(
+    [np.int32, np.int32], federated_language.CLIENTS
 )
 
 
@@ -50,8 +49,8 @@ class SecureModularSumTest(parameterized.TestCase):
           'nonscalar_struct_arg',
           [([1, 2], 3), ([4, 5], 6)],
           (np.array([0, 2], dtype=np.int32), 4),
-          computation_types.FederatedType(
-              ((np.int32, [2]), np.int32), placements.CLIENTS
+          federated_language.FederatedType(
+              ((np.int32, [2]), np.int32), federated_language.CLIENTS
           ),
       ),
   )
@@ -60,7 +59,7 @@ class SecureModularSumTest(parameterized.TestCase):
   ):
     modulus = 5
 
-    @federated_computation.federated_computation(tff_type)
+    @federated_language.federated_computation(tff_type)
     def modular_sum_by_five(arg):
       return mapreduce_intrinsics.federated_secure_modular_sum(arg, modulus)
 
@@ -101,7 +100,7 @@ class SecureModularSumTest(parameterized.TestCase):
   ):
     modulus = [5, 7]
 
-    @federated_computation.federated_computation(tff_type)
+    @federated_language.federated_computation(tff_type)
     def modular_sum_by_five(arg):
       return mapreduce_intrinsics.federated_secure_modular_sum(arg, modulus)
 
@@ -129,11 +128,11 @@ class SecureSumBitwidthTest(parameterized.TestCase):
 
     expected_result = sum(arg)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def sum_with_bitwidth(arg):
-      return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
+      return federated_language.federated_secure_sum_bitwidth(arg, bitwidth)
 
     self.assertEqual(expected_result, sum_with_bitwidth(arg))
 
@@ -142,8 +141,8 @@ class SecureSumBitwidthTest(parameterized.TestCase):
           'two_clients_scalar_tensors',
           [[1, 2], [3, 4]],
           [4, 6],
-          computation_types.FederatedType(
-              [np.int32, np.int32], placements.CLIENTS
+          federated_language.FederatedType(
+              [np.int32, np.int32], federated_language.CLIENTS
           ),
       ),
       (
@@ -153,12 +152,12 @@ class SecureSumBitwidthTest(parameterized.TestCase):
               [np.ones(shape=[10], dtype=np.int32), 4],
           ],
           [2 * np.ones(shape=[10], dtype=np.int32), 6],
-          computation_types.FederatedType(
+          federated_language.FederatedType(
               [
-                  computation_types.TensorType(dtype=np.int32, shape=[10]),
+                  federated_language.TensorType(dtype=np.int32, shape=[10]),
                   np.int32,
               ],
-              placements.CLIENTS,
+              federated_language.CLIENTS,
           ),
       ),
   )
@@ -167,9 +166,9 @@ class SecureSumBitwidthTest(parameterized.TestCase):
   ):
     bitwidth = 32
 
-    @federated_computation.federated_computation(tff_type)
+    @federated_language.federated_computation(tff_type)
     def sum_with_bitwidth(arg):
-      return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
+      return federated_language.federated_secure_sum_bitwidth(arg, bitwidth)
 
     actual_result = sum_with_bitwidth(arg)
 
@@ -189,11 +188,11 @@ class SecureSumMaxValueTest(parameterized.TestCase):
   def test_raises_with_arguments_over_max_value(self):
     max_value = 1
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def secure_sum(arg):
-      return intrinsics.federated_secure_sum(arg, max_value)
+      return federated_language.federated_secure_sum(arg, max_value)
 
     with self.assertRaises(grpc.RpcError):
       secure_sum([2, 4])
@@ -211,11 +210,11 @@ class SecureSumMaxValueTest(parameterized.TestCase):
 
     expected_result = sum(arg)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def secure_sum(arg):
-      return intrinsics.federated_secure_sum(arg, max_value)
+      return federated_language.federated_secure_sum(arg, max_value)
 
     self.assertEqual(expected_result, secure_sum(arg))
 
@@ -224,8 +223,8 @@ class SecureSumMaxValueTest(parameterized.TestCase):
           'two_clients_scalar_tensors',
           [[1, 2], [3, 4]],
           [4, 6],
-          computation_types.FederatedType(
-              [np.int32, np.int32], placements.CLIENTS
+          federated_language.FederatedType(
+              [np.int32, np.int32], federated_language.CLIENTS
           ),
       ),
       (
@@ -235,12 +234,12 @@ class SecureSumMaxValueTest(parameterized.TestCase):
               [np.ones(shape=[10], dtype=np.int32), 4],
           ],
           [2 * np.ones(shape=[10], dtype=np.int32), 6],
-          computation_types.FederatedType(
+          federated_language.FederatedType(
               [
-                  computation_types.TensorType(dtype=np.int32, shape=[10]),
+                  federated_language.TensorType(dtype=np.int32, shape=[10]),
                   np.int32,
               ],
-              placements.CLIENTS,
+              federated_language.CLIENTS,
           ),
       ),
   )
@@ -249,9 +248,9 @@ class SecureSumMaxValueTest(parameterized.TestCase):
   ):
     max_value = 100
 
-    @federated_computation.federated_computation(tff_type)
+    @federated_language.federated_computation(tff_type)
     def secure_sum(arg):
-      return intrinsics.federated_secure_sum(arg, max_value)
+      return federated_language.federated_secure_sum(arg, max_value)
 
     actual_result = secure_sum(arg)
 

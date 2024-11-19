@@ -19,9 +19,9 @@ limitations under the License
 #include <memory>
 
 #include "absl/status/statusor.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {

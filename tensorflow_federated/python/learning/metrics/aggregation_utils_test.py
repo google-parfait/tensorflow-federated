@@ -16,11 +16,11 @@ import collections
 from typing import Any
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.metrics import aggregation_utils
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 
@@ -65,7 +65,7 @@ class CheckMetricFinalizersTest(tf.test.TestCase, parameterized.TestCase):
 class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_valid_type_does_not_raise(self):
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         collections.OrderedDict(
             num_examples=np.int32, mean=[np.float32, np.float32]
         ),
@@ -78,7 +78,7 @@ class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'struct_type',
-          computation_types.StructType([(None, np.int32)]),
+          federated_language.StructType([(None, np.int32)]),
           '`tff.types.StructWithPythonType`',
       ),
       (
@@ -88,7 +88,7 @@ class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
       ),
       (
           'list_container',
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [np.float32, np.float32], list
           ),
           'Python container',
@@ -109,7 +109,7 @@ class CheckFinalizersMatchUnfinalizedMetricsTypeTest(
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x), mean=_tf_mean
     )
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         collections.OrderedDict(
             num_examples=np.int32, mean=[np.float32, np.float32]
         ),
@@ -126,7 +126,7 @@ class CheckFinalizersMatchUnfinalizedMetricsTypeTest(
           collections.OrderedDict(
               num_examples=tf.function(func=lambda x: x), mean=_tf_mean
           ),
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               collections.OrderedDict(num_examples=np.int32),
               collections.OrderedDict,
           ),
@@ -135,7 +135,7 @@ class CheckFinalizersMatchUnfinalizedMetricsTypeTest(
       (
           'more_metrics_in_unfinalized_metrics_type',
           collections.OrderedDict(mean=_tf_mean),
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               collections.OrderedDict(
                   num_examples=np.int32, mean=[np.float32, np.float32]
               ),
@@ -162,8 +162,8 @@ class CheckBuildFinalizerComputationTest(
       (
           'non_functional',
           collections.OrderedDict(accuracy=_tf_mean),
-          computation_types.StructWithPythonType(
-              [('accuracy', computation_types.TensorType(np.float32, (2,)))],
+          federated_language.StructWithPythonType(
+              [('accuracy', federated_language.TensorType(np.float32, (2,)))],
               collections.OrderedDict,
           ),
           collections.OrderedDict(accuracy=[0.2, 5.0]),
@@ -172,12 +172,12 @@ class CheckBuildFinalizerComputationTest(
       (
           'functional',
           _test_functional_finalize_metrics,
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [(
                   'accuracy',
                   [
-                      computation_types.TensorType(np.float32),
-                      computation_types.TensorType(np.float32),
+                      federated_language.TensorType(np.float32),
+                      federated_language.TensorType(np.float32),
                   ],
               )],
               collections.OrderedDict,

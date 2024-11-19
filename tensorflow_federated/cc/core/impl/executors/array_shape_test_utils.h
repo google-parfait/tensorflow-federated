@@ -19,20 +19,21 @@ limitations under the License
 #include <cstdint>
 #include <initializer_list>
 
-#include "tensorflow_federated/proto/v0/array.pb.h"
+#include "federated_language/proto/array.pb.h"
 
 namespace tensorflow_federated {
 namespace testing {
 
-inline v0::ArrayShape CreateArrayShape(std::initializer_list<int64_t> dims,
-                                       bool unknown_rank) {
-  v0::ArrayShape shape_pb;
+inline federated_language::ArrayShape CreateArrayShape(
+    std::initializer_list<int64_t> dims, bool unknown_rank) {
+  federated_language::ArrayShape shape_pb;
   shape_pb.mutable_dim()->Assign(dims.begin(), dims.end());
   shape_pb.set_unknown_rank(unknown_rank);
   return shape_pb;
 }
 
-inline v0::ArrayShape CreateArrayShape(std::initializer_list<int64_t> dims) {
+inline federated_language::ArrayShape CreateArrayShape(
+    std::initializer_list<int64_t> dims) {
   return CreateArrayShape(dims, false);
 }
 

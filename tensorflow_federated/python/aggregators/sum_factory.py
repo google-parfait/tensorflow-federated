@@ -15,12 +15,10 @@
 
 import typing
 
+import federated_language
+
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -41,17 +39,21 @@ class SumFactory(factory.UnweightedAggregationFactory):
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
-      return intrinsics.federated_value((), placements.SERVER)
+      return federated_language.federated_value((), federated_language.SERVER)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
-      summed_value = intrinsics.federated_sum(value)
-      empty_measurements = intrinsics.federated_value((), placements.SERVER)
+      summed_value = federated_language.federated_sum(value)
+      empty_measurements = federated_language.federated_value(
+          (), federated_language.SERVER
+      )
       return measured_process.MeasuredProcessOutput(
           state, summed_value, empty_measurements
       )

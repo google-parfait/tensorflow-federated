@@ -13,6 +13,7 @@
 # limitations under the License.
 """The implementation of a context to use in building TF computations."""
 
+import federated_language
 import tensorflow as tf
 import tree
 
@@ -20,18 +21,13 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions as tensorflow_type_conversions
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
 
 
 def get_session_token() -> tf.Tensor:
   """Returns a string tensor identifying the current session."""
-  context = context_stack_impl.context_stack.current
+  context = federated_language.framework.global_context_stack.current
   if not isinstance(context, TensorFlowComputationContext):
-    raise context_base.ContextError(
+    raise federated_language.framework.ContextError(
         'Session tokens can only be retrieved from within the '
         '`TensorFlowComputationContext (in a `@tff.tensorflow.computation`). '
         f'Instead, the context {context} of type {type(context)} was found.'
@@ -39,7 +35,7 @@ def get_session_token() -> tf.Tensor:
   return context.session_token
 
 
-class TensorFlowComputationContext(context_base.SyncContext):
+class TensorFlowComputationContext(federated_language.framework.SyncContext):
   """The context for building TensorFlow computations."""
 
   def __init__(self, graph, session_token):
@@ -59,7 +55,7 @@ class TensorFlowComputationContext(context_base.SyncContext):
     """Returns a string tensor which uniquely identifies the current session."""
     return self._session_token
 
-  def invoke(self, comp: computation_impl.ConcreteComputation, arg):
+  def invoke(self, comp: federated_language.framework.ConcreteComputation, arg):
     if comp.type_signature.parameter is not None:
       # Normalize to a Python structure to make it simpler to handle; `args` is
       # sometimes a `tff.structure.Struct` and sometimes it is not, other times
@@ -77,18 +73,22 @@ class TensorFlowComputationContext(context_base.SyncContext):
 
       if not comp.type_signature.parameter.is_assignable_from(inferred_type):
         raise TypeError(
-            computation_types.type_mismatch_error_message(
+            federated_language.framework.type_mismatch_error_message(
                 inferred_type,
                 comp.type_signature.parameter,
-                computation_types.TypeRelation.ASSIGNABLE,
+                federated_language.framework.TypeRelation.ASSIGNABLE,
                 second_is_expected=True,
             )
         )
 
     # We are invoking a `tff.tensorflow.computation` inside of another
     # `tff.tensorflow.computation`.
-    py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
-    computation_proto = computation_impl.ConcreteComputation.get_proto(comp)
+    py_typecheck.check_type(
+        comp, federated_language.framework.ConcreteComputation
+    )
+    computation_proto = (
+        federated_language.framework.ConcreteComputation.get_proto(comp)
+    )
     computation_oneof = computation_proto.WhichOneof('computation')
     if computation_oneof != 'tensorflow':
       raise ValueError(
@@ -106,6 +106,6 @@ class TensorFlowComputationContext(context_base.SyncContext):
     )
     if init_op:
       self._init_ops.append(init_op)
-    return type_conversions.type_to_py_container(
+    return federated_language.framework.type_to_py_container(
         result, comp.type_signature.result
     )

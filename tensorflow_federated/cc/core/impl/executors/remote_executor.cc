@@ -30,12 +30,12 @@ limitations under the License
 #include "absl/synchronization/mutex.h"
 #include "include/grpcpp/grpcpp.h"
 #include "include/grpcpp/support/status.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -147,11 +147,11 @@ class ExecutorValue {
   }
 
   const v0::ValueRef& Get() const { return value_ref_; }
-  const v0::Type& Type() const { return type_pb_; }
+  const federated_language::Type& Type() const { return type_pb_; }
 
  private:
   const v0::ValueRef value_ref_;
-  const v0::Type type_pb_;
+  const federated_language::Type type_pb_;
   const v0::ExecutorId executor_pb_;
   std::shared_ptr<v0::ExecutorGroup::StubInterface> stub_;
 };
@@ -164,7 +164,7 @@ absl::Status RemoteExecutor::EnsureInitialized() {
   v0::GetExecutorRequest request;
   for (auto iter = cardinalities_.begin(); iter != cardinalities_.end();
        ++iter) {
-    v0::Placement placement;
+    federated_language::Placement placement;
     placement.set_uri(iter->first);
     v0::Cardinality cardinality;
     *cardinality.mutable_placement() = placement;
@@ -241,7 +241,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateStruct(
     grpc::ClientContext context;
     std::vector<std::shared_ptr<ExecutorValue>> values =
         TFF_TRY(WaitAll(futures));
-    v0::Type result_type;
+    federated_language::Type result_type;
     for (const std::shared_ptr<ExecutorValue>& element : values) {
       v0::CreateStructRequest_Element struct_elem;
       *struct_elem.mutable_value_ref() = element->Get();

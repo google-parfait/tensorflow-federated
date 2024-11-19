@@ -19,15 +19,12 @@ from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tff
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 
 DATA = [
     ['hello', 'hey', 'hi', 'hi', 'hi', '新年快乐'],
@@ -162,32 +159,34 @@ class IbltTffConstructionTest(absltest.TestCase):
 
   def test_default_construction(self):
     iblt_computation = iblt_tff.build_iblt_computation()
-    self.assertIsInstance(iblt_computation, computation_base.Computation)
-    type_test_utils.assert_types_identical(
+    self.assertIsInstance(
+        iblt_computation, federated_language.framework.Computation
+    )
+    federated_language.framework.assert_types_identical(
         iblt_computation.type_signature,
-        computation_types.FunctionType(
-            parameter=computation_types.FederatedType(
-                computation_types.SequenceType(
-                    computation_types.TensorType(shape=[None], dtype=np.str_)
+        federated_language.FunctionType(
+            parameter=federated_language.FederatedType(
+                federated_language.SequenceType(
+                    federated_language.TensorType(shape=[None], dtype=np.str_)
                 ),
-                placements.CLIENTS,
+                federated_language.CLIENTS,
             ),
-            result=computation_types.FederatedType(
+            result=federated_language.FederatedType(
                 iblt_tff.ServerOutput(
                     clients=np.int32,
-                    heavy_hitters=computation_types.TensorType(
+                    heavy_hitters=federated_language.TensorType(
                         shape=[None], dtype=np.str_
                     ),
-                    heavy_hitters_unique_counts=computation_types.TensorType(
+                    heavy_hitters_unique_counts=federated_language.TensorType(
                         shape=[None], dtype=np.int64
                     ),
-                    heavy_hitters_counts=computation_types.TensorType(
+                    heavy_hitters_counts=federated_language.TensorType(
                         shape=[None], dtype=np.int64
                     ),
                     num_not_decoded=np.int64,
                     round_timestamp=np.int64,
                 ),
-                placements.SERVER,
+                federated_language.SERVER,
             ),
         ),
     )

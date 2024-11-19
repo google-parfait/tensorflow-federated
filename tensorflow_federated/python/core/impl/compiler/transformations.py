@@ -21,21 +21,16 @@ import collections
 from collections.abc import Collection, Sequence
 
 import attrs
+import federated_language
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def to_call_dominant(
-    comp: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.ComputationBuildingBlock:
+    comp: federated_language.framework.ComputationBuildingBlock,
+) -> federated_language.framework.ComputationBuildingBlock:
   """Transforms local (non-federated) computations into call-dominant form.
 
   Args:
@@ -65,7 +60,7 @@ def to_call_dominant(
   # Top-level comp must be a lambda to ensure that we create a set of bindings
   # immediately under it, as `_build` does for all lambdas.
   global_comp = comp
-  name_generator = building_block_factory.unique_name_generator(comp)
+  name_generator = federated_language.framework.unique_name_generator(comp)
 
   class _Scope:
     """Name resolution scopes which track the creation of new value bindings."""
@@ -104,7 +99,9 @@ def to_call_dominant(
       else:
         name = next(name_generator)
         self._newly_bound_values.append((name, value))
-        reference = building_blocks.Reference(name, value.type_signature)
+        reference = federated_language.framework.Reference(
+            name, value.type_signature
+        )
         self._locals[name] = reference
         return reference
 
@@ -122,53 +119,61 @@ def to_call_dominant(
       if not self._newly_bound_values:
         return result
       else:
-        return building_blocks.Block(self._newly_bound_values, result)
+        return federated_language.framework.Block(
+            self._newly_bound_values, result
+        )
 
   def _build(comp, scope):
     """Transforms `comp` to CDF, possibly adding bindings to `scope`."""
     # The structure returned by this function is a generalized version of
     # call-dominant form. This function may result in the patterns specified in
     # the top-level function's docstring.
-    if isinstance(comp, building_blocks.Reference):
+    if isinstance(comp, federated_language.framework.Reference):
       result = scope.resolve(comp.name)
       if result is None:
         # If `comp.name` is only bound outside of `comp`, we can't resolve it.
         return comp
       return result
-    elif isinstance(comp, building_blocks.Selection):
+    elif isinstance(comp, federated_language.framework.Selection):
       source = _build(comp.source, scope)
-      if isinstance(source, building_blocks.Struct):
+      if isinstance(source, federated_language.framework.Struct):
         return source[comp.as_index()]
-      return building_blocks.Selection(source, index=comp.as_index())
-    elif isinstance(comp, building_blocks.Struct):
+      return federated_language.framework.Selection(
+          source, index=comp.as_index()
+      )
+    elif isinstance(comp, federated_language.framework.Struct):
       elements = []
       for name, value in structure.iter_elements(comp):
         value = _build(value, scope)
         elements.append((name, value))
-      return building_blocks.Struct(elements)
-    elif isinstance(comp, building_blocks.Call):
+      return federated_language.framework.Struct(elements)
+    elif isinstance(comp, federated_language.framework.Call):
       function = _build(comp.function, scope)
       argument = None if comp.argument is None else _build(comp.argument, scope)
-      if isinstance(function, building_blocks.Lambda):
+      if isinstance(function, federated_language.framework.Lambda):
         if argument is not None:
           scope = scope.new_child()
           scope.add_local(function.parameter_name, argument)
         return _build(function.result, scope)
       else:
-        return scope.create_binding(building_blocks.Call(function, argument))
-    elif isinstance(comp, building_blocks.Lambda):
+        return scope.create_binding(
+            federated_language.framework.Call(function, argument)
+        )
+    elif isinstance(comp, federated_language.framework.Lambda):
       scope = scope.new_child_with_bindings()
       if comp.parameter_name:
         scope.add_local(
             comp.parameter_name,
-            building_blocks.Reference(comp.parameter_name, comp.parameter_type),
+            federated_language.framework.Reference(
+                comp.parameter_name, comp.parameter_type
+            ),
         )
       result = _build(comp.result, scope)
       block = scope.bindings_to_block_with_result(result)
-      return building_blocks.Lambda(
+      return federated_language.framework.Lambda(
           comp.parameter_name, comp.parameter_type, block
       )
-    elif isinstance(comp, building_blocks.Block):
+    elif isinstance(comp, federated_language.framework.Block):
       scope = scope.new_child()
       for name, value in comp.locals:
         scope.add_local(name, _build(value, scope))
@@ -176,11 +181,11 @@ def to_call_dominant(
     elif isinstance(
         comp,
         (
-            building_blocks.CompiledComputation,
-            building_blocks.Data,
-            building_blocks.Intrinsic,
-            building_blocks.Literal,
-            building_blocks.Placement,
+            federated_language.framework.CompiledComputation,
+            federated_language.framework.Data,
+            federated_language.framework.Intrinsic,
+            federated_language.framework.Literal,
+            federated_language.framework.Placement,
         ),
     ):
       return comp
@@ -201,9 +206,9 @@ def to_call_dominant(
 
 
 def get_normalized_call_dominant_lambda(
-    comp: building_blocks.Lambda,
+    comp: federated_language.framework.Lambda,
     normalize_all_equal_bit: bool = True,
-) -> building_blocks.Lambda:
+) -> federated_language.framework.Lambda:
   """Creates normalized call dominant form for a lambda computation.
 
   Args:
@@ -215,7 +220,7 @@ def get_normalized_call_dominant_lambda(
     lambda computation in CDF (call-dominant form) and the result component of
     the lambda is guaranteed to be a block.
   """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(comp, federated_language.framework.Lambda)
 
   # Simplify the `comp` before transforming it to call-dominant form.
   comp, _ = tree_transformations.remove_mapped_or_applied_identity(comp)
@@ -227,14 +232,16 @@ def get_normalized_call_dominant_lambda(
 
   # CDF can potentially return blocks if there are variables not dependent on
   # the top-level parameter. We normalize these away.
-  if not isinstance(comp, building_blocks.Lambda):
-    if not isinstance(comp, building_blocks.Block):
-      raise building_blocks.UnexpectedBlockError(building_blocks.Block, comp)
-    if not isinstance(comp.result, building_blocks.Lambda):
-      raise building_blocks.UnexpectedBlockError(
-          building_blocks.Lambda, comp.result
+  if not isinstance(comp, federated_language.framework.Lambda):
+    if not isinstance(comp, federated_language.framework.Block):
+      raise federated_language.framework.UnexpectedBlockError(
+          federated_language.framework.Block, comp
       )
-    if isinstance(comp.result.result, building_blocks.Block):
+    if not isinstance(comp.result, federated_language.framework.Lambda):
+      raise federated_language.framework.UnexpectedBlockError(
+          federated_language.framework.Lambda, comp.result
+      )
+    if isinstance(comp.result.result, federated_language.framework.Block):
       additional_locals = comp.result.result.locals
       result = comp.result.result.result
     else:
@@ -244,28 +251,30 @@ def get_normalized_call_dominant_lambda(
     # shadow `comp.result.parameter_name`. However, `to_call_dominant`
     # above ensure that names are unique, as it ends in a call to
     # `uniquify_reference_names`.
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         comp.result.parameter_name,
         comp.result.parameter_type,
-        building_blocks.Block(comp.locals + additional_locals, result),
+        federated_language.framework.Block(
+            comp.locals + additional_locals, result
+        ),
     )
 
   # Simple computations with no intrinsic calls won't have a block.
   # Normalize these as well.
-  if not isinstance(comp.result, building_blocks.Block):
-    comp = building_blocks.Lambda(
+  if not isinstance(comp.result, federated_language.framework.Block):
+    comp = federated_language.framework.Lambda(
         comp.parameter_name,
         comp.parameter_type,
-        building_blocks.Block([], comp.result),
+        federated_language.framework.Block([], comp.result),
     )
 
   comp = tree_transformations.normalize_types(comp, normalize_all_equal_bit)
-  tree_analysis.check_contains_no_unbound_references(comp)
+  federated_language.framework.check_contains_no_unbound_references(comp)
 
   return comp
 
 
-_NamedBinding = tuple[str, building_blocks.Call]
+_NamedBinding = tuple[str, federated_language.framework.Call]
 
 
 @attrs.define
@@ -300,7 +309,7 @@ def _compute_intrinsic_dependencies(
     intrinsic_dependencies = set()
 
     def record_dependencies(subvalue):
-      if isinstance(subvalue, building_blocks.Reference):
+      if isinstance(subvalue, federated_language.framework.Reference):
         if subvalue.name not in intrinsic_dependencies_for_ref:
           names = [(n, v.compact_representation()) for n, v in locals_list]
           raise ValueError(
@@ -311,14 +320,14 @@ def _compute_intrinsic_dependencies(
         intrinsic_dependencies.update(  # pylint: disable=cell-var-from-loop
             intrinsic_dependencies_for_ref[subvalue.name]
         )
-      elif isinstance(subvalue, building_blocks.Lambda):
+      elif isinstance(subvalue, federated_language.framework.Lambda):
         # We treat the lambdas that appear in CDF (inside intrinsic invocations)
         # as though their parameters are independent of the rest of the
         # computation. Note that we're not careful about saving and then
         # restoring old variables here: this is okay because call-dominant form
         # guarantees unique variable names.
         intrinsic_dependencies_for_ref[subvalue.parameter_name] = set()
-      elif isinstance(subvalue, building_blocks.Block):
+      elif isinstance(subvalue, federated_language.framework.Block):
         # Since we're in CDF, the only blocks inside the bodies of arguments
         # are within lambda arguments to intrinsics. We don't need to record
         # dependencies of these since they can't rely on the results of other
@@ -326,12 +335,16 @@ def _compute_intrinsic_dependencies(
         for subvalue_local_name, _ in subvalue.locals:
           intrinsic_dependencies_for_ref[subvalue_local_name] = set()
 
-    tree_analysis.visit_preorder(local_value, record_dependencies)
+    federated_language.framework.visit_preorder(
+        local_value, record_dependencies
+    )
 
     # All intrinsic calls are guaranteed to be top-level in call-dominant form.
     if (
-        isinstance(local_value, building_blocks.Call)
-        and isinstance(local_value.function, building_blocks.Intrinsic)
+        isinstance(local_value, federated_language.framework.Call)
+        and isinstance(
+            local_value.function, federated_language.framework.Intrinsic
+        )
         and local_value.function.uri in intrinsic_uris
     ):
       if intrinsic_dependencies:
@@ -360,13 +373,13 @@ def _compute_intrinsic_dependencies(
 @attrs.define
 class _MergedIntrinsic:
   uri: str
-  args: building_blocks.ComputationBuildingBlock
-  return_type: computation_types.Type
+  args: federated_language.framework.ComputationBuildingBlock
+  return_type: federated_language.Type
   unpack_to_locals: list[str]
 
 
 def _compute_merged_intrinsics(
-    intrinsic_defaults: list[building_blocks.Call],
+    intrinsic_defaults: list[federated_language.framework.Call],
     uri_to_locals: dict[str, list[_NamedBinding]],
     name_generator,
 ) -> list[_MergedIntrinsic]:
@@ -388,10 +401,12 @@ def _compute_merged_intrinsics(
   """
   results = []
   for default_call in intrinsic_defaults:
-    if not isinstance(default_call.function, building_blocks.Intrinsic):
+    if not isinstance(
+        default_call.function, federated_language.framework.Intrinsic
+    ):
       raise ValueError(
           "Expected 'default_call.function' to be a "
-          '`building_blocks.Intrinsic`, found '
+          '`federated_language.framework.Intrinsic`, found '
           f'`{type(default_call.function)}`.'
       )
     uri = default_call.function.uri
@@ -418,8 +433,8 @@ def _compute_merged_intrinsics(
               'encountered call with all_equal value '
               f'{call.type_signature.all_equal}'  # pytype: disable=attribute-error
           )
-      return_type = computation_types.FederatedType(
-          computation_types.StructType(
+      return_type = federated_language.FederatedType(
+          federated_language.StructType(
               [(None, call.type_signature.member) for call in calls]  # pytype: disable=attribute-error
           ),
           placement=result_placement,
@@ -445,9 +460,9 @@ def _compute_merged_intrinsics(
 
 def _merge_args(
     abstract_parameter_type,
-    args: list[building_blocks.ComputationBuildingBlock],
+    args: list[federated_language.framework.ComputationBuildingBlock],
     name_generator,
-) -> building_blocks.ComputationBuildingBlock:
+) -> federated_language.framework.ComputationBuildingBlock:
   """Merges the arguments of multiple function invocations into one.
 
   Args:
@@ -460,9 +475,9 @@ def _merge_args(
   Returns:
     A building block to use as the new (merged) argument.
   """
-  if isinstance(abstract_parameter_type, computation_types.FederatedType):
-    zip_args = building_block_factory.create_federated_zip(
-        building_blocks.Struct(args)
+  if isinstance(abstract_parameter_type, federated_language.FederatedType):
+    zip_args = federated_language.framework.create_federated_zip(
+        federated_language.framework.Struct(args)
     )
     # `create_federated_zip` introduces repeated names.
     zip_args, _ = tree_transformations.uniquify_reference_names(
@@ -472,12 +487,12 @@ def _merge_args(
   if isinstance(
       abstract_parameter_type,
       (
-          computation_types.AbstractType,
-          computation_types.TensorType,
+          federated_language.AbstractType,
+          federated_language.TensorType,
       ),
   ):
-    return building_blocks.Struct([(None, arg) for arg in args])
-  if isinstance(abstract_parameter_type, computation_types.FunctionType):
+    return federated_language.framework.Struct([(None, arg) for arg in args])
+  if isinstance(abstract_parameter_type, federated_language.FunctionType):
     # For functions, we must compose them differently depending on whether the
     # abstract function (from the intrinsic definition) takes more than one
     # parameter.
@@ -498,70 +513,86 @@ def _merge_args(
     # )`
     param_name = next(name_generator)
     if isinstance(
-        abstract_parameter_type.parameter, computation_types.StructType
+        abstract_parameter_type.parameter, federated_language.StructType
     ):
       num_args = len(abstract_parameter_type.parameter)
       parameter_types = [[] for _ in range(num_args)]
       for arg in args:
         for i in range(num_args):
           parameter_types[i].append(arg.type_signature.parameter[i])  # pytype: disable=attribute-error
-      param_type = computation_types.StructType(parameter_types)
-      param_ref = building_blocks.Reference(param_name, param_type)
+      param_type = federated_language.StructType(parameter_types)
+      param_ref = federated_language.framework.Reference(param_name, param_type)
       calls = []
       for n, fn in enumerate(args):
         args_to_fn = []
         for i in range(num_args):
           args_to_fn.append(
-              building_blocks.Selection(
-                  building_blocks.Selection(param_ref, index=i), index=n
+              federated_language.framework.Selection(
+                  federated_language.framework.Selection(param_ref, index=i),
+                  index=n,
               )
           )
         calls.append(
-            building_blocks.Call(
-                fn, building_blocks.Struct([(None, arg) for arg in args_to_fn])
+            federated_language.framework.Call(
+                fn,
+                federated_language.framework.Struct(
+                    [(None, arg) for arg in args_to_fn]
+                ),
             )
         )
     else:
-      param_type = computation_types.StructType(
+      param_type = federated_language.StructType(
           [arg.type_signature.parameter for arg in args]  # pytype: disable=attribute-error
       )
-      param_ref = building_blocks.Reference(param_name, param_type)
+      param_ref = federated_language.framework.Reference(param_name, param_type)
       calls = [
-          building_blocks.Call(
-              fn, building_blocks.Selection(param_ref, index=n)
+          federated_language.framework.Call(
+              fn, federated_language.framework.Selection(param_ref, index=n)
           )
           for (n, fn) in enumerate(args)
       ]
-    return building_blocks.Lambda(
+    return federated_language.framework.Lambda(
         parameter_name=param_name,
         parameter_type=param_type,
-        result=building_blocks.Struct([(None, call) for call in calls]),
+        result=federated_language.framework.Struct(
+            [(None, call) for call in calls]
+        ),
     )
-  if isinstance(abstract_parameter_type, computation_types.StructType):
+  if isinstance(abstract_parameter_type, federated_language.StructType):
     # Bind each argument to a name so that we can reference them multiple times.
     arg_locals = []
     arg_refs = []
     for arg in args:
       arg_name = next(name_generator)
       arg_locals.append((arg_name, arg))
-      arg_refs.append(building_blocks.Reference(arg_name, arg.type_signature))
+      arg_refs.append(
+          federated_language.framework.Reference(arg_name, arg.type_signature)
+      )
     merged_args = []
     for i, _ in enumerate(abstract_parameter_type):
-      ith_args = [building_blocks.Selection(ref, index=i) for ref in arg_refs]
+      ith_args = [
+          federated_language.framework.Selection(ref, index=i)
+          for ref in arg_refs
+      ]
       merged_args.append(
           _merge_args(abstract_parameter_type[i], ith_args, name_generator)
       )
-    return building_blocks.Block(
-        arg_locals, building_blocks.Struct([(None, arg) for arg in merged_args])
+    return federated_language.framework.Block(
+        arg_locals,
+        federated_language.framework.Struct(
+            [(None, arg) for arg in merged_args]
+        ),
     )
   raise TypeError(f'Cannot merge args of type: {abstract_parameter_type}')
 
 
 # TODO: b/266565233 - Remove during MapReduceForm and BroadcastForm cleanup.
 def force_align_and_split_by_intrinsics(
-    comp: building_blocks.Lambda,
-    intrinsic_defaults: list[building_blocks.Call],
-) -> tuple[building_blocks.Lambda, building_blocks.Lambda]:
+    comp: federated_language.framework.Lambda,
+    intrinsic_defaults: list[federated_language.framework.Call],
+) -> tuple[
+    federated_language.framework.Lambda, federated_language.framework.Lambda
+]:
   """Divides `comp` into before-and-after of calls to one or more intrinsics.
 
   The input computation `comp` must have the following properties:
@@ -589,7 +620,8 @@ def force_align_and_split_by_intrinsics(
        `f(merged_arg).member = (f1(f1_arg).member, f2(f2_arg).member)`
 
   Under these conditions, (and assuming `comp` is a computation with non-`None`
-  argument), this function will return two `building_blocks.Lambda`s `before`
+  argument), this function will return two
+  `federated_language.framework.Lambda`s `before`
   and `after` such that `comp` is semantically equivalent to the following
   expression*:
 
@@ -634,8 +666,8 @@ def force_align_and_split_by_intrinsics(
   original argument to `comp`, as it may be dependent on both.
 
   Args:
-    comp: The instance of `building_blocks.Lambda` that serves as the input to
-      this transformation, as described above.
+    comp: The instance of `federated_language.framework.Lambda` that serves as
+      the input to this transformation, as described above.
     intrinsic_defaults: A list of intrinsics with which to split the
       computation, provided as a list of `Call`s to insert if no intrinsic with
       a matching URI is found. Intrinsics in this list will be merged, and
@@ -643,10 +675,11 @@ def force_align_and_split_by_intrinsics(
 
   Returns:
     A pair of the form `(before, after)`, where each of `before` and `after`
-    is a `building_blocks.ComputationBuildingBlock` instance that represents a
+    is a `federated_language.framework.ComputationBuildingBlock` instance that
+    represents a
     part of the result as specified above.
   """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(comp, federated_language.framework.Lambda)
   py_typecheck.check_type(intrinsic_defaults, list)
   comp_repr = comp.compact_representation()
 
@@ -657,14 +690,16 @@ def force_align_and_split_by_intrinsics(
 
   # CDF can potentially return blocks if there are variables not dependent on
   # the top-level parameter. We normalize these away.
-  if not isinstance(comp, building_blocks.Lambda):
-    if not isinstance(comp, building_blocks.Block):
-      raise building_blocks.UnexpectedBlockError(building_blocks.Block, comp)
-    if not isinstance(comp.result, building_blocks.Lambda):
-      raise building_blocks.UnexpectedBlockError(
-          building_blocks.Lambda, comp.result
+  if not isinstance(comp, federated_language.framework.Lambda):
+    if not isinstance(comp, federated_language.framework.Block):
+      raise federated_language.framework.UnexpectedBlockError(
+          federated_language.framework.Block, comp
       )
-    if isinstance(comp.result.result, building_blocks.Block):
+    if not isinstance(comp.result, federated_language.framework.Lambda):
+      raise federated_language.framework.UnexpectedBlockError(
+          federated_language.framework.Lambda, comp.result
+      )
+    if isinstance(comp.result.result, federated_language.framework.Block):
       additional_locals = comp.result.result.locals
       result = comp.result.result.result
     else:
@@ -674,22 +709,24 @@ def force_align_and_split_by_intrinsics(
     # shadow `comp.result.parameter_name`. However, `to_call_dominant`
     # above ensure that names are unique, as it ends in a call to
     # `uniquify_reference_names`.
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         comp.result.parameter_name,
         comp.result.parameter_type,
-        building_blocks.Block(comp.locals + additional_locals, result),
+        federated_language.framework.Block(
+            comp.locals + additional_locals, result
+        ),
     )
 
   # Simple computations with no intrinsic calls won't have a block.
   # Normalize these as well.
-  if not isinstance(comp.result, building_blocks.Block):
-    comp = building_blocks.Lambda(
+  if not isinstance(comp.result, federated_language.framework.Block):
+    comp = federated_language.framework.Lambda(
         comp.parameter_name,
         comp.parameter_type,
-        building_blocks.Block([], comp.result),
+        federated_language.framework.Block([], comp.result),
     )
 
-  name_generator = building_block_factory.unique_name_generator(comp)
+  name_generator = federated_language.framework.unique_name_generator(comp)
 
   intrinsic_uris = set(call.function.uri for call in intrinsic_defaults)
   deps = _compute_intrinsic_dependencies(
@@ -701,17 +738,15 @@ def force_align_and_split_by_intrinsics(
 
   # Note: the outputs are labeled as `{uri}_param for convenience, e.g.
   # `federated_secure_sum_param: ...`.
-  before = building_blocks.Lambda(
+  before = federated_language.framework.Lambda(
       comp.parameter_name,
       comp.parameter_type,
-      building_blocks.Block(
+      federated_language.framework.Block(
           deps.locals_not_dependent_on_intrinsics,
-          building_blocks.Struct(
-              [
-                  (f'{merged.uri}_param', merged.args)
-                  for merged in merged_intrinsics
-              ]
-          ),
+          federated_language.framework.Struct([
+              (f'{merged.uri}_param', merged.args)
+              for merged in merged_intrinsics
+          ]),
       ),
   )
 
@@ -719,39 +754,35 @@ def force_align_and_split_by_intrinsics(
   if comp.parameter_type is not None:
     # TODO: b/147499373 - If None-arguments were uniformly represented as empty
     # tuples, we would be able to avoid this (and related) ugly casing.
-    after_param_type = computation_types.StructType([
+    after_param_type = federated_language.StructType([
         ('original_arg', comp.parameter_type),
         (
             'intrinsic_results',
-            computation_types.StructType(
-                [
-                    (f'{merged.uri}_result', merged.return_type)
-                    for merged in merged_intrinsics
-                ]
-            ),
+            federated_language.StructType([
+                (f'{merged.uri}_result', merged.return_type)
+                for merged in merged_intrinsics
+            ]),
         ),
     ])
   else:
-    after_param_type = computation_types.StructType(
-        [
-            (
-                'intrinsic_results',
-                computation_types.StructType(
-                    [
-                        (f'{merged.uri}_result', merged.return_type)
-                        for merged in merged_intrinsics
-                    ]
-                ),
-            ),
-        ]
-    )
-  after_param_ref = building_blocks.Reference(
+    after_param_type = federated_language.StructType([
+        (
+            'intrinsic_results',
+            federated_language.StructType([
+                (f'{merged.uri}_result', merged.return_type)
+                for merged in merged_intrinsics
+            ]),
+        ),
+    ])
+  after_param_ref = federated_language.framework.Reference(
       after_param_name, after_param_type
   )
   if comp.parameter_type is not None:
     original_arg_bindings = [(
         comp.parameter_name,
-        building_blocks.Selection(after_param_ref, name='original_arg'),
+        federated_language.framework.Selection(
+            after_param_ref, name='original_arg'
+        ),
     )]
   else:
     original_arg_bindings = []
@@ -759,29 +790,33 @@ def force_align_and_split_by_intrinsics(
   unzip_bindings = []
   for merged in merged_intrinsics:
     if merged.unpack_to_locals:
-      intrinsic_result = building_blocks.Selection(
-          building_blocks.Selection(after_param_ref, name='intrinsic_results'),
+      intrinsic_result = federated_language.framework.Selection(
+          federated_language.framework.Selection(
+              after_param_ref, name='intrinsic_results'
+          ),
           name=f'{merged.uri}_result',
       )
       select_param_type = intrinsic_result.type_signature.member
       for i, binding_name in enumerate(merged.unpack_to_locals):
         select_param_name = next(name_generator)
-        select_param_ref = building_blocks.Reference(
+        select_param_ref = federated_language.framework.Reference(
             select_param_name, select_param_type
         )
-        selected = building_block_factory.create_federated_map_or_apply(
-            building_blocks.Lambda(
+        selected = federated_language.framework.create_federated_map_or_apply(
+            federated_language.framework.Lambda(
                 select_param_name,
                 select_param_type,
-                building_blocks.Selection(select_param_ref, index=i),
+                federated_language.framework.Selection(
+                    select_param_ref, index=i
+                ),
             ),
             intrinsic_result,
         )
         unzip_bindings.append((binding_name, selected))
-  after = building_blocks.Lambda(
+  after = federated_language.framework.Lambda(
       after_param_name,
       after_param_type,
-      building_blocks.Block(
+      federated_language.framework.Block(
           original_arg_bindings +
           # Note that we must duplicate `locals_not_dependent_on_intrinsics`
           # across both the `before` and `after` computations since both can
@@ -796,17 +831,19 @@ def force_align_and_split_by_intrinsics(
       ),
   )
   try:
-    tree_analysis.check_has_unique_names(before)
-    tree_analysis.check_has_unique_names(after)
-  except tree_analysis.NonuniqueNameError as e:
+    federated_language.framework.check_has_unique_names(before)
+    federated_language.framework.check_has_unique_names(after)
+  except federated_language.framework.NonuniqueNameError as e:
     raise ValueError(f'nonunique names in result of splitting\n{comp}') from e
   return before, after
 
 
 def _augment_lambda_with_parameter_for_unbound_references(
-    comp: building_blocks.Lambda, lambda_parameter_extension_name: str
+    comp: federated_language.framework.Lambda,
+    lambda_parameter_extension_name: str,
 ) -> tuple[
-    building_blocks.Lambda, list[building_blocks.ComputationBuildingBlock]
+    federated_language.framework.Lambda,
+    list[federated_language.framework.ComputationBuildingBlock],
 ]:
   """Resolves unbound references in `comp` by extending the input parameter.
 
@@ -846,9 +883,9 @@ def _augment_lambda_with_parameter_for_unbound_references(
       that are unsupported.
   """
 
-  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(comp, federated_language.framework.Lambda)
   py_typecheck.check_type(
-      comp.type_signature.parameter, computation_types.StructType
+      comp.type_signature.parameter, federated_language.StructType
   )
 
   comp_parameter_name = comp.parameter_name
@@ -861,8 +898,10 @@ def _augment_lambda_with_parameter_for_unbound_references(
     # "transformed" so that we skip traversal of the inner reference subtree
     # below.
     if (
-        isinstance(inner_comp, building_blocks.Selection)
-        and isinstance(inner_comp.source, building_blocks.Reference)
+        isinstance(inner_comp, federated_language.framework.Selection)
+        and isinstance(
+            inner_comp.source, federated_language.framework.Reference
+        )
         and inner_comp.source.name == comp_parameter_name
     ):
       return inner_comp, True
@@ -873,7 +912,7 @@ def _augment_lambda_with_parameter_for_unbound_references(
     # later step when we attempt to replace the input parameter with an
     # augmented one.
     if (
-        isinstance(inner_comp, building_blocks.Reference)
+        isinstance(inner_comp, federated_language.framework.Reference)
         and inner_comp.name == comp_parameter_name
     ):
       raise ValueError(
@@ -884,11 +923,13 @@ def _augment_lambda_with_parameter_for_unbound_references(
 
   # Trace the computation to ensure that the input parameter is always used via
   # a selection and never used directly.
-  transformation_utils.transform_preorder(
+  federated_language.framework.transform_preorder(
       comp, _check_input_parameter_used_via_selection
   )
 
-  unbound_refs = transformation_utils.get_map_of_unbound_references(comp)
+  unbound_refs = federated_language.framework.get_map_of_unbound_references(
+      comp
+  )
   top_level_unbound_refs = unbound_refs[comp]
 
   # Maintain a map where the keys are the computations that should be passed to
@@ -899,16 +940,16 @@ def _augment_lambda_with_parameter_for_unbound_references(
   def _is_replacement_candidate(inner_comp):
     # A replacement is needed if the subtree represents a reference to an top-
     # level unbound ref.
-    if isinstance(inner_comp, building_blocks.Reference) and unbound_refs[
-        inner_comp
-    ].issubset(top_level_unbound_refs):
+    if isinstance(
+        inner_comp, federated_language.framework.Reference
+    ) and unbound_refs[inner_comp].issubset(top_level_unbound_refs):
       return True
 
     # A replacement is also needed if the subtree represents a selection into
     # a top-level unbound ref. We trigger the replacement on selections at this
     # level so that we can pass the minimal amount of information possible
     # through the extended input parameter.
-    if isinstance(inner_comp, building_blocks.Selection):
+    if isinstance(inner_comp, federated_language.framework.Selection):
       return _is_replacement_candidate(inner_comp.source)
 
     return False
@@ -930,10 +971,12 @@ def _augment_lambda_with_parameter_for_unbound_references(
   # list of new input comps. Use a preorder transformation since it is
   # important to replace larger subtrees when possible (e.g. replacing an entire
   # selection subtree vs just replacing the selection source subtree).
-  transformation_utils.transform_preorder(comp, _compute_new_parameter_elements)
+  federated_language.framework.transform_preorder(
+      comp, _compute_new_parameter_elements
+  )
 
   # Update the comp parameter type to include the new extension.
-  new_parameter_type = computation_types.StructType(
+  new_parameter_type = federated_language.StructType(
       list(comp.type_signature.parameter.items())  # pytype: disable=attribute-error
       + [(
           lambda_parameter_extension_name,
@@ -947,9 +990,9 @@ def _augment_lambda_with_parameter_for_unbound_references(
     # selection into the list of new input comps.
     if _is_replacement_candidate(inner_comp):
       assert inner_comp in new_input_comps
-      new_comp = building_blocks.Selection(
-          building_blocks.Selection(
-              building_blocks.Reference(
+      new_comp = federated_language.framework.Selection(
+          federated_language.framework.Selection(
+              federated_language.framework.Reference(
                   comp_parameter_name, new_parameter_type
               ),
               # The input param extension will be added at the end.
@@ -962,13 +1005,13 @@ def _augment_lambda_with_parameter_for_unbound_references(
     # Replace selections into the original input parameter with selections into
     # the extended input parameter to maintain type signature correctness.
     if (
-        isinstance(inner_comp, building_blocks.Selection)
-        and isinstance(inner_comp, building_blocks.Reference)
+        isinstance(inner_comp, federated_language.framework.Selection)
+        and isinstance(inner_comp, federated_language.framework.Reference)
         and inner_comp.source.name == comp_parameter_name
     ):
       return (
-          building_blocks.Selection(
-              building_blocks.Reference(
+          federated_language.framework.Selection(
+              federated_language.framework.Reference(
                   comp_parameter_name, new_parameter_type
               ),
               # Use the same index as before.
@@ -983,10 +1026,10 @@ def _augment_lambda_with_parameter_for_unbound_references(
   # comps and also update existing selections into the original input parameter.
   # Use a preorder transformation again to ensure that the new input comps are
   # used in the correct order.
-  comp = building_blocks.Lambda(
+  comp = federated_language.framework.Lambda(
       comp.parameter_name,
       new_parameter_type,
-      transformation_utils.transform_preorder(
+      federated_language.framework.transform_preorder(
           comp.result, _rebind_unbound_references_to_new_parameter
       )[0],
   )
@@ -1001,26 +1044,33 @@ class UnavailableRequiredInputsError(ValueError):
 # Helper function to replace references with a given name with a different
 # computation.
 def _replace_references(
-    comp: building_blocks.ComputationBuildingBlock,
+    comp: federated_language.framework.ComputationBuildingBlock,
     ref_name: str,
-    replacement: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.ComputationBuildingBlock:
+    replacement: federated_language.framework.ComputationBuildingBlock,
+) -> federated_language.framework.ComputationBuildingBlock:
   def _replace(comp):
-    if isinstance(comp, building_blocks.Reference) and comp.name == ref_name:
+    if (
+        isinstance(comp, federated_language.framework.Reference)
+        and comp.name == ref_name
+    ):
       return replacement, True
     return comp, False
 
-  return transformation_utils.transform_postorder(comp, _replace)[0]
+  return federated_language.framework.transform_postorder(comp, _replace)[0]
 
 
 def divisive_force_align_and_split_by_intrinsics(
-    comp: building_blocks.Lambda,
-    intrinsic_defs_to_split: Collection[intrinsic_defs.IntrinsicDef],
+    comp: federated_language.framework.Lambda,
+    intrinsic_defs_to_split: Collection[
+        federated_language.framework.IntrinsicDef
+    ],
     before_comp_allowed_original_arg_subparameters: Sequence[Sequence[int]],
     intrinsic_comp_allowed_original_arg_subparameters: Sequence[Sequence[int]],
     after_comp_allowed_original_arg_subparameters: Sequence[Sequence[int]],
 ) -> tuple[
-    building_blocks.Lambda, building_blocks.Lambda, building_blocks.Lambda
+    federated_language.framework.Lambda,
+    federated_language.framework.Lambda,
+    federated_language.framework.Lambda,
 ]:
   """Divides `comp` into three components (before, intrinsic, after).
 
@@ -1042,7 +1092,8 @@ def divisive_force_align_and_split_by_intrinsics(
     `intrinsic_defs_to_split`.
 
   Under these conditions, this function will return three
-  `building_blocks.Lambda`s `before`, `intrinsic`, and `after` such that
+  `federated_language.framework.Lambda`s `before`, `intrinsic`, and `after` such
+  that
   `comp` is semantically equivalent to the following expression:
   ```
   (arg -> (let
@@ -1098,8 +1149,8 @@ def divisive_force_align_and_split_by_intrinsics(
   function is guaranteed to find it.
 
   Args:
-    comp: The instance of `building_blocks.Lambda` that serves as the input to
-      this transformation, as described above.
+    comp: The instance of `federated_language.framework.Lambda` that serves as
+      the input to this transformation, as described above.
     intrinsic_defs_to_split: A list of intrinsics with which to split the
       computation.
     before_comp_allowed_original_arg_subparameters: A list of paths describing
@@ -1114,8 +1165,9 @@ def divisive_force_align_and_split_by_intrinsics(
 
   Returns:
     A tuple of the form `(before, intrinsic, after)`, where each of `before`,
-    `intrinsic`, and `after` is a building_blocks.Lambda` instance with a
-    `building_blocks.Block` result.
+    `intrinsic`, and `after` is a federated_language.framework.Lambda` instance
+    with a
+    `federated_language.framework.Block` result.
 
     Details about the inputs and outputs of the three computations as well as
     the contents of the `intrinsic` comp are specified above.
@@ -1151,7 +1203,7 @@ def divisive_force_align_and_split_by_intrinsics(
   #    promised guarantees.
 
   ############################### Step 1 ######################################
-  if not isinstance(comp, building_blocks.Lambda):
+  if not isinstance(comp, federated_language.framework.Lambda):
     raise TypeError('Expected input computation to be a lambda computation.')
 
   if not comp.parameter_name or not comp.parameter_type:
@@ -1171,9 +1223,9 @@ def divisive_force_align_and_split_by_intrinsics(
   intrinsic_uris = set(
       intrinsic_def.uri for intrinsic_def in intrinsic_defs_to_split
   )
-  if not isinstance(comp.result, building_blocks.Block):
-    raise building_blocks.UnexpectedBlockError(
-        building_blocks.Block, comp.result
+  if not isinstance(comp.result, federated_language.framework.Block):
+    raise federated_language.framework.UnexpectedBlockError(
+        federated_language.framework.Block, comp.result
     )
   deps = _compute_intrinsic_dependencies(
       intrinsic_uris,
@@ -1184,18 +1236,21 @@ def divisive_force_align_and_split_by_intrinsics(
 
   ############################### Step 2 ######################################
   # Generate a preliminary intrinsic comp.
-  intrinsic_locals: list[tuple[str, building_blocks.Call]] = []
+  intrinsic_locals: list[tuple[str, federated_language.framework.Call]] = []
   for intrinsic_locals_for_uri in deps.uri_to_locals.values():
     intrinsic_locals.extend(intrinsic_locals_for_uri)
   intrinsic_results = [
-      building_blocks.Reference(local_name, local_value.type_signature)
+      federated_language.framework.Reference(
+          local_name, local_value.type_signature
+      )
       for local_name, local_value in intrinsic_locals
   ]
-  preliminary_intrinsic_comp = building_blocks.Lambda(
+  preliminary_intrinsic_comp = federated_language.framework.Lambda(
       comp.parameter_name,
       comp.parameter_type,
-      building_blocks.Block(
-          intrinsic_locals, building_blocks.Struct(intrinsic_results)
+      federated_language.framework.Block(
+          intrinsic_locals,
+          federated_language.framework.Struct(intrinsic_results),
       ),
   )
 
@@ -1225,11 +1280,13 @@ def divisive_force_align_and_split_by_intrinsics(
       len(intrinsic_comp.parameter_type)
       == len(preliminary_intrinsic_comp.parameter_type) + 1
   )
-  tree_analysis.check_contains_no_unbound_references(intrinsic_comp)
+  federated_language.framework.check_contains_no_unbound_references(
+      intrinsic_comp
+  )
 
   ############################### Step 4 ######################################
   # Generate a preliminary after comp.
-  name_generator = building_block_factory.unique_name_generator(comp)
+  name_generator = federated_language.framework.unique_name_generator(comp)
   after_param_name = next(name_generator)
   after_param_type = [
       ('original_arg', comp.parameter_type),
@@ -1240,31 +1297,37 @@ def divisive_force_align_and_split_by_intrinsics(
   ]
   original_arg_index = 0
   intrinsic_results_index = 1
-  intrinsic_result_bindings: list[tuple[str, building_blocks.Selection]] = []
+  intrinsic_result_bindings: list[
+      tuple[str, federated_language.framework.Selection]
+  ] = []
   for i, (local_name, _) in enumerate(intrinsic_locals):
     intrinsic_result_bindings.append((
         local_name,
-        building_blocks.Selection(
-            building_blocks.Selection(
-                building_blocks.Reference(after_param_name, after_param_type),
+        federated_language.framework.Selection(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference(
+                    after_param_name, after_param_type
+                ),
                 index=intrinsic_results_index,
             ),
             index=i,
         ),
     ))
-  preliminary_after_comp = building_blocks.Lambda(
+  preliminary_after_comp = federated_language.framework.Lambda(
       after_param_name,
       after_param_type,
       _replace_references(
-          building_blocks.Block(
+          federated_language.framework.Block(
               intrinsic_result_bindings
               + deps.locals_not_dependent_on_intrinsics
               + deps.locals_dependent_on_intrinsics,
               comp.result.result,
           ),
           comp.parameter_name,
-          building_blocks.Selection(
-              building_blocks.Reference(after_param_name, after_param_type),
+          federated_language.framework.Selection(
+              federated_language.framework.Reference(
+                  after_param_name, after_param_type
+              ),
               index=original_arg_index,
           ),
       ),
@@ -1299,7 +1362,7 @@ def divisive_force_align_and_split_by_intrinsics(
       preliminary_after_comp,
       after_param_name,
       {
-          (0,): building_blocks.Reference(
+          (0,): federated_language.framework.Reference(
               comp.parameter_name, comp.parameter_type
           )
       },
@@ -1313,7 +1376,9 @@ def divisive_force_align_and_split_by_intrinsics(
   )
 
   # This next version of the after comp should have no unbound references.
-  tree_analysis.check_contains_no_unbound_references(preliminary_after_comp)
+  federated_language.framework.check_contains_no_unbound_references(
+      preliminary_after_comp
+  )
 
   ############################### Step 6 ######################################
   # Generate a preliminary before comp that produces the values required by the
@@ -1322,16 +1387,21 @@ def divisive_force_align_and_split_by_intrinsics(
   before_result = [
       (
           'intrinsic_args_from_before_comp',
-          building_blocks.Struct(intrinsic_args_from_before_comp_values),
+          federated_language.framework.Struct(
+              intrinsic_args_from_before_comp_values
+          ),
       ),
-      ('intermediate_state', building_blocks.Struct(intermediate_state)),
+      (
+          'intermediate_state',
+          federated_language.framework.Struct(intermediate_state),
+      ),
   ]
-  preliminary_before_comp = building_blocks.Lambda(
+  preliminary_before_comp = federated_language.framework.Lambda(
       comp.parameter_name,
       comp.parameter_type,
-      building_blocks.Block(
+      federated_language.framework.Block(
           deps.locals_not_dependent_on_intrinsics,
-          building_blocks.Struct(before_result),
+          federated_language.framework.Struct(before_result),
       ),
   )
 
@@ -1347,7 +1417,9 @@ def divisive_force_align_and_split_by_intrinsics(
 
   # If the resulting comp is not valid (i.e. it contains no unbound
   # references), then a split is not possible and we throw an error.
-  if not tree_analysis.contains_no_unbound_references(preliminary_before_comp):
+  if not federated_language.framework.contains_no_unbound_references(
+      preliminary_before_comp
+  ):
     raise UnavailableRequiredInputsError(
         'The computation is not splittable given the allowed subparameters.'
     )
@@ -1380,10 +1452,15 @@ def divisive_force_align_and_split_by_intrinsics(
       intermediate_state_index_in_before_result
   ]
   duplicate_intermediate_state_vals = [
-      (None, building_blocks.Reference(local_name, local_value.type_signature))
+      (
+          None,
+          federated_language.framework.Reference(
+              local_name, local_value.type_signature
+          ),
+      )
       for local_name, local_value in duplicated_locals
   ]
-  extended_intermediate_state_vals = building_blocks.Struct(
+  extended_intermediate_state_vals = federated_language.framework.Struct(
       structure.to_elements(intermediate_state_vals)
       + duplicate_intermediate_state_vals
   )
@@ -1395,15 +1472,15 @@ def divisive_force_align_and_split_by_intrinsics(
   # Update the before comp to produce the result with the extended intermediate
   # state. If we have reached this stage, this latest before comp should have
   # no unbound references.
-  before_comp = building_blocks.Lambda(
+  before_comp = federated_language.framework.Lambda(
       preliminary_before_comp.parameter_name,
       preliminary_before_comp.parameter_type,
-      building_blocks.Block(
+      federated_language.framework.Block(
           preliminary_before_comp.result.locals,
-          building_blocks.Struct(before_result_elements),
+          federated_language.framework.Struct(before_result_elements),
       ),
   )
-  tree_analysis.check_contains_no_unbound_references(before_comp)
+  federated_language.framework.check_contains_no_unbound_references(before_comp)
 
   # Update the after comp parameter to represent the extended intermediate
   # state. Also restore the name associated with the intrinsic results portion
@@ -1424,13 +1501,13 @@ def divisive_force_align_and_split_by_intrinsics(
       'intermediate_state',
       [e.type_signature for e in extended_intermediate_state_vals],
   )
-  preliminary_after_comp = building_blocks.Lambda(
+  preliminary_after_comp = federated_language.framework.Lambda(
       preliminary_after_comp.parameter_name,
       after_param_type_signature,
       _replace_references(
           preliminary_after_comp.result,
           preliminary_after_comp.parameter_name,
-          building_blocks.Reference(
+          federated_language.framework.Reference(
               preliminary_after_comp.parameter_name, after_param_type_signature
           ),
       ),
@@ -1440,7 +1517,9 @@ def divisive_force_align_and_split_by_intrinsics(
   # extended intermediate state. Note when indexing into the extended
   # intermediate state that it consists of the portion constructed in step 5
   # followed by the duplicated locals portion.
-  block_locals: list[tuple[str, building_blocks.ComputationBuildingBlock]] = []
+  block_locals: list[
+      tuple[str, federated_language.framework.ComputationBuildingBlock]
+  ] = []
   duplicated_local_names = [local_name for local_name, _ in duplicated_locals]
   intermediate_state_index = (
       len(preliminary_after_comp.type_signature.parameter) - 1
@@ -1450,9 +1529,9 @@ def divisive_force_align_and_split_by_intrinsics(
     if local_name in duplicated_local_names:
       block_locals.append((
           local_name,
-          building_blocks.Selection(
-              building_blocks.Selection(
-                  building_blocks.Reference(
+          federated_language.framework.Selection(
+              federated_language.framework.Selection(
+                  federated_language.framework.Reference(
                       preliminary_after_comp.parameter_name,
                       preliminary_after_comp.parameter_type,
                   ),
@@ -1466,12 +1545,14 @@ def divisive_force_align_and_split_by_intrinsics(
       block_locals.append((local_name, local_value))
 
   # Update the after comp to use the de-duplicated block locals.
-  after_comp = building_blocks.Lambda(
+  after_comp = federated_language.framework.Lambda(
       preliminary_after_comp.parameter_name,
       preliminary_after_comp.parameter_type,
-      building_blocks.Block(block_locals, preliminary_after_comp.result.result),
+      federated_language.framework.Block(
+          block_locals, preliminary_after_comp.result.result
+      ),
   )
-  tree_analysis.check_contains_no_unbound_references(after_comp)
+  federated_language.framework.check_contains_no_unbound_references(after_comp)
 
   ############################### Step 8 ######################################
   # Normalize all of the output computations.
@@ -1490,8 +1571,10 @@ def divisive_force_align_and_split_by_intrinsics(
   # returned in the same order they are computed.
   expected_intrinsic_comp_result_names: list[str] = []
   for intrinsic_local, intrinsic_call in intrinsic_comp.result.locals:
-    assert isinstance(intrinsic_call, building_blocks.Call)
-    assert isinstance(intrinsic_call.function, building_blocks.Intrinsic)
+    assert isinstance(intrinsic_call, federated_language.framework.Call)
+    assert isinstance(
+        intrinsic_call.function, federated_language.framework.Intrinsic
+    )
     assert intrinsic_call.function.uri in intrinsic_uris
     expected_intrinsic_comp_result_names.append(intrinsic_local)
   actual_intrinsic_comp_result_names = [

@@ -18,32 +18,26 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.core.backends.mapreduce import intrinsics
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
-from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
-from tensorflow_federated.python.core.impl.federated_context import value_impl
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 
 def _create_context() -> (
-    federated_computation_context.FederatedComputationContext
+    federated_language.framework.FederatedComputationContext
 ):
-  return federated_computation_context.FederatedComputationContext(
-      context_stack_impl.context_stack
+  return federated_language.framework.FederatedComputationContext(
+      federated_language.framework.global_context_stack
   )
 
 
-def _create_fake_value(type_spec: computation_types.Type) -> value_impl.Value:
-  value = building_blocks.Reference('value', type_spec)
-  return value_impl.Value(value)
+def _create_fake_value(
+    type_spec: federated_language.Type,
+) -> federated_language.Value:
+  value = federated_language.framework.Reference('value', type_spec)
+  return federated_language.Value(value)
 
 
 class IntrinsicDefsTest(absltest.TestCase):
@@ -61,28 +55,34 @@ class CreateFederatedSecureModularSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     modulus = mock.create_autospec(
-        building_blocks.CompiledComputation, spec_set=True, instance=True
+        federated_language.framework.CompiledComputation,
+        spec_set=True,
+        instance=True,
     )
 
     with self.assertRaises(TypeError):
       intrinsics.create_federated_secure_modular_sum(None, modulus)
 
   def test_raises_type_error_with_none_modulus(self):
-    value = building_block_factory.create_federated_value(
-        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
-        placement=placements.CLIENTS,
+    value = federated_language.framework.create_federated_value(
+        federated_language.framework.Literal(
+            1, federated_language.TensorType(np.int32)
+        ),
+        placement=federated_language.CLIENTS,
     )
 
     with self.assertRaises(TypeError):
       intrinsics.create_federated_secure_modular_sum(value, None)
 
   def test_returns_federated_sum(self):
-    value = building_block_factory.create_federated_value(
-        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
-        placement=placements.CLIENTS,
+    value = federated_language.framework.create_federated_value(
+        federated_language.framework.Literal(
+            1, federated_language.TensorType(np.int32)
+        ),
+        placement=federated_language.CLIENTS,
     )
-    modulus_type = computation_types.TensorType(np.int32)
-    modulus = building_blocks.Literal(2, modulus_type)
+    modulus_type = federated_language.TensorType(np.int32)
+    modulus = federated_language.framework.Literal(2, modulus_type)
     comp = intrinsics.create_federated_secure_modular_sum(value, modulus)
     # Regex replaces compiled computations such as `comp#b03f` to ensure a
     # consistent output.
@@ -103,102 +103,116 @@ class FederatedSecureModularSumTest(parameterized.TestCase):
       (
           'value_int_clients_and_modulus_int',
           _create_fake_value(
-              computation_types.FederatedType(np.int32, placements.CLIENTS)
+              federated_language.FederatedType(
+                  np.int32, federated_language.CLIENTS
+              )
           ),
-          _create_fake_value(computation_types.TensorType(np.int32)),
+          _create_fake_value(federated_language.TensorType(np.int32)),
       ),
       (
           'value_struct_int_clients_and_modulus_int',
           _create_fake_value(
-              computation_types.FederatedType(
-                  [np.int32, np.int32, np.int32], placements.CLIENTS
+              federated_language.FederatedType(
+                  [np.int32, np.int32, np.int32], federated_language.CLIENTS
               )
           ),
-          _create_fake_value(computation_types.TensorType(np.int32)),
+          _create_fake_value(federated_language.TensorType(np.int32)),
       ),
       (
           'value_struct_int_clients_and_modulus_struct',
           _create_fake_value(
-              computation_types.FederatedType(
-                  [np.int32, np.int32, np.int32], placements.CLIENTS
+              federated_language.FederatedType(
+                  [np.int32, np.int32, np.int32], federated_language.CLIENTS
               )
           ),
           _create_fake_value(
-              computation_types.StructWithPythonType(
+              federated_language.StructWithPythonType(
                   [np.int32, np.int32, np.int32], list
               )
           ),
       ),
   )
-  @context_stack_test_utils.with_context(_create_context)
+  @federated_language.framework.with_context(_create_context)
   def test_returns_result(self, value, modulus):
     result = intrinsics.federated_secure_modular_sum(value, modulus)
 
-    expected_type = computation_types.FederatedType(
-        value.type_signature.member, placements.SERVER
+    expected_type = federated_language.FederatedType(
+        value.type_signature.member, federated_language.SERVER
     )
     self.assertEqual(result.type_signature, expected_type)
 
   @parameterized.named_parameters(
       (
           'value_int_unplaced',
-          _create_fake_value(computation_types.TensorType(np.int32)),
-          _create_fake_value(computation_types.TensorType(np.int32)),
+          _create_fake_value(federated_language.TensorType(np.int32)),
+          _create_fake_value(federated_language.TensorType(np.int32)),
       ),
       (
           'value_float_clients',
           _create_fake_value(
-              computation_types.FederatedType(np.float32, placements.CLIENTS)
+              federated_language.FederatedType(
+                  np.float32, federated_language.CLIENTS
+              )
           ),
-          _create_fake_value(computation_types.TensorType(np.int32)),
+          _create_fake_value(federated_language.TensorType(np.int32)),
       ),
       (
           'value_int_server',
           _create_fake_value(
-              computation_types.FederatedType(np.int32, placements.SERVER)
+              federated_language.FederatedType(
+                  np.int32, federated_language.SERVER
+              )
           ),
-          _create_fake_value(computation_types.TensorType(np.int32)),
+          _create_fake_value(federated_language.TensorType(np.int32)),
       ),
       (
           'modulus_int_clients',
           _create_fake_value(
-              computation_types.FederatedType(np.int32, placements.CLIENTS)
+              federated_language.FederatedType(
+                  np.int32, federated_language.CLIENTS
+              )
           ),
           _create_fake_value(
-              computation_types.FederatedType(np.int32, placements.CLIENTS)
+              federated_language.FederatedType(
+                  np.int32, federated_language.CLIENTS
+              )
           ),
       ),
       (
           'modulus_int_server',
           _create_fake_value(
-              computation_types.FederatedType(np.int32, placements.CLIENTS)
+              federated_language.FederatedType(
+                  np.int32, federated_language.CLIENTS
+              )
           ),
           _create_fake_value(
-              computation_types.FederatedType(np.int32, placements.SERVER)
+              federated_language.FederatedType(
+                  np.int32, federated_language.SERVER
+              )
           ),
       ),
       (
           'mismatched_structures',
           _create_fake_value(
-              computation_types.FederatedType(
-                  [np.int32] * 2, placements.CLIENTS
+              federated_language.FederatedType(
+                  [np.int32] * 2, federated_language.CLIENTS
               ),
           ),
-          _create_fake_value(computation_types.StructType([np.int32] * 3)),
+          _create_fake_value(federated_language.StructType([np.int32] * 3)),
       ),
   )
-  @context_stack_test_utils.with_context(_create_context)
+  @federated_language.framework.with_context(_create_context)
   def test_raises_type_error(self, value, modulus):
     with self.assertRaises(TypeError):
       intrinsics.federated_secure_modular_sum(value, modulus)
 
   def test_raises_context_error_with_no_federated_context(self):
     value = _create_fake_value(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
-    modulus = _create_fake_value(computation_types.TensorType(np.int32))
+    modulus = _create_fake_value(federated_language.TensorType(np.int32))
 
-    with self.assertRaises(context_base.ContextError):
+    with self.assertRaises(federated_language.framework.ContextError):
       intrinsics.federated_secure_modular_sum(value, modulus)
 
 

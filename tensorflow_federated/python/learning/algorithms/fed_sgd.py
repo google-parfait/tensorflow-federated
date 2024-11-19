@@ -25,6 +25,7 @@ import collections
 from collections.abc import Callable, Mapping
 from typing import Any, Optional, Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -33,10 +34,6 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import tensor_utils
@@ -169,12 +166,12 @@ def _build_fed_sgd_client_work(
         model.metric_finalizers(),
     )
   element_type = tensorflow_types.to_type(model.input_spec)
-  data_type = computation_types.SequenceType(element_type)
+  data_type = federated_language.SequenceType(element_type)
   weights_type = model_weights_lib.weights_type_from_model(model)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_value((), placements.SERVER)
+    return federated_language.federated_value((), federated_language.SERVER)
 
   @tensorflow_computation.tf_computation(weights_type, data_type)
   def client_update_computation(initial_model_weights, dataset):
@@ -183,17 +180,19 @@ def _build_fed_sgd_client_work(
     )
     return client_update(initial_model_weights, dataset)
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(weights_type, placements.CLIENTS),
-      computation_types.FederatedType(data_type, placements.CLIENTS),
+      federated_language.FederatedType(
+          weights_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(data_type, federated_language.CLIENTS),
   )
   def next_fn(state, model_weights, client_data):
-    client_result, model_outputs = intrinsics.federated_map(
+    client_result, model_outputs = federated_language.federated_map(
         client_update_computation, (model_weights, client_data)
     )
     train_metrics = metrics_aggregation_fn(model_outputs)
-    measurements = intrinsics.federated_zip(
+    measurements = federated_language.federated_zip(
         collections.OrderedDict(train=train_metrics)
     )
     return measured_process.MeasuredProcessOutput(
@@ -334,7 +333,7 @@ def _build_functional_fed_sgd_client_work(
   """
   py_typecheck.check_type(model, functional.FunctionalModel)
   element_type = tensorflow_types.to_type(model.input_spec)
-  data_type = computation_types.SequenceType(element_type)
+  data_type = federated_language.SequenceType(element_type)
 
   def ndarray_to_tensorspec(ndarray):
     return tf.TensorSpec(shape=ndarray.shape, dtype=ndarray.dtype)
@@ -347,9 +346,9 @@ def _build_functional_fed_sgd_client_work(
   )
   weights_type = tensorflow_types.to_type(weights_spec)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_value((), placements.SERVER)
+    return federated_language.federated_value((), federated_language.SERVER)
 
   @tensorflow_computation.tf_computation(weights_type, data_type)
   def client_update_computation(initial_model_weights, dataset):
@@ -358,20 +357,22 @@ def _build_functional_fed_sgd_client_work(
     )
     return client_update(initial_model_weights, dataset)
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(weights_type, placements.CLIENTS),
-      computation_types.FederatedType(data_type, placements.CLIENTS),
+      federated_language.FederatedType(
+          weights_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(data_type, federated_language.CLIENTS),
   )
   def next_fn(state, model_weights, client_data):
-    client_result, unfinalized_metrics = intrinsics.federated_map(
+    client_result, unfinalized_metrics = federated_language.federated_map(
         client_update_computation, (model_weights, client_data)
     )
     metrics_aggregation_fn = metrics_aggregator(
         model.finalize_metrics, unfinalized_metrics.type_signature.member
     )
     train_metrics = metrics_aggregation_fn(unfinalized_metrics)
-    measurements = intrinsics.federated_zip(
+    measurements = federated_language.federated_zip(
         collections.OrderedDict(train=train_metrics)
     )
     return measured_process.MeasuredProcessOutput(
@@ -495,7 +496,7 @@ def build_fed_sgd(
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   aggregator = model_aggregator.create(
-      model_update_type, computation_types.TensorType(np.float32)
+      model_update_type, federated_language.TensorType(np.float32)
   )
 
   if metrics_aggregator is None:

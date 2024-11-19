@@ -38,6 +38,7 @@ limitations under the License
 #include "absl/synchronization/mutex.h"
 #include "include/grpcpp/grpcpp.h"
 #include "include/grpcpp/support/status.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
@@ -45,7 +46,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -102,12 +102,13 @@ absl::Status BuildPlacedStructValue(const v0::Value::Struct& struct_value_pb,
 // the remote executor can track the resulting value, which is necessary to
 // later stream results during materialization.
 absl::StatusOr<v0::Value> CreateFederatedZipComputation(
-    const v0::StructType& parameter_type_pb,
-    const v0::FederatedType& result_type_pb,
-    const v0::PlacementSpec& placement_spec) {
+    const federated_language::StructType& parameter_type_pb,
+    const federated_language::FederatedType& result_type_pb,
+    const federated_language::PlacementSpec& placement_spec) {
   v0::Value intrinsic_pb;
-  v0::Computation* computation_pb = intrinsic_pb.mutable_computation();
-  v0::FunctionType* computation_type_pb =
+  federated_language::Computation* computation_pb =
+      intrinsic_pb.mutable_computation();
+  federated_language::FunctionType* computation_type_pb =
       computation_pb->mutable_type()->mutable_function();
   *computation_type_pb->mutable_parameter()->mutable_struct_() =
       parameter_type_pb;
@@ -127,19 +128,20 @@ absl::StatusOr<v0::Value> CreateFederatedZipComputation(
   return intrinsic_pb;
 }
 
-v0::Call CreateCalledFederatedMappedSelection(absl::string_view intrinsic_uri,
-                                              absl::string_view arg_ref_name,
-                                              int32_t index) {
-  v0::Call call_pb;
+federated_language::Call CreateCalledFederatedMappedSelection(
+    absl::string_view intrinsic_uri, absl::string_view arg_ref_name,
+    int32_t index) {
+  federated_language::Call call_pb;
   call_pb.mutable_function()->mutable_intrinsic()->set_uri(
       intrinsic_uri.data(), intrinsic_uri.size());
-  v0::Struct* arg_struct = call_pb.mutable_argument()->mutable_struct_();
+  federated_language::Struct* arg_struct =
+      call_pb.mutable_argument()->mutable_struct_();
 
-  v0::Lambda* local_lambda_pb =
+  federated_language::Lambda* local_lambda_pb =
       arg_struct->add_element()->mutable_value()->mutable_lambda();
   constexpr char kMapArg[] = "map_arg";
   local_lambda_pb->set_parameter_name(kMapArg);
-  v0::Selection* selection_pb =
+  federated_language::Selection* selection_pb =
       local_lambda_pb->mutable_result()->mutable_selection();
   selection_pb->mutable_source()->mutable_reference()->set_name(kMapArg);
   selection_pb->set_index(index);
@@ -173,7 +175,7 @@ v0::Call CreateCalledFederatedMappedSelection(absl::string_view intrinsic_uri,
 //     in <local_0, local_1>
 //   ))
 absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
-    const v0::FederatedType& parameter_type_pb) {
+    const federated_language::FederatedType& parameter_type_pb) {
   if (!parameter_type_pb.member().has_struct_()) {
     // We don't want to create and send RPCs for computations that don't require
     // them, make this an error condition.
@@ -182,18 +184,19 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
                      parameter_type_pb.ShortDebugString()));
   }
   v0::Value value_pb;
-  v0::FunctionType* lambda_type_pb =
+  federated_language::FunctionType* lambda_type_pb =
       value_pb.mutable_computation()->mutable_type()->mutable_function();
   *lambda_type_pb->mutable_parameter()->mutable_federated() = parameter_type_pb;
   // NOTE: the result type will be computed as we build the computation and set
   // at the end of this method.
-  v0::StructType result_type_pb;
-  v0::FederatedType federated_type_template_pb;
+  federated_language::StructType result_type_pb;
+  federated_language::FederatedType federated_type_template_pb;
   *federated_type_template_pb.mutable_placement() =
       parameter_type_pb.placement();
   federated_type_template_pb.set_all_equal(parameter_type_pb.all_equal());
 
-  v0::Lambda* lambda_pb = value_pb.mutable_computation()->mutable_lambda();
+  federated_language::Lambda* lambda_pb =
+      value_pb.mutable_computation()->mutable_lambda();
   constexpr char kFederatedStructArg[] = "federated_struct_arg";
   lambda_pb->set_parameter_name(kFederatedStructArg);
 
@@ -211,8 +214,9 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
   // A list of elements to iteratively process as the method descends into a
   // nested structure. We perform a breadth-first-traversal of the nested
   // structure.
-  std::list<std::tuple<v0::Block*, std::string, const v0::StructType*,
-                       v0::StructType*>>
+  std::list<std::tuple<federated_language::Block*, std::string,
+                       const federated_language::StructType*,
+                       federated_language::StructType*>>
       structs_to_process = {{
           lambda_pb->mutable_result()->mutable_block(),
           kFederatedStructArg,
@@ -225,14 +229,14 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
           output_struct_type_pb] = structs_to_process.front();
     structs_to_process.pop_front();
     for (int32_t i = 0; i < parent_struct_type_pb->element_size(); ++i) {
-      const v0::StructType::Element& element_type_pb =
+      const federated_language::StructType::Element& element_type_pb =
           parent_struct_type_pb->element(i);
-      v0::StructType::Element* output_element_type_pb =
+      federated_language::StructType::Element* output_element_type_pb =
           output_struct_type_pb->add_element();
       switch (element_type_pb.value().type_case()) {
-        case v0::Type::kTensor:
-        case v0::Type::kSequence: {
-          v0::Block::Local* local_pb = block_pb->add_local();
+        case federated_language::Type::kTensor:
+        case federated_language::Type::kSequence: {
+          federated_language::Block::Local* local_pb = block_pb->add_local();
           local_pb->set_name(absl::StrCat("elem_", i));
           *local_pb->mutable_value()->mutable_call() =
               CreateCalledFederatedMappedSelection(intrinsic_uri,
@@ -244,19 +248,21 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
                ->mutable_member() = element_type_pb.value();
           break;
         }
-        case v0::Type::kStruct: {
+        case federated_language::Type::kStruct: {
           // Add a local to select the nested structure, and give it a name with
           // the selection path.
           std::string nested_struct_ref_name =
               absl::StrCat("nested_struct_", i);
-          v0::Block::Local* nested_struct_local_pb = block_pb->add_local();
+          federated_language::Block::Local* nested_struct_local_pb =
+              block_pb->add_local();
           nested_struct_local_pb->set_name(nested_struct_ref_name);
           *nested_struct_local_pb->mutable_value()->mutable_call() =
               CreateCalledFederatedMappedSelection(intrinsic_uri,
                                                    parent_ref_name, i);
           // We now need to descend into this struct, add it to the list to
           // process.
-          v0::Block::Local* nested_block_pb = block_pb->add_local();
+          federated_language::Block::Local* nested_block_pb =
+              block_pb->add_local();
           nested_block_pb->set_name(absl::StrCat("elem_", i));
           structs_to_process.emplace_back(
               nested_block_pb->mutable_value()->mutable_block(),
@@ -272,8 +278,9 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
     }
     // After traversing all the elements in the current structure, gather the
     // elements from the locals that need to be part of the output structure.
-    v0::Struct* result_struct = block_pb->mutable_result()->mutable_struct_();
-    for (const v0::Block::Local& local_pb : block_pb->local()) {
+    federated_language::Struct* result_struct =
+        block_pb->mutable_result()->mutable_struct_();
+    for (const federated_language::Block::Local& local_pb : block_pb->local()) {
       // Only pickup the elements, not local selections, in the file output.
       if (absl::StartsWith(local_pb.name(), "elem_")) {
         result_struct->add_element()
@@ -382,7 +389,7 @@ class StreamingRemoteExecutor : public ExecutorBase<ValueFuture> {
 // structure and stream them back.
 class ExecutorValue {
  public:
-  ExecutorValue(v0::ValueRef value_ref, v0::Type type_pb,
+  ExecutorValue(v0::ValueRef value_ref, federated_language::Type type_pb,
                 v0::ExecutorId executor_pb,
                 std::shared_ptr<v0::ExecutorGroup::StubInterface> stub)
       : value_ref_(std::move(value_ref)),
@@ -407,11 +414,11 @@ class ExecutorValue {
   }
 
   const v0::ValueRef& Get() const { return value_ref_; }
-  const v0::Type& Type() const { return type_pb_; }
+  const federated_language::Type& Type() const { return type_pb_; }
 
  private:
   const v0::ValueRef value_ref_;
-  const v0::Type type_pb_;
+  const federated_language::Type type_pb_;
   const v0::ExecutorId executor_pb_;
   std::shared_ptr<v0::ExecutorGroup::StubInterface> stub_;
 };
@@ -424,7 +431,7 @@ absl::Status StreamingRemoteExecutor::EnsureInitialized() {
   v0::GetExecutorRequest request;
   for (auto iter = cardinalities_.begin(); iter != cardinalities_.end();
        ++iter) {
-    v0::Placement placement;
+    federated_language::Placement placement;
     placement.set_uri(iter->first);
     v0::Cardinality cardinality;
     *cardinality.mutable_placement() = placement;
@@ -455,7 +462,8 @@ StreamingRemoteExecutor::CreateExecutorFederatedValueStreaming(
   // "federated-structure-of-values" to "structure-of-federated-values" for
   // streaming across the RPC channel. At the end, a `federated_zip` intrisic
   // call will promote the values back to a `federated_structure_of_values`.
-  const v0::PlacementSpec& placement_spec = federated_pb.type().placement();
+  const federated_language::PlacementSpec& placement_spec =
+      federated_pb.type().placement();
   const bool all_equal = federated_pb.type().all_equal();
   const int32_t struct_size =
       federated_pb.type().member().struct_().element_size();
@@ -465,14 +473,15 @@ StreamingRemoteExecutor::CreateExecutorFederatedValueStreaming(
   }
   // We build up a type for the intrinsic parameter for the federated_zip
   // computation that will be called after the streaming structure.
-  v0::StructType parameter_type_pb;
+  federated_language::StructType parameter_type_pb;
   std::vector<ValueFuture> elements;
   elements.reserve(struct_size);
   v0::Value element_pb;
   for (int32_t i = 0; i < struct_size; ++i) {
     element_pb.Clear();
     v0::Value::Federated* federated_element_pb = element_pb.mutable_federated();
-    v0::FederatedType* federated_type = federated_element_pb->mutable_type();
+    federated_language::FederatedType* federated_type =
+        federated_element_pb->mutable_type();
     *federated_type->mutable_placement() = placement_spec;
     federated_type->set_all_equal(all_equal);
     // Note: ignoring the `name()` of the elements.
@@ -530,7 +539,7 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateExecutorValue(
 
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateValueRPC(
     const v0::Value& value_pb) {
-  v0::Type type_pb = TFF_TRY(InferTypeFromValue(value_pb));
+  federated_language::Type type_pb = TFF_TRY(InferTypeFromValue(value_pb));
   VLOG(5) << "CreateValueRPC: [" << type_pb.ShortDebugString() << "]";
   if (type_pb.has_function() || type_pb.ShortDebugString().empty()) {
     VLOG(5) << value_pb.Utf8DebugString();
@@ -597,8 +606,8 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateStruct(
     grpc::ClientContext context;
     std::vector<std::shared_ptr<ExecutorValue>> values =
         TFF_TRY(WaitAll(futures));
-    v0::Type result_type;
-    v0::StructType* struct_type = result_type.mutable_struct_();
+    federated_language::Type result_type;
+    federated_language::StructType* struct_type = result_type.mutable_struct_();
     for (const std::shared_ptr<ExecutorValue>& element : values) {
       v0::CreateStructRequest_Element struct_elem;
       *struct_elem.mutable_value_ref() = element->Get();
@@ -622,7 +631,7 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateSelection(
                     this_keepalive = shared_from_this()]()
                        -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
     std::shared_ptr<ExecutorValue> source_value = TFF_TRY(Wait(source));
-    const v0::Type& source_type_pb = source_value->Type();
+    const federated_language::Type& source_type_pb = source_value->Type();
     if (!source_type_pb.has_struct_()) {
       return absl::InvalidArgumentError(
           absl::StrCat("Error selecting from non-Struct value: ",
@@ -636,7 +645,7 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateSelection(
     request.set_index(index);
     grpc::Status status =
         this->stub_->CreateSelection(&context, request, &response);
-    const v0::Type element_type_pb =
+    const federated_language::Type element_type_pb =
         source_type_pb.struct_().element(index).value();
     TFF_TRY(grpc_to_absl(status));
     return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
@@ -649,11 +658,12 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
                                                   v0::Value* value_pb) {
   std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(Wait(value));
   switch (value_ref->Type().type_case()) {
-    case v0::Type::kTensor: {
+    case federated_language::Type::kTensor: {
       return MaterializeRPC(value, value_pb);
     }
-    case v0::Type::kStruct: {
-      const v0::StructType& struct_type_pb = value_ref->Type().struct_();
+    case federated_language::Type::kStruct: {
+      const federated_language::StructType& struct_type_pb =
+          value_ref->Type().struct_();
       v0::Value::Struct* struct_value_pb = value_pb->mutable_struct_();
       for (int32_t i = 0; i < struct_type_pb.element_size(); ++i) {
         ValueFuture selection = TFF_TRY(CreateSelection(value, i));
@@ -662,8 +672,9 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
       }
       return absl::OkStatus();
     }
-    case v0::Type::kFederated: {
-      const v0::Type& member_type_pb = value_ref->Type().federated().member();
+    case federated_language::Type::kFederated: {
+      const federated_language::Type& member_type_pb =
+          value_ref->Type().federated().member();
       if (!member_type_pb.has_struct_()) {
         // If not struct, nothing to stream; forward call as-is.
         return MaterializeRPC(value, value_pb);

@@ -16,13 +16,13 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_COMPUTATIONS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_COMPUTATIONS_H_
 
-#include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "federated_language/proto/computation.pb.h"
 
 namespace tensorflow_federated {
 
-inline v0::Computation IdentityComp() {
-  v0::Computation comp;
-  v0::Lambda* lambda = comp.mutable_lambda();
+inline federated_language::Computation IdentityComp() {
+  federated_language::Computation comp;
+  federated_language::Lambda* lambda = comp.mutable_lambda();
   *lambda->mutable_parameter_name() = "x";
   *lambda->mutable_result()->mutable_reference()->mutable_name() = "x";
   return comp;

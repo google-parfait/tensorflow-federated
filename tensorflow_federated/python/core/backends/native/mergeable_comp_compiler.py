@@ -13,22 +13,14 @@
 # limitations under the License.
 """A MergeableCompForm compiler for the native backend."""
 
+import federated_language
 from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 
 def _compile_to_tf(fn):
@@ -38,48 +30,51 @@ def _compile_to_tf(fn):
 
 
 def _select_output_result_and_wrap_as_noarg_tensorflow(
-    fn: building_blocks.Lambda, path: building_block_factory.Path
-) -> computation_impl.ConcreteComputation:
-  selected_and_wrapped = building_blocks.Lambda(
+    fn: federated_language.framework.Lambda,
+    path: federated_language.framework.Path,
+) -> federated_language.framework.ConcreteComputation:
+  selected_and_wrapped = federated_language.framework.Lambda(
       None,
       None,
-      building_block_factory.select_output_from_lambda(fn, path).result,
+      federated_language.framework.select_output_from_lambda(fn, path).result,
   )
   selected_and_compiled = _compile_to_tf(selected_and_wrapped)
-  return computation_impl.ConcreteComputation(
+  return federated_language.framework.ConcreteComputation(
       computation_proto=selected_and_compiled.proto,
-      context_stack=context_stack_impl.context_stack,
+      context_stack=federated_language.framework.global_context_stack,
   )
 
 
 def _select_output_result_and_wrap_as_tensorflow(
-    fn: building_blocks.Lambda, path: building_block_factory.Path
-) -> computation_impl.ConcreteComputation:
-  selected_fn = building_block_factory.select_output_from_lambda(
+    fn: federated_language.framework.Lambda,
+    path: federated_language.framework.Path,
+) -> federated_language.framework.ConcreteComputation:
+  selected_fn = federated_language.framework.select_output_from_lambda(
       fn, path
   ).result
   selected_and_compiled = _compile_to_tf(selected_fn)
-  return computation_impl.ConcreteComputation(
+  return federated_language.framework.ConcreteComputation(
       computation_proto=selected_and_compiled.proto,
-      context_stack=context_stack_impl.context_stack,
+      context_stack=federated_language.framework.global_context_stack,
   )
 
 
 def _extract_federated_aggregate_computations(
-    before_agg: building_blocks.Lambda,
+    before_agg: federated_language.framework.Lambda,
 ):
   """Extracts aggregate computations from `before_agg`.
 
   Args:
-    before_agg: a `building_blocks.ComputationBuildingBlock` representing the
-      before-aggregate portion of a computation split on `federated_aggregate`.
+    before_agg: a `federated_language.framework.ComputationBuildingBlock`
+      representing the before-aggregate portion of a computation split on
+      `federated_aggregate`.
 
   Returns:
     A tuple of four ConcreteComputations corresponding to the aggregate
     functions in `before_agg`.
   """
   federated_aggregate_arguments = (
-      building_block_factory.select_output_from_lambda(
+      federated_language.framework.select_output_from_lambda(
           before_agg, 'federated_aggregate_param'
       )
   )
@@ -104,22 +99,22 @@ def _extract_federated_aggregate_computations(
 
 
 def _ensure_lambda(
-    building_block: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.Lambda:
+    building_block: federated_language.framework.ComputationBuildingBlock,
+) -> federated_language.framework.Lambda:
   """Wraps a functional building block as a lambda if necessary."""
   if not isinstance(
-      building_block.type_signature, computation_types.FunctionType
+      building_block.type_signature, federated_language.FunctionType
   ):
     raise ValueError(
         f'Expected a `tff.FunctionType`, found {building_block.type_signature}.'
     )
-  if not isinstance(building_block, building_blocks.Lambda):
+  if not isinstance(building_block, federated_language.framework.Lambda):
     if building_block.type_signature.parameter is not None:  # pytype: disable=attribute-error
-      name_generator = building_block_factory.unique_name_generator(
+      name_generator = federated_language.framework.unique_name_generator(
           building_block
       )
       parameter_name = next(name_generator)
-      argument = building_blocks.Reference(
+      argument = federated_language.framework.Reference(
           parameter_name,
           building_block.type_signature.parameter,  # pytype: disable=attribute-error
       )
@@ -128,15 +123,15 @@ def _ensure_lambda(
       argument = None
       parameter_type = None
       parameter_name = None
-    result = building_blocks.Call(building_block, argument)
-    building_block = building_blocks.Lambda(
+    result = federated_language.framework.Call(building_block, argument)
+    building_block = federated_language.framework.Lambda(
         parameter_name, parameter_type, result
     )
   return building_block
 
 
 def compile_to_mergeable_comp_form(
-    comp: computation_impl.ConcreteComputation,
+    comp: federated_language.framework.ConcreteComputation,
 ) -> mergeable_comp_execution_context.MergeableCompForm:
   """Compiles a computation with a single aggregation to `MergeableCompForm`.
 
@@ -145,11 +140,11 @@ def compile_to_mergeable_comp_form(
   instance of `mergeable_comp_execution_context.MergeableCompForm`.
 
   Args:
-    comp: Instance of `computation_impl.ConcreteComputation` to compile. Assumed
-      to be representable as a computation with a single aggregation in its
-      body, so that for example two parallel aggregations are allowed, but
-      multiple dependent aggregations are disallowed. Additionally assumed to be
-      of functional type.
+    comp: Instance of `federated_language.framework.ConcreteComputation` to
+      compile. Assumed to be representable as a computation with a single
+      aggregation in its body, so that for example two parallel aggregations are
+      allowed, but multiple dependent aggregations are disallowed. Additionally
+      assumed to be of functional type.
 
   Returns:
     A semantically equivalent instance of
@@ -171,7 +166,7 @@ def compile_to_mergeable_comp_form(
   # We transform the body of this computation to easily preserve the top-level
   # lambda required by force-aligning.
   call_dominant_body_bb = transformations.to_call_dominant(lowered_bb.result)
-  call_dominant_bb = building_blocks.Lambda(
+  call_dominant_bb = federated_language.framework.Lambda(
       lowered_bb.parameter_name,
       lowered_bb.parameter_type,
       call_dominant_body_bb,
@@ -179,7 +174,9 @@ def compile_to_mergeable_comp_form(
 
   # This check should not throw false positives because we just ensured we are
   # in call-dominant form.
-  tree_analysis.check_aggregate_not_dependent_on_aggregate(call_dominant_bb)
+  federated_language.framework.check_aggregate_not_dependent_on_aggregate(
+      call_dominant_bb
+  )
 
   before_agg, after_agg = transformations.force_align_and_split_by_intrinsics(
       call_dominant_bb,
@@ -193,7 +190,7 @@ def compile_to_mergeable_comp_form(
   report_proto, report_type = tensorflow_computation_factory.create_identity(
       merge_fn_type.result
   )
-  identity_report = building_blocks.CompiledComputation(
+  identity_report = federated_language.framework.CompiledComputation(
       report_proto, type_signature=report_type
   )
 
@@ -201,20 +198,20 @@ def compile_to_mergeable_comp_form(
       _extract_federated_aggregate_computations(before_agg)
   )
 
-  before_agg_callable = computation_impl.ConcreteComputation(
+  before_agg_callable = federated_language.framework.ConcreteComputation(
       computation_proto=before_agg.proto,
-      context_stack=context_stack_impl.context_stack,
+      context_stack=federated_language.framework.global_context_stack,
   )
-  after_agg_callable = computation_impl.ConcreteComputation(
+  after_agg_callable = federated_language.framework.ConcreteComputation(
       computation_proto=after_agg.proto,
-      context_stack=context_stack_impl.context_stack,
+      context_stack=federated_language.framework.global_context_stack,
   )
 
   if before_agg.type_signature.parameter is not None:
     # TODO: b/147499373 - If None-arguments were uniformly represented as empty
     # tuples, we would be able to avoid this (and related) ugly casing.
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         before_agg.type_signature.parameter
     )
     def up_to_merge_computation(arg):
@@ -223,49 +220,55 @@ def compile_to_mergeable_comp_form(
       ]
       value_to_aggregate = federated_aggregate_args[0]
       zero = zero_comp()
-      return intrinsics.federated_aggregate(
+      return federated_language.federated_aggregate(
           value_to_aggregate, zero, accumulate_comp, merge_comp, identity_report
       )
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         before_agg.type_signature.parameter,
-        computation_types.FederatedType(
+        federated_language.FederatedType(
             identity_report.type_signature.result,  # pytype: disable=attribute-error
-            placements.SERVER,
+            federated_language.SERVER,
         ),
     )
     def after_merge_computation(top_level_arg, merge_result):
-      reported_result = intrinsics.federated_map(report_comp, merge_result)
+      reported_result = federated_language.federated_map(
+          report_comp, merge_result
+      )
       return after_agg_callable(top_level_arg, [reported_result])
 
   else:
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def up_to_merge_computation():
       federated_aggregate_args = before_agg_callable()[
           'federated_aggregate_param'
       ]
       value_to_aggregate = federated_aggregate_args[0]
       zero = zero_comp()
-      return intrinsics.federated_aggregate(
+      return federated_language.federated_aggregate(
           value_to_aggregate, zero, accumulate_comp, merge_comp, identity_report
       )
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
             identity_report.type_signature.result,  # pytype: disable=attribute-error
-            placements.SERVER,
+            federated_language.SERVER,
         )
     )
     def after_merge_computation(merge_result):
-      reported_result = intrinsics.federated_map(report_comp, merge_result)
+      reported_result = federated_language.federated_map(
+          report_comp, merge_result
+      )
       return after_agg_callable([[reported_result]])
 
-  annotated_type_signature = computation_types.FunctionType(
+  annotated_type_signature = federated_language.FunctionType(
       after_merge_computation.type_signature.parameter, original_return_type
   )
-  after_merge_computation = computation_impl.ConcreteComputation.with_type(
-      after_merge_computation, annotated_type_signature
+  after_merge_computation = (
+      federated_language.framework.ConcreteComputation.with_type(
+          after_merge_computation, annotated_type_signature
+      )
   )
 
   return mergeable_comp_execution_context.MergeableCompForm(

@@ -15,20 +15,19 @@
 import collections
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 
 class PartitionValueTest(absltest.TestCase):
 
   def test_partitions_value_with_no_clients_arguments(self):
     value = 0
-    type_signature = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    type_signature = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
     num_desired_subrounds = 2
     partitioned_value = (
@@ -40,9 +39,19 @@ class PartitionValueTest(absltest.TestCase):
 
   def test_wraps_value_with_empty_client_argument(self):
     value = (0, [])
-    type_signature = computation_types.StructType([
-        (None, computation_types.FederatedType(np.int32, placements.SERVER)),
-        (None, computation_types.FederatedType(np.int32, placements.CLIENTS)),
+    type_signature = federated_language.StructType([
+        (
+            None,
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+        ),
+        (
+            None,
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
+        ),
     ])
     num_desired_subrounds = 2
     partitioned_value = (
@@ -54,12 +63,17 @@ class PartitionValueTest(absltest.TestCase):
 
   def test_replicates_all_equal_clients_argument(self):
     value = (0, 1)
-    type_signature = computation_types.StructType([
-        (None, computation_types.FederatedType(np.int32, placements.SERVER)),
+    type_signature = federated_language.StructType([
         (
             None,
-            computation_types.FederatedType(
-                np.int32, placements.CLIENTS, all_equal=True
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+        ),
+        (
+            None,
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS, all_equal=True
             ),
         ),
     ])
@@ -73,8 +87,8 @@ class PartitionValueTest(absltest.TestCase):
 
   def test_partitions_client_placed_value_into_subrounds(self):
     value = list(range(10))
-    type_signature = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    type_signature = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
     num_desired_subrounds = 5
     partitioned_value = (
@@ -89,14 +103,18 @@ class PartitionValueTest(absltest.TestCase):
     value = (0, list(range(10)))
     server_placed_name = 'a'
     clients_placed_name = 'b'
-    type_signature = computation_types.StructType([
+    type_signature = federated_language.StructType([
         (
             server_placed_name,
-            computation_types.FederatedType(np.int32, placements.SERVER),
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
         ),
         (
             clients_placed_name,
-            computation_types.FederatedType(np.int32, placements.CLIENTS),
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
         ),
     ])
 
@@ -116,8 +134,8 @@ class PartitionValueTest(absltest.TestCase):
 
   def test_partitions_fewer_clients_than_rounds_into_nonempty_rounds(self):
     value = [0, 1]
-    type_signature = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    type_signature = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
     num_desired_subrounds = 5
     partitioned_value = (
@@ -149,25 +167,36 @@ class RepackageResultsTest(absltest.TestCase):
 
   def test_roundtrip_with_no_clients_argument(self):
     value = 0
-    type_signature = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    type_signature = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
     self.assertRoundTripEqual(value, type_signature, value)
 
   def test_roundtrip_with_named_struct(self):
     value = collections.OrderedDict(a=0)
-    type_signature = computation_types.StructType(
-        [('a', computation_types.FederatedType(np.int32, placements.SERVER))]
-    )
+    type_signature = federated_language.StructType([(
+        'a',
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+    )])
     self.assertRoundTripEqual(
         value, type_signature, structure.Struct([('a', 0)])
     )
 
   def test_roundtrip_with_empty_clients_argument(self):
     value = (0, [])
-    type_signature = computation_types.StructType([
-        (None, computation_types.FederatedType(np.int32, placements.SERVER)),
-        (None, computation_types.FederatedType(np.int32, placements.CLIENTS)),
+    type_signature = federated_language.StructType([
+        (
+            None,
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+        ),
+        (
+            None,
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
+        ),
     ])
     self.assertRoundTripEqual(
         value, type_signature, structure.from_container(value)
@@ -175,26 +204,31 @@ class RepackageResultsTest(absltest.TestCase):
 
   def test_roundtrip_with_nonempty_clients_argument(self):
     value = list(range(10))
-    type_signature = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    type_signature = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
     self.assertRoundTripEqual(value, type_signature, value)
 
   def test_roundtrip_with_nonempty_tuple_clients_argument(self):
     value = tuple(range(10))
-    type_signature = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    type_signature = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
     self.assertRoundTripEqual(value, type_signature, value)
 
   def test_roundtrip_with_all_equal_clients_argument(self):
     value = (0, 1)
-    type_signature = computation_types.StructType([
-        (None, computation_types.FederatedType(np.int32, placements.SERVER)),
+    type_signature = federated_language.StructType([
         (
             None,
-            computation_types.FederatedType(
-                np.int32, placements.CLIENTS, all_equal=True
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+        ),
+        (
+            None,
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS, all_equal=True
             ),
         ),
     ])

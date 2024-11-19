@@ -12,15 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Libraries for testing TensorFlow Federated."""
+import federated_language
 
-from tensorflow_federated.python.core.impl.context_stack.context_stack_test_utils import with_context
-from tensorflow_federated.python.core.impl.context_stack.context_stack_test_utils import with_contexts
-from tensorflow_federated.python.core.impl.context_stack.runtime_error_context import create_runtime_error_context
-from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_no_default_context
-from tensorflow_federated.python.core.impl.types.type_test_utils import assert_type_assignable_from
-from tensorflow_federated.python.core.impl.types.type_test_utils import assert_types_equivalent
-from tensorflow_federated.python.core.impl.types.type_test_utils import assert_types_identical
-from tensorflow_federated.python.core.test.static_assert import assert_contains_secure_aggregation
-from tensorflow_federated.python.core.test.static_assert import assert_contains_unsecure_aggregation
-from tensorflow_federated.python.core.test.static_assert import assert_not_contains_secure_aggregation
-from tensorflow_federated.python.core.test.static_assert import assert_not_contains_unsecure_aggregation
+with_context = federated_language.framework.with_context
+with_contexts = federated_language.framework.with_contexts
+create_runtime_error_context = (
+    federated_language.framework.create_runtime_error_context
+)
+set_no_default_context = federated_language.framework.set_no_default_context
+assert_type_assignable_from = (
+    federated_language.framework.assert_type_assignable_from
+)
+assert_types_equivalent = federated_language.framework.assert_types_equivalent
+assert_types_identical = federated_language.framework.assert_types_identical
+assert_contains_secure_aggregation = (
+    federated_language.framework.assert_contains_secure_aggregation
+)
+assert_contains_unsecure_aggregation = (
+    federated_language.framework.assert_contains_unsecure_aggregation
+)
+assert_not_contains_secure_aggregation = (
+    federated_language.framework.assert_not_contains_secure_aggregation
+)
+assert_not_contains_unsecure_aggregation = (
+    federated_language.framework.assert_not_contains_unsecure_aggregation
+)

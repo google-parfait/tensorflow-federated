@@ -227,7 +227,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -259,7 +259,7 @@ py_test(
     deps = [
         ":file_per_user_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -280,8 +280,7 @@ py_test(
         ":from_tensor_slices_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@federated_language//federated_language",
     ],
 )
 

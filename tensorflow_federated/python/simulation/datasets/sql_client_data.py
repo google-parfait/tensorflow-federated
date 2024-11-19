@@ -166,7 +166,7 @@ class SqlClientData(client_data.ClientData):
 
     This function will create a dataset for a given client if `client_id` is
     contained in the `client_ids` property of the `SQLClientData`. Unlike
-    `self.serializable_dataset_fn`, this method is not serializable.
+    `self.serializable_dataset_fn`, this method is not federated_language.
 
     Args:
       client_id: The string identifier for the desired client.

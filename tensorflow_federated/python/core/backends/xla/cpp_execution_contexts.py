@@ -13,12 +13,10 @@
 # limitations under the License.
 """Execution contexts for the XLA backend."""
 
+import federated_language
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.environments.jax_frontend import jax_computation
 from tensorflow_federated.python.core.environments.xla_backend import xla_executor_bindings
-from tensorflow_federated.python.core.impl.context_stack import set_default_context
-from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
-from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
@@ -55,7 +53,7 @@ def create_async_local_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       leaf_executor_fn=_create_xla_backend_execution_stack,
   )
-  return async_execution_context.AsyncExecutionContext(
+  return federated_language.framework.AsyncExecutionContext(
       executor_fn=factory,
       compiler_fn=compiler.transform_to_native_form,
       transform_args=jax_computation.transform_args,
@@ -70,7 +68,7 @@ def set_async_local_cpp_execution_context(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
   )
-  set_default_context.set_default_context(context)
+  federated_language.framework.set_default_context(context)
 
 
 def create_sync_local_cpp_execution_context(
@@ -98,7 +96,7 @@ def create_sync_local_cpp_execution_context(
   # TODO: b/255978089 - implement lowering to federated_aggregate to create JAX
   # computations instead of TensorFlow, similar to "desugar intrinsics" in the
   # native backend.
-  return sync_execution_context.SyncExecutionContext(
+  return federated_language.framework.SyncExecutionContext(
       executor_fn=factory,
       compiler_fn=compiler.transform_to_native_form,
       transform_args=jax_computation.transform_args,
@@ -113,4 +111,4 @@ def set_sync_local_cpp_execution_context(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
   )
-  set_default_context.set_default_context(context)
+  federated_language.framework.set_default_context(context)

@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -23,10 +24,6 @@ from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning.models import keras_utils
@@ -41,20 +38,20 @@ from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.learning.templates import model_delta_client_work
 
-FLOAT_TYPE = computation_types.TensorType(np.float32)
-MODEL_WEIGHTS_TYPE = computation_types.to_type(
+FLOAT_TYPE = federated_language.TensorType(np.float32)
+MODEL_WEIGHTS_TYPE = federated_language.to_type(
     model_weights_lib.ModelWeights(FLOAT_TYPE, ())
 )
-CLIENTS_SEQUENCE_FLOAT_TYPE = computation_types.FederatedType(
-    computation_types.SequenceType(FLOAT_TYPE), placements.CLIENTS
+CLIENTS_SEQUENCE_FLOAT_TYPE = federated_language.FederatedType(
+    federated_language.SequenceType(FLOAT_TYPE), federated_language.CLIENTS
 )
 
 
 def empty_at_server():
-  return intrinsics.federated_value((), placements.SERVER)
+  return federated_language.federated_value((), federated_language.SERVER)
 
 
-@federated_computation.federated_computation()
+@federated_language.federated_computation()
 def empty_init_fn():
   return empty_at_server()
 
@@ -68,13 +65,15 @@ def test_init_model_weights_fn():
 
 def test_distributor():
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       empty_init_fn.type_signature.result,
-      computation_types.FederatedType(MODEL_WEIGHTS_TYPE, placements.SERVER),
+      federated_language.FederatedType(
+          MODEL_WEIGHTS_TYPE, federated_language.SERVER
+      ),
   )
   def next_fn(state, value):
     return measured_process.MeasuredProcessOutput(
-        state, intrinsics.federated_broadcast(value), empty_at_server()
+        state, federated_language.federated_broadcast(value), empty_at_server()
     )
 
   return distributors.DistributionProcess(empty_init_fn, next_fn)
@@ -88,13 +87,15 @@ def test_client_work():
         update_weight=data.reduce(0.0, lambda x, y: x + y),
     )
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       empty_init_fn.type_signature.result,
-      computation_types.FederatedType(MODEL_WEIGHTS_TYPE, placements.CLIENTS),
+      federated_language.FederatedType(
+          MODEL_WEIGHTS_TYPE, federated_language.CLIENTS
+      ),
       CLIENTS_SEQUENCE_FLOAT_TYPE,
   )
   def next_fn(state, value, client_data):
-    result = intrinsics.federated_map(make_result, (value, client_data))
+    result = federated_language.federated_map(make_result, (value, client_data))
     return measured_process.MeasuredProcessOutput(
         state, result, empty_at_server()
     )
@@ -108,17 +109,19 @@ def test_aggregator():
 
 def test_finalizer():
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       empty_init_fn.type_signature.result,
-      computation_types.FederatedType(MODEL_WEIGHTS_TYPE, placements.SERVER),
-      computation_types.FederatedType(FLOAT_TYPE, placements.SERVER),
+      federated_language.FederatedType(
+          MODEL_WEIGHTS_TYPE, federated_language.SERVER
+      ),
+      federated_language.FederatedType(FLOAT_TYPE, federated_language.SERVER),
   )
   def next_fn(state, weights, updates):
-    new_weights = intrinsics.federated_map(
+    new_weights = federated_language.federated_map(
         tensorflow_computation.tf_computation(lambda x, y: x + y),
         (weights.trainable, updates),
     )
-    new_weights = intrinsics.federated_zip(
+    new_weights = federated_language.federated_zip(
         model_weights_lib.ModelWeights(new_weights, ())
     )
     return measured_process.MeasuredProcessOutput(
@@ -163,7 +166,7 @@ class ComposeLearningProcessTest(tf.test.TestCase):
   def test_one_arg_computation_init_raises(self):
 
     @tensorflow_computation.tf_computation(
-        computation_types.TensorType(np.float32)
+        federated_language.TensorType(np.float32)
     )
     def init_model_weights_fn(x):
       return model_weights_lib.ModelWeights(trainable=x, non_trainable=())
@@ -193,10 +196,11 @@ class ComposeLearningProcessTest(tf.test.TestCase):
       )
 
   def test_federated_init_raises(self):
-    @federated_computation.federated_computation()
+
+    @federated_language.federated_computation()
     def init_model_weights_fn():
-      return intrinsics.federated_eval(
-          test_init_model_weights_fn, placements.SERVER
+      return federated_language.federated_eval(
+          test_init_model_weights_fn, federated_language.SERVER
       )
 
     with self.assertRaisesRegex(TypeError, 'unplaced'):

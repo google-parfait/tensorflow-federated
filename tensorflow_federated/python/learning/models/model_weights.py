@@ -16,13 +16,13 @@
 from collections.abc import Callable
 from typing import Any, NamedTuple, Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.models import variable
 
 
@@ -105,8 +105,8 @@ class ModelWeights(NamedTuple):
 
 
 def weights_type_from_model(
-    model: Union[variable.VariableModel, Callable[[], variable.VariableModel]]
-) -> computation_types.StructType:
+    model: Union[variable.VariableModel, Callable[[], variable.VariableModel]],
+) -> federated_language.StructType:
   """Creates a `tff.Type` from a `tff.learning.models.VariableModel` or callable that constructs a model.
 
   Args:
@@ -125,12 +125,12 @@ def weights_type_from_model(
   py_typecheck.check_type(model, variable.VariableModel)
   model_weights = ModelWeights.from_model(model)
 
-  def _variable_to_type(x: tf.Variable) -> computation_types.Type:
+  def _variable_to_type(x: tf.Variable) -> federated_language.Type:
     return tensorflow_types.to_type((x.dtype, x.shape))
 
   model_weights_type = tf.nest.map_structure(_variable_to_type, model_weights)
   # StructWithPythonType operates recursively, and will preserve the python type
   # information of model.trainable_variables and model.non_trainable_variables.
-  return computation_types.StructWithPythonType(
+  return federated_language.StructWithPythonType(
       model_weights_type, ModelWeights
   )

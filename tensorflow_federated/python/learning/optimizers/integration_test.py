@@ -13,16 +13,13 @@
 # limitations under the License.
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.optimizers import adagrad
 from tensorflow_federated.python.learning.optimizers import adam
 from tensorflow_federated.python.learning.optimizers import rmsprop
@@ -93,26 +90,26 @@ def _run_in_federated_computation(optimizer, spec):
       lambda s: np.ones(s.shape, s.dtype.as_numpy_dtype()), spec
   )
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def init_fn():
-    return intrinsics.federated_eval(
+    return federated_language.federated_eval(
         tensorflow_computation.tf_computation(
             lambda: optimizer.initialize(spec)
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(
-          tensorflow_types.to_type(spec), placements.SERVER
+      federated_language.FederatedType(
+          tensorflow_types.to_type(spec), federated_language.SERVER
       ),
-      computation_types.FederatedType(
-          tensorflow_types.to_type(spec), placements.SERVER
+      federated_language.FederatedType(
+          tensorflow_types.to_type(spec), federated_language.SERVER
       ),
   )
   def next_fn(state, weights, gradients):
-    return intrinsics.federated_map(
+    return federated_language.federated_map(
         tensorflow_computation.tf_computation(optimizer.next),
         (state, weights, gradients),
     )

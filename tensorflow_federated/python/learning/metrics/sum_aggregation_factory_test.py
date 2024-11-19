@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -22,16 +23,13 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 
 # Convenience aliases.
-TensorType = computation_types.TensorType
+TensorType = federated_language.TensorType
 MetricRange = sum_aggregation_factory._MetricRange
 
 
@@ -52,7 +50,7 @@ def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
   finalizer_type = tf.nest.map_structure(
       _tensor_type_from_tensor_like, finalized_metrics
   )
-  return computation_types.StructWithPythonType(
+  return federated_language.StructWithPythonType(
       finalizer_type, collections.OrderedDict
   )
 
@@ -94,7 +92,7 @@ class SumThenFinalizeFactoryComputationTest(
           'scalar_metric',
           collections.OrderedDict(num_examples=tf.function(func=lambda x: x)),
           collections.OrderedDict(num_examples=1.0),
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [('num_examples', np.float32)], collections.OrderedDict
           ),
       ),
@@ -102,7 +100,7 @@ class SumThenFinalizeFactoryComputationTest(
           'non_scalar_metric',
           collections.OrderedDict(loss=_tf_mean),
           collections.OrderedDict(loss=[2.0, 1.0]),
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [('loss', [np.float32, np.float32])], collections.OrderedDict
           ),
       ),
@@ -112,7 +110,7 @@ class SumThenFinalizeFactoryComputationTest(
               lambda x: collections.OrderedDict(mean_loss=_tf_mean(x['loss']))
           ),
           collections.OrderedDict(loss=[1.0, 2.0]),
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [('loss', [np.float32, np.float32])], collections.OrderedDict
           ),
       ),
@@ -132,10 +130,10 @@ class SumThenFinalizeFactoryComputationTest(
     process = aggregate_factory.create(local_unfinalized_metrics_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    expected_state_type = computation_types.FederatedType(
-        ((), local_unfinalized_metrics_type), placements.SERVER
+    expected_state_type = federated_language.FederatedType(
+        ((), local_unfinalized_metrics_type), federated_language.SERVER
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -147,15 +145,18 @@ class SumThenFinalizeFactoryComputationTest(
     finalized_metrics_type = _get_finalized_metrics_type(
         metric_finalizers, unfinalized_metrics
     )
-    result_value_type = computation_types.FederatedType(
-        (finalized_metrics_type, finalized_metrics_type), placements.SERVER
+    result_value_type = federated_language.FederatedType(
+        (finalized_metrics_type, finalized_metrics_type),
+        federated_language.SERVER,
     )
-    measurements_type = computation_types.FederatedType((), placements.SERVER)
-    expected_next_type = computation_types.FunctionType(
+    measurements_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            unfinalized_metrics=computation_types.FederatedType(
-                local_unfinalized_metrics_type, placements.CLIENTS
+            unfinalized_metrics=federated_language.FederatedType(
+                local_unfinalized_metrics_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
@@ -200,13 +201,13 @@ class SumThenFinalizeFactoryComputationTest(
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         [
             ('num_examples', np.int32),
             ('loss', [np.float32, np.float32]),
             (
                 'custom_sum',
-                [np.float32, computation_types.TensorType(np.float32, [2])],
+                [np.float32, federated_language.TensorType(np.float32, [2])],
             ),
         ],
         collections.OrderedDict,
@@ -222,14 +223,14 @@ class SumThenFinalizeFactoryComputationTest(
     secure_summation_process = secure_summation_factory.create(
         local_unfinalized_metrics_type
     )
-    expected_state_type = computation_types.FederatedType(
+    expected_state_type = federated_language.FederatedType(
         (
             secure_summation_process.initialize.type_signature.result.member,
             local_unfinalized_metrics_type,
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -241,18 +242,19 @@ class SumThenFinalizeFactoryComputationTest(
     finalized_metrics_type = _get_finalized_metrics_type(
         metric_finalizers, local_unfinalized_metrics
     )
-    result_value_type = computation_types.FederatedType(
-        (finalized_metrics_type, finalized_metrics_type), placements.SERVER
+    result_value_type = federated_language.FederatedType(
+        (finalized_metrics_type, finalized_metrics_type),
+        federated_language.SERVER,
     )
-    measurements_type = computation_types.FederatedType(
+    measurements_type = federated_language.FederatedType(
         secure_summation_process.next.type_signature.result.measurements.member,
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            unfinalized_metrics=computation_types.FederatedType(
-                local_unfinalized_metrics_type, placements.CLIENTS
+            unfinalized_metrics=federated_language.FederatedType(
+                local_unfinalized_metrics_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
@@ -262,7 +264,9 @@ class SumThenFinalizeFactoryComputationTest(
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        process.next
+    )
 
   @parameterized.named_parameters(
       ('float', 1.0),
@@ -278,10 +282,12 @@ class SumThenFinalizeFactoryComputationTest(
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(np.float32, placements.SERVER),
+          federated_language.FederatedType(
+              np.float32, federated_language.SERVER
+          ),
       ),
-      ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(np.float32)),
+      ('function_type', federated_language.FunctionType(None, ())),
+      ('sequence_type', federated_language.SequenceType(np.float32)),
   )
   def test_incorrect_unfinalized_metrics_type_raises(
       self, bad_unfinalized_metrics_type
@@ -304,10 +310,10 @@ class SumThenFinalizeFactoryComputationTest(
     aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers
     )
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         collections.OrderedDict(
-            x=computation_types.TensorType(shape=[None, 2], dtype=np.float32),
-            y=computation_types.TensorType(shape=[None, 1], dtype=np.float32),
+            x=federated_language.TensorType(shape=[None, 2], dtype=np.float32),
+            y=federated_language.TensorType(shape=[None, 1], dtype=np.float32),
         ),
         container_type=collections.OrderedDict,
     )
@@ -320,7 +326,7 @@ class SumThenFinalizeFactoryComputationTest(
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x)
     )
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         [('num_examples', np.float32)], collections.OrderedDict
     )
     initial_unfinalized_metrics = collections.OrderedDict(num_examples=[1.0])
@@ -353,13 +359,13 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
             np.array([1.0, 1.0], np.float32),
         ],
     )
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         [
             ('num_examples', np.float32),
             ('loss', [np.float32, np.float32]),
             (
                 'custom_sum',
-                [np.float32, computation_types.TensorType(np.float32, [2])],
+                [np.float32, federated_language.TensorType(np.float32, [2])],
             ),
         ],
         collections.OrderedDict,
@@ -417,7 +423,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1.0, loss=[2.0, 1.0]
     )
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         [
             ('num_examples', np.float32),
             ('loss', [np.float32, np.float32]),
@@ -472,13 +478,13 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
             np.array([1.0, 1.0], np.float32),
         ],
     )
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         [
             ('num_examples', np.int32),
             ('loss', [np.float32, np.float32]),
             (
                 'custom_sum',
-                [np.float32, computation_types.TensorType(np.float32, [2])],
+                [np.float32, federated_language.TensorType(np.float32, [2])],
             ),
         ],
         collections.OrderedDict,
@@ -512,7 +518,9 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
 
     client_data = [local_unfinalized_metrics, local_unfinalized_metrics]
     output = process.next(state, client_data)
-    static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        process.next
+    )
 
     _, unfinalized_metrics_accumulators = output.state
     # Inital clippling bounds for float values are [-100.0, 100.0], metric
@@ -580,19 +588,21 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
             np.array([1.0, 1.0], np.float32),
         ],
     )
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         [
             ('num_examples', np.int32),
             ('loss', [np.float32, np.float32]),
             (
                 'custom_sum',
-                [np.float32, computation_types.TensorType(np.float32, [2])],
+                [np.float32, federated_language.TensorType(np.float32, [2])],
             ),
         ],
         collections.OrderedDict,
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
-    static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        process.next
+    )
 
     state = process.initialize()
 
@@ -656,13 +666,13 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
             np.array([1.0, 1.0], np.float32),
         ],
     )
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         [
             ('num_examples', np.int32),
             ('loss', [np.float32, np.float32]),
             (
                 'custom_sum',
-                [np.float32, computation_types.TensorType(np.float32, [2])],
+                [np.float32, federated_language.TensorType(np.float32, [2])],
             ),
         ],
         collections.OrderedDict,
@@ -678,7 +688,9 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         metric_value_ranges
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
-    static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        process.next
+    )
 
     state = process.initialize()
     custom_float_factory_key = sum_aggregation_factory.create_factory_key(
@@ -755,10 +767,12 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(np.float32, placements.SERVER),
+          federated_language.FederatedType(
+              np.float32, federated_language.SERVER
+          ),
       ),
-      ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(np.float32)),
+      ('function_type', federated_language.FunctionType(None, ())),
+      ('sequence_type', federated_language.SequenceType(np.float32)),
   )
   def test_incorrect_unfinalized_metrics_type_raises(
       self, bad_unfinalized_metrics_type
@@ -770,7 +784,7 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
       secure_sum_factory.create(bad_unfinalized_metrics_type)
 
   def test_user_value_ranges_fails_invalid_dtype(self):
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         [
             ('custom_sum', [np.str_]),
         ],
@@ -781,7 +795,7 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
       secure_sum_factory.create(local_unfinalized_metrics_type)
 
   def test_user_value_ranges_fails_not_2_tuple(self):
-    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+    local_unfinalized_metrics_type = federated_language.StructWithPythonType(
         [('accuracy', [np.float32, np.float32])],
         collections.OrderedDict,
     )
@@ -816,12 +830,12 @@ class CreateDefaultSecureSumQuantizationRangesTest(
       ('int64', TensorType(np.int64, [3]), _DEFAULT_INT_RANGE),
       (
           '<int64,float32>',
-          computation_types.to_type([np.int64, np.float32]),
+          federated_language.to_type([np.int64, np.float32]),
           [_DEFAULT_INT_RANGE, _DEFAULT_AUTO_TUNED_FLOAT_RANGE],
       ),
       (
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
-          computation_types.to_type(
+          federated_language.to_type(
               collections.OrderedDict(
                   a=np.int64,
                   b=collections.OrderedDict(
@@ -859,12 +873,12 @@ class CreateDefaultSecureSumQuantizationRangesTest(
       ('int64', TensorType(np.int64, [3]), _DEFAULT_INT_RANGE),
       (
           '<int64,float32>',
-          computation_types.to_type([np.int64, np.float32]),
+          federated_language.to_type([np.int64, np.float32]),
           [_DEFAULT_INT_RANGE, _DEFAULT_FIXED_FLOAT_RANGE],
       ),
       (
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
-          computation_types.to_type(
+          federated_language.to_type(
               collections.OrderedDict(
                   a=np.int64,
                   b=collections.OrderedDict(
@@ -915,14 +929,14 @@ class CreateDefaultSecureSumQuantizationRangesTest(
       ),
       (
           '<int64,float32>',
-          computation_types.to_type([np.int64, np.float32]),
+          federated_language.to_type([np.int64, np.float32]),
           1,
           5,
           [(1, 5), _DEFAULT_AUTO_TUNED_FLOAT_RANGE],
       ),
       (
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
-          computation_types.to_type(
+          federated_language.to_type(
               collections.OrderedDict(
                   a=np.int64,
                   b=collections.OrderedDict(
@@ -974,14 +988,14 @@ class CreateDefaultSecureSumQuantizationRangesTest(
       ),
       (
           '<int64,float32>',
-          computation_types.to_type([np.int64, np.float32]),
+          federated_language.to_type([np.int64, np.float32]),
           1,
           5,
           [(1, 5), (1.0, 5.0)],
       ),
       (
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
-          computation_types.to_type(
+          federated_language.to_type(
               collections.OrderedDict(
                   a=np.int64,
                   b=collections.OrderedDict(

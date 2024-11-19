@@ -27,7 +27,7 @@ py_library(
 py_library(
     name = "async_utils",
     srcs = ["async_utils.py"],
-    deps = [":tracing"],
+    deps = ["@federated_language//federated_language"],
 )
 
 py_library(
@@ -80,47 +80,7 @@ py_test(
 )
 
 py_library(
-    name = "retrying",
-    srcs = ["retrying.py"],
-    deps = [
-        ":py_typecheck",
-    ],
-)
-
-py_test(
-    name = "retrying_test",
-    size = "small",
-    srcs = ["retrying_test.py"],
-    deps = [":retrying"],
-)
-
-py_library(
-    name = "serializable",
-    srcs = ["serializable.py"],
-)
-
-py_library(
     name = "structure",
     srcs = ["structure.py"],
-    deps = [":py_typecheck"],
-)
-
-py_test(
-    name = "structure_test",
-    size = "small",
-    srcs = ["structure_test.py"],
-    deps = [":structure"],
-)
-
-py_library(
-    name = "tracing",
-    srcs = ["tracing.py"],
-    deps = [":py_typecheck"],
-)
-
-py_test(
-    name = "tracing_test",
-    size = "small",
-    srcs = ["tracing_test.py"],
-    deps = [":tracing"],
+    deps = ["@federated_language//federated_language/common_libs:structure"],
 )

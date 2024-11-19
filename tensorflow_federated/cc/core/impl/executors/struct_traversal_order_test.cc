@@ -33,7 +33,7 @@ using ::testing::HasSubstr;
 
 TEST(TFNestTraversalOrderFromStructTest,
      UnnamedStructureReturnsIterationOrder) {
-  v0::Type struct_type;
+  federated_language::Type struct_type;
   struct_type.mutable_struct_()->mutable_element()->Add();
   struct_type.mutable_struct_()->mutable_element()->Add();
   std::vector<uint32_t> expected_order = {0, 1};
@@ -44,7 +44,7 @@ TEST(TFNestTraversalOrderFromStructTest,
 }
 
 TEST(TFNestTraversalOrderFromStructTest, NamedStructureReturnsKeySortedOrder) {
-  v0::Type struct_type;
+  federated_language::Type struct_type;
   *struct_type.mutable_struct_()->mutable_element()->Add()->mutable_name() =
       "b";
   *struct_type.mutable_struct_()->mutable_element()->Add()->mutable_name() =
@@ -57,7 +57,7 @@ TEST(TFNestTraversalOrderFromStructTest, NamedStructureReturnsKeySortedOrder) {
 }
 
 TEST(TFNestTraversalOrderFromStructTest, PartiallyNamedStructureErrs) {
-  v0::Type struct_type;
+  federated_language::Type struct_type;
   *struct_type.mutable_struct_()->mutable_element()->Add()->mutable_name() =
       "a";
   struct_type.mutable_struct_()->mutable_element()->Add();

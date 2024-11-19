@@ -16,33 +16,29 @@
 from collections.abc import Callable, Sequence
 from typing import Optional, Union
 
+import federated_language
 import jax
 import numpy as np
 import tree
 
 from tensorflow_federated.python.core.environments.jax_frontend import jax_serialization
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.computation import computation_wrapper
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def _contains_dtype(
-    type_spec: computation_types.Type,
+    type_spec: federated_language.Type,
     dtype: Union[type[np.generic], Sequence[type[np.generic]]],
 ) -> bool:
   """Returns `True` if `type_spec` contains the `dtype`."""
   if not isinstance(dtype, Sequence):
     dtype = [dtype]
 
-  def predicate(type_spec: computation_types.Type) -> bool:
+  def predicate(type_spec: federated_language.Type) -> bool:
     return (
-        isinstance(type_spec, computation_types.TensorType)
+        isinstance(type_spec, federated_language.TensorType)
         and type_spec.dtype.type in dtype
     )
 
-  return type_analysis.contains(type_spec, predicate)
+  return federated_language.framework.type_contains(type_spec, predicate)
 
 
 def _to_numpy(value: object) -> object:
@@ -70,26 +66,28 @@ def transform_result(result: object) -> object:
 def _jax_wrapper_fn(
     fn: Callable[..., object],
     parameter_type: Optional[
-        Union[computation_types.StructType, computation_types.TensorType]
+        Union[federated_language.StructType, federated_language.TensorType]
     ],
     unpack: Optional[bool],
     name: Optional[str] = None,
     **kwargs,
-) -> computation_impl.ConcreteComputation:
+) -> federated_language.framework.ConcreteComputation:
   """Serializes a Python function containing JAX code as a TFF computation.
 
   Args:
     fn: The Python function containing JAX code to be serialized as a
       computation containing XLA.
-    parameter_type: An instance of `computation_types.Type` that represents the
+    parameter_type: An instance of `federated_language.Type` that represents the
       TFF type of the computation parameter, or `None` if there's none.
-    unpack: See `unpack` in `function_utils.wrap_as_zero_or_one_arg_callable`.
+    unpack: See `unpack` in
+      `federated_language.framework.wrap_as_zero_or_one_arg_callable`.
     name: The name for the constructed computation (currently ignored).
     **kwargs: Unused currently. A placeholder for passing Jax strategy specific
       parameters.
 
   Returns:
-    An instance of `computation_impl.ConcreteComputation` with the constructed
+    An instance of `federated_language.framework.ConcreteComputation` with the
+    constructed
     computation.
   """
   del unpack, name, kwargs  # Unused.
@@ -111,18 +109,20 @@ def _jax_wrapper_fn(
           f' for more information.\nFound: {parameter_type}'
       )
 
-  context_stack = context_stack_impl.context_stack
+  context_stack = federated_language.framework.global_context_stack
   comp_pb, extra_type_spec = jax_serialization.serialize_jax_computation(
       fn, parameter_type, context_stack
   )
-  return computation_impl.ConcreteComputation(
+  return federated_language.framework.ConcreteComputation(
       computation_proto=comp_pb,
       context_stack=context_stack,
       annotated_type=extra_type_spec,
   )
 
 
-jax_computation = computation_wrapper.ComputationWrapper(_jax_wrapper_fn)
+jax_computation = federated_language.framework.ComputationWrapper(
+    _jax_wrapper_fn
+)
 jax_computation.__doc__ = """Decorates/wraps Python functions containing JAX code as TFF computations.
 
   This wrapper can be used in a similar manner to `tff.tensorflow.computation`,

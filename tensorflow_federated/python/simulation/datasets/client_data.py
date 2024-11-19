@@ -18,12 +18,12 @@ from collections.abc import Callable, Iterable, Sequence
 from typing import Any, Optional, Union
 
 from absl import logging
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_base
 
 
 class IncompatiblePreprocessFnError(TypeError):
@@ -134,7 +134,7 @@ class ClientData(metaclass=abc.ABCMeta):
 
     This function will create a dataset for a given client, given that
     `client_id` is contained in the `client_ids` property of the `ClientData`.
-    Unlike `create_dataset`, this method need not be serializable.
+    Unlike `create_dataset`, this method need not be federated_language.
 
     Args:
       client_id: The string client_id for the desired client.
@@ -253,7 +253,7 @@ class ClientData(metaclass=abc.ABCMeta):
     Raises:
       IncompatiblePreprocessFnError: If `preprocess_fn` is a `tff.Computation`.
     """
-    if isinstance(preprocess_fn, computation_base.Computation):
+    if isinstance(preprocess_fn, federated_language.framework.Computation):
       raise IncompatiblePreprocessFnError()
     return PreprocessClientData(self, preprocess_fn)
 
@@ -282,7 +282,9 @@ class ClientData(metaclass=abc.ABCMeta):
     Returns:
       A `ClientData` object.
     """
-    if isinstance(serializable_dataset_fn, computation_base.Computation):
+    if isinstance(
+        serializable_dataset_fn, federated_language.framework.Computation
+    ):
       raise TypeError(
           'The input serializable_dataset_fn cannot be a tff.Computation, as it'
           ' must be serializable within the context of a tf.function.'

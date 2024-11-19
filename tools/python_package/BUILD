@@ -36,12 +36,9 @@ sh_binary(
         "//tensorflow_federated/python/core/environments/xla_backend",
         "//tensorflow_federated/python/core/impl",
         "//tensorflow_federated/python/core/impl/compiler",
-        "//tensorflow_federated/python/core/impl/computation",
-        "//tensorflow_federated/python/core/impl/context_stack",
         "//tensorflow_federated/python/core/impl/execution_contexts",
         "//tensorflow_federated/python/core/impl/executor_stacks",
         "//tensorflow_federated/python/core/impl/executors",
-        "//tensorflow_federated/python/core/impl/federated_context",
     ],
 )
 

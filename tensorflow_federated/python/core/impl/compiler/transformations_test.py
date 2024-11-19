@@ -15,30 +15,22 @@
 from unittest import mock
 
 from absl.testing import absltest
+import federated_language
+from federated_language.proto import computation_pb2
 import numpy as np
 
-from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
-from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class ToCallDominantTest(absltest.TestCase):
 
   def assert_compact_representations_equal(
       self,
-      actual: building_blocks.ComputationBuildingBlock,
-      expected: building_blocks.ComputationBuildingBlock,
+      actual: federated_language.framework.ComputationBuildingBlock,
+      expected: federated_language.framework.ComputationBuildingBlock,
   ):
     """Asserts that two building blocks have the same compact representation."""
     self.assertEqual(
@@ -46,12 +38,16 @@ class ToCallDominantTest(absltest.TestCase):
     )
 
   def test_inlines_references(self):
-    int_type = computation_types.TensorType(np.int32)
-    int_ref = lambda name: building_blocks.Reference(name, int_type)
-    int_fn = lambda name, result: building_blocks.Lambda(name, int_type, result)
+    int_type = federated_language.TensorType(np.int32)
+    int_ref = lambda name: federated_language.framework.Reference(
+        name, int_type
+    )
+    int_fn = lambda name, result: federated_language.framework.Lambda(
+        name, int_type, result
+    )
     before = int_fn(
         'x',
-        building_blocks.Block(
+        federated_language.framework.Block(
             [
                 ('y', int_ref('x')),
                 ('z', int_ref('y')),
@@ -64,37 +60,39 @@ class ToCallDominantTest(absltest.TestCase):
     self.assert_compact_representations_equal(after, expected)
 
   def test_inlines_selections(self):
-    int_type = computation_types.TensorType(np.int32)
-    structed = computation_types.StructType([int_type])
-    double = computation_types.StructType([structed])
-    before = building_blocks.Lambda(
+    int_type = federated_language.TensorType(np.int32)
+    structed = federated_language.StructType([int_type])
+    double = federated_language.StructType([structed])
+    before = federated_language.framework.Lambda(
         'x',
         double,
-        building_blocks.Block(
+        federated_language.framework.Block(
             [
                 (
                     'y',
-                    building_blocks.Selection(
-                        building_blocks.Reference('x', double), index=0
+                    federated_language.framework.Selection(
+                        federated_language.framework.Reference('x', double),
+                        index=0,
                     ),
                 ),
                 (
                     'z',
-                    building_blocks.Selection(
-                        building_blocks.Reference('y', structed), index=0
+                    federated_language.framework.Selection(
+                        federated_language.framework.Reference('y', structed),
+                        index=0,
                     ),
                 ),
             ],
-            building_blocks.Reference('z', int_type),
+            federated_language.framework.Reference('z', int_type),
         ),
     )
     after = transformations.to_call_dominant(before)
-    expected = building_blocks.Lambda(
+    expected = federated_language.framework.Lambda(
         'x',
         double,
-        building_blocks.Selection(
-            building_blocks.Selection(
-                building_blocks.Reference('x', double), index=0
+        federated_language.framework.Selection(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('x', double), index=0
             ),
             index=0,
         ),
@@ -102,122 +100,137 @@ class ToCallDominantTest(absltest.TestCase):
     self.assert_compact_representations_equal(after, expected)
 
   def test_inlines_structs(self):
-    int_type = computation_types.TensorType(np.int32)
-    structed = computation_types.StructType([int_type])
-    double = computation_types.StructType([structed])
-    before = building_blocks.Lambda(
+    int_type = federated_language.TensorType(np.int32)
+    structed = federated_language.StructType([int_type])
+    double = federated_language.StructType([structed])
+    before = federated_language.framework.Lambda(
         'x',
         int_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             [
                 (
                     'y',
-                    building_blocks.Struct(
-                        [building_blocks.Reference('x', int_type)]
+                    federated_language.framework.Struct(
+                        [federated_language.framework.Reference('x', int_type)]
                     ),
                 ),
                 (
                     'z',
-                    building_blocks.Struct(
-                        [building_blocks.Reference('y', structed)]
+                    federated_language.framework.Struct(
+                        [federated_language.framework.Reference('y', structed)]
                     ),
                 ),
             ],
-            building_blocks.Reference('z', double),
+            federated_language.framework.Reference('z', double),
         ),
     )
     after = transformations.to_call_dominant(before)
-    expected = building_blocks.Lambda(
+    expected = federated_language.framework.Lambda(
         'x',
         int_type,
-        building_blocks.Struct(
-            [building_blocks.Struct([building_blocks.Reference('x', int_type)])]
-        ),
+        federated_language.framework.Struct([
+            federated_language.framework.Struct(
+                [federated_language.framework.Reference('x', int_type)]
+            )
+        ]),
     )
     self.assert_compact_representations_equal(after, expected)
 
   def test_inlines_selection_from_struct(self):
-    int_type = computation_types.TensorType(np.int32)
-    before = building_blocks.Lambda(
+    int_type = federated_language.TensorType(np.int32)
+    before = federated_language.framework.Lambda(
         'x',
         int_type,
-        building_blocks.Selection(
-            building_blocks.Struct([building_blocks.Reference('x', int_type)]),
+        federated_language.framework.Selection(
+            federated_language.framework.Struct(
+                [federated_language.framework.Reference('x', int_type)]
+            ),
             index=0,
         ),
     )
     after = transformations.to_call_dominant(before)
-    expected = building_blocks.Lambda(
-        'x', int_type, building_blocks.Reference('x', int_type)
+    expected = federated_language.framework.Lambda(
+        'x', int_type, federated_language.framework.Reference('x', int_type)
     )
     self.assert_compact_representations_equal(after, expected)
 
   def test_creates_binding_for_each_call(self):
-    int_type = computation_types.TensorType(np.int32)
-    int_to_int_type = computation_types.FunctionType(int_type, int_type)
+    int_type = federated_language.TensorType(np.int32)
+    int_to_int_type = federated_language.FunctionType(int_type, int_type)
     any_proto = building_block_test_utils.create_any_proto_from_array(
         np.array([1, 2, 3])
     )
-    int_to_int_fn = building_blocks.Data(any_proto, int_to_int_type)
-    before = building_blocks.Lambda(
+    int_to_int_fn = federated_language.framework.Data(
+        any_proto, int_to_int_type
+    )
+    before = federated_language.framework.Lambda(
         'x',
         int_type,
-        building_blocks.Call(
+        federated_language.framework.Call(
             int_to_int_fn,
-            building_blocks.Call(
-                int_to_int_fn, building_blocks.Reference('x', int_type)
+            federated_language.framework.Call(
+                int_to_int_fn,
+                federated_language.framework.Reference('x', int_type),
             ),
         ),
     )
     after = transformations.to_call_dominant(before)
-    expected = building_blocks.Lambda(
+    expected = federated_language.framework.Lambda(
         'x',
         int_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             [
                 (
                     '_var1',
-                    building_blocks.Call(
-                        int_to_int_fn, building_blocks.Reference('x', int_type)
+                    federated_language.framework.Call(
+                        int_to_int_fn,
+                        federated_language.framework.Reference('x', int_type),
                     ),
                 ),
                 (
                     '_var2',
-                    building_blocks.Call(
+                    federated_language.framework.Call(
                         int_to_int_fn,
-                        building_blocks.Reference('_var1', int_type),
+                        federated_language.framework.Reference(
+                            '_var1', int_type
+                        ),
                     ),
                 ),
             ],
-            building_blocks.Reference('_var2', int_type),
+            federated_language.framework.Reference('_var2', int_type),
         ),
     )
     self.assert_compact_representations_equal(after, expected)
 
   def test_evaluates_called_lambdas(self):
-    int_type = computation_types.TensorType(np.int32)
-    int_to_int_type = computation_types.FunctionType(int_type, int_type)
-    int_thunk_type = computation_types.FunctionType(None, int_type)
+    int_type = federated_language.TensorType(np.int32)
+    int_to_int_type = federated_language.FunctionType(int_type, int_type)
+    int_thunk_type = federated_language.FunctionType(None, int_type)
     any_proto = building_block_test_utils.create_any_proto_from_array(
         np.array([1, 2, 3])
     )
-    int_to_int_fn = building_blocks.Data(any_proto, int_to_int_type)
+    int_to_int_fn = federated_language.framework.Data(
+        any_proto, int_to_int_type
+    )
 
     # -> (let result = ext(x) in (-> result))
     # Each call of the outer lambda should create a single binding, with
     # calls to the inner lambda repeatedly returning references to the binding.
-    higher_fn = building_blocks.Lambda(
+    higher_fn = federated_language.framework.Lambda(
         None,
         None,
-        building_blocks.Block(
+        federated_language.framework.Block(
             [(
                 'result',
-                building_blocks.Call(
-                    int_to_int_fn, building_blocks.Reference('x', int_type)
+                federated_language.framework.Call(
+                    int_to_int_fn,
+                    federated_language.framework.Reference('x', int_type),
                 ),
             )],
-            building_blocks.Lambda(
-                None, None, building_blocks.Reference('result', int_type)
+            federated_language.framework.Lambda(
+                None,
+                None,
+                federated_language.framework.Reference('result', int_type),
             ),
         ),
     )
@@ -226,127 +239,144 @@ class ToCallDominantTest(absltest.TestCase):
         # fn = -> (let result = ext(x) in (-> result))
         (
             'get_val1',
-            building_blocks.Call(
-                building_blocks.Reference('fn', higher_fn.type_signature)
+            federated_language.framework.Call(
+                federated_language.framework.Reference(
+                    'fn', higher_fn.type_signature
+                )
             ),
         ),
         # _var2 = ext(x)
         # get_val1 = -> _var2
         (
             'get_val2',
-            building_blocks.Call(
-                building_blocks.Reference('fn', higher_fn.type_signature)
+            federated_language.framework.Call(
+                federated_language.framework.Reference(
+                    'fn', higher_fn.type_signature
+                )
             ),
         ),
         # _var3 = ext(x)
         # get_val2 = -> _var3
         (
             'val11',
-            building_blocks.Call(
-                building_blocks.Reference('get_val1', int_thunk_type)
+            federated_language.framework.Call(
+                federated_language.framework.Reference(
+                    'get_val1', int_thunk_type
+                )
             ),
         ),
         # val11 = _var2
         (
             'val12',
-            building_blocks.Call(
-                building_blocks.Reference('get_val1', int_thunk_type)
+            federated_language.framework.Call(
+                federated_language.framework.Reference(
+                    'get_val1', int_thunk_type
+                )
             ),
         ),
         # val12 = _var2
         (
             'val2',
-            building_blocks.Call(
-                building_blocks.Reference('get_val2', int_thunk_type)
+            federated_language.framework.Call(
+                federated_language.framework.Reference(
+                    'get_val2', int_thunk_type
+                )
             ),
         ),
         # val2 = _var3
     ]
-    before = building_blocks.Lambda(
+    before = federated_language.framework.Lambda(
         'x',
         int_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             block_locals,
             # <_var2, _var2, _var3>
-            building_blocks.Struct([
-                building_blocks.Reference('val11', int_type),
-                building_blocks.Reference('val12', int_type),
-                building_blocks.Reference('val2', int_type),
+            federated_language.framework.Struct([
+                federated_language.framework.Reference('val11', int_type),
+                federated_language.framework.Reference('val12', int_type),
+                federated_language.framework.Reference('val2', int_type),
             ]),
         ),
     )
     after = transformations.to_call_dominant(before)
-    expected = building_blocks.Lambda(
+    expected = federated_language.framework.Lambda(
         'x',
         int_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             [
                 (
                     '_var2',
-                    building_blocks.Call(
-                        int_to_int_fn, building_blocks.Reference('x', int_type)
+                    federated_language.framework.Call(
+                        int_to_int_fn,
+                        federated_language.framework.Reference('x', int_type),
                     ),
                 ),
                 (
                     '_var3',
-                    building_blocks.Call(
-                        int_to_int_fn, building_blocks.Reference('x', int_type)
+                    federated_language.framework.Call(
+                        int_to_int_fn,
+                        federated_language.framework.Reference('x', int_type),
                     ),
                 ),
             ],
-            building_blocks.Struct([
-                building_blocks.Reference('_var2', int_type),
-                building_blocks.Reference('_var2', int_type),
-                building_blocks.Reference('_var3', int_type),
+            federated_language.framework.Struct([
+                federated_language.framework.Reference('_var2', int_type),
+                federated_language.framework.Reference('_var2', int_type),
+                federated_language.framework.Reference('_var3', int_type),
             ]),
         ),
     )
     self.assert_compact_representations_equal(after, expected)
 
   def test_creates_block_for_non_lambda(self):
-    int_type = computation_types.TensorType(np.int32)
-    two_int_type = computation_types.StructType(
+    int_type = federated_language.TensorType(np.int32)
+    two_int_type = federated_language.StructType(
         [(None, int_type), (None, int_type)]
     )
-    get_two_int_type = computation_types.FunctionType(None, two_int_type)
+    get_two_int_type = federated_language.FunctionType(None, two_int_type)
     any_proto = building_block_test_utils.create_any_proto_from_array(
         np.array([1, 2, 3])
     )
-    call_ext = building_blocks.Call(
-        building_blocks.Data(any_proto, get_two_int_type)
+    call_ext = federated_language.framework.Call(
+        federated_language.framework.Data(any_proto, get_two_int_type)
     )
-    before = building_blocks.Selection(call_ext, index=0)
+    before = federated_language.framework.Selection(call_ext, index=0)
     after = transformations.to_call_dominant(before)
-    expected = building_blocks.Block(
+    expected = federated_language.framework.Block(
         [
             ('_var1', call_ext),
         ],
-        building_blocks.Selection(
-            building_blocks.Reference('_var1', two_int_type), index=0
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('_var1', two_int_type),
+            index=0,
         ),
     )
     self.assert_compact_representations_equal(after, expected)
 
   def test_call_to_higher_order_external_allowed(self):
-    int_type = computation_types.TensorType(np.int32)
-    int_to_int_type = computation_types.FunctionType(int_type, int_type)
-    int_to_int_to_int_type = computation_types.FunctionType(
+    int_type = federated_language.TensorType(np.int32)
+    int_to_int_type = federated_language.FunctionType(int_type, int_type)
+    int_to_int_to_int_type = federated_language.FunctionType(
         int_to_int_type, int_type
     )
-    call_ext = building_blocks.Call(
-        building_blocks.Reference('call_with_one', int_to_int_to_int_type),
-        building_blocks.Lambda(
-            'x', int_type, building_blocks.Reference('num', int_type)
+    call_ext = federated_language.framework.Call(
+        federated_language.framework.Reference(
+            'call_with_one', int_to_int_to_int_type
+        ),
+        federated_language.framework.Lambda(
+            'x',
+            int_type,
+            federated_language.framework.Reference('num', int_type),
         ),
     )
     after = transformations.to_call_dominant(call_ext)
-    self.assertIsInstance(after, building_blocks.Block)
+    self.assertIsInstance(after, federated_language.framework.Block)
     self.assertLen(after.locals, 1)
     (ref_name, bound_call) = after.locals[0]
     self.assertEqual(
         bound_call.compact_representation(), call_ext.compact_representation()
     )
-    expected_result = building_blocks.Reference(
+    expected_result = federated_language.framework.Reference(
         ref_name, call_ext.type_signature
     )
     self.assert_compact_representations_equal(after.result, expected_result)
@@ -365,20 +395,26 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
     # Ensure that the resulting computations no longer contain the split
     # intrinsics.
-    self.assertFalse(tree_analysis.contains_called_intrinsic(before, uris))
-    self.assertFalse(tree_analysis.contains_called_intrinsic(after, uris))
+    self.assertFalse(
+        federated_language.framework.contains_called_intrinsic(before, uris)
+    )
+    self.assertFalse(
+        federated_language.framework.contains_called_intrinsic(after, uris)
+    )
     # Removal isn't interesting to test for if it wasn't there to begin with.
-    self.assertTrue(tree_analysis.contains_called_intrinsic(comp, uris))
+    self.assertTrue(
+        federated_language.framework.contains_called_intrinsic(comp, uris)
+    )
 
     if comp.parameter_type is not None:
-      type_test_utils.assert_types_equivalent(
+      federated_language.framework.assert_types_equivalent(
           comp.parameter_type, before.parameter_type
       )
     else:
       self.assertIsNone(before.parameter_type)
     # There must be one parameter for each intrinsic in `calls`.
     self.assertIsInstance(
-        before.type_signature.result, computation_types.StructType
+        before.type_signature.result, federated_language.StructType
     )
     self.assertLen(before.type_signature.result, len(calls))
 
@@ -387,10 +423,10 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     #   'original_arg': comp.parameter_type, (if present)
     #   'intrinsic_results': [...],
     # }
-    self.assertIsInstance(after.parameter_type, computation_types.StructType)
+    self.assertIsInstance(after.parameter_type, federated_language.StructType)
     if comp.parameter_type is not None:
       self.assertLen(after.parameter_type, 2)
-      type_test_utils.assert_types_equivalent(
+      federated_language.framework.assert_types_equivalent(
           comp.parameter_type, after.parameter_type.original_arg
       )
     else:
@@ -401,45 +437,51 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     # Check that each pair of (param, result) is a valid type substitution
     # for the intrinsic in question.
     for i in range(len(calls)):
-      concrete_signature = computation_types.FunctionType(
+      concrete_signature = federated_language.FunctionType(
           before.type_signature.result[i],
           after.parameter_type.intrinsic_results[i],
       )
       abstract_signature = calls[i].function.intrinsic_def().type_signature
-      type_analysis.check_concrete_instance_of(
+      federated_language.framework.check_concrete_instance_of(
           concrete_signature, abstract_signature
       )
 
   def test_cannot_split_on_chained_intrinsic(self):
-    int_type = computation_types.TensorType(np.int32)
-    client_int_type = computation_types.FederatedType(
-        int_type, placements.CLIENTS
+    int_type = federated_language.TensorType(np.int32)
+    client_int_type = federated_language.FederatedType(
+        int_type, federated_language.CLIENTS
     )
-    int_ref = lambda name: building_blocks.Reference(name, int_type)
+    int_ref = lambda name: federated_language.framework.Reference(
+        name, int_type
+    )
 
     def client_int_ref(name):
-      return building_blocks.Reference(name, client_int_type)
+      return federated_language.framework.Reference(name, client_int_type)
 
-    body = building_blocks.Block(
+    body = federated_language.framework.Block(
         [
             (
                 'a',
-                building_block_factory.create_federated_map(
-                    building_blocks.Lambda('p1', int_type, int_ref('p1')),
+                federated_language.framework.create_federated_map(
+                    federated_language.framework.Lambda(
+                        'p1', int_type, int_ref('p1')
+                    ),
                     client_int_ref('param'),
                 ),
             ),
             (
                 'b',
-                building_block_factory.create_federated_map(
-                    building_blocks.Lambda('p2', int_type, int_ref('p2')),
+                federated_language.framework.create_federated_map(
+                    federated_language.framework.Lambda(
+                        'p2', int_type, int_ref('p2')
+                    ),
                     client_int_ref('a'),
                 ),
             ),
         ],
         client_int_ref('b'),
     )
-    comp = building_blocks.Lambda('param', client_int_type, body)
+    comp = federated_language.framework.Lambda('param', client_int_type, body)
     intrinsic_defaults = [
         building_block_test_utils.create_whimsy_called_federated_map('test'),
     ]
@@ -452,8 +494,10 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     federated_broadcast = (
         building_block_test_utils.create_whimsy_called_federated_broadcast()
     )
-    called_intrinsics = building_blocks.Struct([federated_broadcast])
-    comp = building_blocks.Lambda(None, None, called_intrinsics)
+    called_intrinsics = federated_language.framework.Struct(
+        [federated_broadcast]
+    )
+    comp = federated_language.framework.Lambda(None, None, called_intrinsics)
     call = building_block_test_utils.create_whimsy_called_federated_broadcast()
     self.assert_splits_on(comp, call)
 
@@ -461,8 +505,10 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     federated_broadcast = (
         building_block_test_utils.create_whimsy_called_federated_broadcast()
     )
-    called_intrinsics = building_blocks.Struct([federated_broadcast])
-    comp = building_blocks.Lambda('a', np.int32, called_intrinsics)
+    called_intrinsics = federated_language.framework.Struct(
+        [federated_broadcast]
+    )
+    comp = federated_language.framework.Lambda('a', np.int32, called_intrinsics)
     call = building_block_test_utils.create_whimsy_called_federated_broadcast()
     self.assert_splits_on(comp, call)
 
@@ -473,17 +519,21 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     any_proto = building_block_test_utils.create_any_proto_from_array(
         np.array([1, 2, 3])
     )
-    packed_broadcast = building_blocks.Struct([
-        building_blocks.Data(
+    packed_broadcast = federated_language.framework.Struct([
+        federated_language.framework.Data(
             any_proto,
-            computation_types.FederatedType(np.int32, placements.SERVER),
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
         ),
         first_broadcast,
     ])
-    sel = building_blocks.Selection(packed_broadcast, index=0)
-    second_broadcast = building_block_factory.create_federated_broadcast(sel)
+    sel = federated_language.framework.Selection(packed_broadcast, index=0)
+    second_broadcast = federated_language.framework.create_federated_broadcast(
+        sel
+    )
     result = transformations.to_call_dominant(second_broadcast)
-    comp = building_blocks.Lambda('a', np.int32, result)
+    comp = federated_language.framework.Lambda('a', np.int32, result)
     call = building_block_test_utils.create_whimsy_called_federated_broadcast()
     self.assert_splits_on(comp, call)
 
@@ -491,11 +541,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     federated_broadcast = (
         building_block_test_utils.create_whimsy_called_federated_broadcast()
     )
-    called_intrinsics = building_blocks.Struct([
+    called_intrinsics = federated_language.framework.Struct([
         federated_broadcast,
         federated_broadcast,
     ])
-    comp = building_blocks.Lambda('a', np.int32, called_intrinsics)
+    comp = federated_language.framework.Lambda('a', np.int32, called_intrinsics)
     call = building_block_test_utils.create_whimsy_called_federated_broadcast()
     self.assert_splits_on(comp, call)
 
@@ -507,8 +557,10 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
             report_parameter_name='c',
         )
     )
-    called_intrinsics = building_blocks.Struct([federated_aggregate])
-    comp = building_blocks.Lambda('d', np.int32, called_intrinsics)
+    called_intrinsics = federated_language.framework.Struct(
+        [federated_aggregate]
+    )
+    comp = federated_language.framework.Lambda('d', np.int32, called_intrinsics)
     call = building_block_test_utils.create_whimsy_called_federated_aggregate(
         value_type=np.int32
     )
@@ -522,11 +574,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
             report_parameter_name='c',
         )
     )
-    called_intrinsics = building_blocks.Struct([
+    called_intrinsics = federated_language.framework.Struct([
         federated_aggregate,
         federated_aggregate,
     ])
-    comp = building_blocks.Lambda('d', np.int32, called_intrinsics)
+    comp = federated_language.framework.Lambda('d', np.int32, called_intrinsics)
     call = building_block_test_utils.create_whimsy_called_federated_aggregate()
     self.assert_splits_on(comp, call)
 
@@ -534,8 +586,10 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     federated_secure_sum_bitwidth = (
         building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
     )
-    called_intrinsics = building_blocks.Struct([federated_secure_sum_bitwidth])
-    comp = building_blocks.Lambda('a', np.int32, called_intrinsics)
+    called_intrinsics = federated_language.framework.Struct(
+        [federated_secure_sum_bitwidth]
+    )
+    comp = federated_language.framework.Lambda('a', np.int32, called_intrinsics)
     call = (
         building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
     )
@@ -545,11 +599,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     federated_secure_sum_bitwidth = (
         building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
     )
-    called_intrinsics = building_blocks.Struct([
+    called_intrinsics = federated_language.framework.Struct([
         federated_secure_sum_bitwidth,
         federated_secure_sum_bitwidth,
     ])
-    comp = building_blocks.Lambda('a', np.int32, called_intrinsics)
+    comp = federated_language.framework.Lambda('a', np.int32, called_intrinsics)
     call = (
         building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
     )
@@ -566,11 +620,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     federated_secure_sum_bitwidth = (
         building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
     )
-    called_intrinsics = building_blocks.Struct([
+    called_intrinsics = federated_language.framework.Struct([
         federated_aggregate,
         federated_secure_sum_bitwidth,
     ])
-    comp = building_blocks.Lambda('d', np.int32, called_intrinsics)
+    comp = federated_language.framework.Lambda('d', np.int32, called_intrinsics)
     null_aggregate = (
         building_block_test_utils.create_whimsy_called_federated_aggregate()
     )
@@ -580,20 +634,30 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         comp, [null_aggregate]
     )
     self.assertTrue(
-        tree_analysis.contains_called_intrinsic(comp, secure_sum_bitwidth_uri)
+        federated_language.framework.contains_called_intrinsic(
+            comp, secure_sum_bitwidth_uri
+        )
     )
     self.assertTrue(
-        tree_analysis.contains_called_intrinsic(comp, aggregate_uri)
+        federated_language.framework.contains_called_intrinsic(
+            comp, aggregate_uri
+        )
     )
     self.assertFalse(
-        tree_analysis.contains_called_intrinsic(before, aggregate_uri)
+        federated_language.framework.contains_called_intrinsic(
+            before, aggregate_uri
+        )
     )
     self.assertFalse(
-        tree_analysis.contains_called_intrinsic(after, aggregate_uri)
+        federated_language.framework.contains_called_intrinsic(
+            after, aggregate_uri
+        )
     )
     self.assertTrue(
-        tree_analysis.contains_called_intrinsic(before, secure_sum_bitwidth_uri)
-        or tree_analysis.contains_called_intrinsic(
+        federated_language.framework.contains_called_intrinsic(
+            before, secure_sum_bitwidth_uri
+        )
+        or federated_language.framework.contains_called_intrinsic(
             after, secure_sum_bitwidth_uri
         )
     )
@@ -609,11 +673,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     federated_secure_sum_bitwidth = (
         building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
     )
-    called_intrinsics = building_blocks.Struct([
+    called_intrinsics = federated_language.framework.Struct([
         federated_aggregate,
         federated_secure_sum_bitwidth,
     ])
-    comp = building_blocks.Lambda('d', np.int32, called_intrinsics)
+    comp = federated_language.framework.Lambda('d', np.int32, called_intrinsics)
     self.assert_splits_on(
         comp,
         [
@@ -633,13 +697,13 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     federated_secure_sum_bitwidth = (
         building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
     )
-    called_intrinsics = building_blocks.Struct([
+    called_intrinsics = federated_language.framework.Struct([
         federated_aggregate,
         federated_aggregate,
         federated_secure_sum_bitwidth,
         federated_secure_sum_bitwidth,
     ])
-    comp = building_blocks.Lambda('d', np.int32, called_intrinsics)
+    comp = federated_language.framework.Lambda('d', np.int32, called_intrinsics)
     self.assert_splits_on(
         comp,
         [
@@ -656,8 +720,10 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
             report_parameter_name='c',
         )
     )
-    called_intrinsics = building_blocks.Struct([federated_aggregate])
-    comp = building_blocks.Lambda('d', np.int32, called_intrinsics)
+    called_intrinsics = federated_language.framework.Struct(
+        [federated_aggregate]
+    )
+    comp = federated_language.framework.Lambda('d', np.int32, called_intrinsics)
     transformations.force_align_and_split_by_intrinsics(
         comp,
         [
@@ -671,11 +737,11 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
 
   def _check_transformed_comp_validity(
       self,
-      original_comp: building_blocks.Lambda,
-      transformed_comp: building_blocks.ComputationBuildingBlock,
+      original_comp: federated_language.framework.Lambda,
+      transformed_comp: federated_language.framework.ComputationBuildingBlock,
       lambda_parameter_extension_name: str,
   ):
-    self.assertIsInstance(transformed_comp, building_blocks.Lambda)
+    self.assertIsInstance(transformed_comp, federated_language.framework.Lambda)
 
     # The transformed lambda comp should have an additional element in the input
     # parameter named `lambda_parameter_extension_name`.
@@ -691,35 +757,41 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
 
     # The transformed lambda comp should have no unbound references.
     self.assertEmpty(
-        transformation_utils.get_map_of_unbound_references(transformed_comp)[
+        federated_language.framework.get_map_of_unbound_references(
             transformed_comp
-        ]
+        )[transformed_comp]
     )
 
   def test_identifies_unbound_refs(self):
-    original_arg_type = computation_types.StructType([np.int32])
-    int_at_clients_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    original_arg_type = federated_language.StructType([np.int32])
+    int_at_clients_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         original_arg_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             [(
                 'a',
-                building_block_factory.create_federated_sum(
-                    building_blocks.Reference('x', int_at_clients_type)
+                federated_language.framework.create_federated_sum(
+                    federated_language.framework.Reference(
+                        'x', int_at_clients_type
+                    )
                 ),
             )],
-            building_blocks.Struct([
-                building_blocks.Reference(
+            federated_language.framework.Struct([
+                federated_language.framework.Reference(
                     'a',
-                    computation_types.FederatedType(
-                        np.int32, placements.SERVER
+                    federated_language.FederatedType(
+                        np.int32, federated_language.SERVER
                     ),
                 ),
-                building_blocks.Reference('y', int_at_clients_type),
-                building_blocks.Reference('x', int_at_clients_type),
+                federated_language.framework.Reference(
+                    'y', int_at_clients_type
+                ),
+                federated_language.framework.Reference(
+                    'x', int_at_clients_type
+                ),
             ]),
         ),
     )
@@ -737,45 +809,46 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
     for new_input_comp, expected_new_input_comp in zip(
         new_input_comps,
         [
-            building_blocks.Reference('x', int_at_clients_type),
-            building_blocks.Reference('y', int_at_clients_type),
-            building_blocks.Reference('x', int_at_clients_type),
+            federated_language.framework.Reference('x', int_at_clients_type),
+            federated_language.framework.Reference('y', int_at_clients_type),
+            federated_language.framework.Reference('x', int_at_clients_type),
         ],
     ):
       self.assertEqual(new_input_comp.proto, expected_new_input_comp.proto)
 
   def test_identifies_unbound_selections(self):
-    original_arg_type = computation_types.StructType([np.int32])
-    int_at_clients_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    original_arg_type = federated_language.StructType([np.int32])
+    int_at_clients_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
-    federated_sum_param = building_blocks.Selection(
-        building_blocks.Reference('x', [int_at_clients_type]), index=0
+    federated_sum_param = federated_language.framework.Selection(
+        federated_language.framework.Reference('x', [int_at_clients_type]),
+        index=0,
     )
-    other_result_param = building_blocks.Selection(
-        building_blocks.Selection(
-            building_blocks.Reference(
+    other_result_param = federated_language.framework.Selection(
+        federated_language.framework.Selection(
+            federated_language.framework.Reference(
                 'y', [[int_at_clients_type, int_at_clients_type]]
             ),
             index=0,
         ),
         index=1,
     )
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         original_arg_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             [(
                 'a',
-                building_block_factory.create_federated_sum(
+                federated_language.framework.create_federated_sum(
                     federated_sum_param
                 ),
             )],
-            building_blocks.Struct([
-                building_blocks.Reference(
+            federated_language.framework.Struct([
+                federated_language.framework.Reference(
                     'a',
-                    computation_types.FederatedType(
-                        np.int32, placements.SERVER
+                    federated_language.FederatedType(
+                        np.int32, federated_language.SERVER
                     ),
                 ),
                 other_result_param,
@@ -799,30 +872,32 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
       self.assertEqual(new_input_comp.proto, expected_new_input_comp.proto)
 
   def test_identifies_unbound_refs_in_struct(self):
-    original_arg_type = computation_types.StructType(
-        [computation_types.FederatedType(np.int32, placements.CLIENTS)]
+    original_arg_type = federated_language.StructType(
+        [federated_language.FederatedType(np.int32, federated_language.CLIENTS)]
     )
-    int_at_clients_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    int_at_clients_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         original_arg_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             [(
                 'a',
-                building_block_factory.create_federated_sum(
-                    building_block_factory.create_federated_zip(
-                        building_blocks.Struct([
-                            building_blocks.Selection(
-                                building_blocks.Reference(
+                federated_language.framework.create_federated_sum(
+                    federated_language.framework.create_federated_zip(
+                        federated_language.framework.Struct([
+                            federated_language.framework.Selection(
+                                federated_language.framework.Reference(
                                     'arg', original_arg_type
                                 ),
                                 index=0,
                             ),
-                            building_blocks.Reference('b', int_at_clients_type),
-                            building_blocks.Struct([
-                                building_blocks.Reference(
+                            federated_language.framework.Reference(
+                                'b', int_at_clients_type
+                            ),
+                            federated_language.framework.Struct([
+                                federated_language.framework.Reference(
                                     'c', int_at_clients_type
                                 )
                             ]),
@@ -830,10 +905,10 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
                     )
                 ),
             )],
-            building_blocks.Reference(
+            federated_language.framework.Reference(
                 'a',
-                computation_types.FederatedType(
-                    [np.int32, np.int32, [np.int32]], placements.SERVER
+                federated_language.FederatedType(
+                    [np.int32, np.int32, [np.int32]], federated_language.SERVER
                 ),
             ),
         ),
@@ -852,19 +927,20 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
     for new_input_comp, expected_new_input_comp in zip(
         new_input_comps,
         [
-            building_blocks.Reference('b', int_at_clients_type),
-            building_blocks.Reference('c', int_at_clients_type),
+            federated_language.framework.Reference('b', int_at_clients_type),
+            federated_language.framework.Reference('c', int_at_clients_type),
         ],
     ):
       self.assertEqual(new_input_comp.proto, expected_new_input_comp.proto)
 
   def test_no_unbound_refs(self):
-    original_arg_type = computation_types.StructType([np.int32])
-    comp = building_blocks.Lambda(
+    original_arg_type = federated_language.StructType([np.int32])
+    comp = federated_language.framework.Lambda(
         'arg',
         original_arg_type,
-        building_blocks.Selection(
-            building_blocks.Reference('arg', original_arg_type), index=0
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('arg', original_arg_type),
+            index=0,
         ),
     )
     lambda_parameter_extension_name = 'intermediate_state'
@@ -880,11 +956,11 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
     self.assertEmpty(new_input_comps)
 
   def test_parameter_usage_without_selection(self):
-    original_arg_type = computation_types.StructType([np.int32])
-    comp = building_blocks.Lambda(
+    original_arg_type = federated_language.StructType([np.int32])
+    comp = federated_language.framework.Lambda(
         'arg',
         original_arg_type,
-        building_blocks.Reference('arg', original_arg_type),
+        federated_language.framework.Reference('arg', original_arg_type),
     )
     lambda_parameter_extension_name = 'intermediate_state'
     with self.assertRaises(ValueError):
@@ -900,21 +976,23 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
 
     def _find_intrinsics(building_block):
       nonlocal found_intrinsics
-      if isinstance(building_block, building_blocks.Call) and isinstance(
-          building_block.function, building_blocks.Intrinsic
+      if isinstance(
+          building_block, federated_language.framework.Call
+      ) and isinstance(
+          building_block.function, federated_language.framework.Intrinsic
       ):
         found_intrinsics.append(building_block.function.uri)
 
-    tree_analysis.visit_postorder(comp, _find_intrinsics)
+    federated_language.framework.visit_postorder(comp, _find_intrinsics)
     return found_intrinsics
 
   def check_split_signatures(self, original_comp, before, intrinsic, after):
     for comp in (before, intrinsic, after):
-      self.assertIsInstance(comp, building_blocks.Lambda)
+      self.assertIsInstance(comp, federated_language.framework.Lambda)
       self.assertIsInstance(
-          comp.type_signature.parameter, computation_types.StructType
+          comp.type_signature.parameter, federated_language.StructType
       )
-      self.assertIsInstance(comp.result, building_blocks.Block)
+      self.assertIsInstance(comp.result, federated_language.framework.Block)
 
     original_comp = transformations.to_call_dominant(original_comp)
     original_comp = tree_transformations.normalize_types(
@@ -922,14 +1000,18 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     )
 
     self.assertIsInstance(
-        before.type_signature.result, computation_types.StructType
+        before.type_signature.result, federated_language.StructType
     )
     self.assertEqual(
         [x for x, _ in structure.to_elements(before.type_signature.result)],
         ['intrinsic_args_from_before_comp', 'intermediate_state'],
     )
-    self.assertIsInstance(before.result.result[0], building_blocks.Struct)
-    self.assertIsInstance(before.result.result[1], building_blocks.Struct)
+    self.assertIsInstance(
+        before.result.result[0], federated_language.framework.Struct
+    )
+    self.assertIsInstance(
+        before.result.result[1], federated_language.framework.Struct
+    )
 
     intrinsic_args_from_before_comp_index = (
         len(intrinsic.type_signature.parameter) - 1
@@ -948,7 +1030,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         before.type_signature.result[0],
     )
     self.assertIsInstance(
-        intrinsic.type_signature.result, computation_types.StructType
+        intrinsic.type_signature.result, federated_language.StructType
     )
     self.assertLen(
         intrinsic.result.locals, len(intrinsic.type_signature.result)
@@ -979,20 +1061,21 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     )
 
   def test_splits_on_intrinsic(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
     server_data_index = 0
-    intrinsic_call = building_block_factory.create_federated_broadcast(
-        building_blocks.Selection(
-            building_blocks.Reference('arg', arg_type), index=server_data_index
+    intrinsic_call = federated_language.framework.create_federated_broadcast(
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('arg', arg_type),
+            index=server_data_index,
         )
     )
-    comp = building_blocks.Lambda('arg', arg_type, intrinsic_call)
+    comp = federated_language.framework.Lambda('arg', arg_type, intrinsic_call)
 
     # Allow the before and after comps to depend on the entire original comp
     # input. Do not allow the intrinsic comp to depend on the original comp
@@ -1000,7 +1083,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_BROADCAST],
+            [federated_language.framework.FEDERATED_BROADCAST],
             before_comp_allowed_original_arg_subparameters=[()],
             intrinsic_comp_allowed_original_arg_subparameters=[],
             after_comp_allowed_original_arg_subparameters=[()],
@@ -1014,7 +1097,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertEmpty(self.find_intrinsics_in_comp(before))
     self.assertEqual(
         self.find_intrinsics_in_comp(intrinsic),
-        [intrinsic_defs.FEDERATED_BROADCAST.uri],
+        [federated_language.framework.FEDERATED_BROADCAST.uri],
     )
     self.assertEmpty(self.find_intrinsics_in_comp(after))
 
@@ -1022,20 +1105,21 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertLen(before.result.result[0], 1)
 
   def test_fails_split_with_unavailable_subparameters_to_before_comp(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
     server_data_index = 0
-    intrinsic_call = building_block_factory.create_federated_broadcast(
-        building_blocks.Selection(
-            building_blocks.Reference('arg', arg_type), index=server_data_index
+    intrinsic_call = federated_language.framework.create_federated_broadcast(
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('arg', arg_type),
+            index=server_data_index,
         )
     )
-    comp = building_blocks.Lambda('arg', arg_type, intrinsic_call)
+    comp = federated_language.framework.Lambda('arg', arg_type, intrinsic_call)
 
     # Do not allow the before or intrinsic comps to depend on the original comp
     # input at all. This should fail when the before comp attempts to produce
@@ -1043,30 +1127,32 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     with self.assertRaises(transformations.UnavailableRequiredInputsError):
       transformations.divisive_force_align_and_split_by_intrinsics(
           comp,
-          [intrinsic_defs.FEDERATED_BROADCAST],
+          [federated_language.framework.FEDERATED_BROADCAST],
           before_comp_allowed_original_arg_subparameters=[],
           intrinsic_comp_allowed_original_arg_subparameters=[],
           after_comp_allowed_original_arg_subparameters=[()],
       )
 
   def test_splits_on_intrinsic_with_multiple_args(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
     client_data_index = 1
-    intrinsic_call = building_block_factory.create_federated_mean(
-        building_blocks.Selection(
-            building_blocks.Reference('arg', arg_type), index=client_data_index
+    intrinsic_call = federated_language.framework.create_federated_mean(
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('arg', arg_type),
+            index=client_data_index,
         ),
-        building_blocks.Selection(
-            building_blocks.Reference('arg', arg_type), index=client_data_index
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('arg', arg_type),
+            index=client_data_index,
         ),
     )
-    comp = building_blocks.Lambda('arg', arg_type, intrinsic_call)
+    comp = federated_language.framework.Lambda('arg', arg_type, intrinsic_call)
 
     # Allow the before comp to depend on the client portion of the original
     # comp input. Don't allow the intrinsic comp to depend on the original comp
@@ -1074,10 +1160,10 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_WEIGHTED_MEAN],
-            before_comp_allowed_original_arg_subparameters=[
-                (client_data_index,)
-            ],
+            [federated_language.framework.FEDERATED_WEIGHTED_MEAN],
+            before_comp_allowed_original_arg_subparameters=[(
+                client_data_index,
+            )],
             intrinsic_comp_allowed_original_arg_subparameters=[],
             after_comp_allowed_original_arg_subparameters=[()],
         )
@@ -1090,7 +1176,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertEmpty(self.find_intrinsics_in_comp(before))
     self.assertEqual(
         self.find_intrinsics_in_comp(intrinsic),
-        [intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri],
+        [federated_language.framework.FEDERATED_WEIGHTED_MEAN.uri],
     )
     self.assertEmpty(self.find_intrinsics_in_comp(after))
 
@@ -1100,16 +1186,17 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     # two args.
     self.assertLen(intrinsic.result.locals, 1)
     self.assertIsInstance(
-        intrinsic.result.locals[0][1].argument, building_blocks.Struct
+        intrinsic.result.locals[0][1].argument,
+        federated_language.framework.Struct,
     )
     self.assertLen(intrinsic.result.locals[0][1].argument, 2)
 
   def test_splits_on_intrinsic_with_args_from_original_arg(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
     intermediate_state_type = [np.int32]
     server_data_index = 0
@@ -1120,19 +1207,20 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         (None, client_val_type),
         ('intermediate_state', intermediate_state_type),
     ]
-    intrinsic_call = building_block_factory.create_federated_secure_sum(
-        building_blocks.Selection(
-            building_blocks.Reference('arg', arg_type), index=client_data_index
+    intrinsic_call = federated_language.framework.create_federated_secure_sum(
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('arg', arg_type),
+            index=client_data_index,
         ),
-        building_blocks.Selection(
-            building_blocks.Selection(
-                building_blocks.Reference('arg', arg_type),
+        federated_language.framework.Selection(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('arg', arg_type),
                 index=intermediate_state_index,
             ),
             index=0,
         ),
     )
-    comp = building_blocks.Lambda('arg', arg_type, intrinsic_call)
+    comp = federated_language.framework.Lambda('arg', arg_type, intrinsic_call)
 
     # Allow the before comp to depend on the client portion of the original
     # comp input and the intrinsic comp to depend on the intermediate
@@ -1141,7 +1229,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_SECURE_SUM],
+            [federated_language.framework.FEDERATED_SECURE_SUM],
             before_comp_allowed_original_arg_subparameters=[
                 (client_data_index,),
             ],
@@ -1162,7 +1250,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertEmpty(self.find_intrinsics_in_comp(before))
     self.assertEqual(
         self.find_intrinsics_in_comp(intrinsic),
-        [intrinsic_defs.FEDERATED_SECURE_SUM.uri],
+        [federated_language.framework.FEDERATED_SECURE_SUM.uri],
     )
     self.assertEmpty(self.find_intrinsics_in_comp(after))
 
@@ -1171,74 +1259,77 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertLen(before.result.result[0], 1)
     self.assertLen(intrinsic.result.locals, 1)
     self.assertIsInstance(
-        intrinsic.result.locals[0][1].argument, building_blocks.Struct
+        intrinsic.result.locals[0][1].argument,
+        federated_language.framework.Struct,
     )
     self.assertLen(intrinsic.result.locals[0][1].argument, 2)
 
   def test_splits_with_non_empty_before_and_after_block_comps(self):
-    server_val_type = computation_types.FederatedType(
-        [np.int32, np.int32], placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        [np.int32, np.int32], federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
-    inner_server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    inner_server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
     server_data_index = 0
 
-    selecting_function = building_blocks.Lambda(
+    selecting_function = federated_language.framework.Lambda(
         'inner_arg',
         server_val_type.member,
-        building_blocks.Selection(
-            building_blocks.Reference('inner_arg', server_val_type.member),
+        federated_language.framework.Selection(
+            federated_language.framework.Reference(
+                'inner_arg', server_val_type.member
+            ),
             index=0,
         ),
     )
     block_locals = [
         (
             'inner_server_data_selection',
-            building_block_factory.create_federated_map_or_apply(
+            federated_language.framework.create_federated_map_or_apply(
                 selecting_function,
-                building_blocks.Selection(
-                    building_blocks.Reference('arg', arg_type),
+                federated_language.framework.Selection(
+                    federated_language.framework.Reference('arg', arg_type),
                     index=server_data_index,
                 ),
             ),
         ),
         (
             'broadcast_result',
-            building_block_factory.create_federated_broadcast(
-                building_blocks.Reference(
+            federated_language.framework.create_federated_broadcast(
+                federated_language.framework.Reference(
                     'inner_server_data_selection', inner_server_val_type
                 )
             ),
         ),
         (
             'another_inner_server_data_selection',
-            building_block_factory.create_federated_map_or_apply(
+            federated_language.framework.create_federated_map_or_apply(
                 selecting_function,
-                building_blocks.Selection(
-                    building_blocks.Reference('arg', arg_type),
+                federated_language.framework.Selection(
+                    federated_language.framework.Reference('arg', arg_type),
                     index=server_data_index,
                 ),
             ),
         ),
     ]
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         arg_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             block_locals,
-            building_blocks.Struct([
-                building_blocks.Reference(
+            federated_language.framework.Struct([
+                federated_language.framework.Reference(
                     'broadcast_result',
-                    computation_types.FederatedType(
-                        np.int32, placements.CLIENTS
+                    federated_language.FederatedType(
+                        np.int32, federated_language.CLIENTS
                     ),
                 ),
-                building_blocks.Reference(
+                federated_language.framework.Reference(
                     'another_inner_server_data_selection',
                     inner_server_val_type,
                 ),
@@ -1252,10 +1343,10 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_BROADCAST],
-            before_comp_allowed_original_arg_subparameters=[
-                (server_data_index,)
-            ],
+            [federated_language.framework.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[(
+                server_data_index,
+            )],
             intrinsic_comp_allowed_original_arg_subparameters=[],
             after_comp_allowed_original_arg_subparameters=[()],
         )
@@ -1268,15 +1359,15 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     # intrinsic.
     self.assertEqual(
         self.find_intrinsics_in_comp(before),
-        [intrinsic_defs.FEDERATED_APPLY.uri],
+        [federated_language.framework.FEDERATED_APPLY.uri],
     )
     self.assertEqual(
         self.find_intrinsics_in_comp(intrinsic),
-        [intrinsic_defs.FEDERATED_BROADCAST.uri],
+        [federated_language.framework.FEDERATED_BROADCAST.uri],
     )
     self.assertEqual(
         self.find_intrinsics_in_comp(after),
-        [intrinsic_defs.FEDERATED_APPLY.uri],
+        [federated_language.framework.FEDERATED_APPLY.uri],
     )
 
     # Check that the before and after comps have blocks with at least one local.
@@ -1284,21 +1375,21 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertNotEmpty(after.result.locals)
 
   def test_splits_with_no_matching_intrinsics(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
     client_data_index = 1
 
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         arg_type,
-        building_block_factory.create_federated_sum(
-            building_blocks.Selection(
-                building_blocks.Reference('arg', arg_type),
+        federated_language.framework.create_federated_sum(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('arg', arg_type),
                 index=client_data_index,
             )
         ),
@@ -1309,7 +1400,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_BROADCAST],
+            [federated_language.framework.FEDERATED_BROADCAST],
             before_comp_allowed_original_arg_subparameters=[()],
             intrinsic_comp_allowed_original_arg_subparameters=[()],
             after_comp_allowed_original_arg_subparameters=[()],
@@ -1324,27 +1415,28 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertEmpty(self.find_intrinsics_in_comp(intrinsic))
     self.assertEqual(
         self.find_intrinsics_in_comp(after),
-        [intrinsic_defs.FEDERATED_SUM.uri],
+        [federated_language.framework.FEDERATED_SUM.uri],
     )
 
     # Check that the intermediate state is empty.
     self.assertEmpty(before.result.result[1])
 
   def test_splits_with_intermediate_state_for_unbound_refs(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
     server_data_index = 0
 
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         arg_type,
-        building_blocks.Selection(
-            building_blocks.Reference('arg', arg_type), index=server_data_index
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('arg', arg_type),
+            index=server_data_index,
         ),
     )
 
@@ -1355,7 +1447,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_BROADCAST],
+            [federated_language.framework.FEDERATED_BROADCAST],
             before_comp_allowed_original_arg_subparameters=[()],
             intrinsic_comp_allowed_original_arg_subparameters=[()],
             after_comp_allowed_original_arg_subparameters=[],
@@ -1370,19 +1462,17 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertNotEmpty(before.result.result[1])
     self.assertEqual(
         before.result.result[1].proto,
-        building_blocks.Struct(
-            [
-                building_blocks.Selection(
-                    building_blocks.Selection(
-                        building_blocks.Reference(
-                            before.parameter_name, before.parameter_type
-                        ),
-                        index=0,
+        federated_language.framework.Struct([
+            federated_language.framework.Selection(
+                federated_language.framework.Selection(
+                    federated_language.framework.Reference(
+                        before.parameter_name, before.parameter_type
                     ),
-                    index=server_data_index,
-                )
-            ]
-        ).proto,
+                    index=0,
+                ),
+                index=server_data_index,
+            )
+        ]).proto,
     )
 
     # Allow all the output comps to depend on all portions of the original comp
@@ -1390,7 +1480,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_BROADCAST],
+            [federated_language.framework.FEDERATED_BROADCAST],
             before_comp_allowed_original_arg_subparameters=[()],
             intrinsic_comp_allowed_original_arg_subparameters=[()],
             after_comp_allowed_original_arg_subparameters=[()],
@@ -1403,11 +1493,11 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertEmpty(before.result.result[1])
 
   def test_splits_with_intermediate_state_for_duplication(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
 
@@ -1416,63 +1506,67 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     proto = mock.create_autospec(
         computation_pb2.Computation, spec_set=True, instance=True
     )
-    function_type = computation_types.FunctionType(None, np.int32)
-    compiled = building_blocks.CompiledComputation(
+    function_type = federated_language.FunctionType(None, np.int32)
+    compiled = federated_language.framework.CompiledComputation(
         proto, name='state_1', type_signature=function_type
     )
-    state_1 = building_blocks.Call(compiled, None)
-    server_state_val_call_1 = building_block_factory.create_federated_value(
-        state_1,
-        placements.SERVER,
+    state_1 = federated_language.framework.Call(compiled, None)
+    server_state_val_call_1 = (
+        federated_language.framework.create_federated_value(
+            state_1,
+            federated_language.SERVER,
+        )
     )
     block_locals.append(('server_state_val_1', server_state_val_call_1))
     proto = mock.create_autospec(
         computation_pb2.Computation, spec_set=True, instance=True
     )
-    function_type = computation_types.FunctionType(None, np.int32)
-    compiled = building_blocks.CompiledComputation(
+    function_type = federated_language.FunctionType(None, np.int32)
+    compiled = federated_language.framework.CompiledComputation(
         proto, name='state_2', type_signature=function_type
     )
-    state_2 = building_blocks.Call(compiled, None)
-    server_state_val_call_2 = building_block_factory.create_federated_value(
-        state_2,
-        placements.SERVER,
+    state_2 = federated_language.framework.Call(compiled, None)
+    server_state_val_call_2 = (
+        federated_language.framework.create_federated_value(
+            state_2,
+            federated_language.SERVER,
+        )
     )
     block_locals.append(('server_state_val_2', server_state_val_call_2))
-    broadcast_call_1 = building_block_factory.create_federated_broadcast(
-        building_blocks.Reference(
+    broadcast_call_1 = federated_language.framework.create_federated_broadcast(
+        federated_language.framework.Reference(
             'server_state_val_1', server_state_val_call_1.type_signature
         )
     )
     block_locals.append(('broadcast_result_1', broadcast_call_1))
-    broadcast_call_2 = building_block_factory.create_federated_broadcast(
-        building_blocks.Reference(
+    broadcast_call_2 = federated_language.framework.create_federated_broadcast(
+        federated_language.framework.Reference(
             'server_state_val_2', server_state_val_call_2.type_signature
         )
     )
     block_locals.append(('broadcast_result_2', broadcast_call_2))
-    federated_zip_call = building_block_factory.create_federated_zip(
-        building_blocks.Struct([
-            building_blocks.Reference(
+    federated_zip_call = federated_language.framework.create_federated_zip(
+        federated_language.framework.Struct([
+            federated_language.framework.Reference(
                 'broadcast_result_1', broadcast_call_1.type_signature
             ),
-            building_blocks.Reference(
+            federated_language.framework.Reference(
                 'broadcast_result_2', broadcast_call_2.type_signature
             ),
         ])
     )
     block_locals.append(('federated_zip_result', federated_zip_call))
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         arg_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             block_locals,
-            building_blocks.Struct([
-                building_blocks.Reference(
+            federated_language.framework.Struct([
+                federated_language.framework.Reference(
                     'federated_zip_result',
                     federated_zip_call.type_signature,
                 ),
-                building_blocks.Reference(
+                federated_language.framework.Reference(
                     'server_state_val_1',
                     server_state_val_call_1.type_signature,
                 ),
@@ -1485,7 +1579,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_BROADCAST],
+            [federated_language.framework.FEDERATED_BROADCAST],
             before_comp_allowed_original_arg_subparameters=[()],
             intrinsic_comp_allowed_original_arg_subparameters=[()],
             after_comp_allowed_original_arg_subparameters=[()],
@@ -1500,42 +1594,45 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertNotEmpty(before.result.result[1])
 
     def _predicate(
-        building_block: building_blocks.ComputationBuildingBlock,
+        building_block: federated_language.framework.ComputationBuildingBlock,
     ) -> bool:
       return isinstance(
-          building_block, building_blocks.Reference
+          building_block, federated_language.framework.Reference
       ) and isinstance(
-          building_block.type_signature, computation_types.FederatedType
+          building_block.type_signature, federated_language.FederatedType
       )
 
     self.assertEqual(
-        tree_analysis.count(before.result.result[1], _predicate), 1
+        federated_language.framework.computation_count(
+            before.result.result[1], _predicate
+        ),
+        1,
     )
 
     # Check that the before comp has two federated_value_at_server intrinsics.
     self.assertEqual(
         self.find_intrinsics_in_comp(before),
-        [intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri] * 2,
+        [federated_language.framework.FEDERATED_VALUE_AT_SERVER.uri] * 2,
     )
     # Check that the intrinsic comp has two broadcast intrinsics.
     self.assertEqual(
         self.find_intrinsics_in_comp(intrinsic),
-        [intrinsic_defs.FEDERATED_BROADCAST.uri] * 2,
+        [federated_language.framework.FEDERATED_BROADCAST.uri] * 2,
     )
     # Check that the after comp only has a federated_zip_at_clients intrinsic.
     self.assertEqual(
         self.find_intrinsics_in_comp(after),
-        [intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri],
+        [federated_language.framework.FEDERATED_ZIP_AT_CLIENTS.uri],
     )
 
   def test_splits_with_intermediate_state_for_duplication_and_unbound_refs(
       self,
   ):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
     server_data_index = 0
@@ -1545,36 +1642,36 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     proto = mock.create_autospec(
         computation_pb2.Computation, spec_set=True, instance=True
     )
-    function_type = computation_types.FunctionType(None, np.int32)
-    compiled = building_blocks.CompiledComputation(
+    function_type = federated_language.FunctionType(None, np.int32)
+    compiled = federated_language.framework.CompiledComputation(
         proto, name='state', type_signature=function_type
     )
-    state = building_blocks.Call(compiled, None)
-    server_state_val_call = building_block_factory.create_federated_value(
+    state = federated_language.framework.Call(compiled, None)
+    server_state_val_call = federated_language.framework.create_federated_value(
         state,
-        placements.SERVER,
+        federated_language.SERVER,
     )
     block_locals.append(('server_state_val', server_state_val_call))
-    broadcast_call = building_block_factory.create_federated_broadcast(
-        building_blocks.Reference(
+    broadcast_call = federated_language.framework.create_federated_broadcast(
+        federated_language.framework.Reference(
             'server_state_val', server_state_val_call.type_signature
         )
     )
     block_locals.append(('broadcast_result', broadcast_call))
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         arg_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             block_locals,
-            building_blocks.Struct([
-                building_blocks.Reference(
+            federated_language.framework.Struct([
+                federated_language.framework.Reference(
                     'broadcast_result', broadcast_call.type_signature
                 ),
-                building_blocks.Reference(
+                federated_language.framework.Reference(
                     'server_state_val', server_state_val_call.type_signature
                 ),
-                building_blocks.Selection(
-                    building_blocks.Reference('arg', arg_type),
+                federated_language.framework.Selection(
+                    federated_language.framework.Reference('arg', arg_type),
                     index=server_data_index,
                 ),
             ]),
@@ -1587,7 +1684,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_BROADCAST],
+            [federated_language.framework.FEDERATED_BROADCAST],
             before_comp_allowed_original_arg_subparameters=[()],
             intrinsic_comp_allowed_original_arg_subparameters=[()],
             after_comp_allowed_original_arg_subparameters=[],
@@ -1603,23 +1700,23 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
 
     def _server_data_selection_predicate(bb):
       return (
-          isinstance(bb, building_blocks.Selection)
+          isinstance(bb, federated_language.framework.Selection)
           and bb.source.name == before.parameter_name
       )
 
     def _server_state_val_predicate(bb):
-      return isinstance(bb, building_blocks.Reference) and isinstance(
-          bb.type_signature, computation_types.FederatedType
-      )
+      return isinstance(
+          bb, federated_language.framework.Reference
+      ) and isinstance(bb.type_signature, federated_language.FederatedType)
 
     self.assertEqual(
-        tree_analysis.count(
+        federated_language.framework.computation_count(
             before.result.result[1], _server_data_selection_predicate
         ),
         1,
     )
     self.assertEqual(
-        tree_analysis.count(
+        federated_language.framework.computation_count(
             before.result.result[1], _server_state_val_predicate
         ),
         1,
@@ -1628,58 +1725,58 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     # Check that the before comp has only a federated_value_at_server intrinsic.
     self.assertEqual(
         self.find_intrinsics_in_comp(before),
-        [intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri],
+        [federated_language.framework.FEDERATED_VALUE_AT_SERVER.uri],
     )
     # Check that the intrinsic comp has only a broadcast intrinsics.
     self.assertEqual(
         self.find_intrinsics_in_comp(intrinsic),
-        [intrinsic_defs.FEDERATED_BROADCAST.uri],
+        [federated_language.framework.FEDERATED_BROADCAST.uri],
     )
     # Check that the after comp has no intrinsics.
     self.assertEmpty(self.find_intrinsics_in_comp(after))
 
   def test_splits_on_multiple_instances_of_intrinsic(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
     server_data_index = 0
-    broadcast_result_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    broadcast_result_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
 
     block_locals = []
     block_locals.append((
         'broadcast_result_1',
-        building_block_factory.create_federated_broadcast(
-            building_blocks.Selection(
-                building_blocks.Reference('arg', arg_type),
+        federated_language.framework.create_federated_broadcast(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('arg', arg_type),
                 index=server_data_index,
             )
         ),
     ))
     block_locals.append((
         'broadcast_result_2',
-        building_block_factory.create_federated_broadcast(
-            building_blocks.Selection(
-                building_blocks.Reference('arg', arg_type),
+        federated_language.framework.create_federated_broadcast(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('arg', arg_type),
                 index=server_data_index,
             )
         ),
     ))
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         arg_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             block_locals,
-            building_blocks.Struct([
-                building_blocks.Reference(
+            federated_language.framework.Struct([
+                federated_language.framework.Reference(
                     'broadcast_result_1', broadcast_result_type
                 ),
-                building_blocks.Reference(
+                federated_language.framework.Reference(
                     'broadcast_result_2', broadcast_result_type
                 ),
             ]),
@@ -1692,7 +1789,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_BROADCAST],
+            [federated_language.framework.FEDERATED_BROADCAST],
             before_comp_allowed_original_arg_subparameters=[()],
             intrinsic_comp_allowed_original_arg_subparameters=[],
             after_comp_allowed_original_arg_subparameters=[()],
@@ -1706,7 +1803,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertEmpty(self.find_intrinsics_in_comp(before))
     self.assertEqual(
         self.find_intrinsics_in_comp(intrinsic),
-        [intrinsic_defs.FEDERATED_BROADCAST.uri] * 2,
+        [federated_language.framework.FEDERATED_BROADCAST.uri] * 2,
     )
     self.assertEmpty(self.find_intrinsics_in_comp(after))
 
@@ -1716,11 +1813,11 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertLen(intrinsic.result.locals, 2)
 
   def test_splits_on_multiple_intrinsics(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
     )
     intermediate_state_type = [np.int32]
     server_data_index = 0
@@ -1732,20 +1829,21 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         ('intermediate_state', intermediate_state_type),
     ]
 
-    federated_sum_call = building_block_factory.create_federated_sum(
-        building_blocks.Selection(
-            building_blocks.Reference('arg', arg_type), index=client_data_index
+    federated_sum_call = federated_language.framework.create_federated_sum(
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('arg', arg_type),
+            index=client_data_index,
         )
     )
     federated_secure_sum_call = (
-        building_block_factory.create_federated_secure_sum(
-            building_blocks.Selection(
-                building_blocks.Reference('arg', arg_type),
+        federated_language.framework.create_federated_secure_sum(
+            federated_language.framework.Selection(
+                federated_language.framework.Reference('arg', arg_type),
                 index=client_data_index,
             ),
-            building_blocks.Selection(
-                building_blocks.Selection(
-                    building_blocks.Reference('arg', arg_type),
+            federated_language.framework.Selection(
+                federated_language.framework.Selection(
+                    federated_language.framework.Reference('arg', arg_type),
                     index=intermediate_state_index,
                 ),
                 index=0,
@@ -1756,22 +1854,22 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         ('federated_sum_result', federated_sum_call),
         ('federated_secure_sum_result', federated_secure_sum_call),
     ]
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         arg_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             block_locals,
-            building_blocks.Struct([
-                building_blocks.Reference(
+            federated_language.framework.Struct([
+                federated_language.framework.Reference(
                     'federated_sum_result',
                     federated_sum_call.type_signature,
                 ),
-                building_blocks.Reference(
+                federated_language.framework.Reference(
                     'federated_secure_sum_result',
                     federated_secure_sum_call.type_signature,
                 ),
-                building_blocks.Selection(
-                    building_blocks.Reference('arg', arg_type),
+                federated_language.framework.Selection(
+                    federated_language.framework.Reference('arg', arg_type),
                     index=server_data_index,
                 ),
             ]),
@@ -1786,9 +1884,9 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
             [
-                intrinsic_defs.FEDERATED_SECURE_SUM,
-                intrinsic_defs.FEDERATED_SUM,
-                intrinsic_defs.FEDERATED_MEAN,
+                federated_language.framework.FEDERATED_SECURE_SUM,
+                federated_language.framework.FEDERATED_SUM,
+                federated_language.framework.FEDERATED_MEAN,
             ],
             before_comp_allowed_original_arg_subparameters=[
                 (client_data_index,),
@@ -1811,8 +1909,8 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertEqual(
         set(self.find_intrinsics_in_comp(intrinsic)),
         set([
-            intrinsic_defs.FEDERATED_SUM.uri,
-            intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+            federated_language.framework.FEDERATED_SUM.uri,
+            federated_language.framework.FEDERATED_SECURE_SUM.uri,
         ]),
     )
     self.assertEmpty(self.find_intrinsics_in_comp(after))
@@ -1826,20 +1924,22 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertLen(intrinsic.result.locals, 2)
     # The federated_sum call takes one arg.
     self.assertNotIsInstance(
-        intrinsic.result.locals[0][1].argument, building_blocks.Struct
+        intrinsic.result.locals[0][1].argument,
+        federated_language.framework.Struct,
     )
     # The federated_secure_sum call takes two args.
     self.assertIsInstance(
-        intrinsic.result.locals[1][1].argument, building_blocks.Struct
+        intrinsic.result.locals[1][1].argument,
+        federated_language.framework.Struct,
     )
     self.assertLen(intrinsic.result.locals[1][1].argument, 2)
 
   def test_cannot_split_on_chained_intrinsic(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
     server_data_index = 0
@@ -1847,31 +1947,33 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     block_locals = [
         (
             'broadcast_result_at_clients',
-            building_block_factory.create_federated_broadcast(
-                building_blocks.Selection(
-                    building_blocks.Reference('arg', arg_type),
+            federated_language.framework.create_federated_broadcast(
+                federated_language.framework.Selection(
+                    federated_language.framework.Reference('arg', arg_type),
                     index=server_data_index,
                 )
             ),
         ),
         (
             'federated_sum_result',
-            building_block_factory.create_federated_sum(
-                building_blocks.Reference(
+            federated_language.framework.create_federated_sum(
+                federated_language.framework.Reference(
                     'broadcast_result_at_clients',
-                    computation_types.FederatedType(
-                        np.int32, placements.CLIENTS
+                    federated_language.FederatedType(
+                        np.int32, federated_language.CLIENTS
                     ),
                 )
             ),
         ),
     ]
-    comp = building_blocks.Lambda(
+    comp = federated_language.framework.Lambda(
         'arg',
         arg_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             block_locals,
-            building_blocks.Reference('federated_sum_result', server_val_type),
+            federated_language.framework.Reference(
+                'federated_sum_result', server_val_type
+            ),
         ),
     )
 
@@ -1880,8 +1982,8 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
       transformations.divisive_force_align_and_split_by_intrinsics(
           comp,
           [
-              intrinsic_defs.FEDERATED_BROADCAST,
-              intrinsic_defs.FEDERATED_SUM,
+              federated_language.framework.FEDERATED_BROADCAST,
+              federated_language.framework.FEDERATED_SUM,
           ],
           before_comp_allowed_original_arg_subparameters=[()],
           intrinsic_comp_allowed_original_arg_subparameters=[()],
@@ -1889,35 +1991,41 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
       )
 
   def test_splits_on_nested_in_tuple_broadcast(self):
-    server_val_type = computation_types.FederatedType(
-        np.int32, placements.SERVER
+    server_val_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
     )
-    client_val_type = computation_types.FederatedType(
-        np.float32, placements.CLIENTS
+    client_val_type = federated_language.FederatedType(
+        np.float32, federated_language.CLIENTS
     )
     arg_type = [server_val_type, client_val_type]
     server_data_index = 0
 
-    first_broadcast = building_block_factory.create_federated_broadcast(
-        building_blocks.Selection(
-            building_blocks.Reference('arg', arg_type), index=server_data_index
+    first_broadcast = federated_language.framework.create_federated_broadcast(
+        federated_language.framework.Selection(
+            federated_language.framework.Reference('arg', arg_type),
+            index=server_data_index,
         )
     )
     any_proto = building_block_test_utils.create_any_proto_from_array(
         np.array([1, 2, 3])
     )
-    packed_broadcast = building_blocks.Struct(
-        [building_blocks.Data(any_proto, server_val_type), first_broadcast]
+    packed_broadcast = federated_language.framework.Struct([
+        federated_language.framework.Data(any_proto, server_val_type),
+        first_broadcast,
+    ])
+    sel = federated_language.framework.Selection(packed_broadcast, index=0)
+    second_broadcast = federated_language.framework.create_federated_broadcast(
+        sel
     )
-    sel = building_blocks.Selection(packed_broadcast, index=0)
-    second_broadcast = building_block_factory.create_federated_broadcast(sel)
-    comp = building_blocks.Lambda('arg', arg_type, second_broadcast)
+    comp = federated_language.framework.Lambda(
+        'arg', arg_type, second_broadcast
+    )
 
     # Allow all parts of the split to depend on the entire original comp input.
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_BROADCAST],
+            [federated_language.framework.FEDERATED_BROADCAST],
             before_comp_allowed_original_arg_subparameters=[()],
             intrinsic_comp_allowed_original_arg_subparameters=[()],
             after_comp_allowed_original_arg_subparameters=[()],
@@ -1929,7 +2037,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertEmpty(self.find_intrinsics_in_comp(before))
     self.assertEqual(
         self.find_intrinsics_in_comp(intrinsic),
-        [intrinsic_defs.FEDERATED_BROADCAST.uri],
+        [federated_language.framework.FEDERATED_BROADCAST.uri],
     )
     self.assertEmpty(self.find_intrinsics_in_comp(after))
 

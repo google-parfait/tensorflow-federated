@@ -20,25 +20,20 @@ import unittest
 from unittest import mock
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.programs import program_logic
 from tensorflow_federated.python.learning.programs import training_program_logic
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.program import data_source
-from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import native_platform
-from tensorflow_federated.python.program import program_state_manager
-from tensorflow_federated.python.program import release_manager
 
 # Convenience aliases.
 ProgramState = training_program_logic.ProgramState
-TensorType = computation_types.TensorType
+TensorType = federated_language.TensorType
 
 
 class TaskManagerTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
@@ -86,13 +81,15 @@ class TaskManagerTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     self.assertEmpty(task_manager._pending_tasks)
 
 
-def _create_test_context() -> federated_context.FederatedContext:
+def _create_test_context() -> federated_language.program.FederatedContext:
   return native_platform.NativeFederatedContext(
       execution_contexts.create_async_local_cpp_execution_context()
   )
 
 
-class _FakeDataSourceIterator(data_source.FederatedDataSourceIterator):
+class _FakeDataSourceIterator(
+    federated_language.program.FederatedDataSourceIterator
+):
   """A fake iterator that tracks the number of times it has been selected."""
 
   def __init__(self, round_num: int):
@@ -111,23 +108,25 @@ class _FakeDataSourceIterator(data_source.FederatedDataSourceIterator):
     return self._round_num.to_bytes(4, 'big')
 
   @property
-  def federated_type(self) -> computation_types.FederatedType:
-    return computation_types.FederatedType(
-        computation_types.SequenceType(element=TensorType(np.int32)),
-        computation_types.Placement.SERVER,
+  def federated_type(self) -> federated_language.FederatedType:
+    return federated_language.FederatedType(
+        federated_language.SequenceType(element=TensorType(np.int32)),
+        federated_language.Placement.SERVER,
     )
 
 
 def _assert_data_source_iterators_equal(
-    iterator1: data_source.FederatedDataSourceIterator,
-    iterator2: data_source.FederatedDataSourceIterator,
+    iterator1: federated_language.program.FederatedDataSourceIterator,
+    iterator2: federated_language.program.FederatedDataSourceIterator,
 ):
   return iterator1.to_bytes() == iterator2.to_bytes()
 
 
 def _create_mock_datasource() -> mock.Mock:
   mock_datasource = mock.create_autospec(
-      data_source.FederatedDataSource, instance=True, spec_set=True
+      federated_language.program.FederatedDataSource,
+      instance=True,
+      spec_set=True,
   )
   mock_datasource.iterator.return_value = _FakeDataSourceIterator(0)
   return mock_datasource
@@ -155,10 +154,10 @@ def _create_mock_train_process() -> mock.Mock:
       ),
   )
   type(mock_process.next).type_signature = mock.PropertyMock(
-      return_value=computation_types.FunctionType(
+      return_value=federated_language.FunctionType(
           parameter=(
               empty_state,
-              computation_types.SequenceType(element=TensorType(np.float32)),
+              federated_language.SequenceType(element=TensorType(np.float32)),
           ),
           result=mock_process.next.return_value,
       )
@@ -201,7 +200,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         training_program_logic.train_model, program_logic.TrainModelProgramLogic
     )
 
-  @context_stack_test_utils.with_context(_create_test_context)
+  @federated_language.framework.with_context(_create_test_context)
   async def test_integration_runs_11_training_rounds_two_eval_rounds_from_scratch(
       self,
   ):
@@ -212,15 +211,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Create a mock state manager that returns no previous state, starting
     # training from scratch.
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+        federated_language.program.ProgramStateManager,
+        instance=True,
+        spec_set=True,
     )
     mock_program_state_manager.load_latest.side_effect = [(None, 0)]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
@@ -347,7 +348,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
-  @context_stack_test_utils.with_context(_create_test_context)
+  @federated_language.framework.with_context(_create_test_context)
   async def test_integration_runs_training_rounds_evaluates_on_time(self):
     train_num_clients = 5
     training_rounds = 5
@@ -356,15 +357,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Create a mock state manager that returns no previous state, starting
     # training from scratch.
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+        federated_language.program.ProgramStateManager,
+        instance=True,
+        spec_set=True,
     )
     mock_program_state_manager.load_latest.side_effect = [(None, 0)]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
@@ -514,7 +517,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
-  @context_stack_test_utils.with_context(_create_test_context)
+  @federated_language.framework.with_context(_create_test_context)
   async def test_integration_runs_5_training_rounds_no_eval_manager(self):
     train_num_clients = 5
     training_rounds = 5
@@ -523,15 +526,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Create a mock state manager that returns no previous state, starting
     # training from scratch.
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+        federated_language.program.ProgramStateManager,
+        instance=True,
+        spec_set=True,
     )
     mock_program_state_manager.load_latest.side_effect = [(None, 0)]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
@@ -625,7 +630,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         mock_model_output_manager.release.call_args_list,
     )
 
-  @context_stack_test_utils.with_context(_create_test_context)
+  @federated_language.framework.with_context(_create_test_context)
   async def test_program_state_manager_work_with_initial_state(self):
     initial_train_state = composers.LearningAlgorithmState(
         global_model_weights=(),
@@ -638,15 +643,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Create a mock state manager that returns no previous state, starting
     # training from scratch.
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+        federated_language.program.ProgramStateManager,
+        instance=True,
+        spec_set=True,
     )
     mock_program_state_manager.load_latest.side_effect = [(None, 0)]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
@@ -706,7 +713,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         _FakeDataSourceIterator(0),
     )
 
-  @context_stack_test_utils.with_context(_create_test_context)
+  @federated_language.framework.with_context(_create_test_context)
   async def test_resumes_from_previous_version_10_runs_one_round(self):
     train_num_clients = 5
     training_rounds = 11
@@ -718,7 +725,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # (one before the last requested round).
     training_state = training_process.initialize()
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True
+        federated_language.program.ProgramStateManager, instance=True
     )
     mock_program_state_manager.load_latest.side_effect = [(
         ProgramState(
@@ -731,10 +738,10 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
@@ -829,7 +836,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
-  @context_stack_test_utils.with_context(_create_test_context)
+  @federated_language.framework.with_context(_create_test_context)
   async def test_resumes_from_previous_runs_no_train_rounds(self):
     train_num_clients = 5
     training_rounds = 10
@@ -841,7 +848,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # completed the entire training process.
     training_state = training_process.initialize()
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True
+        federated_language.program.ProgramStateManager, instance=True
     )
     mock_program_state_manager.load_latest.side_effect = [(
         ProgramState(
@@ -854,10 +861,10 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
 
     # Run an evaluation every round, but we assert none were run because no
@@ -917,7 +924,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
-  @context_stack_test_utils.with_context(_create_test_context)
+  @federated_language.framework.with_context(_create_test_context)
   async def test_retries_one_round(
       self,
   ):
@@ -955,15 +962,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Create a mock state manager that returns no previous state, starting
     # training from scratch.
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+        federated_language.program.ProgramStateManager,
+        instance=True,
+        spec_set=True,
     )
     mock_program_state_manager.load_latest.side_effect = [(None, 0)]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None

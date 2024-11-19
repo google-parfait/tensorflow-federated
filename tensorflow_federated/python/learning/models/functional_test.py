@@ -16,14 +16,12 @@ import collections
 import itertools
 from typing import Any, Optional
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
@@ -615,7 +613,7 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
         loss=[2.0, 4.0], mse=[2.0, 2.0], mae=[1.0, 6.0]
     )
     metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = computation_types.to_type(
+    unfinalized_metrics_type = federated_language.to_type(
         collections.OrderedDict(
             loss=[np.float32, np.float32],
             mse=[np.float32, np.float32],
@@ -631,9 +629,9 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
     # computation is later invoked on a list of values, TFF will teach each
     # element of the list as a single client value. This cannot be inferred from
     # the value itself.
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(
-            unfinalized_metrics_type, placements.CLIENTS
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            unfinalized_metrics_type, federated_language.CLIENTS
         )
     )
     def aggregate_metrics(metrics):

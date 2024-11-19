@@ -15,12 +15,11 @@
 
 from collections.abc import Sequence
 
+import federated_language
+
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.context_stack import set_default_context
-from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
-from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
@@ -44,7 +43,7 @@ def create_sync_local_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> sync_execution_context.SyncExecutionContext:
+) -> federated_language.framework.SyncExecutionContext:
   """Creates a local execution context backed by TFF-C++ runtime.
 
   Args:
@@ -65,7 +64,7 @@ def create_sync_local_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       leaf_executor_fn=_create_tensorflow_backend_execution_stack,
   )
-  context = sync_execution_context.SyncExecutionContext(
+  context = federated_language.framework.SyncExecutionContext(
       executor_fn=factory,
       compiler_fn=compiler.desugar_and_transform_to_native,
       transform_args=tensorflow_computation.transform_args,
@@ -95,14 +94,14 @@ def set_sync_local_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
   )
-  set_default_context.set_default_context(context)
+  federated_language.framework.set_default_context(context)
 
 
 def create_async_local_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> async_execution_context.AsyncExecutionContext:
+) -> federated_language.framework.AsyncExecutionContext:
   """Creates a local async execution context backed by TFF-C++ runtime.
 
   Args:
@@ -115,7 +114,8 @@ def create_async_local_cpp_execution_context(
     stream_structs: The flag to enable decomposing and streaming struct values.
 
   Returns:
-    An instance of `context_base.AsyncContext` representing the TFF-C++ runtime.
+    An instance of `federated_language.framework.AsyncContext` representing the
+    TFF-C++ runtime.
   """
   del stream_structs  # Unused.
   factory = cpp_executor_factory.local_cpp_executor_factory(
@@ -123,7 +123,7 @@ def create_async_local_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       leaf_executor_fn=_create_tensorflow_backend_execution_stack,
   )
-  context = async_execution_context.AsyncExecutionContext(
+  context = federated_language.framework.AsyncExecutionContext(
       executor_fn=factory,
       compiler_fn=compiler.desugar_and_transform_to_native,
       transform_args=tensorflow_computation.transform_args,
@@ -153,18 +153,18 @@ def set_async_local_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
   )
-  set_default_context.set_default_context(context)
+  federated_language.framework.set_default_context(context)
 
 
 def create_sync_remote_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
-) -> sync_execution_context.SyncExecutionContext:
+) -> federated_language.framework.SyncExecutionContext:
   """Creates a remote execution context backed by TFF-C++ runtime."""
   factory = cpp_executor_factory.remote_cpp_executor_factory(
       channels=channels, default_num_clients=default_num_clients
   )
-  context = sync_execution_context.SyncExecutionContext(
+  context = federated_language.framework.SyncExecutionContext(
       executor_fn=factory,
       compiler_fn=compiler.desugar_and_transform_to_native,
       transform_args=tensorflow_computation.transform_args,
@@ -180,18 +180,18 @@ def set_sync_remote_cpp_execution_context(
   context = create_sync_remote_cpp_execution_context(
       channels=channels, default_num_clients=default_num_clients
   )
-  set_default_context.set_default_context(context)
+  federated_language.framework.set_default_context(context)
 
 
 def create_async_remote_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
-) -> async_execution_context.AsyncExecutionContext:
+) -> federated_language.framework.AsyncExecutionContext:
   """Creates a remote execution context backed by TFF-C++ runtime."""
   factory = cpp_executor_factory.remote_cpp_executor_factory(
       channels=channels, default_num_clients=default_num_clients
   )
-  context = async_execution_context.AsyncExecutionContext(
+  context = federated_language.framework.AsyncExecutionContext(
       executor_fn=factory,
       compiler_fn=compiler.desugar_and_transform_to_native,
       transform_args=tensorflow_computation.transform_args,

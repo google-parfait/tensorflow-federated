@@ -18,14 +18,12 @@ from collections.abc import Sequence
 import concurrent
 from typing import NoReturn, Optional
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import tracing
-from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def _handle_error(exception: Exception) -> NoReturn:
@@ -35,7 +33,7 @@ def _handle_error(exception: Exception) -> NoReturn:
     raise exception
 
 
-class CppToPythonExecutorValue(executor_value_base.ExecutorValue):
+class CppToPythonExecutorValue(federated_language.framework.ExecutorValue):
   """ExecutorValue representation of values embedded in C++ executors.
 
   Instances of this class represent ownership of the resources which back
@@ -48,7 +46,7 @@ class CppToPythonExecutorValue(executor_value_base.ExecutorValue):
   def __init__(
       self,
       owned_value_id: executor_bindings.OwnedValueId,
-      type_signature: computation_types.Type,
+      type_signature: federated_language.Type,
       cpp_executor: executor_bindings.Executor,
       futures_executor: concurrent.futures.Executor,
   ):
@@ -58,14 +56,14 @@ class CppToPythonExecutorValue(executor_value_base.ExecutorValue):
     self._futures_executor = futures_executor
 
   @property
-  def type_signature(self) -> computation_types.Type:
+  def type_signature(self) -> federated_language.Type:
     return self._type_signature
 
   @property
   def reference(self) -> int:
     return self._owned_value_id.ref
 
-  @tracing.trace
+  @federated_language.framework.trace
   async def compute(self) -> object:
     """Pulls protocol buffer out of C++ into Python, and deserializes."""
     running_loop = asyncio.get_running_loop()
@@ -85,7 +83,7 @@ class CppToPythonExecutorValue(executor_value_base.ExecutorValue):
     return deserialized_value
 
 
-class CppToPythonExecutorBridge(executor_base.Executor):
+class CppToPythonExecutorBridge(federated_language.framework.Executor):
   """Implementation of Python executor interface in terms of C++ executor.
 
   This class implements a thin layer integrating the
@@ -105,9 +103,9 @@ class CppToPythonExecutorBridge(executor_base.Executor):
     self._cpp_executor = cpp_executor
     self._futures_executor = futures_executor
 
-  @tracing.trace
+  @federated_language.framework.trace
   async def create_value(
-      self, value: object, type_signature: computation_types.Type
+      self, value: object, type_signature: federated_language.Type
   ) -> CppToPythonExecutorValue:
     serialized_value, _ = value_serialization.serialize_value(
         value, type_signature
@@ -120,7 +118,7 @@ class CppToPythonExecutorBridge(executor_base.Executor):
         owned_id, type_signature, self._cpp_executor, self._futures_executor
     )
 
-  @tracing.trace
+  @federated_language.framework.trace
   async def create_call(
       self,
       fn: CppToPythonExecutorValue,
@@ -142,7 +140,7 @@ class CppToPythonExecutorBridge(executor_base.Executor):
         self._futures_executor,
     )
 
-  @tracing.trace
+  @federated_language.framework.trace
   async def create_struct(
       self, elements: Sequence[CppToPythonExecutorValue]
   ) -> CppToPythonExecutorValue:
@@ -158,12 +156,12 @@ class CppToPythonExecutorBridge(executor_base.Executor):
       _handle_error(e)
     return CppToPythonExecutorValue(
         struct_id,
-        computation_types.StructType(type_list),
+        federated_language.StructType(type_list),
         self._cpp_executor,
         self._futures_executor,
     )
 
-  @tracing.trace
+  @federated_language.framework.trace
   async def create_selection(
       self, source: CppToPythonExecutorValue, index: int
   ) -> CppToPythonExecutorValue:

@@ -14,6 +14,7 @@
 
 import collections
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -22,15 +23,12 @@ from tensorflow_federated.python.aggregators import measurements
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
-_struct_type = computation_types.to_type([(np.float32, (3,)), np.float32])
-_struct_type_clients = computation_types.FederatedType(
-    _struct_type, placements.CLIENTS
+_struct_type = federated_language.to_type([(np.float32, (3,)), np.float32])
+_struct_type_clients = federated_language.FederatedType(
+    _struct_type, federated_language.CLIENTS
 )
-_float_type = computation_types.to_type(np.float32)
+_float_type = federated_language.to_type(np.float32)
 
 
 @tensorflow_computation.tf_computation
@@ -44,8 +42,8 @@ def _make_struct(x):
 
 
 def _get_min_norm(value):
-  norms = intrinsics.federated_map(_get_norm, value)
-  min_norm = intrinsics.federated_min(norms)
+  norms = federated_language.federated_map(_get_norm, value)
+  min_norm = federated_language.federated_min(norms)
   return collections.OrderedDict(min_norm=min_norm)
 
 
@@ -55,14 +53,16 @@ def _mul_struct(value, weight):
 
 
 def _get_min_weighted_norm(value, weight):
-  weighted_value = intrinsics.federated_map(_mul_struct, (value, weight))
-  norms = intrinsics.federated_map(_get_norm, weighted_value)
-  min_weighted_norm = intrinsics.federated_min(norms)
+  weighted_value = federated_language.federated_map(
+      _mul_struct, (value, weight)
+  )
+  norms = federated_language.federated_map(_get_norm, weighted_value)
+  min_weighted_norm = federated_language.federated_min(norms)
   return collections.OrderedDict(min_weighted_norm=min_weighted_norm)
 
 
 def _get_server_norm(value):
-  server_norm = intrinsics.federated_map(_get_norm, value)
+  server_norm = federated_language.federated_map(_get_norm, value)
   return collections.OrderedDict(server_norm=server_norm)
 
 

@@ -15,15 +15,13 @@
 import collections
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_backend import serialization_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_serialization
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 class TensorFlowSerializationTest(tf.test.TestCase):
@@ -33,11 +31,13 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             lambda: tf.constant(99),
             None,
-            context_stack_impl.context_stack,
+            federated_language.framework.global_context_stack,
         )
     )
     self.assertEqual(
-        type_serialization.deserialize_type(comp.type).compact_representation(),
+        federated_language.framework.deserialize_type(
+            comp.type
+        ).compact_representation(),
         '( -> int32)',
     )
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
@@ -64,12 +64,14 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     comp, extra_type_spec = (
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             table_lookup,
-            computation_types.TensorType(np.str_, (None,)),
-            context_stack_impl.context_stack,
+            federated_language.TensorType(np.str_, (None,)),
+            federated_language.framework.global_context_stack,
         )
     )
     self.assertEqual(
-        type_serialization.deserialize_type(comp.type).compact_representation(),
+        federated_language.framework.deserialize_type(
+            comp.type
+        ).compact_representation(),
         '(str[?] -> int64[?])',
     )
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
@@ -97,12 +99,14 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     comp, extra_type_spec = (
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             lambda x: x + 3,
-            computation_types.TensorType(np.int32),
-            context_stack_impl.context_stack,
+            federated_language.TensorType(np.int32),
+            federated_language.framework.global_context_stack,
         )
     )
     self.assertEqual(
-        type_serialization.deserialize_type(comp.type).compact_representation(),
+        federated_language.framework.deserialize_type(
+            comp.type
+        ).compact_representation(),
         '(int32 -> int32)',
     )
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
@@ -126,14 +130,16 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     comp, extra_type_spec = (
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             lambda z: output_type(2.0 * tf.cast(z.x, tf.float32), 3.0 * z.y),
-            computation_types.StructWithPythonType(
+            federated_language.StructWithPythonType(
                 [('x', np.int32), ('y', (np.float32, [2]))], batch_type
             ),
-            context_stack_impl.context_stack,
+            federated_language.framework.global_context_stack,
         )
     )
     self.assertEqual(
-        type_serialization.deserialize_type(comp.type).compact_representation(),
+        federated_language.framework.deserialize_type(
+            comp.type
+        ).compact_representation(),
         '(<x=int32,y=float32[2]> -> <A=float32,B=float32[2]>)',
     )
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
@@ -142,11 +148,11 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         '(<x=int32,y=float32[2]> -> <A=float32,B=float32[2]>)',
     )
     self.assertIsInstance(
-        extra_type_spec.parameter, computation_types.StructWithPythonType
+        extra_type_spec.parameter, federated_language.StructWithPythonType
     )
     self.assertIs(extra_type_spec.parameter.python_container, batch_type)
     self.assertIsInstance(
-        extra_type_spec.result, computation_types.StructWithPythonType
+        extra_type_spec.result, federated_language.StructWithPythonType
     )
     self.assertIs(extra_type_spec.result.python_container, output_type)
 
@@ -158,12 +164,14 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     comp, extra_type_spec = (
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             _legacy_dataset_reducer_example,
-            computation_types.SequenceType(np.int64),
-            context_stack_impl.context_stack,
+            federated_language.SequenceType(np.int64),
+            federated_language.framework.global_context_stack,
         )
     )
     self.assertEqual(
-        type_serialization.deserialize_type(comp.type).compact_representation(),
+        federated_language.framework.deserialize_type(
+            comp.type
+        ).compact_representation(),
         '(int64* -> int64)',
     )
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
@@ -193,12 +201,14 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     comp, extra_type_spec = (
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             _legacy_dataset_reducer_example,
-            computation_types.SequenceType([np.int64]),
-            context_stack_impl.context_stack,
+            federated_language.SequenceType([np.int64]),
+            federated_language.framework.global_context_stack,
         )
     )
     self.assertEqual(
-        type_serialization.deserialize_type(comp.type).compact_representation(),
+        federated_language.framework.deserialize_type(
+            comp.type
+        ).compact_representation(),
         '(<int64>* -> int64)',
     )
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')

@@ -30,6 +30,9 @@ limitations under the License
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "federated_language/proto/array.pb.h"
+#include "federated_language/proto/computation.pb.h"
+#include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
 #include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/xla/client/xla_builder.h"
@@ -50,9 +53,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 ABSL_FLAG(std::string, tff_xla_executor_test_platform, "Host",
           "The name of the XLA platform to run the tests on. By default will "
@@ -73,22 +73,22 @@ using ::tensorflow_federated::testing::TensorT;
 using ::tensorflow_federated::testing::TensorV;
 using ::testing::HasSubstr;
 
-inline absl::StatusOr<std::tuple<v0::Xla::Binding, int>> BindingFromType(
-    v0::Type type, int next_unused_index) {
+inline absl::StatusOr<std::tuple<federated_language::Xla::Binding, int>>
+BindingFromType(federated_language::Type type, int next_unused_index) {
   switch (type.type_case()) {
-    case v0::Type::kTensor: {
-      v0::Xla::Binding binding;
+    case federated_language::Type::kTensor: {
+      federated_language::Xla::Binding binding;
       binding.mutable_tensor()->set_index(next_unused_index);
       return std::make_tuple(binding, next_unused_index + 1);
     }
-    case v0::Type::kStruct: {
-      v0::Xla::Binding binding;
+    case federated_language::Type::kStruct: {
+      federated_language::Xla::Binding binding;
       for (const auto& type_element : type.struct_().element()) {
         auto partial_binding =
             TFF_TRY(BindingFromType(type_element.value(), next_unused_index));
         next_unused_index = std::get<int>(partial_binding);
         *binding.mutable_struct_()->add_element() =
-            std::get<v0::Xla::Binding>(partial_binding);
+            std::get<federated_language::Xla::Binding>(partial_binding);
       }
       return std::make_tuple(binding, next_unused_index);
     }
@@ -99,12 +99,12 @@ inline absl::StatusOr<std::tuple<v0::Xla::Binding, int>> BindingFromType(
   }
 }
 
-inline v0::Value ComputationV(std::optional<v0::Xla::Binding> in_binding,
-                              v0::Xla::Binding out_binding,
-                              xla::XlaComputation xla_comp,
-                              v0::Type computation_type) {
+inline v0::Value ComputationV(
+    std::optional<federated_language::Xla::Binding> in_binding,
+    federated_language::Xla::Binding out_binding, xla::XlaComputation xla_comp,
+    federated_language::Type computation_type) {
   v0::Value value_pb;
-  v0::Computation* comp_pb = value_pb.mutable_computation();
+  federated_language::Computation* comp_pb = value_pb.mutable_computation();
   comp_pb->mutable_xla()->mutable_hlo_module()->PackFrom(xla_comp.proto());
   *comp_pb->mutable_type() = computation_type;
   if (in_binding.has_value()) {
@@ -317,8 +317,9 @@ TEST_F(XLAExecutorTest, CreateValueComputationTensorNonFunctionalTypeFails) {
   xla::Parameter(&builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  v0::Type float_tensor_type;
-  float_tensor_type.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
+  federated_language::Type float_tensor_type;
+  float_tensor_type.mutable_tensor()->set_dtype(
+      federated_language::DataType::DT_FLOAT);
 
   auto tensor_binding =
       std::get<0>(TFF_ASSERT_OK(BindingFromType(float_tensor_type, 0)));
@@ -344,13 +345,14 @@ TEST_F(XLAExecutorTest,
   xla::Parameter(&builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  v0::Type float_tensor;
-  float_tensor.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
-  v0::Type function_type;
+  federated_language::Type float_tensor;
+  float_tensor.mutable_tensor()->set_dtype(
+      federated_language::DataType::DT_FLOAT);
+  federated_language::Type function_type;
   *function_type.mutable_function()->mutable_result() = float_tensor;
   *function_type.mutable_function()->mutable_parameter() = float_tensor;
   // We create a binding with mismatched structure.
-  v0::Type struct_type;
+  federated_language::Type struct_type;
   *struct_type.mutable_struct_()->add_element()->mutable_value() = float_tensor;
 
   auto struct_binding =
@@ -378,12 +380,13 @@ TEST_F(XLAExecutorTest,
                  XLAShapeWithUnknownDims(tensorflow::DT_FLOAT, num_dims), "x");
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  v0::Type float_unk_shape_tensor;
-  float_unk_shape_tensor.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
+  federated_language::Type float_unk_shape_tensor;
+  float_unk_shape_tensor.mutable_tensor()->set_dtype(
+      federated_language::DataType::DT_FLOAT);
   for (int i = 0; i < num_dims; i++) {
     float_unk_shape_tensor.mutable_tensor()->add_dims(-1);
   }
-  v0::Type function_type;
+  federated_language::Type function_type;
   *function_type.mutable_function()->mutable_result() = float_unk_shape_tensor;
   *function_type.mutable_function()->mutable_parameter() =
       float_unk_shape_tensor;
@@ -404,10 +407,11 @@ TEST_F(XLAExecutorTest, CreateValueComputationTensorParameterUnknownRankFails) {
                  "x");
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  v0::Type float_unk_rank_tensor;
-  float_unk_rank_tensor.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
+  federated_language::Type float_unk_rank_tensor;
+  float_unk_rank_tensor.mutable_tensor()->set_dtype(
+      federated_language::DataType::DT_FLOAT);
   float_unk_rank_tensor.mutable_tensor()->set_unknown_rank(true);
-  v0::Type function_type;
+  federated_language::Type function_type;
   *function_type.mutable_function()->mutable_result() = float_unk_rank_tensor;
   *function_type.mutable_function()->mutable_parameter() =
       float_unk_rank_tensor;
@@ -423,12 +427,14 @@ TEST_F(XLAExecutorTest, CreateValueComputationTensorParameterUnknownRankFails) {
 }
 
 TEST_F(XLAExecutorTest, CreateValueComputationLiteralReturnsResult) {
-  const v0::DataType dtype = v0::DataType::DT_INT32;
-  v0::ArrayShape shape_pb = testing::CreateArrayShape({});
+  const federated_language::DataType dtype =
+      federated_language::DataType::DT_INT32;
+  federated_language::ArrayShape shape_pb = testing::CreateArrayShape({});
   auto values = {1};
-  v0::Array array_pb =
+  federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(dtype, shape_pb, values));
-  v0::Computation computation_pb = testing::LiteralComputation(array_pb);
+  federated_language::Computation computation_pb =
+      testing::LiteralComputation(array_pb);
   v0::Value value_pb = testing::ComputationV(computation_pb);
 
   const OwnedValueId& embedded_fn =
@@ -447,8 +453,8 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallSingleTensor) {
   xla::Tuple(&builder, {constant});
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  auto tensor_type = TensorT(v0::DataType::DT_FLOAT);
-  v0::Type function_type = NoArgFunctionT(tensor_type);
+  auto tensor_type = TensorT(federated_language::DataType::DT_FLOAT);
+  federated_language::Type function_type = NoArgFunctionT(tensor_type);
   v0::Value computation = ComputationV(
       std::nullopt, std::get<0>(TFF_ASSERT_OK(BindingFromType(tensor_type, 0))),
       std::move(*xla_computation), function_type);
@@ -471,8 +477,9 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallTensorStructure) {
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
 
-  v0::Type return_type = FlatStructT(v0::DataType::DT_FLOAT, 2);
-  v0::Type function_type = NoArgFunctionT(return_type);
+  federated_language::Type return_type =
+      FlatStructT(federated_language::DataType::DT_FLOAT, 2);
+  federated_language::Type function_type = NoArgFunctionT(return_type);
 
   v0::Value computation = ComputationV(
       std::nullopt, std::get<0>(TFF_ASSERT_OK(BindingFromType(return_type, 0))),
@@ -497,8 +504,9 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallNestedTensorStructure) {
   ASSERT_TRUE(xla_computation.ok());
 
   // We construct a return type <tf.float32, <tf.float32, tf.float32>>
-  v0::Type nested_struct_type = NestedStructT(v0::DataType::DT_FLOAT);
-  v0::Type function_type = NoArgFunctionT(nested_struct_type);
+  federated_language::Type nested_struct_type =
+      NestedStructT(federated_language::DataType::DT_FLOAT);
+  federated_language::Type function_type = NoArgFunctionT(nested_struct_type);
 
   v0::Value computation = ComputationV(
       std::nullopt,
@@ -525,8 +533,9 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityScalar) {
   xla::Tuple(&builder, {parameter});
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  v0::Type float_tensor_type = TensorT(v0::DataType::DT_FLOAT);
-  v0::Type function_type = IdentityFunctionT(float_tensor_type);
+  federated_language::Type float_tensor_type =
+      TensorT(federated_language::DataType::DT_FLOAT);
+  federated_language::Type function_type = IdentityFunctionT(float_tensor_type);
   auto binding =
       std::get<0>(TFF_ASSERT_OK(BindingFromType(float_tensor_type, 0)));
   v0::Value computation = ComputationV(
@@ -553,9 +562,10 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentitySingletonStruct) {
   xla::Tuple(&builder, {parameter});
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  v0::Type single_float_struct_type =
-      StructT({TensorT(v0::DataType::DT_FLOAT)});
-  v0::Type function_type = IdentityFunctionT(single_float_struct_type);
+  federated_language::Type single_float_struct_type =
+      StructT({TensorT(federated_language::DataType::DT_FLOAT)});
+  federated_language::Type function_type =
+      IdentityFunctionT(single_float_struct_type);
   auto binding =
       std::get<0>(TFF_ASSERT_OK(BindingFromType(single_float_struct_type, 0)));
   v0::Value computation = ComputationV(
@@ -585,8 +595,10 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityNestedStruct) {
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
 
-  v0::Type nested_struct_type = NestedStructT(v0::DataType::DT_FLOAT);
-  v0::Type function_type = IdentityFunctionT(nested_struct_type);
+  federated_language::Type nested_struct_type =
+      NestedStructT(federated_language::DataType::DT_FLOAT);
+  federated_language::Type function_type =
+      IdentityFunctionT(nested_struct_type);
   auto binding =
       std::get<0>(TFF_ASSERT_OK(BindingFromType(nested_struct_type, 0)));
   v0::Value computation = ComputationV(
@@ -618,10 +630,12 @@ TEST_F(XLAExecutorTest, CallAndMaterializeIdentityPartiallyNonScalarStruct) {
   ASSERT_TRUE(xla_computation.ok());
 
   // Create a computation type to match the above.
-  v0::Type scalar = TensorT(v0::DataType::DT_FLOAT);
-  v0::Type matrix = TensorT(v0::DataType::DT_FLOAT, {10, 10});
-  v0::Type struct_type = StructT({scalar, matrix});
-  v0::Type function_type = IdentityFunctionT(struct_type);
+  federated_language::Type scalar =
+      TensorT(federated_language::DataType::DT_FLOAT);
+  federated_language::Type matrix =
+      TensorT(federated_language::DataType::DT_FLOAT, {10, 10});
+  federated_language::Type struct_type = StructT({scalar, matrix});
+  federated_language::Type function_type = IdentityFunctionT(struct_type);
   auto binding = std::get<0>(TFF_ASSERT_OK(BindingFromType(struct_type, 0)));
   v0::Value computation = ComputationV(
       binding, binding, std::move(*xla_computation), function_type);
@@ -650,9 +664,12 @@ TEST_F(XLAExecutorTest,
   xla::Tuple(&builder, {x, xla::Add(y, z)});
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  v0::Type nested_struct_type = NestedStructT(v0::DataType::DT_FLOAT);
-  v0::Type result_type = FlatStructT(v0::DataType::DT_FLOAT, 2);
-  v0::Type function_type = FunctionT(nested_struct_type, result_type);
+  federated_language::Type nested_struct_type =
+      NestedStructT(federated_language::DataType::DT_FLOAT);
+  federated_language::Type result_type =
+      FlatStructT(federated_language::DataType::DT_FLOAT, 2);
+  federated_language::Type function_type =
+      FunctionT(nested_struct_type, result_type);
   auto parameter_binding =
       std::get<0>(TFF_ASSERT_OK(BindingFromType(nested_struct_type, 0)));
   auto result_binding =

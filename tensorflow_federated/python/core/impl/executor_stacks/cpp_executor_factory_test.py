@@ -13,13 +13,11 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
 
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils_bindings
-from tensorflow_federated.python.core.impl.types import placements
 
 
 def _create_mock_execution_stack(
@@ -43,16 +41,18 @@ class CPPExecutorFactoryTest(absltest.TestCase):
     local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
         default_num_clients=0, leaf_executor_fn=_create_mock_execution_stack
     )
-    self.assertIsInstance(local_cpp_factory, executor_factory.ExecutorFactory)
+    self.assertIsInstance(
+        local_cpp_factory, federated_language.framework.ExecutorFactory
+    )
 
   def test_clean_up_executors_clears_state(self):
     local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
         default_num_clients=0, leaf_executor_fn=_create_mock_execution_stack
     )
-    cardinalities = {placements.CLIENTS: 1}
+    cardinalities = {federated_language.CLIENTS: 1}
     local_cpp_factory.create_executor(cardinalities)
     for executor in local_cpp_factory._executors.values():
-      self.assertIsInstance(executor, executor_base.Executor)
+      self.assertIsInstance(executor, federated_language.framework.Executor)
     local_cpp_factory.clean_up_executor(cardinalities)
     self.assertEmpty(local_cpp_factory._executors)
 
@@ -60,9 +60,13 @@ class CPPExecutorFactoryTest(absltest.TestCase):
     local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
         default_num_clients=0, leaf_executor_fn=_create_mock_execution_stack
     )
-    self.assertIsInstance(local_cpp_factory, executor_factory.ExecutorFactory)
-    executor = local_cpp_factory.create_executor({placements.CLIENTS: 1})
-    self.assertIsInstance(executor, executor_base.Executor)
+    self.assertIsInstance(
+        local_cpp_factory, federated_language.framework.ExecutorFactory
+    )
+    executor = local_cpp_factory.create_executor(
+        {federated_language.CLIENTS: 1}
+    )
+    self.assertIsInstance(executor, federated_language.framework.Executor)
 
   def test_create_remote_cpp_factory_constructs(self):
     targets = ['localhost:8000', 'localhost:8001']
@@ -72,7 +76,9 @@ class CPPExecutorFactoryTest(absltest.TestCase):
     remote_cpp_factory = cpp_executor_factory.remote_cpp_executor_factory(
         channels=channels, default_num_clients=0
     )
-    self.assertIsInstance(remote_cpp_factory, executor_factory.ExecutorFactory)
+    self.assertIsInstance(
+        remote_cpp_factory, federated_language.framework.ExecutorFactory
+    )
 
   def test_create_remote_cpp_factory_raises_with_no_available_workers(self):
     targets = ['localhost:8000', 'localhost:8001']
@@ -82,9 +88,11 @@ class CPPExecutorFactoryTest(absltest.TestCase):
     remote_cpp_factory = cpp_executor_factory.remote_cpp_executor_factory(
         channels=channels, default_num_clients=0
     )
-    self.assertIsInstance(remote_cpp_factory, executor_factory.ExecutorFactory)
+    self.assertIsInstance(
+        remote_cpp_factory, federated_language.framework.ExecutorFactory
+    )
     with self.assertRaises(Exception):
-      remote_cpp_factory.create_executor({placements.CLIENTS: 1})
+      remote_cpp_factory.create_executor({federated_language.CLIENTS: 1})
 
   def test_create_cpp_factory_raises_with_invalid_default_num_clients(self):
     with self.subTest('local_nonnegative'):

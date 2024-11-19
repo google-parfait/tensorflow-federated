@@ -43,7 +43,6 @@ py_library(
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning/metrics:aggregator",
@@ -58,6 +57,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/learning/templates:model_delta_client_work",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -69,13 +69,13 @@ py_cpu_gpu_test(
     deps = [
         ":fed_avg",
         "//tensorflow_federated/python/aggregators:factory_utils",
-        "//tensorflow_federated/python/core/test:static_assert",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning:model_update_aggregator",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -89,10 +89,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:loop_builder",
@@ -108,6 +104,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/learning/templates:model_delta_client_work",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -118,13 +115,13 @@ py_cpu_gpu_test(
     shard_count = 10,
     deps = [
         ":fed_avg_with_optimizer_schedule",
-        "//tensorflow_federated/python/core/test:static_assert",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning:model_update_aggregator",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -137,7 +134,6 @@ py_library(
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning/metrics:aggregator",
@@ -152,6 +148,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/learning/templates:proximal_client_work",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -164,7 +161,6 @@ py_cpu_gpu_test(
         ":fed_prox",
         "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/core/test:static_assert",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning:model_update_aggregator",
         "//tensorflow_federated/python/learning/metrics:aggregator",
@@ -173,6 +169,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "//tensorflow_federated/python/learning/templates:distributors",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -186,11 +183,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:tensor_utils",
@@ -205,6 +197,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -222,10 +215,6 @@ py_test(
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",
@@ -237,6 +226,7 @@ py_test(
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -249,10 +239,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
@@ -266,6 +252,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -276,11 +263,6 @@ py_test(
         ":fed_recon_eval",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/models:reconstruction_model",
@@ -288,6 +270,7 @@ py_test(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -300,10 +283,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning:tensor_utils",
@@ -319,6 +298,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -330,7 +310,6 @@ py_cpu_gpu_test(
     deps = [
         ":fed_sgd",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
-        "//tensorflow_federated/python/core/test:static_assert",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning:model_update_aggregator",
         "//tensorflow_federated/python/learning/metrics:aggregator",
@@ -338,6 +317,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:test_models",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -349,16 +329,13 @@ py_library(
         "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/templates:client_works",
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -368,8 +345,7 @@ py_test(
     deps = [
         ":kmeans_clustering",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -384,10 +360,6 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:loop_builder",
@@ -404,6 +376,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -423,13 +396,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/core/test:static_assert",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning:model_update_aggregator",
@@ -448,6 +416,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/optimizers:yogi",
         "//tensorflow_federated/python/learning/templates:client_works",
         "//tensorflow_federated/python/learning/templates:distributors",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -459,11 +428,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:loop_builder",
@@ -476,6 +440,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -489,11 +454,6 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/metrics:aggregator",
@@ -507,6 +467,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -519,14 +480,9 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:array_shape",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -537,10 +493,10 @@ py_cpu_gpu_test(
     deps = [
         ":personalization_eval",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
+        "@federated_language//federated_language",
     ],
 )

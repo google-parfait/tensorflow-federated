@@ -13,45 +13,61 @@
 # limitations under the License.
 """Libraries for creating federated programs."""
 
+import federated_language
 # pylint: disable=g-importing-member
 from tensorflow_federated.python.program.client_id_data_source import ClientIdDataSource
 from tensorflow_federated.python.program.client_id_data_source import ClientIdDataSourceIterator
-from tensorflow_federated.python.program.data_source import FederatedDataSource
-from tensorflow_federated.python.program.data_source import FederatedDataSourceIterator
+
+FederatedDataSource = federated_language.program.FederatedDataSource
+FederatedDataSourceIterator = (
+    federated_language.program.FederatedDataSourceIterator
+)
 from tensorflow_federated.python.program.dataset_data_source import DatasetDataSource
 from tensorflow_federated.python.program.dataset_data_source import DatasetDataSourceIterator
-from tensorflow_federated.python.program.federated_context import check_in_federated_context
-from tensorflow_federated.python.program.federated_context import ComputationArg
-from tensorflow_federated.python.program.federated_context import contains_only_server_placed_data
-from tensorflow_federated.python.program.federated_context import FederatedContext
+
+check_in_federated_context = (
+    federated_language.program.check_in_federated_context
+)
+ComputationArg = federated_language.program.ComputationArg
+contains_only_server_placed_data = (
+    federated_language.program.contains_only_server_placed_data
+)
+FederatedContext = federated_language.program.FederatedContext
 from tensorflow_federated.python.program.file_program_state_manager import FileProgramStateManager
 from tensorflow_federated.python.program.file_release_manager import CSVFileReleaseManager
 from tensorflow_federated.python.program.file_release_manager import CSVKeyFieldnameNotFoundError
 from tensorflow_federated.python.program.file_release_manager import CSVSaveMode
 from tensorflow_federated.python.program.file_release_manager import SavedModelFileReleaseManager
-from tensorflow_federated.python.program.logging_release_manager import LoggingReleaseManager
-from tensorflow_federated.python.program.memory_release_manager import MemoryReleaseManager
+
+LoggingReleaseManager = federated_language.program.LoggingReleaseManager
+MemoryReleaseManager = federated_language.program.MemoryReleaseManager
 from tensorflow_federated.python.program.native_platform import NativeFederatedContext
 from tensorflow_federated.python.program.native_platform import NativeValueReference
-from tensorflow_federated.python.program.program_state_manager import ProgramStateExistsError
-from tensorflow_federated.python.program.program_state_manager import ProgramStateManager
-from tensorflow_federated.python.program.program_state_manager import ProgramStateNotFoundError
-from tensorflow_federated.python.program.program_state_manager import ProgramStateStructure
-from tensorflow_federated.python.program.program_state_manager import ProgramStateValue
-from tensorflow_federated.python.program.release_manager import DelayedReleaseManager
-from tensorflow_federated.python.program.release_manager import FilteringReleaseManager
-from tensorflow_federated.python.program.release_manager import GroupingReleaseManager
-from tensorflow_federated.python.program.release_manager import NotFilterableError
-from tensorflow_federated.python.program.release_manager import PeriodicReleaseManager
-from tensorflow_federated.python.program.release_manager import ReleasableStructure
-from tensorflow_federated.python.program.release_manager import ReleasableValue
-from tensorflow_federated.python.program.release_manager import ReleaseManager
+
+ProgramStateExistsError = federated_language.program.ProgramStateExistsError
+ProgramStateManager = federated_language.program.ProgramStateManager
+ProgramStateNotFoundError = federated_language.program.ProgramStateNotFoundError
+ProgramStateStructure = federated_language.program.ProgramStateStructure
+ProgramStateValue = federated_language.program.ProgramStateValue
+DelayedReleaseManager = federated_language.program.DelayedReleaseManager
+FilteringReleaseManager = federated_language.program.FilteringReleaseManager
+GroupingReleaseManager = federated_language.program.GroupingReleaseManager
+NotFilterableError = federated_language.program.NotFilterableError
+PeriodicReleaseManager = federated_language.program.PeriodicReleaseManager
+ReleasableStructure = federated_language.program.ReleasableStructure
+ReleasableValue = federated_language.program.ReleasableValue
+ReleaseManager = federated_language.program.ReleaseManager
 from tensorflow_federated.python.program.tensorboard_release_manager import TensorBoardReleaseManager
-from tensorflow_federated.python.program.value_reference import MaterializableStructure
-from tensorflow_federated.python.program.value_reference import MaterializableTypeSignature
-from tensorflow_federated.python.program.value_reference import MaterializableValue
-from tensorflow_federated.python.program.value_reference import MaterializableValueReference
-from tensorflow_federated.python.program.value_reference import materialize_value
-from tensorflow_federated.python.program.value_reference import MaterializedStructure
-from tensorflow_federated.python.program.value_reference import MaterializedValue
+
+MaterializableStructure = federated_language.program.MaterializableStructure
+MaterializableTypeSignature = (
+    federated_language.program.MaterializableTypeSignature
+)
+MaterializableValue = federated_language.program.MaterializableValue
+MaterializableValueReference = (
+    federated_language.program.MaterializableValueReference
+)
+materialize_value = federated_language.program.materialize_value
+MaterializedStructure = federated_language.program.MaterializedStructure
+MaterializedValue = federated_language.program.MaterializedValue
 # pylint: enable=g-importing-member

@@ -18,6 +18,7 @@ from unittest import mock
 
 from absl.testing import parameterized
 import attrs
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
@@ -29,10 +30,6 @@ from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process as aggregation_process_lib
 from tensorflow_federated.python.core.templates import iterative_process as iterative_process_lib
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
@@ -210,11 +207,11 @@ class _DPMean(factory.UnweightedAggregationFactory):
     self._clear_sum = sum_factory.SumFactory()
 
   def create(
-      self, value_type: computation_types.Type
+      self, value_type: federated_language.Type
   ) -> aggregation_process_lib.AggregationProcess:
     self._dp_sum_process = self._dp_sum.create(value_type)
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init():
       # Invoke here to instantiate anything we need
       return self._dp_sum_process.initialize()
@@ -224,17 +221,23 @@ class _DPMean(factory.UnweightedAggregationFactory):
       # Opaque shape manipulations
       return [tf.squeeze(tf.math.divide_no_nan(x, tf.cast(y, tf.float32)), 0)]
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
-      one_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
+      one_at_clients = federated_language.federated_value(
+          1, federated_language.CLIENTS
+      )
       dp_sum = self._dp_sum_process.next(state, value)
-      summed_one = intrinsics.federated_sum(one_at_clients)
+      summed_one = federated_language.federated_sum(one_at_clients)
       return measured_process_lib.MeasuredProcessOutput(
           state=dp_sum.state,
-          result=intrinsics.federated_map(div, (dp_sum.result, summed_one)),
+          result=federated_language.federated_map(
+              div, (dp_sum.result, summed_one)
+          ),
           measurements=dp_sum.measurements,
       )
 
@@ -978,21 +981,27 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     ) -> distributors.DistributionProcess:
       """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
-      @federated_computation.federated_computation()
+      @federated_language.federated_computation()
       def test_server_initialization():
-        return intrinsics.federated_value(2.0, placements.SERVER)
+        return federated_language.federated_value(
+            2.0, federated_language.SERVER
+        )
 
-      @federated_computation.federated_computation(
-          computation_types.FederatedType(np.float32, placements.SERVER),
-          computation_types.FederatedType(
-              model_weights_type, placements.SERVER
+      @federated_language.federated_computation(
+          federated_language.FederatedType(
+              np.float32, federated_language.SERVER
+          ),
+          federated_language.FederatedType(
+              model_weights_type, federated_language.SERVER
           ),
       )
       def stateful_broadcast(state, value):
-        empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
+        empty_metrics = federated_language.federated_value(
+            1.0, federated_language.SERVER
+        )
         return measured_process_lib.MeasuredProcessOutput(
             state=state,
-            result=intrinsics.federated_broadcast(value),
+            result=federated_language.federated_broadcast(value),
             measurements=empty_metrics,
         )
 

@@ -22,6 +22,7 @@ https://dl.acm.org/doi/10.1145/1772690.1772862 for the full paper.
 import collections
 from typing import Optional
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -29,10 +30,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
@@ -123,29 +120,31 @@ def _compute_kmeans_step(centroids: tf.Tensor, data: tf.data.Dataset):
 
 
 def _build_kmeans_client_work(
-    centroids_type: computation_types.TensorType,
-    data_type: computation_types.SequenceType,
+    centroids_type: federated_language.TensorType,
+    data_type: federated_language.SequenceType,
 ):
   """Creates a `tff.learning.templates.ClientWorkProcess` for k-means."""
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_value((), placements.SERVER)
+    return federated_language.federated_value((), federated_language.SERVER)
 
   @tensorflow_computation.tf_computation(centroids_type, data_type)
   def client_update(centroids, client_data):
     return _compute_kmeans_step(centroids, client_data)
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(centroids_type, placements.CLIENTS),
-      computation_types.FederatedType(data_type, placements.CLIENTS),
+      federated_language.FederatedType(
+          centroids_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(data_type, federated_language.CLIENTS),
   )
   def next_fn(state, cluster_centers, client_data):
-    client_result, stat_output = intrinsics.federated_map(
+    client_result, stat_output = federated_language.federated_map(
         client_update, (cluster_centers, client_data)
     )
-    stat_metrics = intrinsics.federated_sum(stat_output)
+    stat_metrics = federated_language.federated_sum(stat_output)
     return measured_process.MeasuredProcessOutput(
         state, client_result, stat_metrics
     )
@@ -196,7 +195,7 @@ def _update_centroids(
 
 
 def _build_kmeans_finalizer(
-    centroids_type: computation_types.Type, num_centroids: int
+    centroids_type: federated_language.Type, num_centroids: int
 ):
   """Builds a `tff.learning.templates.FinalizerProcess` for k-means."""
 
@@ -204,9 +203,11 @@ def _build_kmeans_finalizer(
   def initialize_weights():
     return tf.ones((num_centroids,), dtype=_WEIGHT_DTYPE)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_eval(initialize_weights, placements.SERVER)
+    return federated_language.federated_eval(
+        initialize_weights, federated_language.SERVER
+    )
 
   weights_type = initialize_weights.type_signature.result
 
@@ -220,23 +221,27 @@ def _build_kmeans_finalizer(
         current_centroids, current_weights, new_centroid_sums, new_weights
     )
 
-  summed_updates_type = computation_types.FederatedType(
-      computation_types.to_type((centroids_type, weights_type)),
-      placements.SERVER,
+  summed_updates_type = federated_language.FederatedType(
+      federated_language.to_type((centroids_type, weights_type)),
+      federated_language.SERVER,
   )
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(centroids_type, placements.SERVER),
+      federated_language.FederatedType(
+          centroids_type, federated_language.SERVER
+      ),
       summed_updates_type,
   )
   def next_fn(state, current_centroids, summed_updates):
     new_centroid_sums, new_weights = summed_updates
-    updated_centroids, updated_weights = intrinsics.federated_map(
+    updated_centroids, updated_weights = federated_language.federated_map(
         server_update_tf,
         (current_centroids, state, new_centroid_sums, new_weights),
     )
-    empty_measurements = intrinsics.federated_value((), placements.SERVER)
+    empty_measurements = federated_language.federated_value(
+        (), federated_language.SERVER
+    )
     return measured_process.MeasuredProcessOutput(
         updated_weights, updated_centroids, empty_measurements
     )
@@ -325,12 +330,12 @@ def build_fed_kmeans(
         centroids_shape, random_seed, dtype=_POINT_DTYPE
     )
 
-  centroids_type = computation_types.TensorType(_POINT_DTYPE, centroids_shape)
-  weights_type = computation_types.TensorType(
+  centroids_type = federated_language.TensorType(_POINT_DTYPE, centroids_shape)
+  weights_type = federated_language.TensorType(
       _WEIGHT_DTYPE, shape=(num_clusters,)
   )
-  point_type = computation_types.TensorType(_POINT_DTYPE, shape=data_shape)
-  data_type = computation_types.SequenceType(point_type)
+  point_type = federated_language.TensorType(_POINT_DTYPE, shape=data_shape)
+  data_type = federated_language.SequenceType(point_type)
 
   if distributor is None:
     distributor = distributors.build_broadcast_process(centroids_type)
@@ -342,10 +347,10 @@ def build_fed_kmeans(
   # We wrap the sum factory as a weighted aggregator for compatibility with
   # the learning process composer.
   weighted_aggregator = factory_utils.as_weighted_aggregator(sum_aggregator)
-  value_type = computation_types.to_type((centroids_type, weights_type))
+  value_type = federated_language.to_type((centroids_type, weights_type))
   aggregator = weighted_aggregator.create(
       value_type,
-      computation_types.to_type(()),  # pytype: disable=wrong-arg-types
+      federated_language.to_type(()),  # pytype: disable=wrong-arg-types
   )
 
   finalizer = _build_kmeans_finalizer(centroids_type, num_clusters)

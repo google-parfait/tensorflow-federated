@@ -15,17 +15,13 @@
 
 from typing import Optional
 
+import federated_language
 import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_serialization
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.computation import computation_wrapper
-from tensorflow_federated.python.core.impl.computation import function_utils
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def _to_numpy(value: object) -> object:
@@ -62,7 +58,9 @@ def _tf_wrapper_fn(
 ):
   """Wrapper function to plug Tensorflow logic into the TFF framework."""
   del name  # Unused.
-  if not type_analysis.is_tensorflow_compatible_type(parameter_type):
+  if not federated_language.framework.is_tensorflow_compatible_type(
+      parameter_type
+  ):
     raise TypeError(
         '`tff.tensorflow.computation`s can accept only parameter types with '
         'constituents `SequenceType`, `StructType` '
@@ -70,23 +68,23 @@ def _tf_wrapper_fn(
         'with the type {}.'.format(parameter_type)
     )
 
-  fn = function_utils.wrap_as_zero_or_one_arg_callable(
+  fn = federated_language.framework.wrap_as_zero_or_one_arg_callable(
       fn, parameter_type, unpack
   )
-  context_stack = context_stack_impl.context_stack
+  context_stack = federated_language.framework.global_context_stack
   comp_pb, extra_type_spec = (
       tensorflow_serialization.serialize_py_fn_as_tf_computation(
           fn, parameter_type, context_stack
       )
   )
-  return computation_impl.ConcreteComputation(
+  return federated_language.framework.ConcreteComputation(
       computation_proto=comp_pb,
       context_stack=context_stack,
       annotated_type=extra_type_spec,
   )
 
 
-tf_computation = computation_wrapper.ComputationWrapper(
+tf_computation = federated_language.framework.ComputationWrapper(
     _tf_wrapper_fn,
     tensorflow_types.to_type,
     type_conversions.tensorflow_infer_type,

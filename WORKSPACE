@@ -87,6 +87,20 @@ http_archive(
 #     },
 # )
 
+http_archive(
+    name = "federated_language",
+    patches = [
+        "//third_party/federated_language:proto_library_loads.patch",
+        "//third_party/federated_language:python_deps.patch",
+        "//third_party/federated_language:structure_visibility.patch",
+    ],
+    repo_mapping = {
+        "@protobuf": "@com_google_protobuf",
+    },
+    strip_prefix = "federated-language-5254da904b94027d519c26b57fe45573fe0532b0",
+    url = "https://github.com/google-parfait/federated-language/archive/5254da904b94027d519c26b57fe45573fe0532b0.tar.gz",
+)
+
 # The version of TensorFlow should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
 http_archive(
@@ -195,3 +209,60 @@ protobuf_deps()
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
+
+# DO_NOT_SUBMIT
+# load("@rules_python//python:repositories.bzl", "python_register_toolchains")
+
+# python_register_toolchains(
+#    name = "python",
+#    ignore_root_user_error = True,
+#    python_version = "3.11",
+# )
+
+# load("@python//:defs.bzl", "interpreter")
+# load("@rules_python//python:pip.bzl", "pip_parse")
+
+# pip_parse(
+#    name = "pypi",
+#    python_interpreter_target = interpreter,
+#    requirements_lock = "@federated_language//:requirements_lock_3_11.txt",
+# )
+
+# load("@pypi//:requirements.bzl", "install_deps")
+
+# install_deps()
+
+# load("@rules_python//python:repositories.bzl", "python_register_multi_toolchains")
+
+# DEFAULT_PYTHON_VERSION = "3.11"
+
+# python_register_multi_toolchains(
+#     name = "python",
+#     default_version = DEFAULT_PYTHON_VERSION,
+#     python_versions = [
+#         "3.11",
+#         # "3.10",
+#         # "3.9",
+#     ],
+# )
+
+# load("@python//:pip.bzl", "multi_pip_parse")
+
+# multi_pip_parse(
+#     name = "pypi",
+#     default_version = DEFAULT_PYTHON_VERSION,
+#     python_interpreter_target = {
+#         "3.11": "@python_3_11_host//:python",
+#         # "3.10": "@python_3_10_host//:python",
+#         # "3.9": "@python_3_9_host//:python",
+#     },
+#     requirements_lock = {
+#         "3.11": "@federated_language//:requirements_lock_3_11.txt",
+#         # "3.10": "@federated_language//:requirements_lock_3_10.txt",
+#         # "3.9": "@federated_language//:requirements_lock_3_9.txt",
+#     },
+# )
+
+# load("@pypi//:requirements.bzl", "install_deps")
+
+# install_deps()

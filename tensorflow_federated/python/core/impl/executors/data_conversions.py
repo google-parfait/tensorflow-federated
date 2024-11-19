@@ -15,11 +15,11 @@
 
 from collections.abc import Mapping
 
-from tensorflow_federated.python.core.impl.types import placements
+import federated_language
 
 
 def convert_cardinalities_dict_to_string_keyed(
-    cardinalities: Mapping[placements.PlacementLiteral, int]
+    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
 ) -> Mapping[str, int]:
   """Ensures incoming cardinalities dict is formatted correctly."""
   if not isinstance(cardinalities, Mapping):
@@ -29,7 +29,7 @@ def convert_cardinalities_dict_to_string_keyed(
     )
   uri_cardinalities = {}
   for placement, cardinality in cardinalities.items():
-    if not isinstance(placement, placements.PlacementLiteral):
+    if not isinstance(placement, federated_language.framework.PlacementLiteral):
       raise TypeError(
           '`cardinalities` must be a `Mapping` with '
           '`PlacementLiteral` (e.g. `tff.CLIENTS`) keys. '

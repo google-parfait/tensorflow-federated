@@ -17,15 +17,11 @@ import collections
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import tensor_utils
 from tensorflow_federated.python.learning.models import model_weights
@@ -62,7 +58,7 @@ def reject_non_finite_update(
 
 
 def _build_tff_optimizer_initialize_and_next(
-    model_weights_type: computation_types.Type,
+    model_weights_type: federated_language.Type,
     optimizer: optimizer_base.Optimizer,
     should_reject_update: Callable[
         [Any, Any], tuple[Union[bool, tf.Tensor], Optional[_MeasurementsType]]
@@ -100,7 +96,7 @@ def _build_tff_optimizer_initialize_and_next(
 
 def build_apply_optimizer_finalizer(
     optimizer_fn: optimizer_base.Optimizer,
-    model_weights_type: computation_types.StructType,
+    model_weights_type: federated_language.StructType,
     should_reject_update: Callable[
         [Any, Any], tuple[Union[bool, tf.Tensor], Optional[_MeasurementsType]]
     ] = reject_non_finite_update,
@@ -141,9 +137,13 @@ def build_apply_optimizer_finalizer(
       Python container, or contains a `tff.types.FederatedType`.
   """
   if (
-      not isinstance(model_weights_type, computation_types.StructWithPythonType)
+      not isinstance(
+          model_weights_type, federated_language.StructWithPythonType
+      )
       or model_weights_type.python_container != model_weights.ModelWeights
-      or type_analysis.contains_federated_types(model_weights_type)
+      or federated_language.framework.contains_federated_types(
+          model_weights_type
+      )
   ):
     raise TypeError(
         'Provided value_type must be a tff.types.StructType with its python '
@@ -155,22 +155,26 @@ def build_apply_optimizer_finalizer(
       model_weights_type, optimizer_fn, should_reject_update
   )
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_eval(init_tf, placements.SERVER)
+    return federated_language.federated_eval(init_tf, federated_language.SERVER)
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(model_weights_type, placements.SERVER),
-      computation_types.FederatedType(
-          model_weights_type.trainable, placements.SERVER
+      federated_language.FederatedType(
+          model_weights_type, federated_language.SERVER
+      ),
+      federated_language.FederatedType(
+          model_weights_type.trainable, federated_language.SERVER
       ),
   )
   def next_fn(state, weights, update):
     optimizer_state, new_trainable_weights, measurements = (
-        intrinsics.federated_map(next_tf, (state, weights.trainable, update))
+        federated_language.federated_map(
+            next_tf, (state, weights.trainable, update)
+        )
     )
-    new_weights = intrinsics.federated_zip(
+    new_weights = federated_language.federated_zip(
         model_weights.ModelWeights(new_trainable_weights, weights.non_trainable)
     )
     return measured_process.MeasuredProcessOutput(

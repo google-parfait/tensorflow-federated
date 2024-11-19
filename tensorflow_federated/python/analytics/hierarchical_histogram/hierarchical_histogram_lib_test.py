@@ -15,12 +15,12 @@
 from unittest import mock
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_lib as hihi
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.test import static_assert
 
 MOCK_TIME_SECONDS = 314159.2653
 EXPECTED_ROUND_TIMESTAMP = 314159
@@ -1064,7 +1064,9 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
         dp_mechanism=dp_mechanism,
         enable_secure_sum=True,
     )
-    static_assert.assert_not_contains_unsecure_aggregation(hihi_computation)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        hihi_computation
+    )
 
   @mock.patch('tensorflow.timestamp')
   def test_round_timestamp(self, timestamp_mock):

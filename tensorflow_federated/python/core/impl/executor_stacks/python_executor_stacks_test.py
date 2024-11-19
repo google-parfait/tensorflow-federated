@@ -16,14 +16,12 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
-from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.types import placements
 
 
-class ExecutorMock(mock.MagicMock, executor_base.Executor):
+class ExecutorMock(mock.MagicMock, federated_language.framework.Executor):
 
   async def create_value(self, *args):
     pass
@@ -44,7 +42,8 @@ class ExecutorMock(mock.MagicMock, executor_base.Executor):
 class ConcreteExecutorFactoryTest(parameterized.TestCase):
 
   def test_subclass_base_fails_no_create_method(self):
-    class NotCallable(executor_factory.ExecutorFactory):
+
+    class NotCallable(federated_language.framework.ExecutorFactory):
 
       def clean_up_executor(self, x):
         pass
@@ -53,7 +52,8 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       NotCallable()
 
   def test_subclass_base_fails_no_cleanup(self):
-    class NoCleanup(executor_factory.ExecutorFactory):
+
+    class NoCleanup(federated_language.framework.ExecutorFactory):
 
       def create_executor(self, x):
         pass
@@ -62,7 +62,8 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       NoCleanup()
 
   def test_instantiation_succeeds_both_methods_specified(self):
-    class Fine(executor_factory.ExecutorFactory):
+
+    class Fine(federated_language.framework.ExecutorFactory):
 
       def create_executor(self, x):
         pass
@@ -95,7 +96,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
 
     factory = ex_factory(_stack_fn)
     ex = factory.create_executor({})
-    self.assertIsInstance(ex, executor_base.Executor)
+    self.assertIsInstance(ex, federated_language.framework.Executor)
 
   @parameterized.named_parameters((
       'ResourceManagingExecutorFactory',
@@ -107,7 +108,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       return ExecutorMock()
 
     factory = ex_factory(_stack_fn)
-    factory.clean_up_executor({placements.CLIENTS: 1})
+    factory.clean_up_executor({federated_language.CLIENTS: 1})
 
   @parameterized.named_parameters((
       'ResourceManagingExecutorFactory',
@@ -146,7 +147,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
     factory = ex_factory(_stack_fn)
     for _ in range(2):
       factory.create_executor({})
-      factory.create_executor({placements.SERVER: 1})
+      factory.create_executor({federated_language.SERVER: 1})
     self.assertEqual(num_times_invoked, 2)
 
   def test_executors_persisted_is_capped(self):
@@ -156,7 +157,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
         lambda _: ex
     )
     for num_clients in range(100):
-      factory.create_executor({placements.CLIENTS: num_clients})
+      factory.create_executor({federated_language.CLIENTS: num_clients})
     self.assertLess(len(factory._executors), 20)
 
 

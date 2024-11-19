@@ -16,9 +16,9 @@
 import itertools
 from typing import Optional
 
+from federated_language.proto import computation_pb2
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import serialization_utils
 

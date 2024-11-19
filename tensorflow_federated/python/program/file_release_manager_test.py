@@ -23,6 +23,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tree
@@ -30,13 +31,14 @@ import tree
 from tensorflow_federated.python.program import file_release_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_test_utils
-from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
 
 
 def _read_values_from_csv(
-    file_path: Union[str, os.PathLike[str]]
-) -> tuple[list[str], list[dict[str, release_manager.ReleasableStructure]]]:
+    file_path: Union[str, os.PathLike[str]],
+) -> tuple[
+    list[str], list[dict[str, federated_language.program.ReleasableStructure]]
+]:
   with tf.io.gfile.GFile(file_path, 'r') as file:
     reader = csv.DictReader(file)
     fieldnames = list(reader.fieldnames)
@@ -47,7 +49,9 @@ def _read_values_from_csv(
 def _write_values_to_csv(
     file_path: Union[str, os.PathLike[str]],
     fieldnames: Sequence[str],
-    values: Iterable[Mapping[str, release_manager.ReleasableStructure]],
+    values: Iterable[
+        Mapping[str, federated_language.program.ReleasableStructure]
+    ],
 ) -> None:
   with tf.io.gfile.GFile(file_path, 'w') as file:
     writer = csv.DictWriter(file, fieldnames)
@@ -1135,7 +1139,9 @@ class SavedModelFileReleaseManagerGetValueTest(
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
     key = 1
 
-    with self.assertRaises(release_manager.ReleasedValueNotFoundError):
+    with self.assertRaises(
+        federated_language.program.ReleasedValueNotFoundError
+    ):
       await release_mngr.get_value(key)
 
   async def test_raises_released_value_not_found_error_with_unknown_key(self):
@@ -1146,7 +1152,9 @@ class SavedModelFileReleaseManagerGetValueTest(
     await release_mngr.release(value, key=key)
     unknown_key = 10
 
-    with self.assertRaises(release_manager.ReleasedValueNotFoundError):
+    with self.assertRaises(
+        federated_language.program.ReleasedValueNotFoundError
+    ):
       await release_mngr.get_value(unknown_key)
 
 

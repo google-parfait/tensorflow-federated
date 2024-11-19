@@ -15,15 +15,13 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import discretization
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -82,45 +80,45 @@ class DiscretizationFactoryComputationTest(
   )
   def test_type_properties(self, value_type):
     factory = _discretization_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         collections.OrderedDict(
             scale_factor=np.float32,
             prior_norm_bound=np.float32,
             inner_agg_process=(),
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         process.initialize.type_signature, expected_initialize_type
     )
 
-    expected_measurements_type = computation_types.FederatedType(
-        collections.OrderedDict(discretize=()), placements.SERVER
+    expected_measurements_type = federated_language.FederatedType(
+        collections.OrderedDict(discretize=()), federated_language.SERVER
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
     )
-    type_test_utils.assert_types_equivalent(
+    federated_language.framework.assert_types_equivalent(
         process.next.type_signature, expected_next_type
     )
 
@@ -133,19 +131,19 @@ class DiscretizationFactoryComputationTest(
   )
   def test_raises_on_bad_component_tensor_dtypes(self, value_type):
     factory = _discretization_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'must all be floats'):
       factory.create(value_type)
 
   @parameterized.named_parameters(
       ('plain_struct', [('a', np.int32)]),
-      ('sequence', computation_types.SequenceType(np.int32)),
-      ('function', computation_types.FunctionType(np.int32, np.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
+      ('sequence', federated_language.SequenceType(np.int32)),
+      ('function', federated_language.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[federated_language.SequenceType(np.int32)]]]),
   )
   def test_raises_on_bad_tff_value_types(self, value_type):
     factory = _discretization_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'Expected `value_type` to be'):
       factory.create(value_type)
 
@@ -226,7 +224,7 @@ class DiscretizationFactoryExecutionTest(
     """Integration test with sum."""
     scale_factor = 3
     factory = _discretization_sum(scale_factor, stochastic=stochastic)
-    process = factory.create(computation_types.to_type(value_type))
+    process = factory.create(federated_language.to_type(value_type))
     state = process.initialize()
 
     for _ in range(3):
