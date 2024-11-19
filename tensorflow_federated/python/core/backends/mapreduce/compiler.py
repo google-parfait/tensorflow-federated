@@ -63,6 +63,7 @@ divide-and-conquer.
 """
 
 from absl import logging
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -70,16 +71,8 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import compiled_computation_transformations
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class MapReduceFormCompilationError(Exception):
@@ -89,34 +82,41 @@ class MapReduceFormCompilationError(Exception):
 def check_extraction_result(before_extraction, extracted):
   """Checks parsing TFF to TF has constructed an object of correct type."""
   py_typecheck.check_type(
-      before_extraction, building_blocks.ComputationBuildingBlock
+      before_extraction, federated_language.framework.ComputationBuildingBlock
   )
-  py_typecheck.check_type(extracted, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      extracted, federated_language.framework.ComputationBuildingBlock
+  )
   if isinstance(
-      before_extraction.type_signature, computation_types.FunctionType
+      before_extraction.type_signature, federated_language.FunctionType
   ):
-    if not isinstance(extracted, building_blocks.CompiledComputation):
+    if not isinstance(
+        extracted, federated_language.framework.CompiledComputation
+    ):
       raise MapReduceFormCompilationError(
-          'We expect to parse down to a `building_blocks.CompiledComputation`, '
-          'since we have the functional type {} after unwrapping placement. '
-          'Instead we have the computation {} of type {}'.format(
+          'We expect to parse down to a'
+          ' `federated_language.framework.CompiledComputation`, since we have'
+          ' the functional type {} after unwrapping placement. Instead we have'
+          ' the computation {} of type {}'.format(
               before_extraction.type_signature,
               extracted,
               extracted.type_signature,
           )
       )
   else:
-    if not isinstance(extracted, building_blocks.Call):
+    if not isinstance(extracted, federated_language.framework.Call):
       raise MapReduceFormCompilationError(
-          'We expect to parse down to a `building_blocks.Call`, since we have '
-          'the non-functional type {} after unwrapping placement. Instead we '
-          'have the computation {} of type {}'.format(
+          'We expect to parse down to a `federated_language.framework.Call`,'
+          ' since we have the non-functional type {} after unwrapping'
+          ' placement. Instead we have the computation {} of type {}'.format(
               before_extraction.type_signature,
               extracted,
               extracted.type_signature,
           )
       )
-    if not isinstance(extracted.function, building_blocks.CompiledComputation):
+    if not isinstance(
+        extracted.function, federated_language.framework.CompiledComputation
+    ):
       raise MapReduceFormCompilationError(
           'We expect to parse a computation of the non-functional type {} down '
           'to a called TensorFlow block. Instead we hav a call to the '
@@ -185,8 +185,9 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
      this helper method.
 
   4. If `comp` is of a functional type, it is either an instance of
-     `building_blocks.CompiledComputation`, in which case there is nothing for
-     us to do here, or a `building_blocks.Lambda`.
+     `federated_language.framework.CompiledComputation`, in which case there is
+     nothing for
+     us to do here, or a `federated_language.framework.Lambda`.
 
   5. There is at most one unbound reference under `comp`, and this is only
      allowed in the case that `comp` is not of a functional type.
@@ -236,8 +237,8 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
   `(T -> U)`, where `p` is again a specific placement.
 
   Args:
-    comp: An instance of `building_blocks.ComputationBuildingBlock` that serves
-      as the input to this transformation, as described above.
+    comp: An instance of `federated_language.framework.ComputationBuildingBlock`
+      that serves as the input to this transformation, as described above.
     grappler_config_proto: An instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the generated TensorFlow graph.
       If `grappler_config_proto` has
@@ -245,11 +246,14 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
       bypassed.
 
   Returns:
-    An instance of `building_blocks.CompiledComputation` that holds the
+    An instance of `federated_language.framework.CompiledComputation` that holds
+    the
     TensorFlow section produced by this extraction step, as described above.
   """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if not isinstance(comp.type_signature, computation_types.FunctionType):
+  py_typecheck.check_type(
+      comp, federated_language.framework.ComputationBuildingBlock
+  )
+  if not isinstance(comp.type_signature, federated_language.FunctionType):
     raise ValueError(
         f'Expected a `tff.FunctionType`, found {comp.type_signature}.'
     )
@@ -265,22 +269,26 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
 
 
 def unpack_compiled_computations(
-    comp: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.ComputationBuildingBlock:
+    comp: federated_language.framework.ComputationBuildingBlock,
+) -> federated_language.framework.ComputationBuildingBlock:
   """Deserializes compiled computations into building blocks where possible."""
 
   def _unpack(subcomp):
-    if not isinstance(subcomp, building_blocks.CompiledComputation):
+    if not isinstance(
+        subcomp, federated_language.framework.CompiledComputation
+    ):
       return subcomp, False
     kind = subcomp.proto.WhichOneof('computation')
     if kind == 'tensorflow' or kind == 'xla':
       return subcomp, False
     return (
-        building_blocks.ComputationBuildingBlock.from_proto(subcomp.proto),
+        federated_language.framework.ComputationBuildingBlock.from_proto(
+            subcomp.proto
+        ),
         True,
     )
 
-  comp, _ = transformation_utils.transform_postorder(comp, _unpack)
+  comp, _ = federated_language.framework.transform_postorder(comp, _unpack)
   return comp
 
 
@@ -293,7 +301,7 @@ class ExternalBlockToTensorFlowError(ValueError):
 
 
 def _evaluate_to_tensorflow(
-    comp: building_blocks.ComputationBuildingBlock,
+    comp: federated_language.framework.ComputationBuildingBlock,
     bindings: dict[str, object],
 ) -> object:
   """Evaluates `comp` within a TensorFlow context, returning a tensor structure.
@@ -319,21 +327,23 @@ def _evaluate_to_tensorflow(
     ValueError: If `comp` contains `CompiledCompilations` other than
       TensorFlow or XLA.
   """
-  if isinstance(comp, building_blocks.Block):
+  if isinstance(comp, federated_language.framework.Block):
     for name, value in comp.locals:
       bindings[name] = _evaluate_to_tensorflow(value, bindings)
     return _evaluate_to_tensorflow(comp.result, bindings)
-  if isinstance(comp, building_blocks.CompiledComputation):
+  if isinstance(comp, federated_language.framework.CompiledComputation):
     kind = comp.proto.WhichOneof('computation')
     if kind == 'tensorflow':
 
       def call_concrete(*args):
-        concrete = computation_impl.ConcreteComputation(
+        concrete = federated_language.framework.ConcreteComputation(
             computation_proto=comp.proto,
-            context_stack=context_stack_impl.context_stack,
+            context_stack=federated_language.framework.global_context_stack,
         )
         result = concrete(*args)
-        if isinstance(comp.type_signature.result, computation_types.StructType):
+        if isinstance(
+            comp.type_signature.result, federated_language.StructType
+        ):
           return structure.from_container(result, recursive=True)
         return result
 
@@ -343,13 +353,13 @@ def _evaluate_to_tensorflow(
           f'Cannot compile XLA subcomputation to TensorFlow:\n{comp}'
       )
     raise ValueError(f'Unexpected compiled computation kind:\n{kind}')
-  if isinstance(comp, building_blocks.Call):
+  if isinstance(comp, federated_language.framework.Call):
     function = _evaluate_to_tensorflow(comp.function, bindings)
     if comp.argument is None:
       return function()
     else:
       return function(_evaluate_to_tensorflow(comp.argument, bindings))
-  if isinstance(comp, building_blocks.Lambda):
+  if isinstance(comp, federated_language.framework.Lambda):
     if comp.parameter_type is None:
       return lambda: _evaluate_to_tensorflow(comp.result, bindings)
     else:
@@ -359,23 +369,23 @@ def _evaluate_to_tensorflow(
         return _evaluate_to_tensorflow(comp.result, bindings)
 
       return lambda_function
-  if isinstance(comp, building_blocks.Reference):
+  if isinstance(comp, federated_language.framework.Reference):
     return bindings[comp.name]
-  if isinstance(comp, building_blocks.Selection):
+  if isinstance(comp, federated_language.framework.Selection):
     return _evaluate_to_tensorflow(comp.source, bindings)[comp.as_index()]
-  if isinstance(comp, building_blocks.Struct):
+  if isinstance(comp, federated_language.framework.Struct):
     elements = []
     for name, element in structure.iter_elements(comp):
       elements.append((name, _evaluate_to_tensorflow(element, bindings)))
     return structure.Struct(elements)
-  if isinstance(comp, building_blocks.Literal):
+  if isinstance(comp, federated_language.framework.Literal):
     return tf.constant(comp.value)
   if isinstance(
       comp,
       (
-          building_blocks.Intrinsic,
-          building_blocks.Data,
-          building_blocks.Placement,
+          federated_language.framework.Intrinsic,
+          federated_language.framework.Data,
+          federated_language.framework.Placement,
       ),
   ):
     raise ExternalBlockToTensorFlowError(
@@ -385,37 +395,40 @@ def _evaluate_to_tensorflow(
 
 
 def compile_local_computation_to_tensorflow(
-    comp: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.ComputationBuildingBlock:
+    comp: federated_language.framework.ComputationBuildingBlock,
+) -> federated_language.framework.ComputationBuildingBlock:
   """Compiles a fully specified local computation to TensorFlow.
 
   Args:
-    comp: A `building_blocks.ComputationBuildingBlock` which can be compiled to
-      TensorFlow. In order to compile a computation to TensorFlow, it must not
-      contain 1. References to values defined outside of comp, 2. `Data`,
-      `Intrinsic`, or `Placement` blocks, or 3. Calls to intrinsics or
+    comp: A `federated_language.framework.ComputationBuildingBlock` which can be
+      compiled to TensorFlow. In order to compile a computation to TensorFlow,
+      it must not contain 1. References to values defined outside of comp, 2.
+      `Data`, `Intrinsic`, or `Placement` blocks, or 3. Calls to intrinsics or
       non-TensorFlow computations.
 
   Returns:
-    A `building_blocks.ComputationBuildingBlock` containing a TensorFlow-only
+    A `federated_language.framework.ComputationBuildingBlock` containing a
+    TensorFlow-only
     representation of `comp`. If `comp` is of functional type, this will be
-    a `building_blocks.CompiledComputation`. Otherwise, it will be a
-    `building_blocks.Call` which wraps a `building_blocks.CompiledComputation`.
+    a `federated_language.framework.CompiledComputation`. Otherwise, it will be
+    a
+    `federated_language.framework.Call` which wraps a
+    `federated_language.framework.CompiledComputation`.
   """
-  if not isinstance(comp.type_signature, computation_types.FunctionType):
-    lambda_wrapped = building_blocks.Lambda(None, None, comp)
-    return building_blocks.Call(
+  if not isinstance(comp.type_signature, federated_language.FunctionType):
+    lambda_wrapped = federated_language.framework.Lambda(None, None, comp)
+    return federated_language.framework.Call(
         compile_local_computation_to_tensorflow(lambda_wrapped), None
     )
 
   parameter_type = comp.type_signature.parameter  # pytype: disable=attribute-error
-  type_analysis.check_tensorflow_compatible_type(parameter_type)
-  type_analysis.check_tensorflow_compatible_type(
+  federated_language.framework.check_tensorflow_compatible_type(parameter_type)
+  federated_language.framework.check_tensorflow_compatible_type(
       comp.type_signature.result  # pytype: disable=attribute-error
   )
 
   if (
-      isinstance(comp, building_blocks.CompiledComputation)
+      isinstance(comp, federated_language.framework.CompiledComputation)
       and comp.proto.WhichOneof('computation') == 'tensorflow'
   ):
     return comp
@@ -426,22 +439,23 @@ def compile_local_computation_to_tensorflow(
   comp = transformations.to_call_dominant(comp)
 
   if parameter_type is None:
-    to_evaluate = building_blocks.Call(comp)
+    to_evaluate = federated_language.framework.Call(comp)
 
     @tensorflow_computation.tf_computation
     def result_computation():
       return _evaluate_to_tensorflow(to_evaluate, {})
 
   else:
-    name_generator = building_block_factory.unique_name_generator(comp)
+    name_generator = federated_language.framework.unique_name_generator(comp)
     parameter_name = next(name_generator)
-    to_evaluate = building_blocks.Call(
-        comp, building_blocks.Reference(parameter_name, parameter_type)
+    to_evaluate = federated_language.framework.Call(
+        comp,
+        federated_language.framework.Reference(parameter_name, parameter_type),
     )
 
     @tensorflow_computation.tf_computation(parameter_type)
     def result_computation(arg):
-      if isinstance(parameter_type, computation_types.StructType):
+      if isinstance(parameter_type, federated_language.StructType):
         arg = structure.from_container(arg, recursive=True)
       return _evaluate_to_tensorflow(to_evaluate, {parameter_name: arg})
 
@@ -449,8 +463,8 @@ def compile_local_computation_to_tensorflow(
 
 
 def compile_local_subcomputations_to_tensorflow(
-    comp: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.ComputationBuildingBlock:
+    comp: federated_language.framework.ComputationBuildingBlock,
+) -> federated_language.framework.ComputationBuildingBlock:
   """Compiles subcomputations to TensorFlow where possible."""
   comp = unpack_compiled_computations(comp)
   local_cache = {}
@@ -462,15 +476,17 @@ def compile_local_subcomputations_to_tensorflow(
     if isinstance(
         comp,
         (
-            building_blocks.Intrinsic,
-            building_blocks.Data,
-            building_blocks.Placement,
+            federated_language.framework.Intrinsic,
+            federated_language.framework.Data,
+            federated_language.framework.Placement,
         ),
-    ) or type_analysis.contains_federated_types(comp.type_signature):
+    ) or federated_language.framework.contains_federated_types(
+        comp.type_signature
+    ):
       local_cache[comp] = False
       return False
     if (
-        isinstance(comp, building_blocks.CompiledComputation)
+        isinstance(comp, federated_language.framework.CompiledComputation)
         and comp.proto.WhichOneof('computation') == 'xla'
     ):
       local_cache[comp] = False
@@ -481,7 +497,9 @@ def compile_local_subcomputations_to_tensorflow(
         return False
     return True
 
-  unbound_ref_map = transformation_utils.get_map_of_unbound_references(comp)
+  unbound_ref_map = federated_language.framework.get_map_of_unbound_references(
+      comp
+  )
 
   def _compile_if_local(comp):
     if _is_local(comp) and not unbound_ref_map[comp]:
@@ -492,7 +510,9 @@ def compile_local_subcomputations_to_tensorflow(
   # first transformed to TensorFlow if they have a parent local computation
   # which could have instead been transformed into a larger single block of
   # TensorFlow.
-  comp, _ = transformation_utils.transform_preorder(comp, _compile_if_local)
+  comp, _ = federated_language.framework.transform_preorder(
+      comp, _compile_if_local
+  )
   return comp
 
 
@@ -500,12 +520,13 @@ def parse_tff_to_tf(comp, grappler_config_proto):
   """Parses TFF construct `comp` into TensorFlow construct.
 
   Does not change the type signature of `comp`. Therefore may return either
-  a `building_blocks.CompiledComputation` or a `building_blocks.Call` with no
-  argument and function `building_blocks.CompiledComputation`.
+  a `federated_language.framework.CompiledComputation` or a
+  `federated_language.framework.Call` with no
+  argument and function `federated_language.framework.CompiledComputation`.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` to parse down
-      to a single TF block.
+    comp: Instance of `federated_language.framework.ComputationBuildingBlock` to
+      parse down to a single TF block.
     grappler_config_proto: An instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the generated TensorFlow graph.
       If `grappler_config_proto` has
@@ -514,7 +535,8 @@ def parse_tff_to_tf(comp, grappler_config_proto):
 
   Returns:
     The result of parsing TFF to TF. If successful, this is either a single
-    `building_blocks.CompiledComputation`, or a call to one. If unsuccessful,
+    `federated_language.framework.CompiledComputation`, or a call to one. If
+    unsuccessful,
     there may be more TFF constructs still remaining. Notice it is not the job
     of this function, but rather its callers, to check that the result of this
     parse is as expected.
@@ -549,24 +571,26 @@ def concatenate_function_outputs(first_function, second_function):
   these functions in parallel and concatenating the outputs in a tuple.
 
   Args:
-    first_function: Instance of `building_blocks.Lambda` whose result we wish to
-      concatenate with the result of `second_function`.
-    second_function: Instance of `building_blocks.Lambda` whose result we wish
-      to concatenate with the result of `first_function`.
+    first_function: Instance of `federated_language.framework.Lambda` whose
+      result we wish to concatenate with the result of `second_function`.
+    second_function: Instance of `federated_language.framework.Lambda` whose
+      result we wish to concatenate with the result of `first_function`.
 
   Returns:
-    A new instance of `building_blocks.Lambda` with unique names representing
+    A new instance of `federated_language.framework.Lambda` with unique names
+    representing
     the computation described above.
 
   Raises:
-    TypeError: If the arguments are not instances of `building_blocks.Lambda`,
+    TypeError: If the arguments are not instances of
+    `federated_language.framework.Lambda`,
     or declare parameters of different types.
   """
 
-  py_typecheck.check_type(first_function, building_blocks.Lambda)
-  py_typecheck.check_type(second_function, building_blocks.Lambda)
-  tree_analysis.check_has_unique_names(first_function)
-  tree_analysis.check_has_unique_names(second_function)
+  py_typecheck.check_type(first_function, federated_language.framework.Lambda)
+  py_typecheck.check_type(second_function, federated_language.framework.Lambda)
+  federated_language.framework.check_has_unique_names(first_function)
+  federated_language.framework.check_has_unique_names(second_function)
 
   if first_function.parameter_type != second_function.parameter_type:
     raise TypeError(
@@ -580,7 +604,7 @@ def concatenate_function_outputs(first_function, second_function):
 
   def _rename_first_function_arg(comp):
     if (
-        isinstance(comp, building_blocks.Reference)
+        isinstance(comp, federated_language.framework.Reference)
         and comp.name == first_function.parameter_name
     ):
       if comp.type_signature != second_function.parameter_type:
@@ -588,21 +612,23 @@ def concatenate_function_outputs(first_function, second_function):
             '{}, {}'.format(comp.type_signature, second_function.parameter_type)
         )
       return (
-          building_blocks.Reference(
+          federated_language.framework.Reference(
               second_function.parameter_name, comp.type_signature
           ),
           True,
       )
     return comp, False
 
-  first_function, _ = transformation_utils.transform_postorder(
+  first_function, _ = federated_language.framework.transform_postorder(
       first_function, _rename_first_function_arg
   )
 
-  concatenated_function = building_blocks.Lambda(
+  concatenated_function = federated_language.framework.Lambda(
       second_function.parameter_name,
       second_function.parameter_type,
-      building_blocks.Struct([first_function.result, second_function.result]),
+      federated_language.framework.Struct(
+          [first_function.result, second_function.result]
+      ),
   )
 
   renamed, _ = tree_transformations.uniquify_reference_names(

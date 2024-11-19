@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package tensorflow_federated.v0;
 
-import "tensorflow_federated/proto/v0/array.proto";
-import "tensorflow_federated/proto/v0/computation.proto";
+import "third_party/py/federated_language/proto/array.proto";
+import "third_party/py/federated_language/proto/computation.proto";
 
 // A service providing computation execution.
 service ExecutorGroup {
@@ -44,7 +44,7 @@ service ExecutorGroup {
 }
 
 message Cardinality {
-  tensorflow_federated.v0.Placement placement = 1;
+  federated_language.Placement placement = 1;
   int32 cardinality = 2;
 }
 
@@ -148,11 +148,11 @@ message Value {
   message Sequence {
     // The TensorFlow Federated `Type` of the elements in this
     // sequence.
-    tensorflow_federated.v0.Type element_type = 2;
+    federated_language.Type element_type = 2;
 
     // A representation of a sequence of values.
     message Element {
-      repeated tensorflow_federated.v0.Array flat_value = 1;
+      repeated federated_language.Array flat_value = 1;
     }
     repeated Element element = 4;
 
@@ -163,7 +163,7 @@ message Value {
   // A representation of a federated value.
   message Federated {
     // The type of the federated value.
-    tensorflow_federated.v0.FederatedType type = 1;
+    federated_language.FederatedType type = 1;
 
     // The member constituents, one per participant in the collective defined
     // by this value's placement within the executor.
@@ -172,12 +172,12 @@ message Value {
 
   oneof value {
     // An array value.
-    tensorflow_federated.v0.Array array = 6;
+    federated_language.Array array = 6;
 
     // A serialized TFF computation; this is the canonical (and currently only)
     // way to pass any functional constructs, but the computation included here
     // does not necessarily have to be of a functional type.
-    tensorflow_federated.v0.Computation computation = 2;
+    federated_language.Computation computation = 2;
 
     // A struct of values.
     Struct struct = 3;

@@ -19,14 +19,12 @@ from typing import Optional, Union
 import warnings
 
 from absl import logging
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 from tensorflow_federated.python.learning.models import variable
@@ -161,8 +159,8 @@ def from_keras_model(
         'information for both inputs to and predictions from the '
         'model. You passed input spec {}.'.format(input_spec)
     )
-  if isinstance(input_spec, computation_types.Type):
-    if not type_analysis.is_structure_of_tensors(input_spec):
+  if isinstance(input_spec, federated_language.Type):
+    if not federated_language.framework.is_structure_of_tensors(input_spec):
       raise TypeError(
           'Expected a `tff.Type` with all the leaf nodes being '
           '`tff.TensorType`s, found an input spec {}.'.format(input_spec)
@@ -301,7 +299,7 @@ def federated_aggregate_keras_metric(
           for metric, (name, values) in zip(metrics, accumulators.items())
       ])
 
-  return intrinsics.federated_aggregate(
+  return federated_language.federated_aggregate(
       federated_values, zeros, accumulate, merge, report
   )
 

@@ -14,11 +14,9 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
-
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import dataset_data_source
 
 
@@ -26,8 +24,8 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
 
   def test_init_does_not_raise_type_error(self):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
-    federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(np.int32), placements.CLIENTS
+    federated_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     )
 
     try:
@@ -37,8 +35,8 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
 
   def test_init_raises_value_error_with_datasets_empty(self):
     datasets = []
-    federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(np.int32), placements.CLIENTS
+    federated_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     )
 
     with self.assertRaises(ValueError):
@@ -49,8 +47,8 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
         tf.data.Dataset.from_tensor_slices([1, 2, 3]),
         tf.data.Dataset.from_tensor_slices(['a', 'b', 'c']),
     ]
-    federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(np.int32), placements.CLIENTS
+    federated_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     )
 
     with self.assertRaises(ValueError):
@@ -63,8 +61,8 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
   )
   def test_select_returns_datasets_with_k(self, k):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
-    federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(np.int32), placements.CLIENTS
+    federated_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     )
     iterator = dataset_data_source.DatasetDataSourceIterator(
         datasets, federated_type
@@ -84,8 +82,8 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
   )
   def test_select_raises_value_error_with_k(self, k):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
-    federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(np.int32), placements.CLIENTS
+    federated_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     )
     iterator = dataset_data_source.DatasetDataSourceIterator(
         datasets, federated_type
@@ -96,8 +94,8 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
 
   def test_serializable(self):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
-    federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(np.int32), placements.CLIENTS
+    federated_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     )
     iterator = dataset_data_source.DatasetDataSourceIterator(
         datasets, federated_type
@@ -123,8 +121,8 @@ class DatasetDataSourceTest(parameterized.TestCase):
 
     data_source = dataset_data_source.DatasetDataSource(datasets)
 
-    federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(dtype), placements.CLIENTS
+    federated_type = federated_language.FederatedType(
+        federated_language.SequenceType(dtype), federated_language.CLIENTS
     )
     self.assertEqual(data_source.federated_type, federated_type)
 

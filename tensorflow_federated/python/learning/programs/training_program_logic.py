@@ -28,15 +28,11 @@ import datetime
 from typing import Any, NamedTuple, Optional, Union
 
 from absl import logging
+import federated_language
 
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.program import data_source
-from tensorflow_federated.python.program import federated_context
-from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
-from tensorflow_federated.python.program import release_manager
-from tensorflow_federated.python.program import value_reference
 
 
 _PROGRAM_METRICS_KEY = 'program_metrics'
@@ -59,7 +55,9 @@ class ProgramState(NamedTuple):
   state: composers.LearningAlgorithmState
   round_number: int
   next_evaluation_timestamp_seconds: Optional[int]
-  data_iterator: Optional[data_source.FederatedDataSourceIterator]
+  data_iterator: Optional[
+      federated_language.program.FederatedDataSourceIterator
+  ]
 
 
 class TaskManager:
@@ -98,7 +96,7 @@ def _add_program_metrics(
     metrics: Mapping[str, Any],
     round_end_time: datetime.datetime,
     num_retries: int = 0,
-) -> release_manager.ReleasableStructure:
+) -> federated_language.program.ReleasableStructure:
   """Adds program performance metrics to the metrics."""
   if _PROGRAM_METRICS_KEY in metrics:
     raise ValueError(
@@ -118,18 +116,20 @@ async def train_model(
     *,
     train_process: learning_process.LearningProcess,
     initial_train_state: Optional[composers.LearningAlgorithmState] = None,
-    train_data_source: data_source.FederatedDataSource,
+    train_data_source: federated_language.program.FederatedDataSource,
     train_per_round_clients: int,
     train_total_rounds: int,
     should_retry_round: Optional[
         Callable[[learning_process.LearningProcessOutput], bool]
     ] = None,
-    program_state_manager: program_state_manager_lib.ProgramStateManager,
-    model_output_manager: release_manager.ReleaseManager[
-        release_manager.ReleasableStructure, str
+    program_state_manager: federated_language.program.ProgramStateManager,
+    model_output_manager: federated_language.program.ReleaseManager[
+        federated_language.program.ReleasableStructure, str
     ],
     train_metrics_manager: Optional[
-        release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+        federated_language.program.ReleaseManager[
+            federated_language.program.ReleasableStructure, int
+        ]
     ] = None,
     evaluation_manager: Optional[evaluation_program_logic.EvaluationManager],
     evaluation_periodicity: Union[int, datetime.timedelta],
@@ -191,7 +191,7 @@ async def train_model(
   Raises:
     ValueError: If the train state is None.
   """
-  federated_context.check_in_federated_context()
+  federated_language.program.check_in_federated_context()
 
   # A list of pending tasks (evaluation, value releases, etc) that we must await
   # before shutting down the program.
@@ -208,7 +208,7 @@ async def train_model(
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
   if initial_train_state is None:
-    initial_train_state = await value_reference.materialize_value(
+    initial_train_state = await federated_language.program.materialize_value(
         train_process.initialize()
     )
   train_state = initial_train_state
@@ -314,7 +314,7 @@ async def train_model(
     round_participants_data = train_data_iterator.select(
         train_per_round_clients
     )
-    train_result = await value_reference.materialize_value(
+    train_result = await federated_language.program.materialize_value(
         train_process.next(train_state, round_participants_data)
     )
     if should_retry_round is not None and should_retry_round(train_result):

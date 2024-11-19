@@ -16,10 +16,9 @@
 import typing
 from typing import Any, NamedTuple, Optional, Union
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.templates import hparams_base
@@ -91,13 +90,13 @@ class LearningProcess(iterative_process.IterativeProcess):
 
   def __init__(
       self,
-      initialize_fn: computation_base.Computation,
-      next_fn: computation_base.Computation,
-      get_model_weights: computation_base.Computation,
-      set_model_weights: computation_base.Computation,
+      initialize_fn: federated_language.framework.Computation,
+      next_fn: federated_language.framework.Computation,
+      get_model_weights: federated_language.framework.Computation,
+      set_model_weights: federated_language.framework.Computation,
       *,
-      get_hparams_fn: Optional[computation_base.Computation] = None,
-      set_hparams_fn: Optional[computation_base.Computation] = None,
+      get_hparams_fn: Optional[federated_language.framework.Computation] = None,
+      set_hparams_fn: Optional[federated_language.framework.Computation] = None,
   ):
     """Creates a `tff.learning.templates.LearningProcess`.
 
@@ -178,7 +177,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     super().__init__(initialize_fn, next_fn)
 
     init_fn_result = initialize_fn.type_signature.result
-    if init_fn_result.placement != placements.SERVER:  # pytype: disable=attribute-error
+    if init_fn_result.placement != federated_language.SERVER:  # pytype: disable=attribute-error
       raise LearningProcessPlacementError(
           'The result of `initialize_fn` must be placed at `SERVER` but found '
           f'placement {init_fn_result.placement}.'  # pytype: disable=attribute-error
@@ -187,10 +186,10 @@ class LearningProcess(iterative_process.IterativeProcess):
     next_result_type = next_fn.type_signature.result
     # TODO: b/224484886 - Downcasting to all handled types.
     next_result_type = typing.cast(
-        Union[computation_types.StructWithPythonType], next_result_type
+        Union[federated_language.StructWithPythonType], next_result_type
     )
     if not (
-        isinstance(next_result_type, computation_types.StructWithPythonType)
+        isinstance(next_result_type, federated_language.StructWithPythonType)
         and next_result_type.python_container is LearningProcessOutput
     ):
       raise LearningProcessOutputError(
@@ -201,30 +200,32 @@ class LearningProcess(iterative_process.IterativeProcess):
     # base class.
     # TODO: b/224484886 - Downcasting to all handled types.
     next_fn_param = typing.cast(
-        Union[computation_types.StructType], next_fn.type_signature.parameter
+        Union[federated_language.StructType], next_fn.type_signature.parameter
     )
     if (
-        not isinstance(next_fn_param, computation_types.StructType)
+        not isinstance(next_fn_param, federated_language.StructType)
         or len(next_fn_param) != 2
     ):
       raise errors.TemplateNextFnNumArgsError(
           'The `next_fn` must have two input arguments, but found an input '
           f'of type {next_fn_param}.'
       )
-    if next_fn_param[1].placement != placements.CLIENTS:
+    if next_fn_param[1].placement != federated_language.CLIENTS:
       raise LearningProcessPlacementError(
           'The second input argument of `next_fn` must be placed at `CLIENTS`,'
           f' but found placement {next_fn_param[1].placement}.'
       )
 
     next_fn_result = next_fn.type_signature.result
-    if next_fn_result.metrics.placement != placements.SERVER:  # pytype: disable=attribute-error
+    if next_fn_result.metrics.placement != federated_language.SERVER:  # pytype: disable=attribute-error
       raise LearningProcessPlacementError(
           'The result of `next_fn` must be placed at `SERVER` but found '
           f'placement {next_fn_result.metrics.placement} for `metrics`.'  # pytype: disable=attribute-error
       )
 
-    py_typecheck.check_type(get_model_weights, computation_base.Computation)
+    py_typecheck.check_type(
+        get_model_weights, federated_language.framework.Computation
+    )
     get_model_weights_type = get_model_weights.type_signature
     get_model_weights_param = get_model_weights_type.parameter
     next_fn_state_param = next_fn.type_signature.parameter[0].member  # pytype: disable=unsupported-operands
@@ -240,7 +241,9 @@ class LearningProcess(iterative_process.IterativeProcess):
       )
     self._get_model_weights = get_model_weights
 
-    py_typecheck.check_type(set_model_weights, computation_base.Computation)
+    py_typecheck.check_type(
+        set_model_weights, federated_language.framework.Computation
+    )
     set_model_weights_type = set_model_weights.type_signature
     set_model_weights_state_param = set_model_weights_type.parameter[0]  # pytype: disable=unsupported-operands
     if not set_model_weights_state_param.is_equivalent_to(next_fn_state_param):
@@ -279,7 +282,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     self._set_hparams_fn = set_hparams_fn
 
   @property
-  def initialize(self) -> computation_base.Computation:
+  def initialize(self) -> federated_language.framework.Computation:
     """A `tff.Computation` that initializes the process.
 
     This computation must have no input arguments, and its output must be the
@@ -291,7 +294,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     return super().initialize
 
   @property
-  def next(self) -> computation_base.Computation:
+  def next(self) -> federated_language.framework.Computation:
     """A `tff.Computation` that runs one iteration of the process.
 
     The first argument of this computation should always be the current state
@@ -305,7 +308,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     return super().next
 
   @property
-  def get_model_weights(self) -> computation_base.Computation:
+  def get_model_weights(self) -> federated_language.framework.Computation:
     """A `tff.Computation` returning the model weights of a server state.
 
     This computation accepts an unplaced state of the process (originally
@@ -321,7 +324,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     return self._get_model_weights
 
   @property
-  def set_model_weights(self) -> computation_base.Computation:
+  def set_model_weights(self) -> federated_language.framework.Computation:
     """A `tff.Computation` that sets the model weights of a server state.
 
     This computation accepts two arguments: an unplaced state of the process
@@ -338,7 +341,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     return self._set_model_weights
 
   @property
-  def get_hparams(self) -> computation_base.Computation:
+  def get_hparams(self) -> federated_language.framework.Computation:
     """A `tff.Computation` returning the hyperparameters of a server state.
 
     This computation accepts an unplaced state of the process (originally
@@ -351,7 +354,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     return self._get_hparams_fn
 
   @property
-  def set_hparams(self) -> computation_base.Computation:
+  def set_hparams(self) -> federated_language.framework.Computation:
     """A `tff.Computation` that sets the hyperparamters of a server state.
 
     This computation accepts two arguments: an unplaced state of the process

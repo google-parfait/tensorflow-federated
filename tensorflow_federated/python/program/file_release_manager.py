@@ -30,13 +30,12 @@ import os.path
 import random
 from typing import Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.program import file_utils
-from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
-from tensorflow_federated.python.program import value_reference
 
 
 class CSVKeyFieldnameNotFoundError(Exception):
@@ -62,7 +61,9 @@ class CSVSaveMode(enum.Enum):
 
 
 class CSVFileReleaseManager(
-    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+    federated_language.program.ReleaseManager[
+        federated_language.program.ReleasableStructure, int
+    ]
 ):
   """A `tff.program.ReleaseManager` that releases values to a CSV file.
 
@@ -155,7 +156,9 @@ class CSVFileReleaseManager(
   def _write_values(
       self,
       fieldnames: Sequence[str],
-      values: Iterable[Mapping[str, release_manager.ReleasableStructure]],
+      values: Iterable[
+          Mapping[str, federated_language.program.ReleasableStructure]
+      ],
   ) -> None:
     """Writes `fieldnames` and `values` to the managed CSV."""
     path = os.fspath(self._file_path)
@@ -175,7 +178,7 @@ class CSVFileReleaseManager(
     tf.io.gfile.rename(temp_path, self._file_path, overwrite=True)
 
   async def _write_value(
-      self, value: Mapping[str, release_manager.ReleasableStructure]
+      self, value: Mapping[str, federated_language.program.ReleasableStructure]
   ) -> None:
     """Writes `value` to the managed CSV."""
     loop = asyncio.get_running_loop()
@@ -185,7 +188,7 @@ class CSVFileReleaseManager(
     await loop.run_in_executor(None, self._write_values, fieldnames, values)
 
   async def _append_value(
-      self, value: Mapping[str, release_manager.ReleasableStructure]
+      self, value: Mapping[str, federated_language.program.ReleasableStructure]
   ) -> None:
     """Appends `value` to the managed CSV."""
 
@@ -200,7 +203,7 @@ class CSVFileReleaseManager(
 
     def _append_value(
         fieldnames: Sequence[str],
-        value: Mapping[str, release_manager.ReleasableStructure],
+        value: Mapping[str, federated_language.program.ReleasableStructure],
     ) -> None:
       try:
         with tf.io.gfile.GFile(self._file_path, 'a') as file:
@@ -249,7 +252,7 @@ class CSVFileReleaseManager(
       self._latest_key = key
 
   async def release(
-      self, value: release_manager.ReleasableStructure, key: int
+      self, value: federated_language.program.ReleasableStructure, key: int
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -264,14 +267,14 @@ class CSVFileReleaseManager(
     """
     _, materialized_value = await asyncio.gather(
         self._remove_values_greater_than_key(key - 1),
-        value_reference.materialize_value(value),
+        federated_language.program.materialize_value(value),
     )
 
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
     def _normalize(
-        value: value_reference.MaterializedValue,
-    ) -> value_reference.MaterializedValue:
+        value: federated_language.program.MaterializedValue,
+    ) -> federated_language.program.MaterializedValue:
       if isinstance(value, tf.data.Dataset):
         value = list(value)
       return np.array(value).tolist()
@@ -287,8 +290,9 @@ class CSVFileReleaseManager(
 
 
 class SavedModelFileReleaseManager(
-    release_manager.ReleaseManager[
-        release_manager.ReleasableStructure, release_manager.Key
+    federated_language.program.ReleaseManager[
+        federated_language.program.ReleasableStructure,
+        federated_language.program.Key,
     ]
 ):
   """A `tff.program.ReleaseManager` that releases values to a file system.
@@ -331,7 +335,7 @@ class SavedModelFileReleaseManager(
     self._root_dir = root_dir
     self._prefix = prefix
 
-  def _get_path_for_key(self, key: release_manager.Key) -> str:
+  def _get_path_for_key(self, key: federated_language.program.Key) -> str:
     """Returns the path for the given `key`.
 
     This method does not assert that the given `key` or the returned path
@@ -344,7 +348,9 @@ class SavedModelFileReleaseManager(
     return os.path.join(self._root_dir, basename)
 
   async def release(
-      self, value: release_manager.ReleasableStructure, key: release_manager.Key
+      self,
+      value: federated_language.program.ReleasableStructure,
+      key: federated_language.program.Key,
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -353,13 +359,15 @@ class SavedModelFileReleaseManager(
       key: Used to reference (in the file system) the released `value`.
     """
     path = self._get_path_for_key(key)
-    materialized_value = await value_reference.materialize_value(value)
+    materialized_value = await federated_language.program.materialize_value(
+        value
+    )
     await file_utils.write_saved_model(materialized_value, path, overwrite=True)
 
   async def get_value(
       self,
-      key: release_manager.Key,
-  ) -> release_manager.ReleasableStructure:
+      key: federated_language.program.Key,
+  ) -> federated_language.program.ReleasableStructure:
     """Returns the value for the given `key`.
 
     The SavedModel format flattens and deterministicly orders keys. This
@@ -379,12 +387,12 @@ class SavedModelFileReleaseManager(
 
     path = self._get_path_for_key(key)
     if not await file_utils.exists(path):
-      raise release_manager.ReleasedValueNotFoundError(key)
+      raise federated_language.program.ReleasedValueNotFoundError(key)
     value = await file_utils.read_saved_model(path)
 
     def _normalize(
-        value: release_manager.ReleasableValue,
-    ) -> release_manager.ReleasableValue:
+        value: federated_language.program.ReleasableValue,
+    ) -> federated_language.program.ReleasableValue:
       """Returns a normalized value.
 
       The `tff.program.SavedModelFileReleaseManager` releases and gets values

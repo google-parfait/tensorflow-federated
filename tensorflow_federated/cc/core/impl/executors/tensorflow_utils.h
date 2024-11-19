@@ -20,29 +20,32 @@ limitations under the License
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "third_party/py/federated_language/proto/array.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
 
 namespace tensorflow_federated {
 
-// Creates a tensorflow::TensorShape from a v0::ArrayShape.
+// Creates a tensorflow::TensorShape from a federated_language::ArrayShape.
 absl::StatusOr<tensorflow::TensorShape> TensorShapeFromArrayShape(
-    const v0::ArrayShape& shape_pb);
+    const federated_language::ArrayShape& shape_pb);
 
-// Creates a tensorflow::PartialTensorShape from a v0::ArrayShape.
+// Creates a tensorflow::PartialTensorShape from a
+// federated_language::ArrayShape.
 tensorflow::PartialTensorShape PartialTensorShapeFromArrayShape(
-    const v0::ArrayShape& shape_pb);
+    const federated_language::ArrayShape& shape_pb);
 
-// Creates an v0::Array from a tensorflow::Tensor.
-absl::StatusOr<v0::Array> ArrayFromTensor(const tensorflow::Tensor& tensor);
-absl::StatusOr<v0::Array> ArrayContentFromTensor(
+// Creates an federated_language::Array from a tensorflow::Tensor.
+absl::StatusOr<federated_language::Array> ArrayFromTensor(
+    const tensorflow::Tensor& tensor);
+absl::StatusOr<federated_language::Array> ArrayContentFromTensor(
     const tensorflow::Tensor& tensor);
 
-// Creates a tensorflow::Tensor from an v0::Array.
-absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb);
+// Creates a tensorflow::Tensor from an federated_language::Array.
+absl::StatusOr<tensorflow::Tensor> TensorFromArray(
+    const federated_language::Array& array_pb);
 absl::StatusOr<tensorflow::Tensor> TensorFromArrayContent(
-    const v0::Array& array_pb);
+    const federated_language::Array& array_pb);
 
 std::string GetNodeName(absl::string_view tensor_name);
 

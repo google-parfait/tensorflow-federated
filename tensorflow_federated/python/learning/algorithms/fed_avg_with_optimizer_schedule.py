@@ -18,6 +18,7 @@ from collections.abc import Callable
 import functools
 from typing import Optional, Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -26,10 +27,6 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import loop_builder
@@ -95,7 +92,7 @@ def build_scheduled_client_work(
     if isinstance(model_fn, functional.FunctionalModel):
       whimsy_model = model_fn
       weights_type = tf.nest.map_structure(
-          lambda arr: computation_types.TensorType(
+          lambda arr: federated_language.TensorType(
               dtype=arr.dtype, shape=arr.shape
           ),
           model_weights.ModelWeights(*whimsy_model.initial_weights),
@@ -117,7 +114,7 @@ def build_scheduled_client_work(
           f'tff.learning.optimizers.Optimizer, got {type(optimizer_fn)=}'
       )
   element_type = tensorflow_types.to_type(whimsy_model.input_spec)
-  data_type = computation_types.SequenceType(element_type)
+  data_type = federated_language.SequenceType(element_type)
 
   if isinstance(model_fn, functional.FunctionalModel):
     build_client_update_fn = (
@@ -145,9 +142,9 @@ def build_scheduled_client_work(
     )
     return client_update(optimizer, initial_model_weights, dataset)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_value(0, placements.SERVER)
+    return federated_language.federated_value(0, federated_language.SERVER)
 
   @tensorflow_computation.tf_computation(np.int32)
   @tf.function
@@ -159,23 +156,25 @@ def build_scheduled_client_work(
   def tf_learning_rate_fn(x):
     return learning_rate_fn(x)
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result,
-      computation_types.FederatedType(weights_type, placements.CLIENTS),
-      computation_types.FederatedType(data_type, placements.CLIENTS),
+      federated_language.FederatedType(
+          weights_type, federated_language.CLIENTS
+      ),
+      federated_language.FederatedType(data_type, federated_language.CLIENTS),
   )
   def next_fn(state, weights, client_data):
-    round_num_at_clients = intrinsics.federated_broadcast(state)
+    round_num_at_clients = federated_language.federated_broadcast(state)
     # We also compute the learning rate at the server, in order to expose the
     # measurement to the user.
-    learning_rate = intrinsics.federated_map(tf_learning_rate_fn, state)
+    learning_rate = federated_language.federated_map(tf_learning_rate_fn, state)
     # TODO: b/268530457 - Determine if we can broadcast the learning rate.
-    client_result, model_outputs = intrinsics.federated_map(
+    client_result, model_outputs = federated_language.federated_map(
         client_update_computation, (weights, client_data, round_num_at_clients)
     )
-    updated_state = intrinsics.federated_map(add_one, state)
+    updated_state = federated_language.federated_map(add_one, state)
     train_metrics = metrics_aggregation_fn(model_outputs)
-    measurements = intrinsics.federated_zip(
+    measurements = federated_language.federated_zip(
         collections.OrderedDict(
             train=train_metrics, client_learning_rate=learning_rate
         )
@@ -307,7 +306,7 @@ def build_weighted_fed_avg_with_optimizer_schedule(
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
   aggregator = model_aggregator.create(
-      model_weights_type.trainable, computation_types.TensorType(np.float32)
+      model_weights_type.trainable, federated_language.TensorType(np.float32)
   )
   process_signature = aggregator.next.type_signature
   input_client_value_type = process_signature.parameter[1]  # pytype: disable=unsupported-operands

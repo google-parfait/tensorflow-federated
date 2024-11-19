@@ -13,32 +13,28 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
+from federated_language.proto import computation_pb2 as pb
 import numpy as np
 import tensorflow as tf
-
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation_context
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 class TensorFlowComputationContextTest(absltest.TestCase):
 
   def test_invoke_raises_value_error_with_federated_computation(self):
     bogus_proto = pb.Computation(
-        type=type_serialization.serialize_type(
-            computation_types.to_type(
-                computation_types.FunctionType(np.int32, np.int32)
+        type=federated_language.framework.serialize_type(
+            federated_language.to_type(
+                federated_language.FunctionType(np.int32, np.int32)
             )
         ),
         reference=pb.Reference(name='boogledy'),
     )
-    non_tf_computation = computation_impl.ConcreteComputation(
+    non_tf_computation = federated_language.framework.ConcreteComputation(
         computation_proto=bogus_proto,
-        context_stack=context_stack_impl.context_stack,
+        context_stack=federated_language.framework.global_context_stack,
     )
 
     context = tensorflow_computation_context.TensorFlowComputationContext(

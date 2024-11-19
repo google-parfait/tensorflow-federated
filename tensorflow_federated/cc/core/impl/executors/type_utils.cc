@@ -19,21 +19,23 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "third_party/py/federated_language/proto/array.pb.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language/proto/data_type.pb.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
-absl::StatusOr<v0::Type> InferTypeFromValue(const v0::Value& value_pb) {
-  v0::Type value_type_pb;
+absl::StatusOr<federated_language::Type> InferTypeFromValue(
+    const v0::Value& value_pb) {
+  federated_language::Type value_type_pb;
   switch (value_pb.value_case()) {
     case v0::Value::kArray: {
-      v0::TensorType* tensor_type_pb = value_type_pb.mutable_tensor();
+      federated_language::TensorType* tensor_type_pb =
+          value_type_pb.mutable_tensor();
       tensor_type_pb->set_dtype(value_pb.array().dtype());
       tensor_type_pb->mutable_dims()->Assign(
           value_pb.array().shape().dim().begin(),
@@ -41,7 +43,8 @@ absl::StatusOr<v0::Type> InferTypeFromValue(const v0::Value& value_pb) {
       break;
     }
     case v0::Value::kStruct: {
-      v0::StructType* struct_type = value_type_pb.mutable_struct_();
+      federated_language::StructType* struct_type =
+          value_type_pb.mutable_struct_();
       for (const v0::Value::Struct::Element& element_pb :
            value_pb.struct_().element()) {
         *struct_type->add_element()->mutable_value() =
@@ -58,7 +61,8 @@ absl::StatusOr<v0::Type> InferTypeFromValue(const v0::Value& value_pb) {
       break;
     }
     case v0::Value::kSequence: {
-      v0::SequenceType* sequence_type = value_type_pb.mutable_sequence();
+      federated_language::SequenceType* sequence_type =
+          value_type_pb.mutable_sequence();
       *sequence_type->mutable_element() = value_pb.sequence().element_type();
       break;
     }

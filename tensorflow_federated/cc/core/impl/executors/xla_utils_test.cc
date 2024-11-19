@@ -22,6 +22,9 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "third_party/eigen3/Eigen/Core"
+#include "third_party/py/federated_language/proto/array.pb.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language/proto/data_type.pb.h"
 #include "tensorflow/compiler/xla/literal.h"
 #include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/compiler/xla/primitive_util.h"
@@ -32,17 +35,14 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 namespace tensorflow_federated {
 namespace {
 
 TEST(ShapeFromTensorTypeTest, TestReturnsShape_fully_defined) {
   std::initializer_list<int64_t> dims = {2, 3};
-  v0::TensorType type_pb;
-  type_pb.set_dtype(v0::DataType::DT_INT32);
+  federated_language::TensorType type_pb;
+  type_pb.set_dtype(federated_language::DataType::DT_INT32);
   type_pb.mutable_dims()->Assign(dims.begin(), dims.end());
   const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
       xla::primitive_util::NativeToPrimitiveType<int32_t>(), {2, 3});
@@ -54,8 +54,8 @@ TEST(ShapeFromTensorTypeTest, TestReturnsShape_fully_defined) {
 
 TEST(ShapeFromTensorTypeTest, TestReturnsShape_scalar) {
   std::initializer_list<int64_t> dims = {};
-  v0::TensorType type_pb;
-  type_pb.set_dtype(v0::DataType::DT_INT32);
+  federated_language::TensorType type_pb;
+  type_pb.set_dtype(federated_language::DataType::DT_INT32);
   type_pb.mutable_dims()->Assign(dims.begin(), dims.end());
   const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
       xla::primitive_util::NativeToPrimitiveType<int32_t>(), {});
@@ -67,8 +67,8 @@ TEST(ShapeFromTensorTypeTest, TestReturnsShape_scalar) {
 
 TEST(ShapeFromTensorTypeTest, TestFails_partially_defined) {
   std::initializer_list<int64_t> dims = {2, -1};
-  v0::TensorType type_pb;
-  type_pb.set_dtype(v0::DataType::DT_INT32);
+  federated_language::TensorType type_pb;
+  type_pb.set_dtype(federated_language::DataType::DT_INT32);
   type_pb.mutable_dims()->Assign(dims.begin(), dims.end());
 
   const absl::StatusOr<xla::Shape>& result = ShapeFromTensorType(type_pb);
@@ -78,8 +78,8 @@ TEST(ShapeFromTensorTypeTest, TestFails_partially_defined) {
 
 TEST(ShapeFromTensorTypeTest, TestFails_unknown) {
   std::initializer_list<int64_t> dims = {};
-  v0::TensorType type_pb;
-  type_pb.set_dtype(v0::DataType::DT_INT32);
+  federated_language::TensorType type_pb;
+  type_pb.set_dtype(federated_language::DataType::DT_INT32);
   type_pb.mutable_dims()->Assign(dims.begin(), dims.end());
   type_pb.set_unknown_rank(true);
 
@@ -89,48 +89,53 @@ TEST(ShapeFromTensorTypeTest, TestFails_unknown) {
 }
 
 TEST(ShapeFromArrayShapeTest, TestReturnsShape_fully_defined) {
-  const v0::ArrayShape& shape_pb = testing::CreateArrayShape({2, 3});
+  const federated_language::ArrayShape& shape_pb =
+      testing::CreateArrayShape({2, 3});
   const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
       xla::primitive_util::NativeToPrimitiveType<int32_t>(), {2, 3});
 
-  const xla::Shape& actual_shape =
-      TFF_ASSERT_OK(ShapeFromArrayShape(v0::DataType::DT_INT32, shape_pb));
+  const xla::Shape& actual_shape = TFF_ASSERT_OK(
+      ShapeFromArrayShape(federated_language::DataType::DT_INT32, shape_pb));
 
   EXPECT_TRUE(xla::Shape::Equal()(actual_shape, expected_shape));
 }
 
 TEST(ShapeFromArrayShapeTest, TestReturnsShape_scalar) {
-  const v0::ArrayShape& shape_pb = testing::CreateArrayShape({});
+  const federated_language::ArrayShape& shape_pb =
+      testing::CreateArrayShape({});
   const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
       xla::primitive_util::NativeToPrimitiveType<int32_t>(), {});
 
-  const xla::Shape& actual_shape =
-      TFF_ASSERT_OK(ShapeFromArrayShape(v0::DataType::DT_INT32, shape_pb));
+  const xla::Shape& actual_shape = TFF_ASSERT_OK(
+      ShapeFromArrayShape(federated_language::DataType::DT_INT32, shape_pb));
 
   EXPECT_TRUE(xla::Shape::Equal()(actual_shape, expected_shape));
 }
 
 TEST(ShapeFromArrayShapeTest, TestFails_partially_defined) {
-  const v0::ArrayShape& shape_pb = testing::CreateArrayShape({2, -1});
+  const federated_language::ArrayShape& shape_pb =
+      testing::CreateArrayShape({2, -1});
 
   const absl::StatusOr<xla::Shape>& result =
-      ShapeFromArrayShape(v0::DataType::DT_INT32, shape_pb);
+      ShapeFromArrayShape(federated_language::DataType::DT_INT32, shape_pb);
 
   EXPECT_EQ(result.status().code(), absl::StatusCode::kInvalidArgument);
 }
 
 TEST(ShapeFromArrayShapeTest, TestFails_unknown) {
-  const v0::ArrayShape& shape_pb = testing::CreateArrayShape({}, true);
+  const federated_language::ArrayShape& shape_pb =
+      testing::CreateArrayShape({}, true);
 
   const absl::StatusOr<xla::Shape>& result =
-      ShapeFromArrayShape(v0::DataType::DT_INT32, shape_pb);
+      ShapeFromArrayShape(federated_language::DataType::DT_INT32, shape_pb);
 
   EXPECT_EQ(result.status().code(), absl::StatusCode::kInvalidArgument);
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_bool) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_BOOL, testing::CreateArrayShape({}), {true}));
+  const federated_language::Array& array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_BOOL,
+                           testing::CreateArrayShape({}), {true}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -140,8 +145,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_bool) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_int8) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_INT8, testing::CreateArrayShape({}), {1}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT8,
+                                         testing::CreateArrayShape({}), {1}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -151,8 +157,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_int8) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_int16) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_INT16, testing::CreateArrayShape({}), {1}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT16,
+                                         testing::CreateArrayShape({}), {1}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -162,8 +169,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_int16) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_int32) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_INT32, testing::CreateArrayShape({}), {1}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {1}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -173,8 +181,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_int32) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_int64) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_INT64, testing::CreateArrayShape({}), {1}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
+                                         testing::CreateArrayShape({}), {1}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -184,8 +193,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_int64) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_uint8) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_UINT8, testing::CreateArrayShape({}), {1}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_UINT8,
+                                         testing::CreateArrayShape({}), {1}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -195,8 +205,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_uint8) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_uint16) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_UINT16, testing::CreateArrayShape({}), {1}));
+  const federated_language::Array& array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_UINT16,
+                           testing::CreateArrayShape({}), {1}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -206,8 +217,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_uint16) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_uint32) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_UINT32, testing::CreateArrayShape({}), {1}));
+  const federated_language::Array& array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_UINT32,
+                           testing::CreateArrayShape({}), {1}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -217,8 +229,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_uint32) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_uint64) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_UINT64, testing::CreateArrayShape({}), {1}));
+  const federated_language::Array& array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_UINT64,
+                           testing::CreateArrayShape({}), {1}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -228,9 +241,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_uint64) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_float16) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(
-      testing::CreateArray(v0::DataType::DT_HALF, testing::CreateArrayShape({}),
-                           {Eigen::half{1.0}}));
+  const federated_language::Array& array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_HALF,
+                           testing::CreateArrayShape({}), {Eigen::half{1.0}}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -240,8 +253,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_float16) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_float32) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_FLOAT, testing::CreateArrayShape({}), {1.0}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -251,8 +265,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_float32) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_float64) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_DOUBLE, testing::CreateArrayShape({}), {1.0}));
+  const federated_language::Array& array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_DOUBLE,
+                           testing::CreateArrayShape({}), {1.0}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -262,9 +277,10 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_float64) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_complex64) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_COMPLEX64, testing::CreateArrayShape({}),
-      {std::complex<float>{1.0, 1.0}}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(
+          federated_language::DataType::DT_COMPLEX64,
+          testing::CreateArrayShape({}), {std::complex<float>{1.0, 1.0}}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -275,9 +291,10 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_complex64) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_complex128) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_COMPLEX128, testing::CreateArrayShape({}),
-      {std::complex<double>{1.0, 1.0}}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(
+          federated_language::DataType::DT_COMPLEX128,
+          testing::CreateArrayShape({}), {std::complex<double>{1.0, 1.0}}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -288,9 +305,10 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_complex128) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_bfloat16) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_BFLOAT16, testing::CreateArrayShape({}),
-      {Eigen::bfloat16{1.0}}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(
+          federated_language::DataType::DT_BFLOAT16,
+          testing::CreateArrayShape({}), {Eigen::bfloat16{1.0}}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -301,9 +319,10 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_bfloat16) {
 }
 
 TEST(LiteralFromArrayTest, TestReturnsLiteral_array) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_INT32, testing::CreateArrayShape({2, 3}),
-      {1, 2, 3, 4, 5, 6}));
+  const federated_language::Array& array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({2, 3}),
+                                         {1, 2, 3, 4, 5, 6}));
 
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
@@ -314,8 +333,9 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_array) {
 }
 
 TEST(LiteralFromArrayTest, TestFails_string) {
-  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
-      v0::DataType::DT_STRING, testing::CreateArrayShape({}), {"a"}));
+  const federated_language::Array& array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_STRING,
+                           testing::CreateArrayShape({}), {"a"}));
 
   const absl::StatusOr<xla::Literal>& result = LiteralFromArray(array_pb);
 

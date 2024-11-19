@@ -20,6 +20,7 @@ import math
 import typing
 from typing import Any, Optional, Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tree
@@ -31,10 +32,6 @@ from tensorflow_federated.python.aggregators import sum_factory as sum_factory_l
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -47,8 +44,8 @@ def _initialize_unfinalized_metrics_accumulators(
 ):
   """Initializes the unfinalized metrics accumulators."""
   if initial_unfinalized_metrics is not None:
-    return intrinsics.federated_value(
-        initial_unfinalized_metrics, placements.SERVER
+    return federated_language.federated_value(
+        initial_unfinalized_metrics, federated_language.SERVER
     )
 
   @tensorflow_computation.tf_computation
@@ -58,7 +55,9 @@ def _initialize_unfinalized_metrics_accumulators(
         local_unfinalized_metrics_type,
     )
 
-  return intrinsics.federated_eval(create_all_zero_state, placements.SERVER)
+  return federated_language.federated_eval(
+      create_all_zero_state, federated_language.SERVER
+  )
 
 
 # TODO: b/227811468 - Support other inner aggregators for SecAgg and DP.
@@ -141,7 +140,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
 
   def create(
       self,
-      local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+      local_unfinalized_metrics_type: federated_language.StructWithPythonType,
   ) -> aggregation_process.AggregationProcess:
     """Creates a `tff.templates.AggregationProcess` for metrics aggregation.
 
@@ -175,22 +174,22 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
         local_unfinalized_metrics_type
     )
 
-    @federated_computation.federated_computation
+    @federated_language.federated_computation
     def init_fn():
       unfinalized_metrics_accumulators = (
           _initialize_unfinalized_metrics_accumulators(
               local_unfinalized_metrics_type, self._initial_unfinalized_metrics
           )
       )
-      return intrinsics.federated_zip((
+      return federated_language.federated_zip((
           inner_summation_process.initialize(),
           unfinalized_metrics_accumulators,
       ))
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(
-            local_unfinalized_metrics_type, placements.CLIENTS
+        federated_language.FederatedType(
+            local_unfinalized_metrics_type, federated_language.CLIENTS
         ),
     )
     def next_fn(
@@ -214,7 +213,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
             tf.add, unfinalized_metrics, summed_unfinalized_metrics
         )
 
-      unfinalized_metrics_accumulators = intrinsics.federated_map(
+      unfinalized_metrics_accumulators = federated_language.federated_map(
           add_unfinalized_metrics,
           (unfinalized_metrics_accumulators, summed_unfinalized_metrics),
       )
@@ -223,18 +222,18 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
           self._metric_finalizers, local_unfinalized_metrics_type
       )
 
-      current_round_metrics = intrinsics.federated_map(
+      current_round_metrics = federated_language.federated_map(
           finalizer_computation, summed_unfinalized_metrics
       )
-      total_rounds_metrics = intrinsics.federated_map(
+      total_rounds_metrics = federated_language.federated_map(
           finalizer_computation, unfinalized_metrics_accumulators
       )
 
       return measured_process.MeasuredProcessOutput(
-          state=intrinsics.federated_zip(
+          state=federated_language.federated_zip(
               (inner_summation_state, unfinalized_metrics_accumulators)
           ),
-          result=intrinsics.federated_zip(
+          result=federated_language.federated_zip(
               (current_round_metrics, total_rounds_metrics)
           ),
           measurements=inner_summation_output.measurements,
@@ -334,7 +333,7 @@ def _check_user_metric_value_range(value_range: UserMetricValueRange):
 
 # TODO: b/233054212 - re-enable lint
 def create_default_secure_sum_quantization_ranges(
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    local_unfinalized_metrics_type: federated_language.StructWithPythonType,
     lower_bound: Union[int, float] = DEFAULT_FIXED_SECURE_LOWER_BOUND,
     upper_bound: Union[int, float] = DEFAULT_FIXED_SECURE_UPPER_BOUND,
     use_auto_tuned_bounds_for_float_values: Optional[bool] = True,
@@ -393,7 +392,7 @@ def create_default_secure_sum_quantization_ranges(
   )
 
   def create_default_range(
-      type_spec: computation_types.TensorType,
+      type_spec: federated_language.TensorType,
   ) -> MetricValueRange:
     if np.issubdtype(type_spec.dtype, np.floating):
       if use_auto_tuned_bounds_for_float_values:
@@ -568,7 +567,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
   def create(
       self,
-      local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+      local_unfinalized_metrics_type: federated_language.StructWithPythonType,
   ) -> aggregation_process.AggregationProcess:
     """Creates an `AggregationProcess` for secure summation over metrics.
 
@@ -689,25 +688,27 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       aggregation_process_by_factory_key[
           factory_key
       ] = aggregator_factories.get(value_range).create(
-          computation_types.to_type(tensor_type_list)
+          federated_language.to_type(tensor_type_list)
       )  # pytype: disable=attribute-error,wrong-arg-types
 
-    @federated_computation.federated_computation
+    @federated_language.federated_computation
     def init_fn():
       factory_init_states = collections.OrderedDict()
       for factory_key, process in aggregation_process_by_factory_key.items():
         factory_init_states[factory_key] = process.initialize()
-      return intrinsics.federated_zip(factory_init_states)
+      return federated_language.federated_zip(factory_init_states)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(
-            local_unfinalized_metrics_type, placements.CLIENTS
+        federated_language.FederatedType(
+            local_unfinalized_metrics_type, federated_language.CLIENTS
         ),
     )
     def next_fn(state, client_local_unfinalized_metrics):
-      client_local_grouped_unfinalized_metrics = intrinsics.federated_map(
-          group_value_by_factory_key, client_local_unfinalized_metrics
+      client_local_grouped_unfinalized_metrics = (
+          federated_language.federated_map(
+              group_value_by_factory_key, client_local_unfinalized_metrics
+          )
       )
       metrics_aggregation_output = collections.OrderedDict()
       new_state = collections.OrderedDict()
@@ -718,7 +719,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         )
         new_state[factory_key] = metrics_aggregation_output[factory_key].state
 
-      metrics_aggregation_output = intrinsics.federated_zip(
+      metrics_aggregation_output = federated_language.federated_zip(
           metrics_aggregation_output
       )
 
@@ -742,12 +743,14 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         )
         return unfinalized_metrics, secure_sum_measurements
 
-      unfinalized_metrics, secure_sum_measurements = intrinsics.federated_map(
-          flatten_aggregation_output, metrics_aggregation_output
+      unfinalized_metrics, secure_sum_measurements = (
+          federated_language.federated_map(
+              flatten_aggregation_output, metrics_aggregation_output
+          )
       )
 
       return measured_process.MeasuredProcessOutput(
-          state=intrinsics.federated_zip(new_state),
+          state=federated_language.federated_zip(new_state),
           result=unfinalized_metrics,
           measurements=secure_sum_measurements,
       )

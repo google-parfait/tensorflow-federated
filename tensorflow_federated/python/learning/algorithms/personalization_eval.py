@@ -17,6 +17,7 @@ import collections
 from collections.abc import Callable, Mapping
 from typing import Any
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import sampling
@@ -24,12 +25,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import array_shape
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.models import variable
 
@@ -54,7 +49,7 @@ def build_personalization_eval_computation(
         [variable.VariableModel, tf.data.Dataset], _MetricsType
     ],
     max_num_clients: int = 100,
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Builds the TFF computation for evaluating personalization strategies.
 
   The returned TFF computation broadcasts model weights from `tff.SERVER` to
@@ -135,10 +130,10 @@ def build_personalization_eval_computation(
   # input should contain unbatched elements.
   element_tff_type = _remove_batch_dim(batch_tff_type)
   client_input_type = collections.OrderedDict(
-      train_data=computation_types.SequenceType(element_tff_type),
-      test_data=computation_types.SequenceType(element_tff_type),
+      train_data=federated_language.SequenceType(element_tff_type),
+      test_data=federated_language.SequenceType(element_tff_type),
   )
-  client_input_type = computation_types.to_type(client_input_type)
+  client_input_type = federated_language.to_type(client_input_type)
 
   py_typecheck.check_type(max_num_clients, int)
   if max_num_clients <= 0:
@@ -159,14 +154,20 @@ def build_personalization_eval_computation(
       client_computation.type_signature.result
   )
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(model_weights_type, placements.SERVER),
-      computation_types.FederatedType(client_input_type, placements.CLIENTS),
+  @federated_language.federated_computation(
+      federated_language.FederatedType(
+          model_weights_type, federated_language.SERVER
+      ),
+      federated_language.FederatedType(
+          client_input_type, federated_language.CLIENTS
+      ),
   )
   def personalization_eval(server_model_weights, federated_client_input):
     """TFF orchestration logic."""
-    client_init_weights = intrinsics.federated_broadcast(server_model_weights)
-    client_final_metrics = intrinsics.federated_map(
+    client_init_weights = federated_language.federated_broadcast(
+        server_model_weights
+    )
+    client_final_metrics = federated_language.federated_map(
         client_computation, (client_init_weights, federated_client_input)
     )
 
@@ -184,8 +185,8 @@ def build_personalization_eval_computation(
 
 
 def _build_client_computation(
-    model_weights_type: computation_types.Type,
-    client_data_type: computation_types.Type,
+    model_weights_type: federated_language.Type,
+    client_data_type: federated_language.Type,
     model_fn: Callable[[], variable.VariableModel],
     personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
     baseline_evaluate_fn: Callable[
@@ -230,8 +231,8 @@ def _build_client_computation(
 
 
 def _remove_batch_dim(
-    type_spec: computation_types.Type,
-) -> computation_types.Type:
+    type_spec: federated_language.Type,
+) -> federated_language.Type:
   """Removes the batch dimension from the `tff.TensorType`s in `type_spec`.
 
   Args:
@@ -249,11 +250,12 @@ def _remove_batch_dim(
 
   def _remove_first_dim_in_tensortype(tensor_type):
     """Return a new `tff.TensorType` after removing the first dimension."""
-    py_typecheck.check_type(tensor_type, computation_types.TensorType)
-    if tensor_type.shape is not None and not array_shape.is_shape_scalar(
-        tensor_type.shape
+    py_typecheck.check_type(tensor_type, federated_language.TensorType)
+    if (
+        tensor_type.shape is not None
+        and not federated_language.array_shape_is_scalar(tensor_type.shape)
     ):
-      return computation_types.TensorType(
+      return federated_language.TensorType(
           shape=tensor_type.shape[1:], dtype=tensor_type.dtype
       )
     else:

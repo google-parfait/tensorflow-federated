@@ -16,13 +16,12 @@ import collections
 import copy
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
 
 TEST_DATA = {
@@ -261,11 +260,13 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
   def test_dataset_computation_where_client_data_is_tensors(self):
     client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     dataset_computation = client_data.dataset_computation
-    self.assertIsInstance(dataset_computation, computation_base.Computation)
+    self.assertIsInstance(
+        dataset_computation, federated_language.framework.Computation
+    )
 
-    expected_dataset_comp_type_signature = computation_types.FunctionType(
-        computation_types.TensorType(np.str_),
-        computation_types.SequenceType(
+    expected_dataset_comp_type_signature = federated_language.FunctionType(
+        federated_language.TensorType(np.str_),
+        federated_language.SequenceType(
             tensorflow_types.to_type(
                 (client_data.element_type_structure.dtype, (2,))
             )
@@ -291,12 +292,14 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
         TEST_DATA_WITH_TUPLES
     )
     dataset_computation = client_data.dataset_computation
-    self.assertIsInstance(dataset_computation, computation_base.Computation)
-    expected_dataset_comp_type_signature = computation_types.FunctionType(
-        computation_types.TensorType(np.str_),
-        computation_types.SequenceType((
-            computation_types.TensorType(np.int32),
-            computation_types.TensorType(np.int32),
+    self.assertIsInstance(
+        dataset_computation, federated_language.framework.Computation
+    )
+    expected_dataset_comp_type_signature = federated_language.FunctionType(
+        federated_language.TensorType(np.str_),
+        federated_language.SequenceType((
+            federated_language.TensorType(np.int32),
+            federated_language.TensorType(np.int32),
         )),
     )
 
@@ -320,10 +323,12 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
         TEST_DATA_WITH_ORDEREDDICTS
     )
     dataset_computation = client_data.dataset_computation
-    self.assertIsInstance(dataset_computation, computation_base.Computation)
-    expected_dataset_comp_type_signature = computation_types.FunctionType(
-        computation_types.TensorType(np.str_),
-        computation_types.SequenceType(
+    self.assertIsInstance(
+        dataset_computation, federated_language.framework.Computation
+    )
+    expected_dataset_comp_type_signature = federated_language.FunctionType(
+        federated_language.TensorType(np.str_),
+        federated_language.SequenceType(
             collections.OrderedDict([
                 (
                     'x',

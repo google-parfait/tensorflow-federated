@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -20,10 +21,9 @@ from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
 
-_TEST_VALUE_TYPE = computation_types.TensorType(np.float32, (2,))
-_TEST_WEIGHT_TYPE = computation_types.TensorType(np.float32)
+_TEST_VALUE_TYPE = federated_language.TensorType(np.float32, (2,))
+_TEST_WEIGHT_TYPE = federated_language.TensorType(np.float32)
 
 
 class UnweightedAsWeightedAggregationTest(tf.test.TestCase):

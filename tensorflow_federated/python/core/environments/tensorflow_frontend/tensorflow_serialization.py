@@ -16,23 +16,20 @@
 import inspect
 from typing import Optional
 
+import federated_language
+from federated_language.proto import computation_pb2 as pb
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import serialization_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation_context
 from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
-from tensorflow_federated.python.core.impl.computation import computation_wrapper
-from tensorflow_federated.python.core.impl.context_stack import context_stack_base
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 def serialize_py_fn_as_tf_computation(
     fn,
-    parameter_type: Optional[computation_types.Type],
+    parameter_type: Optional[federated_language.Type],
     context_stack,
 ):
   """Serializes a TF computation with a given parameter type.
@@ -50,7 +47,7 @@ def serialize_py_fn_as_tf_computation(
       referenced from here).
     parameter_type: The parameter type specification if the fn accepts a
       parameter, or `None` if the fn doesn't declare any parameters. Either an
-      instance of `computation_types.Type`.
+      instance of `federated_language.Type`.
     context_stack: The context stack to use.
 
   Returns:
@@ -69,9 +66,11 @@ def serialize_py_fn_as_tf_computation(
   # Document all accepted forms with examples in the API, and point to there
   # from here.
 
-  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+  py_typecheck.check_type(
+      context_stack, federated_language.framework.ContextStack
+  )
   if parameter_type is not None:
-    py_typecheck.check_type(parameter_type, computation_types.Type)
+    py_typecheck.check_type(parameter_type, federated_language.Type)
   signature = inspect.signature(fn)
 
   with tf.Graph().as_default() as graph:
@@ -109,7 +108,7 @@ def serialize_py_fn_as_tf_computation(
         else:
           result = fn()
         if result is None:
-          raise computation_wrapper.ComputationReturnedNoneError(fn)
+          raise federated_language.framework.ComputationReturnedNoneError(fn)
       initializer_ops = []
       if all_variables:
         # Use a readable but not-too-long name for the init_op.
@@ -144,7 +143,7 @@ def serialize_py_fn_as_tf_computation(
         result, graph
     )
 
-  type_signature = computation_types.FunctionType(parameter_type, result_type)
+  type_signature = federated_language.FunctionType(parameter_type, result_type)
 
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
@@ -155,7 +154,7 @@ def serialize_py_fn_as_tf_computation(
   )
   return (
       pb.Computation(
-          type=type_serialization.serialize_type(type_signature),
+          type=federated_language.framework.serialize_type(type_signature),
           tensorflow=tensorflow,
       ),
       type_signature,

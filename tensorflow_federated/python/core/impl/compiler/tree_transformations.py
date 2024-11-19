@@ -15,16 +15,9 @@
 
 from collections.abc import Sequence
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import building_block_analysis
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_transformations
 
 
 def remove_mapped_or_applied_identity(comp):
@@ -59,23 +52,25 @@ def remove_mapped_or_applied_identity(comp):
   Raises:
     TypeError: If types do not match.
   """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ComputationBuildingBlock
+  )
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a mapped or applied identity function."""
     if (
-        isinstance(comp, building_blocks.Call)
-        and isinstance(comp.function, building_blocks.Intrinsic)
+        isinstance(comp, federated_language.framework.Call)
+        and isinstance(comp.function, federated_language.framework.Intrinsic)
         and comp.function.uri
         in (
-            intrinsic_defs.FEDERATED_MAP.uri,
-            intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-            intrinsic_defs.FEDERATED_APPLY.uri,
-            intrinsic_defs.SEQUENCE_MAP.uri,
+            federated_language.framework.FEDERATED_MAP.uri,
+            federated_language.framework.FEDERATED_MAP_ALL_EQUAL.uri,
+            federated_language.framework.FEDERATED_APPLY.uri,
+            federated_language.framework.SEQUENCE_MAP.uri,
         )
     ):
       called_function = comp.argument[0]
-      return building_block_analysis.is_identity_function(called_function)
+      return federated_language.framework.is_identity_function(called_function)
     return False
 
   def _transform(comp):
@@ -84,21 +79,23 @@ def remove_mapped_or_applied_identity(comp):
     transformed_comp = comp.argument[1]
     return transformed_comp, True
 
-  return transformation_utils.transform_postorder(comp, _transform)
+  return federated_language.framework.transform_postorder(comp, _transform)
 
 
-class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
+class RemoveUnusedBlockLocals(federated_language.framework.TransformSpec):
   """Removes block local variables which are not used in the result."""
 
   def should_transform(self, comp):
-    return isinstance(comp, building_blocks.Block)
+    return isinstance(comp, federated_language.framework.Block)
 
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
-    unbound_ref_set = transformation_utils.get_map_of_unbound_references(
-        comp.result
-    )[comp.result]
+    unbound_ref_set = (
+        federated_language.framework.get_map_of_unbound_references(comp.result)[
+            comp.result
+        ]
+    )
     if (not unbound_ref_set) or (not comp.locals):
       return comp.result, True
     new_locals = []
@@ -106,19 +103,22 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
       if name in unbound_ref_set:
         new_locals.append((name, val))
         unbound_ref_set = unbound_ref_set.union(
-            transformation_utils.get_map_of_unbound_references(val)[val]
+            federated_language.framework.get_map_of_unbound_references(val)[val]
         )
         unbound_ref_set.discard(name)
     if len(new_locals) == len(comp.locals):
       return comp, False
     elif not new_locals:
       return comp.result, True
-    return building_blocks.Block(reversed(new_locals), comp.result), True
+    return (
+        federated_language.framework.Block(reversed(new_locals), comp.result),
+        True,
+    )
 
 
 def remove_unused_block_locals(comp):
   transform_spec = RemoveUnusedBlockLocals()
-  return transformation_utils.transform_postorder(
+  return federated_language.framework.transform_postorder(
       comp, transform_spec.transform
   )
 
@@ -139,12 +139,14 @@ def uniquify_reference_names(comp, name_generator=None):
     are guaranteed to be unique, and are guaranteed to not mask any unbound
     names referenced in the body of `comp`.
   """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ComputationBuildingBlock
+  )
   # Passing `comp` to `unique_name_generator` here will ensure that the
   # generated names conflict with neither bindings in `comp` nor unbound
   # references in `comp`.
   if name_generator is None:
-    name_generator = building_block_factory.unique_name_generator(comp)
+    name_generator = federated_language.framework.unique_name_generator(comp)
     rename_all = False
   else:
     # If a `name_generator` was passed in, all bindings must be renamed since
@@ -152,8 +154,8 @@ def uniquify_reference_names(comp, name_generator=None):
     rename_all = True
   used_names = set()
 
-  class _RenameNode(transformation_utils.BoundVariableTracker):
-    """transformation_utils.SymbolTree node for renaming References in ASTs."""
+  class _RenameNode(federated_language.framework.BoundVariableTracker):
+    """federated_language.framework.SymbolTree node for renaming References in ASTs."""
 
     def __init__(self, name, value):
       super().__init__(name, value)
@@ -171,7 +173,7 @@ def uniquify_reference_names(comp, name_generator=None):
 
   def _transform(comp, context_tree):
     """Renames References in `comp` to unique names."""
-    if isinstance(comp, building_blocks.Reference):
+    if isinstance(comp, federated_language.framework.Reference):
       payload = context_tree.get_payload_with_name(comp.name)
       if payload is None:
         return comp, False
@@ -179,12 +181,12 @@ def uniquify_reference_names(comp, name_generator=None):
       if new_name is comp.name:
         return comp, False
       return (
-          building_blocks.Reference(
+          federated_language.framework.Reference(
               new_name, comp.type_signature, comp.context
           ),
           True,
       )
-    elif isinstance(comp, building_blocks.Block):
+    elif isinstance(comp, federated_language.framework.Block):
       new_locals = []
       modified = False
       for name, val in comp.locals:
@@ -192,8 +194,11 @@ def uniquify_reference_names(comp, name_generator=None):
         new_name = context_tree.get_payload_with_name(name).new_name
         modified = modified or (new_name is not name)
         new_locals.append((new_name, val))
-      return building_blocks.Block(new_locals, comp.result), modified
-    elif isinstance(comp, building_blocks.Lambda):
+      return (
+          federated_language.framework.Block(new_locals, comp.result),
+          modified,
+      )
+    elif isinstance(comp, federated_language.framework.Lambda):
       if comp.parameter_type is None:
         return comp, False
       context_tree.walk_down_one_variable_binding()
@@ -203,13 +208,15 @@ def uniquify_reference_names(comp, name_generator=None):
       if new_name is comp.parameter_name:
         return comp, False
       return (
-          building_blocks.Lambda(new_name, comp.parameter_type, comp.result),
+          federated_language.framework.Lambda(
+              new_name, comp.parameter_type, comp.result
+          ),
           True,
       )
     return comp, False
 
-  symbol_tree = transformation_utils.SymbolTree(_RenameNode)
-  return transformation_utils.transform_postorder_with_symbol_bindings(
+  symbol_tree = federated_language.framework.SymbolTree(_RenameNode)
+  return federated_language.framework.transform_postorder_with_symbol_bindings(
       comp, _transform, symbol_tree
   )
 
@@ -234,7 +241,8 @@ def normalize_types(comp, normalize_all_equal_bit: bool = True):
   intrinsic.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` to transform.
+    comp: Instance of `federated_language.framework.ComputationBuildingBlock` to
+      transform.
     normalize_all_equal_bit: Whether to normalize `all_equal` bits in the placed
       values. Should be set to true when compiling for MapReduceForm and false
       when compiling for DistributeAggregateForm.
@@ -242,26 +250,28 @@ def normalize_types(comp, normalize_all_equal_bit: bool = True):
   Returns:
     A modified version of `comp` with normalized types.
   """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ComputationBuildingBlock
+  )
 
   def _normalize_type_signature_helper(type_signature):
-    if isinstance(type_signature, computation_types.FederatedType):
+    if isinstance(type_signature, federated_language.FederatedType):
       if normalize_all_equal_bit:
-        return computation_types.FederatedType(
+        return federated_language.FederatedType(
             type_signature.member, type_signature.placement
         )
-    elif isinstance(type_signature, computation_types.StructType):
+    elif isinstance(type_signature, federated_language.StructType):
       new_elements = []
       for element_name, element_type in type_signature.items():
         new_elements.append(
             (element_name, _normalize_type_signature_helper(element_type))
         )
-      return computation_types.StructType(new_elements)
+      return federated_language.StructType(new_elements)
     return type_signature
 
   def _normalize_reference_bit(comp):
     return (
-        building_blocks.Reference(
+        federated_language.framework.Reference(
             comp.name, _normalize_type_signature_helper(comp.type_signature)
         ),
         True,
@@ -271,7 +281,7 @@ def normalize_types(comp, normalize_all_equal_bit: bool = True):
     # Note that the lambda result has already been normalized due to the post-
     # order traversal.
     return (
-        building_blocks.Lambda(
+        federated_language.framework.Lambda(
             comp.parameter_name,
             _normalize_type_signature_helper(comp.parameter_type),
             comp.result,
@@ -281,46 +291,49 @@ def normalize_types(comp, normalize_all_equal_bit: bool = True):
 
   def _normalize_intrinsic_bit(comp):
     """Replaces federated map all equal with federated map."""
-    if comp.uri != intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri:
+    if comp.uri != federated_language.framework.FEDERATED_MAP_ALL_EQUAL.uri:
       return comp, False
     parameter_type = [
         comp.type_signature.parameter[0],
-        computation_types.FederatedType(
-            comp.type_signature.parameter[1].member, placements.CLIENTS
+        federated_language.FederatedType(
+            comp.type_signature.parameter[1].member, federated_language.CLIENTS
         ),
     ]
-    intrinsic_type = computation_types.FunctionType(
+    intrinsic_type = federated_language.FunctionType(
         parameter_type,
-        computation_types.FederatedType(
-            comp.type_signature.result.member, placements.CLIENTS
+        federated_language.FederatedType(
+            comp.type_signature.result.member, federated_language.CLIENTS
         ),
     )
-    new_intrinsic = building_blocks.Intrinsic(
-        intrinsic_defs.FEDERATED_MAP.uri, intrinsic_type
+    new_intrinsic = federated_language.framework.Intrinsic(
+        federated_language.framework.FEDERATED_MAP.uri, intrinsic_type
     )
     return new_intrinsic, True
 
   def _transform_switch(comp):
-    if isinstance(comp, building_blocks.Reference):
+    if isinstance(comp, federated_language.framework.Reference):
       return _normalize_reference_bit(comp)
-    elif isinstance(comp, building_blocks.Lambda):
+    elif isinstance(comp, federated_language.framework.Lambda):
       return _normalize_lambda_bit(comp)
     elif (
-        isinstance(comp, building_blocks.Intrinsic) and normalize_all_equal_bit
+        isinstance(comp, federated_language.framework.Intrinsic)
+        and normalize_all_equal_bit
     ):
       return _normalize_intrinsic_bit(comp)
     return comp, False
 
-  return transformation_utils.transform_postorder(comp, _transform_switch)[0]
+  return federated_language.framework.transform_postorder(
+      comp, _transform_switch
+  )[0]
 
 
 def replace_selections(
-    bb: building_blocks.ComputationBuildingBlock,
+    bb: federated_language.framework.ComputationBuildingBlock,
     ref_name: str,
     path_to_replacement: dict[
-        tuple[int, ...], building_blocks.ComputationBuildingBlock
+        tuple[int, ...], federated_language.framework.ComputationBuildingBlock
     ],
-) -> building_blocks.ComputationBuildingBlock:
+) -> federated_language.framework.ComputationBuildingBlock:
   """Identifies selection pattern and replaces with new binding.
 
   Note that this function is somewhat brittle in that it only replaces AST
@@ -336,9 +349,9 @@ def replace_selections(
   computations, which we error on.
 
   Args:
-    bb: Instance of `building_blocks.ComputationBuildingBlock` in which we wish
-      to replace the selections from reference `ref_name` with any path in
-      `paths_to_replacement` with the corresponding building block.
+    bb: Instance of `federated_language.framework.ComputationBuildingBlock` in
+      which we wish to replace the selections from reference `ref_name` with any
+      path in `paths_to_replacement` with the corresponding building block.
     ref_name: Name of the reference to look for selections from.
     path_to_replacement: A map from selection path to the building block with
       which to replace the selection. Note; it is not valid to specify
@@ -353,14 +366,14 @@ def replace_selections(
     # Start with an empty selection
     path = []
     selection = inner_bb
-    while isinstance(selection, building_blocks.Selection):
+    while isinstance(selection, federated_language.framework.Selection):
       path.append(selection.as_index())
       selection = selection.source
     # In ASTs like x[0][1], we'll see the last (outermost) selection first.
     path.reverse()
     path = tuple(path)
     if (
-        isinstance(selection, building_blocks.Reference)
+        isinstance(selection, federated_language.framework.Reference)
         and selection.name == ref_name
         and path in path_to_replacement
         and path_to_replacement[path].type_signature.is_equivalent_to(
@@ -369,10 +382,14 @@ def replace_selections(
     ):
       return path_to_replacement[path], True
     if (
-        isinstance(inner_bb, building_blocks.Call)
-        and isinstance(inner_bb.function, building_blocks.CompiledComputation)
+        isinstance(inner_bb, federated_language.framework.Call)
+        and isinstance(
+            inner_bb.function, federated_language.framework.CompiledComputation
+        )
         and inner_bb.argument is not None
-        and isinstance(inner_bb.argument, building_blocks.Reference)
+        and isinstance(
+            inner_bb.argument, federated_language.framework.Reference
+        )
         and inner_bb.argument.name == ref_name
     ):
       raise ValueError(
@@ -388,7 +405,7 @@ def replace_selections(
   # protection against triggering multiple replacements for nested selections
   # (the type signature check above does provide one layer of protection
   # already).
-  result, _ = transformation_utils.transform_postorder(bb, _replace)
+  result, _ = federated_language.framework.transform_postorder(bb, _replace)
   return result
 
 
@@ -404,9 +421,9 @@ class ParameterSelectionError(TypeError):
 
 
 def as_function_of_some_subparameters(
-    bb: building_blocks.Lambda,
+    bb: federated_language.framework.Lambda,
     paths: Sequence[Sequence[int]],
-) -> building_blocks.Lambda:
+) -> federated_language.framework.Lambda:
   """Turns `x -> ...only uses parts of x...` into `parts_of_x -> ...`.
 
   The names of locals in blocks are not modified, but unused block locals
@@ -416,15 +433,16 @@ def as_function_of_some_subparameters(
   the returned computation will have unbound references.
 
   Args:
-    bb: Instance of `building_blocks.Lambda` that we wish to rewrite as a
-      function of some subparameters.
+    bb: Instance of `federated_language.framework.Lambda` that we wish to
+      rewrite as a function of some subparameters.
     paths: List of the paths representing the input subparameters to use. Each
       path is a tuple of ints (e.g. (5, 3) would represent a selection into the
       original arg like arg[5][3]). Note; it is not valid to specify overlapping
       selection paths (where one path encompasses another).
 
   Returns:
-    An instance of `building_blocks.Lambda` with a struct input parameter where
+    An instance of `federated_language.framework.Lambda` with a struct input
+    parameter where
     the ith element in the input parameter corresponds to the ith provided path.
 
   Raises:
@@ -436,18 +454,18 @@ def as_function_of_some_subparameters(
     names = []
 
     def _visit(comp):
-      if isinstance(comp, building_blocks.Block):
+      if isinstance(comp, federated_language.framework.Block):
         for name, _ in comp.locals:
           names.append(name)
 
-    tree_analysis.visit_postorder(comp, _visit)
+    federated_language.framework.visit_postorder(comp, _visit)
     return names
 
-  tree_analysis.check_has_unique_names(bb)
+  federated_language.framework.check_has_unique_names(bb)
   original_local_names = _get_block_local_names(bb)
   bb, _ = remove_unused_block_locals(bb)
 
-  name_generator = building_block_factory.unique_name_generator(bb)
+  name_generator = federated_language.framework.unique_name_generator(bb)
 
   type_list = []
   int_paths = []
@@ -455,7 +473,7 @@ def as_function_of_some_subparameters(
     selected_type = bb.parameter_type
     int_path = []
     for index in path:
-      if not isinstance(selected_type, computation_types.StructType):
+      if not isinstance(selected_type, federated_language.StructType):
         raise ParameterSelectionError(path, bb)
       py_typecheck.check_type(index, int)
       if index >= len(selected_type):
@@ -465,12 +483,12 @@ def as_function_of_some_subparameters(
     int_paths.append(tuple(int_path))
     type_list.append(selected_type)
 
-  ref_to_struct = building_blocks.Reference(
-      next(name_generator), computation_types.StructType(type_list)
+  ref_to_struct = federated_language.framework.Reference(
+      next(name_generator), federated_language.StructType(type_list)
   )
   path_to_replacement = {}
   for i, path in enumerate(int_paths):
-    path_to_replacement[path] = building_blocks.Selection(
+    path_to_replacement[path] = federated_language.framework.Selection(
         ref_to_struct, index=i
     )
 
@@ -478,9 +496,9 @@ def as_function_of_some_subparameters(
       bb.result, bb.parameter_name, path_to_replacement
   )
   # Normalize the body so that it is a block.
-  if not isinstance(new_lambda_body, building_blocks.Block):
-    new_lambda_body = building_blocks.Block([], new_lambda_body)
-  lambda_with_zipped_param = building_blocks.Lambda(
+  if not isinstance(new_lambda_body, federated_language.framework.Block):
+    new_lambda_body = federated_language.framework.Block([], new_lambda_body)
+  lambda_with_zipped_param = federated_language.framework.Lambda(
       ref_to_struct.name, ref_to_struct.type_signature, new_lambda_body
   )
 
@@ -496,11 +514,11 @@ def strip_placement(comp):
   For this function to complete successfully `comp` must:
   1) contain at most one federated placement.
   2) not contain intrinsics besides `apply`, `map`, `zip`, and `federated_value`
-  3) not contain `building_blocks.Data` of federated type.
+  3) not contain `federated_language.framework.Data` of federated type.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` satisfying the
-      assumptions above.
+    comp: Instance of `federated_language.framework.ComputationBuildingBlock`
+      satisfying the assumptions above.
 
   Returns:
     A modified version of `comp` containing no intrinsics nor any federated
@@ -510,9 +528,11 @@ def strip_placement(comp):
     TypeError: If `comp` is not a building block.
     ValueError: If conditions (1), (2), or (3) above are unsatisfied.
   """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ComputationBuildingBlock
+  )
   placement = None
-  name_generator = building_block_factory.unique_name_generator(comp)
+  name_generator = federated_language.framework.unique_name_generator(comp)
 
   def _ensure_single_placement(new_placement):
     nonlocal placement
@@ -527,7 +547,7 @@ def strip_placement(comp):
       )
 
   def _remove_placement_from_type(type_spec):
-    if isinstance(type_spec, computation_types.FederatedType):
+    if isinstance(type_spec, federated_language.FederatedType):
       _ensure_single_placement(type_spec.placement)
       return type_spec.member, True
     else:
@@ -535,33 +555,37 @@ def strip_placement(comp):
 
   def _remove_reference_placement(comp):
     """Unwraps placement from references and updates unbound reference info."""
-    new_type, _ = type_transformations.transform_type_postorder(
+    new_type, _ = federated_language.framework.transform_type_postorder(
         comp.type_signature, _remove_placement_from_type
     )
-    return building_blocks.Reference(comp.name, new_type)
+    return federated_language.framework.Reference(comp.name, new_type)
 
   def _identity_function(arg_type):
     """Creates `lambda x: x` with argument type `arg_type`."""
     arg_name = next(name_generator)
-    val = building_blocks.Reference(arg_name, arg_type)
-    lam = building_blocks.Lambda(arg_name, arg_type, val)
+    val = federated_language.framework.Reference(arg_name, arg_type)
+    lam = federated_language.framework.Lambda(arg_name, arg_type, val)
     return lam
 
   def _call_first_with_second_function(fn_type, arg_type):
     """Creates `lambda x: x[0](x[1])` with the provided ."""
     arg_name = next(name_generator)
-    tuple_ref = building_blocks.Reference(arg_name, [fn_type, arg_type])
-    fn = building_blocks.Selection(tuple_ref, index=0)
-    arg = building_blocks.Selection(tuple_ref, index=1)
-    called_fn = building_blocks.Call(fn, arg)
-    return building_blocks.Lambda(arg_name, tuple_ref.type_signature, called_fn)
+    tuple_ref = federated_language.framework.Reference(
+        arg_name, [fn_type, arg_type]
+    )
+    fn = federated_language.framework.Selection(tuple_ref, index=0)
+    arg = federated_language.framework.Selection(tuple_ref, index=1)
+    called_fn = federated_language.framework.Call(fn, arg)
+    return federated_language.framework.Lambda(
+        arg_name, tuple_ref.type_signature, called_fn
+    )
 
   def _call_function(arg_type):
     """Creates `lambda x: x()` argument type `arg_type`."""
     arg_name = next(name_generator)
-    arg_ref = building_blocks.Reference(arg_name, arg_type)
-    called_arg = building_blocks.Call(arg_ref, None)
-    return building_blocks.Lambda(arg_name, arg_type, called_arg)
+    arg_ref = federated_language.framework.Reference(arg_name, arg_type)
+    called_arg = federated_language.framework.Call(arg_ref, None)
+    return federated_language.framework.Lambda(arg_name, arg_type, called_arg)
 
   def _replace_intrinsics_with_functions(comp):
     """Helper to remove intrinsics from the AST."""
@@ -570,10 +594,10 @@ def strip_placement(comp):
     # These functions have no runtime behavior and only exist to adjust
     # placement. They are replaced here with  `lambda x: x`.
     identities = [
-        intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
-        intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
-        intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri,
-        intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,
+        federated_language.framework.FEDERATED_ZIP_AT_SERVER.uri,
+        federated_language.framework.FEDERATED_ZIP_AT_CLIENTS.uri,
+        federated_language.framework.FEDERATED_VALUE_AT_SERVER.uri,
+        federated_language.framework.FEDERATED_VALUE_AT_CLIENTS.uri,
     ]
     if comp.uri in identities:
       return _identity_function(tys.result.member)
@@ -581,9 +605,9 @@ def strip_placement(comp):
     # These functions all `map` a value and are replaced with
     # `lambda args: args[0](args[1])
     maps = [
-        intrinsic_defs.FEDERATED_MAP.uri,
-        intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-        intrinsic_defs.FEDERATED_APPLY.uri,
+        federated_language.framework.FEDERATED_MAP.uri,
+        federated_language.framework.FEDERATED_MAP_ALL_EQUAL.uri,
+        federated_language.framework.FEDERATED_APPLY.uri,
     ]
     if comp.uri in maps:
       return _call_first_with_second_function(
@@ -593,8 +617,8 @@ def strip_placement(comp):
     # `federated_eval`'s argument must simply be `call`ed and is replaced
     # with `lambda x: x()`
     evals = [
-        intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
-        intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri,
+        federated_language.framework.FEDERATED_EVAL_AT_SERVER.uri,
+        federated_language.framework.FEDERATED_EVAL_AT_CLIENTS.uri,
     ]
     if comp.uri in evals:
       return _call_function(tys.parameter)
@@ -606,64 +630,72 @@ def strip_placement(comp):
     if comp.parameter_name is None:
       new_parameter_type = None
     else:
-      new_parameter_type, _ = type_transformations.transform_type_postorder(
-          comp.parameter_type, _remove_placement_from_type
+      new_parameter_type, _ = (
+          federated_language.framework.transform_type_postorder(
+              comp.parameter_type, _remove_placement_from_type
+          )
       )
-    return building_blocks.Lambda(
+    return federated_language.framework.Lambda(
         comp.parameter_name, new_parameter_type, comp.result
     )
 
   def _simplify_calls(comp):
     """Unwraps structures introduced by removing intrinsics."""
     zip_or_value_removed = (
-        isinstance(comp.function.result, building_blocks.Reference)
+        isinstance(comp.function.result, federated_language.framework.Reference)
         and comp.function.result.name == comp.function.parameter_name
     )
     if zip_or_value_removed:
       return comp.argument
     else:
       map_removed = (
-          isinstance(comp.function.result, building_blocks.Call)
+          isinstance(comp.function.result, federated_language.framework.Call)
           and isinstance(
-              comp.function.result.function, building_blocks.Selection
+              comp.function.result.function,
+              federated_language.framework.Selection,
           )
           and comp.function.result.function.index == 0
           and isinstance(
-              comp.function.result.argument, building_blocks.Selection
+              comp.function.result.argument,
+              federated_language.framework.Selection,
           )
           and comp.function.result.argument.index == 1
           and isinstance(
-              comp.function.result.function.source, building_blocks.Reference
+              comp.function.result.function.source,
+              federated_language.framework.Reference,
           )
           and comp.function.result.function.source.name
           == comp.function.parameter_name
           and isinstance(
-              comp.function.result.function.source, building_blocks.Reference
+              comp.function.result.function.source,
+              federated_language.framework.Reference,
           )
           and comp.function.result.function.source.name
           == comp.function.parameter_name
-          and isinstance(comp.argument, building_blocks.Struct)
+          and isinstance(comp.argument, federated_language.framework.Struct)
       )
       if map_removed:
-        return building_blocks.Call(comp.argument[0], comp.argument[1])
+        return federated_language.framework.Call(
+            comp.argument[0], comp.argument[1]
+        )
     return comp
 
   def _transform(comp):
     """Dispatches to helpers above."""
-    if isinstance(comp, building_blocks.Reference):
+    if isinstance(comp, federated_language.framework.Reference):
       return _remove_reference_placement(comp), True
-    elif isinstance(comp, building_blocks.Intrinsic):
+    elif isinstance(comp, federated_language.framework.Intrinsic):
       return _replace_intrinsics_with_functions(comp), True
-    elif isinstance(comp, building_blocks.Lambda):
+    elif isinstance(comp, federated_language.framework.Lambda):
       return _remove_lambda_placement(comp), True
-    elif isinstance(comp, building_blocks.Call) and isinstance(
-        comp.function, building_blocks.Lambda
+    elif isinstance(comp, federated_language.framework.Call) and isinstance(
+        comp.function, federated_language.framework.Lambda
     ):
       return _simplify_calls(comp), True
-    elif isinstance(comp, building_blocks.Data) and isinstance(
-        comp.type_signature, computation_types.FederatedType
+    elif isinstance(comp, federated_language.framework.Data) and isinstance(
+        comp.type_signature, federated_language.FederatedType
     ):
       raise ValueError(f'Cannot strip placement from federated data: {comp}')
     return comp, False
 
-  return transformation_utils.transform_postorder(comp, _transform)
+  return federated_language.framework.transform_postorder(comp, _transform)

@@ -13,23 +13,18 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import executor_factory  # pylint: enable=line-too-long
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 def _create_test_context():
   factory = executor_factory.local_cpp_executor_factory()
-  context = async_execution_context.AsyncExecutionContext(
+  context = federated_language.framework.AsyncExecutionContext(
       executor_fn=factory,
       transform_args=tensorflow_computation.transform_args,
       transform_result=tensorflow_computation.transform_result,
@@ -48,12 +43,10 @@ def build_whimsy_computation_with_aggregation_and_after(
   def compute_sum(x, y):
     return x + y
 
-  @federated_computation.federated_computation(
-      server_arg_type, clients_arg_type
-  )
+  @federated_language.federated_computation(server_arg_type, clients_arg_type)
   def aggregation_comp(server_arg, client_arg):
-    summed_client_value = intrinsics.federated_sum(client_arg)
-    return intrinsics.federated_map(
+    summed_client_value = federated_language.federated_sum(client_arg)
+    return federated_language.federated_map(
         compute_sum, (server_arg, summed_client_value)
     )
 
@@ -73,13 +66,13 @@ def build_whimsy_computation_with_before_aggregation_work(
   def compute_sum(x, y):
     return x + y
 
-  @federated_computation.federated_computation(
-      server_arg_type, clients_arg_type
-  )
+  @federated_language.federated_computation(server_arg_type, clients_arg_type)
   def aggregation_comp(server_arg, client_arg):
-    client_sums = intrinsics.federated_map(compute_tuple_sum, client_arg)
-    summed_client_value = intrinsics.federated_sum(client_sums)
-    return intrinsics.federated_map(
+    client_sums = federated_language.federated_map(
+        compute_tuple_sum, client_arg
+    )
+    summed_client_value = federated_language.federated_sum(client_sums)
+    return federated_language.federated_map(
         compute_sum, (server_arg, summed_client_value)
     )
 
@@ -99,22 +92,22 @@ def build_whimsy_computation_with_false_aggregation_dependence(
   def compute_sum(x, y):
     return x + y
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def package_args_as_tuple(x, y):
     return [x, y]
 
-  @federated_computation.federated_computation(
-      server_arg_type, clients_arg_type
-  )
+  @federated_language.federated_computation(server_arg_type, clients_arg_type)
   def aggregation_comp(server_arg, client_arg):
-    client_sums = intrinsics.federated_map(compute_tuple_sum, client_arg)
-    summed_client_value = intrinsics.federated_sum(client_sums)
-    broadcast_sum = intrinsics.federated_broadcast(summed_client_value)
+    client_sums = federated_language.federated_map(
+        compute_tuple_sum, client_arg
+    )
+    summed_client_value = federated_language.federated_sum(client_sums)
+    broadcast_sum = federated_language.federated_broadcast(summed_client_value)
     # Adding a function call here requires normalization into CDF before
     # checking the aggregation-dependence condition.
     client_tuple = package_args_as_tuple(client_sums, broadcast_sum)
-    summed_client_value = intrinsics.federated_sum(client_tuple[0])
-    return intrinsics.federated_map(
+    summed_client_value = federated_language.federated_sum(client_tuple[0])
+    return federated_language.federated_map(
         compute_sum, (server_arg, summed_client_value)
     )
 
@@ -126,16 +119,18 @@ def tf_multiply_int(x, y):
   return x * y
 
 
-@federated_computation.federated_computation(np.int32, np.int32)
+@federated_language.federated_computation(np.int32, np.int32)
 def return_list(x, y):
   return [x, y]
 
 
-@federated_computation.federated_computation(
-    computation_types.FederatedType([np.int32, np.int32], placements.SERVER)
+@federated_language.federated_computation(
+    federated_language.FederatedType(
+        [np.int32, np.int32], federated_language.SERVER
+    )
 )
 def server_placed_mult(arg):
-  return intrinsics.federated_map(tf_multiply_int, arg)
+  return federated_language.federated_map(tf_multiply_int, arg)
 
 
 class MergeableCompCompilerTest(absltest.TestCase):
@@ -153,14 +148,14 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_raises_two_dependent_aggregates(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER)
     )
     def dependent_agg_comp(server_arg):
-      arg_at_clients = intrinsics.federated_broadcast(server_arg)
-      sum_result = intrinsics.federated_sum(arg_at_clients)
-      rebroadcast_sum = intrinsics.federated_broadcast(sum_result)
-      return intrinsics.federated_sum(rebroadcast_sum)
+      arg_at_clients = federated_language.federated_broadcast(server_arg)
+      sum_result = federated_language.federated_sum(arg_at_clients)
+      rebroadcast_sum = federated_language.federated_broadcast(sum_result)
+      return federated_language.federated_sum(rebroadcast_sum)
 
     with self.assertRaisesRegex(
         ValueError, 'one aggregate dependent on another'
@@ -175,7 +170,7 @@ class MergeableCompCompilerTest(absltest.TestCase):
     self.assertIsInstance(
         mergeable_form, mergeable_comp_execution_context.MergeableCompForm
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         mergeable_form.after_merge.type_signature.result,
         return_list.type_signature.result,
     )
@@ -203,9 +198,10 @@ class MergeableCompCompilerTest(absltest.TestCase):
     self.assertEqual(expected_six, 6)
 
   def test_compiles_simple_noarg_computation(self):
-    @federated_computation.federated_computation()
+
+    @federated_language.federated_computation()
     def return_server_value():
-      return intrinsics.federated_value(0, placements.SERVER)
+      return federated_language.federated_value(0, federated_language.SERVER)
 
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         return_server_value
@@ -216,9 +212,10 @@ class MergeableCompCompilerTest(absltest.TestCase):
     )
 
   def test_preserves_semantics_of_noarg_computation(self):
-    @federated_computation.federated_computation()
+
+    @federated_language.federated_computation()
     def return_server_value():
-      return intrinsics.federated_value(0, placements.SERVER)
+      return federated_language.federated_value(0, federated_language.SERVER)
 
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         return_server_value
@@ -251,8 +248,8 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compiles_computation_with_aggregation_and_after(self):
     incoming_comp = build_whimsy_computation_with_aggregation_and_after(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.int32, placements.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         incoming_comp
@@ -264,8 +261,8 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compilation_preserves_semantics_aggregation_and_after(self):
     incoming_comp = build_whimsy_computation_with_aggregation_and_after(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.int32, placements.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         incoming_comp
@@ -278,9 +275,9 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compiles_computation_with_before_aggregation_work(self):
     incoming_comp = build_whimsy_computation_with_before_aggregation_work(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(
-            [np.int32, np.int32], placements.CLIENTS
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            [np.int32, np.int32], federated_language.CLIENTS
         ),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
@@ -293,9 +290,9 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compiles_computation_with_false_aggregation_dependence(self):
     incoming_comp = build_whimsy_computation_with_false_aggregation_dependence(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(
-            [np.int32, np.int32], placements.CLIENTS
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            [np.int32, np.int32], federated_language.CLIENTS
         ),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
@@ -308,9 +305,9 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compilation_preserves_semantics_before_agg_work(self):
     incoming_comp = build_whimsy_computation_with_before_aggregation_work(
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(
-            [np.int32, np.int32], placements.CLIENTS
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            [np.int32, np.int32], federated_language.CLIENTS
         ),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(

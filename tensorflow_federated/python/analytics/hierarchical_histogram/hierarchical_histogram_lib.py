@@ -17,16 +17,13 @@ import math
 from typing import Any
 
 import attrs
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.hierarchical_histogram import clipping_factory
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 
 
@@ -210,7 +207,7 @@ def build_hierarchical_histogram_computation(
     )
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(np.float32)
+      federated_language.SequenceType(np.float32)
   )
   def client_work(client_data):
     return _discretized_histogram_counts(
@@ -231,23 +228,23 @@ def build_hierarchical_histogram_computation(
 
   process = agg_factory.create(client_work.type_signature.result)
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(
-          client_work.type_signature.parameter, placements.CLIENTS
+  @federated_language.federated_computation(
+      federated_language.FederatedType(
+          client_work.type_signature.parameter, federated_language.CLIENTS
       )
   )
   def hierarchical_histogram_computation(federated_client_data):
-    round_timestamp = intrinsics.federated_eval(
+    round_timestamp = federated_language.federated_eval(
         tensorflow_computation.tf_computation(
             lambda: tf.cast(tf.timestamp(), np.int64)
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    client_histogram = intrinsics.federated_map(
+    client_histogram = federated_language.federated_map(
         client_work, federated_client_data
     )
 
-    server_output = intrinsics.federated_zip(
+    server_output = federated_language.federated_zip(
         ServerOutput(
             process.next(process.initialize(), client_histogram).result,
             round_timestamp,
@@ -393,17 +390,19 @@ def build_hierarchical_histogram_process(
     }
     return ServerOutput(initial_hierarchical_histogram, initial_timestamp)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_eval(initialize, placements.SERVER)
+    return federated_language.federated_eval(
+        initialize, federated_language.SERVER
+    )
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       init_fn.type_signature.result, parameter_type_signature
   )
   def next_fn(_, client_data):
-    return one_round_computation(client_data), intrinsics.federated_value(
-        (), placements.SERVER
-    )
+    return one_round_computation(
+        client_data
+    ), federated_language.federated_value((), federated_language.SERVER)
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
 

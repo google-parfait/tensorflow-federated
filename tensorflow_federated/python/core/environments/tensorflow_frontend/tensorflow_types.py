@@ -13,12 +13,10 @@
 # limitations under the License.
 """Defines functions and classes for building and manipulating TFF types."""
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tree
-
-from tensorflow_federated.python.core.impl.types import array_shape
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def _tensorflow_dtype_to_numpy_dtype(
@@ -36,7 +34,7 @@ def _tensorflow_dtype_to_numpy_dtype(
 
 def _tensor_shape_to_array_shape(
     tensor_shape: tf.TensorShape,
-) -> array_shape.ArrayShape:
+) -> federated_language.ArrayShape:
   """Returns a `tff.types.ArrayShape` for the `tensor_shape`."""
   if tensor_shape.rank is not None:
     shape = tensor_shape.as_list()
@@ -45,22 +43,22 @@ def _tensor_shape_to_array_shape(
   return shape
 
 
-def _tensor_spec_to_type(tensor_spec: tf.TensorSpec) -> computation_types.Type:
+def _tensor_spec_to_type(tensor_spec: tf.TensorSpec) -> federated_language.Type:
   """Returns a `tff.Type` for the `tensor_spec`."""
   dtype = _tensorflow_dtype_to_numpy_dtype(tensor_spec.dtype)
   shape = _tensor_shape_to_array_shape(tensor_spec.shape)
-  return computation_types.TensorType(dtype, shape)
+  return federated_language.TensorType(dtype, shape)
 
 
 def _dataset_spec_to_type(
     dataset_spec: tf.data.DatasetSpec,
-) -> computation_types.Type:
+) -> federated_language.Type:
   """Returns a `tff.Type` for the `dataset_spec`."""
   element_type = to_type(dataset_spec.element_spec)
-  return computation_types.SequenceType(element_type)
+  return federated_language.SequenceType(element_type)
 
 
-def to_type(obj: object) -> computation_types.Type:
+def to_type(obj: object) -> federated_language.Type:
   """Returns a `tff.Type` for an `obj` containing TensorFlow type specs.
 
   This function extends `tff.types.to_type` to handle TensorFlow type specs and
@@ -108,4 +106,4 @@ def to_type(obj: object) -> computation_types.Type:
       return None
 
   partial_type = tree.traverse(_to_type, obj)
-  return computation_types.to_type(partial_type)
+  return federated_language.to_type(partial_type)

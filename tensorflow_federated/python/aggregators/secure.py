@@ -19,6 +19,7 @@ import math
 import typing
 from typing import Optional, Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -28,11 +29,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -121,19 +117,21 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
   def create(self, value_type):
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
-    if not type_analysis.is_structure_of_integers(value_type):
+    if not federated_language.framework.is_structure_of_integers(value_type):
       raise TypeError(
           'Provided value_type must either be an integer type or'
           f'a structure of integer types, but found: {value_type}'
       )
 
-    @federated_computation.federated_computation
+    @federated_language.federated_computation
     def init_fn():
-      return intrinsics.federated_value((), placements.SERVER)
+      return federated_language.federated_value((), federated_language.SERVER)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       if self._symmetric_range:
@@ -147,7 +145,7 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
         summed_value = mapreduce_intrinsics.federated_secure_modular_sum(
             value, 2 * self._modulus - 1
         )
-        summed_value = intrinsics.federated_map(
+        summed_value = federated_language.federated_map(
             tensorflow_computation.tf_computation(
                 self._mod_clip_after_symmetric_range_sum
             ),
@@ -157,7 +155,9 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
         summed_value = mapreduce_intrinsics.federated_secure_modular_sum(
             value, self._modulus
         )
-      empty_measurements = intrinsics.federated_value((), placements.SERVER)
+      empty_measurements = federated_language.federated_value(
+          (), federated_language.SERVER
+      )
       return measured_process.MeasuredProcessOutput(
           state, summed_value, empty_measurements
       )
@@ -202,7 +202,7 @@ def _check_bound_process(
 
   next_parameter_type = bound_process.next.type_signature.parameter
   if (
-      not isinstance(next_parameter_type, computation_types.StructType)
+      not isinstance(next_parameter_type, federated_language.StructType)
       or len(next_parameter_type) != 2
   ):
     raise TypeError(
@@ -210,8 +210,8 @@ def _check_bound_process(
         f'{next_parameter_type}'
     )
 
-  float_type_at_clients = computation_types.FederatedType(
-      NORM_TYPE, placements.CLIENTS
+  float_type_at_clients = federated_language.FederatedType(
+      NORM_TYPE, federated_language.CLIENTS
   )
   if not next_parameter_type[1].is_assignable_from(float_type_at_clients):  # pytype: disable=unsupported-operands
     raise TypeError(
@@ -228,9 +228,9 @@ def _check_bound_process(
     )
 
   report_type = bound_process.report.type_signature.result
-  estimated_value_type_at_server = computation_types.FederatedType(
+  estimated_value_type_at_server = federated_language.FederatedType(
       next_parameter_type[1].member,  # pytype: disable=unsupported-operands
-      placements.SERVER,
+      federated_language.SERVER,
   )
   if not report_type.is_assignable_from(estimated_value_type_at_server):
     raise TypeError(
@@ -383,14 +383,16 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   ) -> aggregation_process.AggregationProcess:
     self._check_value_type_compatible_with_config_mode(value_type)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         self._init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       # Compute min and max *before* clipping and use it to update the state.
-      value_max = intrinsics.federated_map(_reduce_nest_max, value)
-      value_min = intrinsics.federated_map(_reduce_nest_min, value)
+      value_max = federated_language.federated_map(_reduce_nest_max, value)
+      value_min = federated_language.federated_map(_reduce_nest_min, value)
       upper_bound, lower_bound = self._get_bounds_from_state(
           state, value_max.type_signature.member.dtype  # pytype: disable=attribute-error
       )
@@ -414,22 +416,22 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       self, upper_bound, lower_bound, value_max, value_min
   ):
     """Creates measurements to be reported. All values are summed securely."""
-    is_max_clipped = intrinsics.federated_map(
+    is_max_clipped = federated_language.federated_map(
         tensorflow_computation.tf_computation(
             lambda bound, value: tf.cast(bound < value, COUNT_TYPE)
         ),
-        (intrinsics.federated_broadcast(upper_bound), value_max),
+        (federated_language.federated_broadcast(upper_bound), value_max),
     )
-    max_clipped_count = intrinsics.federated_secure_sum_bitwidth(
+    max_clipped_count = federated_language.federated_secure_sum_bitwidth(
         is_max_clipped, bitwidth=1
     )
-    is_min_clipped = intrinsics.federated_map(
+    is_min_clipped = federated_language.federated_map(
         tensorflow_computation.tf_computation(
             lambda bound, value: tf.cast(bound > value, COUNT_TYPE)
         ),
-        (intrinsics.federated_broadcast(lower_bound), value_min),
+        (federated_language.federated_broadcast(lower_bound), value_min),
     )
-    min_clipped_count = intrinsics.federated_secure_sum_bitwidth(
+    min_clipped_count = federated_language.federated_secure_sum_bitwidth(
         is_min_clipped, bitwidth=1
     )
     measurements = collections.OrderedDict(
@@ -438,26 +440,26 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         secure_upper_threshold=upper_bound,
         secure_lower_threshold=lower_bound,
     )
-    return intrinsics.federated_zip(measurements)
+    return federated_language.federated_zip(measurements)
 
   def _sum_securely(self, value, upper_bound, lower_bound):
     """Securely sums `value` placed at CLIENTS."""
     if self._config_mode == _Config.INT:
-      value = intrinsics.federated_map(
+      value = federated_language.federated_map(
           _client_shift,
           (
               value,
-              intrinsics.federated_broadcast(upper_bound),
-              intrinsics.federated_broadcast(lower_bound),
+              federated_language.federated_broadcast(upper_bound),
+              federated_language.federated_broadcast(lower_bound),
           ),
       )
-      value = intrinsics.federated_secure_sum_bitwidth(
+      value = federated_language.federated_secure_sum_bitwidth(
           value, self._secagg_bitwidth
       )
-      num_summands = intrinsics.federated_secure_sum_bitwidth(
+      num_summands = federated_language.federated_secure_sum_bitwidth(
           _client_one(), bitwidth=1
       )
-      value = intrinsics.federated_map(
+      value = federated_language.federated_map(
           _server_shift, (value, lower_bound, num_summands)
       )
       return value
@@ -505,14 +507,14 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       )
 
     if self._config_mode == _Config.INT:
-      if not type_analysis.is_structure_of_integers(value_type):
+      if not federated_language.framework.is_structure_of_integers(value_type):
         raise TypeError(
             'The `SecureSumFactory` was configured to work with integer '
             'dtypes. All values in provided `value_type` hence must be of '
             f'integer dtype. \nProvided value_type: {value_type}'
         )
     elif self._config_mode == _Config.FLOAT:
-      if not type_analysis.is_structure_of_floats(value_type):
+      if not federated_language.framework.is_structure_of_floats(value_type):
         raise TypeError(
             'The `SecureSumFactory` was configured to work with floating '
             'point dtypes. All values in provided `value_type` hence must be '
@@ -580,15 +582,15 @@ def _server_shift(value, lower_bound, num_summands):
   )
 
 
-@federated_computation.federated_computation()
+@federated_language.federated_computation()
 def _empty_state():
-  return intrinsics.federated_value((), placements.SERVER)
+  return federated_language.federated_value((), federated_language.SERVER)
 
 
 def _client_one():
-  return intrinsics.federated_eval(
+  return federated_language.federated_eval(
       tensorflow_computation.tf_computation(lambda: tf.constant(1, tf.int32)),
-      placements.CLIENTS,
+      federated_language.CLIENTS,
   )
 
 
@@ -596,9 +598,10 @@ def _create_initial_state_two_processes(
     upper_bound_process: estimation_process.EstimationProcess,
     lower_bound_process: estimation_process.EstimationProcess,
 ):
-  @federated_computation.federated_computation()
+
+  @federated_language.federated_computation()
   def initial_state():
-    return intrinsics.federated_zip(
+    return federated_language.federated_zip(
         (upper_bound_process.initialize(), lower_bound_process.initialize())
     )
 
@@ -616,7 +619,9 @@ def _create_get_bounds_const(upper_bound, lower_bound, bound_dtype):
 
   def get_bounds(state):
     del state  # Unused.
-    return intrinsics.federated_eval(bounds_fn, placements.SERVER)
+    return federated_language.federated_eval(
+        bounds_fn, federated_language.SERVER
+    )
 
   return get_bounds
 
@@ -630,8 +635,10 @@ def _create_get_bounds_single_process(
     cast_fn = tensorflow_computation.tf_computation(
         lambda x: tf.cast(x, bound_dtype)
     )
-    upper_bound = intrinsics.federated_map(cast_fn, process.report(state))
-    lower_bound = intrinsics.federated_map(
+    upper_bound = federated_language.federated_map(
+        cast_fn, process.report(state)
+    )
+    lower_bound = federated_language.federated_map(
         tensorflow_computation.tf_computation(lambda x: x * -1.0), upper_bound
     )
     return upper_bound, lower_bound
@@ -650,10 +657,10 @@ def _create_get_bounds_two_processes(
     cast_fn = tensorflow_computation.tf_computation(
         lambda x: tf.cast(x, bound_dtype)
     )
-    upper_bound = intrinsics.federated_map(
+    upper_bound = federated_language.federated_map(
         cast_fn, upper_bound_process.report(state[0])
     )
-    lower_bound = intrinsics.federated_map(
+    lower_bound = federated_language.federated_map(
         cast_fn, lower_bound_process.report(state[1])
     )
     return upper_bound, lower_bound
@@ -672,7 +679,9 @@ def _create_update_state_single_process(
     abs_max_fn = tensorflow_computation.tf_computation(
         lambda x, y: tf.cast(tf.maximum(tf.abs(x), tf.abs(y)), expected_dtype)
     )
-    abs_value_max = intrinsics.federated_map(abs_max_fn, (value_min, value_max))
+    abs_value_max = federated_language.federated_map(
+        abs_max_fn, (value_min, value_max)
+    )
     return process.next(state, abs_value_max)
 
   return update_state
@@ -688,15 +697,15 @@ def _create_update_state_two_processes(
   min_dtype = lower_bound_process.next.type_signature.parameter[1].member.dtype  # pytype: disable=unsupported-operands
 
   def update_state(state, value_min, value_max):
-    value_min = intrinsics.federated_map(
+    value_min = federated_language.federated_map(
         tensorflow_computation.tf_computation(lambda x: tf.cast(x, min_dtype)),
         value_min,
     )
-    value_max = intrinsics.federated_map(
+    value_max = federated_language.federated_map(
         tensorflow_computation.tf_computation(lambda x: tf.cast(x, max_dtype)),
         value_max,
     )
-    return intrinsics.federated_zip((
+    return federated_language.federated_zip((
         upper_bound_process.next(state[0], value_max),
         lower_bound_process.next(state[1], value_min),
     ))
@@ -705,20 +714,20 @@ def _create_update_state_two_processes(
 
 
 def _unique_dtypes_in_structure(
-    type_spec: computation_types.Type,
+    type_spec: federated_language.Type,
 ) -> set[tf.dtypes.DType]:
   """Returns a set of unique dtypes in `type_spec`.
 
   Args:
-    type_spec: A `computation_types.Type`.
+    type_spec: A `federated_language.Type`.
 
   Returns:
     A `set` containing unique dtypes found in `type_spec`.
   """
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  py_typecheck.check_type(type_spec, federated_language.Type)
+  if isinstance(type_spec, federated_language.TensorType):
     return set([tf.dtypes.as_dtype(type_spec.dtype)])
-  elif isinstance(type_spec, computation_types.StructType):
+  elif isinstance(type_spec, federated_language.StructType):
     return set(
         tf.nest.flatten(
             type_conversions.structure_from_tensor_type_tree(
@@ -726,11 +735,11 @@ def _unique_dtypes_in_structure(
             )
         )
     )
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif isinstance(type_spec, federated_language.FederatedType):
     return _unique_dtypes_in_structure(type_spec.member)
   else:
     return set()
 
 
-def _is_structure_of_single_dtype(type_spec: computation_types.Type) -> bool:
+def _is_structure_of_single_dtype(type_spec: federated_language.Type) -> bool:
   return len(_unique_dtypes_in_structure(type_spec)) == 1

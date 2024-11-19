@@ -20,6 +20,7 @@ variable names used in this module.
 from collections.abc import Callable
 from typing import Optional
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -29,20 +30,8 @@ from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 _GRAPPLER_DEFAULT_CONFIG = tf.compat.v1.ConfigProto()
 _AGGRESSIVE = _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.AGGRESSIVE
@@ -63,54 +52,62 @@ _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.function_optimization = (
 )
 
 BuildingBlockFn = Callable[
-    [building_blocks.ComputationBuildingBlock],
-    building_blocks.ComputationBuildingBlock,
+    [federated_language.framework.ComputationBuildingBlock],
+    federated_language.framework.ComputationBuildingBlock,
 ]
 
 
 def get_computation_for_broadcast_form(
     bf: forms.BroadcastForm,
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Creates `tff.Computation` from a broadcast form."""
   py_typecheck.check_type(bf, forms.BroadcastForm)
   server_data_type = bf.compute_server_context.type_signature.parameter
   client_data_type = bf.client_processing.type_signature.parameter[1]
-  comp_parameter_type = computation_types.StructType([
+  comp_parameter_type = federated_language.StructType([
       (
           bf.server_data_label,
-          computation_types.FederatedType(server_data_type, placements.SERVER),
+          federated_language.FederatedType(
+              server_data_type, federated_language.SERVER
+          ),
       ),
       (
           bf.client_data_label,
-          computation_types.FederatedType(client_data_type, placements.CLIENTS),
+          federated_language.FederatedType(
+              client_data_type, federated_language.CLIENTS
+          ),
       ),
   ])
 
-  @federated_computation.federated_computation(comp_parameter_type)
+  @federated_language.federated_computation(comp_parameter_type)
   def computation(arg):
     server_data, client_data = arg
-    context_at_server = intrinsics.federated_map(
+    context_at_server = federated_language.federated_map(
         bf.compute_server_context, server_data
     )
-    context_at_clients = intrinsics.federated_broadcast(context_at_server)
-    client_processing_arg = intrinsics.federated_zip(
+    context_at_clients = federated_language.federated_broadcast(
+        context_at_server
+    )
+    client_processing_arg = federated_language.federated_zip(
         (context_at_clients, client_data)
     )
-    return intrinsics.federated_map(bf.client_processing, client_processing_arg)
+    return federated_language.federated_map(
+        bf.client_processing, client_processing_arg
+    )
 
   return computation
 
 
 def get_state_initialization_computation(
-    initialize_computation: computation_impl.ConcreteComputation,
+    initialize_computation: federated_language.framework.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Validates and transforms a computation to generate state.
 
   Args:
-    initialize_computation: A `computation_impl.ConcreteComputation` that should
-      generate initial state for a computation that is compatible with a
-      federated learning system that implements the contract of a backend
+    initialize_computation: A `federated_language.framework.ConcreteComputation`
+      that should generate initial state for a computation that is compatible
+      with a federated learning system that implements the contract of a backend
       defined in the backends/mapreduce directory.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the TensorFlow graphs. These
@@ -120,7 +117,8 @@ def get_state_initialization_computation(
       bypassed.
 
   Returns:
-    A `computation_base.Computation` that can generate state for a computation.
+    A `federated_language.framework.Computation` that can generate state for a
+    computation.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -128,8 +126,8 @@ def get_state_initialization_computation(
   init_type = initialize_computation.type_signature
   _check_type_is_no_arg_fn(init_type, '`initialize`', TypeError)
   if (
-      not isinstance(init_type.result, computation_types.FederatedType)
-      or init_type.result.placement is not placements.SERVER
+      not isinstance(init_type.result, federated_language.FederatedType)
+      or init_type.result.placement is not federated_language.SERVER
   ):
     raise TypeError(
         'Expected `initialize` to return a single federated value '
@@ -142,19 +140,21 @@ def get_state_initialization_computation(
           initialize_tree
       )
   )
-  tree_analysis.check_contains_only_reducible_intrinsics(initialize_tree)
+  federated_language.framework.check_contains_only_reducible_intrinsics(
+      initialize_tree
+  )
   initialize_tree = compiler.consolidate_and_extract_local_processing(
       initialize_tree, grappler_config
   )
-  return computation_impl.ConcreteComputation(
+  return federated_language.framework.ConcreteComputation(
       computation_proto=initialize_tree.proto,
-      context_stack=context_stack_impl.context_stack,
+      context_stack=federated_language.framework.global_context_stack,
   )
 
 
 def get_computation_for_map_reduce_form(
     mrf: forms.MapReduceForm,
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Creates `tff.Computation` from a MapReduce form.
 
   Args:
@@ -168,26 +168,30 @@ def get_computation_for_map_reduce_form(
   """
   py_typecheck.check_type(mrf, forms.MapReduceForm)
 
-  @federated_computation.federated_computation(mrf.type_signature.parameter)
+  @federated_language.federated_computation(mrf.type_signature.parameter)
   def computation(arg):
     """The logic of a single MapReduce processing round."""
     server_state, client_data = arg
-    broadcast_input = intrinsics.federated_map(mrf.prepare, server_state)
-    broadcast_result = intrinsics.federated_broadcast(broadcast_input)
-    work_arg = intrinsics.federated_zip([client_data, broadcast_result])
+    broadcast_input = federated_language.federated_map(
+        mrf.prepare, server_state
+    )
+    broadcast_result = federated_language.federated_broadcast(broadcast_input)
+    work_arg = federated_language.federated_zip([client_data, broadcast_result])
     (
         aggregate_input,
         secure_sum_bitwidth_input,
         secure_sum_input,
         secure_modular_sum_input,
-    ) = intrinsics.federated_map(mrf.work, work_arg)
-    aggregate_result = intrinsics.federated_aggregate(
+    ) = federated_language.federated_map(mrf.work, work_arg)
+    aggregate_result = federated_language.federated_aggregate(
         aggregate_input, mrf.zero(), mrf.accumulate, mrf.merge, mrf.report
     )
-    secure_sum_bitwidth_result = intrinsics.federated_secure_sum_bitwidth(
-        secure_sum_bitwidth_input, mrf.secure_sum_bitwidth()
+    secure_sum_bitwidth_result = (
+        federated_language.federated_secure_sum_bitwidth(
+            secure_sum_bitwidth_input, mrf.secure_sum_bitwidth()
+        )
     )
-    secure_sum_result = intrinsics.federated_secure_sum(
+    secure_sum_result = federated_language.federated_secure_sum(
         secure_sum_input, mrf.secure_sum_max_input()
     )
     secure_modular_sum_result = (
@@ -195,7 +199,7 @@ def get_computation_for_map_reduce_form(
             secure_modular_sum_input, mrf.secure_modular_sum_modulus()
         )
     )
-    update_arg = intrinsics.federated_zip((
+    update_arg = federated_language.federated_zip((
         server_state,
         (
             aggregate_result,
@@ -204,7 +208,7 @@ def get_computation_for_map_reduce_form(
             secure_modular_sum_result,
         ),
     ))
-    updated_server_state, server_output = intrinsics.federated_map(
+    updated_server_state, server_output = federated_language.federated_map(
         mrf.update, update_arg
     )
     return updated_server_state, server_output
@@ -214,7 +218,7 @@ def get_computation_for_map_reduce_form(
 
 def get_computation_for_distribute_aggregate_form(
     daf: forms.DistributeAggregateForm,
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Creates `tff.Computation` from a DistributeAggregate form.
 
   Args:
@@ -228,7 +232,7 @@ def get_computation_for_distribute_aggregate_form(
   """
   py_typecheck.check_type(daf, forms.DistributeAggregateForm)
 
-  @federated_computation.federated_computation(daf.type_signature.parameter)
+  @federated_language.federated_computation(daf.type_signature.parameter)
   def computation(arg):
     """The logic of a single federated computation round."""
     server_state, client_data = arg
@@ -247,18 +251,18 @@ def get_computation_for_distribute_aggregate_form(
 
 
 def _check_type_is_fn(
-    target: computation_types.Type,
+    target: federated_language.Type,
     name: str,
     err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
-  if not isinstance(target, computation_types.FunctionType):
+  if not isinstance(target, federated_language.FunctionType):
     raise err_fn(
         f'Expected {name} to be a function, but {name} had type {target}.'
     )
 
 
 def _check_type_is_no_arg_fn(
-    target: computation_types.Type,
+    target: federated_language.Type,
     name: str,
     err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
@@ -271,12 +275,12 @@ def _check_type_is_no_arg_fn(
 
 
 def _check_function_signature_compatible_with_broadcast_form(
-    function_type: computation_types.FunctionType,
+    function_type: federated_language.FunctionType,
 ):
   """Tests compatibility with `tff.backends.mapreduce.BroadcastForm`."""
-  py_typecheck.check_type(function_type, computation_types.FunctionType)
+  py_typecheck.check_type(function_type, federated_language.FunctionType)
   if not (
-      isinstance(function_type.parameter, computation_types.StructType)
+      isinstance(function_type.parameter, federated_language.StructType)
       and len(function_type.parameter) == 2
   ):
     raise TypeError(
@@ -286,8 +290,8 @@ def _check_function_signature_compatible_with_broadcast_form(
     )
   server_data_type, client_data_type = function_type.parameter  # pytype: disable=attribute-error
   if (
-      not isinstance(server_data_type, computation_types.FederatedType)
-      or server_data_type.placement is not placements.SERVER
+      not isinstance(server_data_type, federated_language.FederatedType)
+      or server_data_type.placement is not federated_language.SERVER
   ):
     raise TypeError(
         '`BroadcastForm` expects a computation whose first parameter is server '
@@ -295,8 +299,8 @@ def _check_function_signature_compatible_with_broadcast_form(
         f'type:\n{server_data_type}'
     )
   if (
-      not isinstance(client_data_type, computation_types.FederatedType)
-      or client_data_type.placement is not placements.CLIENTS
+      not isinstance(client_data_type, federated_language.FederatedType)
+      or client_data_type.placement is not federated_language.CLIENTS
   ):
     raise TypeError(
         '`BroadcastForm` expects a computation whose first parameter is client '
@@ -305,8 +309,8 @@ def _check_function_signature_compatible_with_broadcast_form(
     )
   result_type = function_type.result
   if (
-      not isinstance(result_type, computation_types.FederatedType)
-      or result_type.placement is not placements.CLIENTS
+      not isinstance(result_type, federated_language.FederatedType)
+      or result_type.placement is not federated_language.CLIENTS
   ):
     raise TypeError(
         '`BroadcastForm` expects a computation whose result is client data '
@@ -316,38 +320,38 @@ def _check_function_signature_compatible_with_broadcast_form(
 
 
 def _check_contains_only_reducible_intrinsics(
-    comp: building_blocks.ComputationBuildingBlock,
+    comp: federated_language.framework.ComputationBuildingBlock,
 ):
   """Checks that `comp` contains intrinsics reducible to aggregate or broadcast.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` to check for
-      presence of intrinsics not currently immediately reducible to
+    comp: Instance of `federated_language.framework.ComputationBuildingBlock` to
+      check for presence of intrinsics not currently immediately reducible to
       `FEDERATED_AGGREGATE` or `FEDERATED_BROADCAST`, or local processing.
 
   Raises:
     ValueError: If we encounter an intrinsic under `comp` that is not reducible.
   """
   reducible_uris = (
-      intrinsic_defs.FEDERATED_AGGREGATE.uri,
-      intrinsic_defs.FEDERATED_APPLY.uri,
-      intrinsic_defs.FEDERATED_BROADCAST.uri,
-      intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri,
-      intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
-      intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-      intrinsic_defs.FEDERATED_MAP.uri,
-      intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
-      intrinsic_defs.FEDERATED_SECURE_SUM.uri,
-      intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,
-      intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri,
-      intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
-      intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
+      federated_language.framework.FEDERATED_AGGREGATE.uri,
+      federated_language.framework.FEDERATED_APPLY.uri,
+      federated_language.framework.FEDERATED_BROADCAST.uri,
+      federated_language.framework.FEDERATED_EVAL_AT_CLIENTS.uri,
+      federated_language.framework.FEDERATED_EVAL_AT_SERVER.uri,
+      federated_language.framework.FEDERATED_MAP_ALL_EQUAL.uri,
+      federated_language.framework.FEDERATED_MAP.uri,
+      federated_language.framework.FEDERATED_SECURE_SUM_BITWIDTH.uri,
+      federated_language.framework.FEDERATED_SECURE_SUM.uri,
+      federated_language.framework.FEDERATED_VALUE_AT_CLIENTS.uri,
+      federated_language.framework.FEDERATED_VALUE_AT_SERVER.uri,
+      federated_language.framework.FEDERATED_ZIP_AT_CLIENTS.uri,
+      federated_language.framework.FEDERATED_ZIP_AT_SERVER.uri,
       mapreduce_intrinsics.FEDERATED_SECURE_MODULAR_SUM.uri,
   )
 
   def _check(comp):
     if (
-        isinstance(comp, building_blocks.Intrinsic)
+        isinstance(comp, federated_language.framework.Intrinsic)
         and comp.uri not in reducible_uris
     ):
       raise ValueError(
@@ -355,14 +359,14 @@ def _check_contains_only_reducible_intrinsics(
           'broadcast, the intrinsic {}'.format(comp.compact_representation())
       )
 
-  tree_analysis.visit_postorder(comp, _check)
+  federated_language.framework.visit_postorder(comp, _check)
 
 
 def check_computation_compatible_with_map_reduce_form(
-    comp: computation_impl.ConcreteComputation,
+    comp: federated_language.framework.ConcreteComputation,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
-) -> building_blocks.ComputationBuildingBlock:
+) -> federated_language.framework.ComputationBuildingBlock:
   """Tests compatibility with `tff.backends.mapreduce.MapReduceForm`.
 
   Note: the conditions here are specified in the documentation for
@@ -370,8 +374,8 @@ def check_computation_compatible_with_map_reduce_form(
     be propagated to that documentation.
 
   Args:
-    comp: An instance of `computation_impl.ConcreteComputation` to check for
-      compatibility with `tff.backends.mapreduce.MapReduceForm`.
+    comp: An instance of `federated_language.framework.ConcreteComputation` to
+      check for compatibility with `tff.backends.mapreduce.MapReduceForm`.
     tff_internal_preprocessing: An optional function to transform the AST of the
       computation.
 
@@ -382,7 +386,9 @@ def check_computation_compatible_with_map_reduce_form(
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ConcreteComputation
+  )
   comp_tree = comp.to_building_block()
   if tff_internal_preprocessing is not None:
     comp_tree = tff_internal_preprocessing(comp_tree)
@@ -390,7 +396,7 @@ def check_computation_compatible_with_map_reduce_form(
   comp_type = comp_tree.type_signature
   _check_type_is_fn(comp_type, '`comp`', TypeError)
   if (
-      not isinstance(comp_type.parameter, computation_types.StructType)
+      not isinstance(comp_type.parameter, federated_language.StructType)
       or len(comp_type.parameter) != 2
   ):  # pytype: disable=attribute-error
     raise TypeError(
@@ -398,7 +404,7 @@ def check_computation_compatible_with_map_reduce_form(
         f' type:\n{comp_type.parameter}'  # pytype: disable=attribute-error
     )
   if (
-      not isinstance(comp_type.result, computation_types.StructType)
+      not isinstance(comp_type.result, federated_language.StructType)
       or len(comp_type.result) != 2
   ):  # pytype: disable=attribute-error
     raise TypeError(
@@ -412,7 +418,9 @@ def check_computation_compatible_with_map_reduce_form(
   comp_tree = _replace_lambda_body_with_call_dominant_form(comp_tree)
 
   _check_contains_only_reducible_intrinsics(comp_tree)
-  tree_analysis.check_broadcast_not_dependent_on_aggregate(comp_tree)
+  federated_language.framework.check_broadcast_not_dependent_on_aggregate(
+      comp_tree
+  )
 
   return comp_tree
 
@@ -421,41 +429,45 @@ def _untuple_broadcast_only_before_after(before, after):
   """Removes the tuple-ing of the `broadcast` params and results."""
   # Since there is only a single intrinsic here, there's no need for the outer
   # `{intrinsic_name}_param`/`{intrinsic_name}_result` tuples.
-  untupled_before = building_block_factory.select_output_from_lambda(
+  untupled_before = federated_language.framework.select_output_from_lambda(
       before, 'federated_broadcast_param'
   )
-  after_param_name = next(building_block_factory.unique_name_generator(after))
-  after_param_type = computation_types.StructType([
+  after_param_name = next(
+      federated_language.framework.unique_name_generator(after)
+  )
+  after_param_type = federated_language.StructType([
       ('original_arg', after.parameter_type.original_arg),  # pytype: disable=attribute-error
       (
           'federated_broadcast_result',
           after.parameter_type.intrinsic_results.federated_broadcast_result,  # pytype: disable=attribute-error
       ),
   ])
-  after_param_ref = building_blocks.Reference(
+  after_param_ref = federated_language.framework.Reference(
       after_param_name, after_param_type
   )
 
-  after_result_arg = building_blocks.Struct([
+  after_result_arg = federated_language.framework.Struct([
       (
           'original_arg',
-          building_blocks.Selection(after_param_ref, 'original_arg'),
+          federated_language.framework.Selection(
+              after_param_ref, 'original_arg'
+          ),
       ),
       (
           'intrinsic_results',
-          building_blocks.Struct([(
+          federated_language.framework.Struct([(
               'federated_broadcast_result',
-              building_blocks.Selection(
+              federated_language.framework.Selection(
                   after_param_ref, 'federated_broadcast_result'
               ),
           )]),
       ),
   ])
-  after_result = building_blocks.Call(
+  after_result = federated_language.framework.Call(
       after,
       after_result_arg,
   )
-  untupled_after = building_blocks.Lambda(
+  untupled_after = federated_language.framework.Lambda(
       after_param_name,
       after_param_type,
       after_result,
@@ -515,52 +527,54 @@ def _prepare_for_rebinding(bb):
 
 
 def _construct_selection_from_federated_tuple(
-    federated_tuple: building_blocks.ComputationBuildingBlock,
+    federated_tuple: federated_language.framework.ComputationBuildingBlock,
     index: int,
     name_generator,
-) -> building_blocks.ComputationBuildingBlock:
+) -> federated_language.framework.ComputationBuildingBlock:
   """Selects the index `selected_index` from `federated_tuple`."""
   if not isinstance(
-      federated_tuple.type_signature, computation_types.FederatedType
+      federated_tuple.type_signature, federated_language.FederatedType
   ):
     raise ValueError(
         'Expected a `tff.FederatedType`, found'
         f' {federated_tuple.type_signature}.'
     )
   member_type = federated_tuple.type_signature.member
-  if not isinstance(member_type, computation_types.StructType):
+  if not isinstance(member_type, federated_language.StructType):
     raise ValueError(f'Expected a `tff.StructType`, found {member_type}.')
   param_name = next(name_generator)
-  selecting_function = building_blocks.Lambda(
+  selecting_function = federated_language.framework.Lambda(
       param_name,
       member_type,
-      building_blocks.Selection(
-          building_blocks.Reference(param_name, member_type),
+      federated_language.framework.Selection(
+          federated_language.framework.Reference(param_name, member_type),
           index=index,
       ),
   )
-  return building_block_factory.create_federated_map_or_apply(
+  return federated_language.framework.create_federated_map_or_apply(
       selecting_function, federated_tuple
   )
 
 
 def _as_function_of_single_subparameter(
-    bb: building_blocks.Lambda, index: int
-) -> building_blocks.Lambda:
+    bb: federated_language.framework.Lambda, index: int
+) -> federated_language.framework.Lambda:
   """Turns `x -> ...only uses x_i...` into `x_i -> ...only uses x_i`."""
-  tree_analysis.check_has_unique_names(bb)
+  federated_language.framework.check_has_unique_names(bb)
   bb = _prepare_for_rebinding(bb)
-  new_name = next(building_block_factory.unique_name_generator(bb))
-  new_ref = building_blocks.Reference(
+  new_name = next(federated_language.framework.unique_name_generator(bb))
+  new_ref = federated_language.framework.Reference(
       new_name, bb.type_signature.parameter[index]
   )
   new_lambda_body = tree_transformations.replace_selections(
       bb.result, bb.parameter_name, {(index,): new_ref}
   )
-  new_lambda = building_blocks.Lambda(
+  new_lambda = federated_language.framework.Lambda(
       new_ref.name, new_ref.type_signature, new_lambda_body
   )
-  tree_analysis.check_contains_no_new_unbound_references(bb, new_lambda)
+  federated_language.framework.check_contains_no_new_unbound_references(
+      bb, new_lambda
+  )
   return new_lambda
 
 
@@ -573,13 +587,13 @@ class _MismatchedSelectionPlacementError(TypeError):
 
 
 def _as_function_of_some_federated_subparameters(
-    bb: building_blocks.Lambda,
+    bb: federated_language.framework.Lambda,
     paths,
-) -> building_blocks.Lambda:
+) -> federated_language.framework.Lambda:
   """Turns `x -> ...only uses parts of x...` into `parts_of_x -> ...`."""
-  tree_analysis.check_has_unique_names(bb)
+  federated_language.framework.check_has_unique_names(bb)
   bb = _prepare_for_rebinding(bb)
-  name_generator = building_block_factory.unique_name_generator(bb)
+  name_generator = federated_language.framework.unique_name_generator(bb)
 
   type_list = []
   int_paths = []
@@ -587,7 +601,7 @@ def _as_function_of_some_federated_subparameters(
     selected_type = bb.parameter_type
     int_path = []
     for index in path:
-      if not isinstance(selected_type, computation_types.StructType):
+      if not isinstance(selected_type, federated_language.StructType):
         raise tree_transformations.ParameterSelectionError(path, bb)
       if isinstance(index, int):
         if index >= len(selected_type):
@@ -599,7 +613,7 @@ def _as_function_of_some_federated_subparameters(
           raise tree_transformations.ParameterSelectionError(path, bb)
         int_path.append(structure.name_to_index_map(selected_type)[index])
       selected_type = selected_type[index]
-    if not isinstance(selected_type, computation_types.FederatedType):
+    if not isinstance(selected_type, federated_language.FederatedType):
       raise _NonFederatedSelectionError(
           'Attempted to rebind references to parameter selection path '
           f'{path} from type {bb.parameter_type}, but the value at that path '
@@ -617,10 +631,12 @@ def _as_function_of_some_federated_subparameters(
         f'have resulted in the list of types:\n{type_list}'
     )
 
-  zip_type = computation_types.FederatedType(
+  zip_type = federated_language.FederatedType(
       [x.member for x in type_list], placement=placement
   )
-  ref_to_zip = building_blocks.Reference(next(name_generator), zip_type)
+  ref_to_zip = federated_language.framework.Reference(
+      next(name_generator), zip_type
+  )
   path_to_replacement = {}
   for i, path in enumerate(int_paths):
     path_to_replacement[path] = _construct_selection_from_federated_tuple(
@@ -630,10 +646,10 @@ def _as_function_of_some_federated_subparameters(
   new_lambda_body = tree_transformations.replace_selections(
       bb.result, bb.parameter_name, path_to_replacement
   )
-  lambda_with_zipped_param = building_blocks.Lambda(
+  lambda_with_zipped_param = federated_language.framework.Lambda(
       ref_to_zip.name, ref_to_zip.type_signature, new_lambda_body
   )
-  tree_analysis.check_contains_no_new_unbound_references(
+  federated_language.framework.check_contains_no_new_unbound_references(
       bb, lambda_with_zipped_param
   )
 
@@ -681,13 +697,13 @@ def _extract_prepare(before_broadcast, grappler_config):
 
   Args:
     before_broadcast: The first result of splitting `next_bb` on
-      `intrinsic_defs.FEDERATED_BROADCAST`.
+      `federated_language.framework.FEDERATED_BROADCAST`.
     grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
       Grappler graph optimization.
 
   Returns:
     `prepare` as specified by `forms.MapReduceForm`, an instance of
-    `building_blocks.CompiledComputation`.
+    `federated_language.framework.CompiledComputation`.
 
   Raises:
     compiler.MapReduceFormCompilationError: If we extract an AST of the wrong
@@ -718,7 +734,7 @@ def _extract_work(before_aggregate, grappler_config):
 
   Returns:
     `work` as specified by `forms.MapReduceForm`, an instance of
-    `building_blocks.CompiledComputation`.
+    `federated_language.framework.CompiledComputation`.
 
   Raises:
     compiler.MapReduceFormCompilationError: If we extract an AST of the wrong
@@ -736,7 +752,7 @@ def _extract_work(before_aggregate, grappler_config):
   secure_sum_bitwidth_input_index = ('federated_secure_sum_bitwidth_param', 0)
   secure_sum_input_index = ('federated_secure_sum_param', 0)
   secure_modular_sum_input_index = ('federated_secure_modular_sum_param', 0)
-  work_unzipped = building_block_factory.select_output_from_lambda(
+  work_unzipped = federated_language.framework.select_output_from_lambda(
       work_to_before_aggregate,
       [
           aggregate_input_index,
@@ -745,10 +761,10 @@ def _extract_work(before_aggregate, grappler_config):
           secure_modular_sum_input_index,
       ],
   )
-  work = building_blocks.Lambda(
+  work = federated_language.framework.Lambda(
       work_unzipped.parameter_name,
       work_unzipped.parameter_type,
-      building_block_factory.create_federated_zip(work_unzipped.result),
+      federated_language.framework.create_federated_zip(work_unzipped.result),
   )
   return compiler.consolidate_and_extract_local_processing(
       work, grappler_config
@@ -756,26 +772,27 @@ def _extract_work(before_aggregate, grappler_config):
 
 
 def _compile_selected_output_to_no_argument_tensorflow(
-    comp: building_blocks.Lambda,
-    path: building_block_factory.Path,
+    comp: federated_language.framework.Lambda,
+    path: federated_language.framework.Path,
     grappler_config,
-) -> building_blocks.CompiledComputation:
+) -> federated_language.framework.CompiledComputation:
   """Compiles the independent value result of `comp` at `path` to TensorFlow."""
-  extracted = building_block_factory.select_output_from_lambda(
+  extracted = federated_language.framework.select_output_from_lambda(
       comp, path
   ).result
   return compiler.consolidate_and_extract_local_processing(
-      building_blocks.Lambda(None, None, extracted), grappler_config
+      federated_language.framework.Lambda(None, None, extracted),
+      grappler_config,
   )
 
 
 def _compile_selected_output_as_tensorflow_function(
-    comp: building_blocks.Lambda,
-    path: building_block_factory.Path,
+    comp: federated_language.framework.Lambda,
+    path: federated_language.framework.Path,
     grappler_config,
-) -> building_blocks.CompiledComputation:
+) -> federated_language.framework.CompiledComputation:
   """Compiles the functional result of `comp` at `path` to TensorFlow."""
-  extracted = building_block_factory.select_output_from_lambda(
+  extracted = federated_language.framework.select_output_from_lambda(
       comp, path
   ).result
   return compiler.consolidate_and_extract_local_processing(
@@ -800,13 +817,13 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
   Returns:
     `zero`, `accumulate`, `merge` and `report` as specified by
     `forms.MapReduceForm`. All are instances of
-    `building_blocks.CompiledComputation`.
+    `federated_language.framework.CompiledComputation`.
 
   Raises:
     compiler.MapReduceFormCompilationError: If we extract an ASTs of the wrong
       type.
   """
-  federated_aggregate = building_block_factory.select_output_from_lambda(
+  federated_aggregate = federated_language.framework.select_output_from_lambda(
       before_aggregate, 'federated_aggregate_param'
   )
   # Index `0` is the value being aggregated.
@@ -841,16 +858,16 @@ def _extract_update(after_aggregate, grappler_config):
 
   Returns:
     `update` as specified by `forms.MapReduceForm`, an instance of
-    `building_blocks.CompiledComputation`.
+    `federated_language.framework.CompiledComputation`.
 
   Raises:
     compiler.MapReduceFormCompilationError: If we extract an AST of the wrong
       type.
   """
-  after_aggregate_zipped = building_blocks.Lambda(
+  after_aggregate_zipped = federated_language.framework.Lambda(
       after_aggregate.parameter_name,
       after_aggregate.parameter_type,
-      building_block_factory.create_federated_zip(after_aggregate.result),
+      federated_language.framework.create_federated_zip(after_aggregate.result),
   )
   # `create_federated_zip` doesn't have unique reference names, but we need
   # them for `as_function_of_some_federated_subparameters`.
@@ -885,23 +902,23 @@ def _extract_update(after_aggregate, grappler_config):
   # <server_state, <aggregation_results...>> into
   # <server_state, aggregation_results...>
   # unpack = <v, <...>> -> <v, ...>
-  name_generator = building_block_factory.unique_name_generator(
+  name_generator = federated_language.framework.unique_name_generator(
       update_with_flat_inputs
   )
   unpack_param_name = next(name_generator)
   original_param_type = update_with_flat_inputs.parameter_type.member  # pytype: disable=attribute-error
-  unpack_param_type = computation_types.StructType([
+  unpack_param_type = federated_language.StructType([
       original_param_type[0],
-      computation_types.StructType(original_param_type[1:]),
+      federated_language.StructType(original_param_type[1:]),
   ])
-  unpack_param_ref = building_blocks.Reference(
+  unpack_param_ref = federated_language.framework.Reference(
       unpack_param_name, unpack_param_type
   )
-  select = lambda bb, i: building_blocks.Selection(bb, index=i)
-  unpack = building_blocks.Lambda(
+  select = lambda bb, i: federated_language.framework.Selection(bb, index=i)
+  unpack = federated_language.framework.Lambda(
       unpack_param_name,
       unpack_param_type,
-      building_blocks.Struct(
+      federated_language.framework.Struct(
           [select(unpack_param_ref, 0)]
           + [
               select(select(unpack_param_ref, 1), i)
@@ -912,16 +929,16 @@ def _extract_update(after_aggregate, grappler_config):
 
   # update = v -> update_with_flat_inputs(federated_map(unpack, v))
   param_name = next(name_generator)
-  param_type = computation_types.FederatedType(
-      unpack_param_type, placements.SERVER
+  param_type = federated_language.FederatedType(
+      unpack_param_type, federated_language.SERVER
   )
-  param_ref = building_blocks.Reference(param_name, param_type)
-  update = building_blocks.Lambda(
+  param_ref = federated_language.framework.Reference(param_name, param_type)
+  update = federated_language.framework.Lambda(
       param_name,
       param_type,
-      building_blocks.Call(
+      federated_language.framework.Call(
           update_with_flat_inputs,
-          building_block_factory.create_federated_map_or_apply(
+          federated_language.framework.create_federated_map_or_apply(
               unpack, param_ref
           ),
       ),
@@ -932,8 +949,8 @@ def _extract_update(after_aggregate, grappler_config):
 
 
 def _replace_lambda_body_with_call_dominant_form(
-    comp: building_blocks.Lambda,
-) -> building_blocks.Lambda:
+    comp: federated_language.framework.Lambda,
+) -> federated_language.framework.Lambda:
   """Transforms the body of `comp` to call-dominant form.
 
   Call-dominant form ensures that all higher-order functions are fully
@@ -944,16 +961,16 @@ def _replace_lambda_body_with_call_dominant_form(
   intrinsics which will cause that function to fail.
 
   Args:
-    comp: `building_blocks.Lambda` the body of which to convert to call-dominant
-      form.
+    comp: `federated_language.framework.Lambda` the body of which to convert to
+      call-dominant form.
 
   Returns:
     A transformed version of `comp`, whose body is call-dominant.
   """
   transformed = transformations.to_call_dominant(comp)
-  if not isinstance(transformed, building_blocks.Lambda):
-    raise building_blocks.UnexpectedBlockError(
-        building_blocks.Lambda, transformed
+  if not isinstance(transformed, federated_language.framework.Lambda):
+    raise federated_language.framework.UnexpectedBlockError(
+        federated_language.framework.Lambda, transformed
     )
   return transformed
 
@@ -969,7 +986,7 @@ def _merge_grappler_config_with_default(
 
 
 def get_broadcast_form_for_computation(
-    comp: computation_impl.ConcreteComputation,
+    comp: federated_language.framework.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
@@ -977,10 +994,10 @@ def get_broadcast_form_for_computation(
   """Constructs `tff.backends.mapreduce.BroadcastForm` given a computation.
 
   Args:
-    comp: An instance of `computation_impl.ConcreteComputation` that is
-      compatible with broadcast form. Computations are only compatible if they
-      take in a single value placed at server, return a single value placed at
-      clients, and do not contain any aggregations.
+    comp: An instance of `federated_language.framework.ConcreteComputation` that
+      is compatible with broadcast form. Computations are only compatible if
+      they take in a single value placed at server, return a single value placed
+      at clients, and do not contain any aggregations.
     grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
       Grappler graph optimization of the Tensorflow graphs backing the resulting
       `tff.backends.mapreduce.BroadcastForm`. These options are combined with a
@@ -995,7 +1012,9 @@ def get_broadcast_form_for_computation(
     An instance of `tff.backends.mapreduce.BroadcastForm` equivalent to the
     provided `tff.Computation`.
   """
-  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ConcreteComputation
+  )
   _check_function_signature_compatible_with_broadcast_form(comp.type_signature)
   py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
   grappler_config = _merge_grappler_config_with_default(grappler_config)
@@ -1006,8 +1025,8 @@ def get_broadcast_form_for_computation(
   bb, _ = tensorflow_tree_transformations.replace_intrinsics_with_bodies(bb)
   bb = _replace_lambda_body_with_call_dominant_form(bb)
 
-  tree_analysis.check_contains_only_reducible_intrinsics(bb)
-  aggregations = tree_analysis.find_aggregations_in_tree(bb)
+  federated_language.framework.check_contains_only_reducible_intrinsics(bb)
+  aggregations = federated_language.framework.find_aggregations_in_tree(bb)
   if aggregations:
     raise ValueError(
         '`get_broadcast_form_for_computation` called with computation'
@@ -1024,9 +1043,9 @@ def get_broadcast_form_for_computation(
   )
 
   def _create_comp(proto):
-    return computation_impl.ConcreteComputation(
+    return federated_language.framework.ConcreteComputation(
         computation_proto=proto,
-        context_stack=context_stack_impl.context_stack,
+        context_stack=federated_language.framework.global_context_stack,
     )
 
   compute_server_context, client_processing = (
@@ -1047,7 +1066,7 @@ def get_broadcast_form_for_computation(
 
 
 def get_map_reduce_form_for_computation(
-    comp: computation_impl.ConcreteComputation,
+    comp: federated_language.framework.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
@@ -1078,7 +1097,9 @@ def get_map_reduce_form_for_computation(
     TypeError: If the arguments are of the wrong types.
     compiler.MapReduceFormCompilationError: If the compilation process fails.
   """
-  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ConcreteComputation
+  )
   comp_bb = check_computation_compatible_with_map_reduce_form(
       comp, tff_internal_preprocessing=tff_internal_preprocessing
   )
@@ -1110,9 +1131,9 @@ def get_map_reduce_form_for_computation(
   update = _extract_update(after_aggregate, grappler_config)
 
   def _create_comp(proto):
-    return computation_impl.ConcreteComputation(
+    return federated_language.framework.ConcreteComputation(
         computation_proto=proto,
-        context_stack=context_stack_impl.context_stack,
+        context_stack=federated_language.framework.global_context_stack,
     )
 
   blocks = (
@@ -1132,15 +1153,15 @@ def get_map_reduce_form_for_computation(
 
 
 def get_distribute_aggregate_form_for_computation(
-    comp: computation_impl.ConcreteComputation,
+    comp: federated_language.framework.ConcreteComputation,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
 ) -> forms.DistributeAggregateForm:
   """Constructs `DistributeAggregateForm` for a computation.
 
   Args:
-    comp: An instance of `computation_impl.ConcreteComputation` that is
-      compatible with `DistributeAggregateForm`. The computation must take
+    comp: An instance of `federated_language.framework.ConcreteComputation` that
+      is compatible with `DistributeAggregateForm`. The computation must take
       exactly two arguments, and the first must be a state value placed at
       `SERVER`. The computation must return exactly two values. The type of the
       first element in the result must also be assignable to the first element
@@ -1150,12 +1171,12 @@ def get_distribute_aggregate_form_for_computation(
 
   Returns:
     An instance of `tff.backends.mapreduce.DistributeAggregateForm` equivalent
-    to the provided `computation_base.Computation`.
+    to the provided `federated_language.framework.Computation`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  py_typecheck.check_type(comp, computation_base.Computation)
+  py_typecheck.check_type(comp, federated_language.framework.Computation)
 
   # Apply any requested preprocessing to the computation.
   comp_tree = comp.to_building_block()
@@ -1166,7 +1187,7 @@ def get_distribute_aggregate_form_for_computation(
   comp_type = comp_tree.type_signature
   _check_type_is_fn(comp_type, '`comp`', TypeError)
   if (
-      not isinstance(comp_type.parameter, computation_types.StructType)
+      not isinstance(comp_type.parameter, federated_language.StructType)
       or len(comp_type.parameter) != 2
   ):  # pytype: disable=attribute-error
     raise TypeError(
@@ -1174,20 +1195,22 @@ def get_distribute_aggregate_form_for_computation(
         f' type:\n{comp_type.parameter}'  # pytype: disable=attribute-error
     )
   if (
-      not isinstance(comp_type.result, computation_types.StructType)
+      not isinstance(comp_type.result, federated_language.StructType)
       or len(comp_type.result) != 2
   ):  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `comp` to return two values, found result '
         f'type:\n{comp_type.result}'  # pytype: disable=attribute-error
     )
-  if not isinstance(comp_tree, building_blocks.Lambda):
-    raise building_blocks.UnexpectedBlockError(
-        building_blocks.Lambda, comp_tree
+  if not isinstance(comp_tree, federated_language.framework.Lambda):
+    raise federated_language.framework.UnexpectedBlockError(
+        federated_language.framework.Lambda, comp_tree
     )
   comp_tree = _replace_lambda_body_with_call_dominant_form(comp_tree)
   comp_tree, _ = tree_transformations.uniquify_reference_names(comp_tree)
-  tree_analysis.check_broadcast_not_dependent_on_aggregate(comp_tree)
+  federated_language.framework.check_broadcast_not_dependent_on_aggregate(
+      comp_tree
+  )
 
   # To generate the DistributeAggregateForm for the computation, we will split
   # the computation twice, first on broadcast intrinsics and then on aggregation
@@ -1204,18 +1227,24 @@ def get_distribute_aggregate_form_for_computation(
   # of the split on broadcast intrinsics rather than potentially appearing in
   # the *last* part of the split on broadcast intrinsics.
   args_needing_broadcast_dependency = []
-  unbound_refs = transformation_utils.get_map_of_unbound_references(comp_tree)
+  unbound_refs = federated_language.framework.get_map_of_unbound_references(
+      comp_tree
+  )
 
   def _find_non_client_placed_args(inner_comp):
     # Examine the args of the aggregation intrinsic calls.
     if (
-        isinstance(inner_comp, building_blocks.Call)
-        and isinstance(inner_comp.function, building_blocks.Intrinsic)
+        isinstance(inner_comp, federated_language.framework.Call)
+        and isinstance(
+            inner_comp.function, federated_language.framework.Intrinsic
+        )
         and inner_comp.function.intrinsic_def().aggregation_kind
     ):
       aggregation_args = (
           inner_comp.argument
-          if isinstance(inner_comp.argument, building_blocks.Struct)
+          if isinstance(
+              inner_comp.argument, federated_language.framework.Struct
+          )
           else [inner_comp.argument]
       )
       unbound_ref_names_for_intrinsic = unbound_refs[inner_comp.argument]
@@ -1228,31 +1257,41 @@ def get_distribute_aggregate_form_for_computation(
           # federated broadcast that depends on it by normalizing it to a
           # server-placed value.
           if not isinstance(
-              aggregation_arg.type_signature, computation_types.FederatedType
+              aggregation_arg.type_signature, federated_language.FederatedType
           ):
 
             def _has_placement(type_spec):
               return isinstance(
-                  type_spec.type_signature, computation_types.FederatedType
+                  type_spec.type_signature, federated_language.FederatedType
               )
 
-            if tree_analysis.count(aggregation_arg, _has_placement) > 0:
+            if (
+                federated_language.framework.computation_count(
+                    aggregation_arg, _has_placement
+                )
+                > 0
+            ):
               raise TypeError(
                   'DistributeAggregateForm cannot handle an aggregation '
                   f'intrinsic arg with type {aggregation_arg.type_signature}'
               )
             args_needing_broadcast_dependency.append(
-                building_block_factory.create_federated_value(
-                    aggregation_arg, placements.SERVER
+                federated_language.framework.create_federated_value(
+                    aggregation_arg, federated_language.SERVER
                 )
             )
-          elif aggregation_arg.type_signature.placement == placements.SERVER:
+          elif (
+              aggregation_arg.type_signature.placement
+              == federated_language.SERVER
+          ):
             args_needing_broadcast_dependency.append(aggregation_arg)
 
       return inner_comp, True
     return inner_comp, False
 
-  tree_analysis.visit_preorder(comp_tree, _find_non_client_placed_args)
+  federated_language.framework.visit_preorder(
+      comp_tree, _find_non_client_placed_args
+  )
 
   # Add an injected broadcast call to the computation that depends on the
   # identified non-client-placed args, if any exist. To avoid broadcasting the
@@ -1265,16 +1304,18 @@ def get_distribute_aggregate_form_for_computation(
   # here can be drastically simplified.
   if args_needing_broadcast_dependency:
     zipped_args_needing_broadcast_dependency = (
-        building_block_factory.create_federated_zip(
-            building_blocks.Struct(args_needing_broadcast_dependency)
+        federated_language.framework.create_federated_zip(
+            federated_language.framework.Struct(
+                args_needing_broadcast_dependency
+            )
         )
     )
-    injected_broadcast = building_block_factory.create_federated_broadcast(
-        building_block_factory.create_federated_apply(
-            building_blocks.Lambda(
+    injected_broadcast = federated_language.framework.create_federated_broadcast(
+        federated_language.framework.create_federated_apply(
+            federated_language.framework.Lambda(
                 'ignored_param',
                 zipped_args_needing_broadcast_dependency.type_signature.member,
-                building_blocks.Struct([]),
+                federated_language.framework.Struct([]),
             ),
             zipped_args_needing_broadcast_dependency,
         )
@@ -1288,17 +1329,17 @@ def get_distribute_aggregate_form_for_computation(
     # does not get pruned by various tree transformations. We will remove this
     # additional element in the result after the first split operation.
     revised_block_result = structure.to_elements(comp_tree.result.result) + [
-        building_blocks.Reference(
+        federated_language.framework.Reference(
             'injected_broadcast_ref',
             injected_broadcast.type_signature,
         )
     ]
-    comp_tree = building_blocks.Lambda(
+    comp_tree = federated_language.framework.Lambda(
         comp_tree.parameter_name,
         comp_tree.parameter_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             revised_block_locals,
-            building_blocks.Struct(revised_block_result),
+            federated_language.framework.Struct(revised_block_result),
         ),
     )
 
@@ -1319,10 +1360,10 @@ def get_distribute_aggregate_form_for_computation(
   server_prepare, server_to_client_broadcast, after_broadcast = (
       transformations.divisive_force_align_and_split_by_intrinsics(
           comp_tree,
-          intrinsic_defs.get_broadcast_intrinsics(),
-          before_comp_allowed_original_arg_subparameters=[
-              (server_state_index,)
-          ],
+          federated_language.framework.get_broadcast_intrinsics(),
+          before_comp_allowed_original_arg_subparameters=[(
+              server_state_index,
+          )],
           intrinsic_comp_allowed_original_arg_subparameters=[],
           after_comp_allowed_original_arg_subparameters=[(client_data_index,)],
       )
@@ -1331,21 +1372,23 @@ def get_distribute_aggregate_form_for_computation(
   # Helper method to replace a lambda with parameter that is a single-element
   # struct with a lambda that uses the element directly.
   def _unnest_lambda_parameter(comp):
-    assert isinstance(comp, building_blocks.Lambda)
-    assert isinstance(comp.parameter_type, computation_types.StructType)
+    assert isinstance(comp, federated_language.framework.Lambda)
+    assert isinstance(comp.parameter_type, federated_language.StructType)
 
-    name_generator = building_block_factory.unique_name_generator(comp)
+    name_generator = federated_language.framework.unique_name_generator(comp)
     new_param_name = next(name_generator)
-    replacement_ref = building_blocks.Reference(
+    replacement_ref = federated_language.framework.Reference(
         new_param_name, comp.parameter_type[0]
     )
     modified_comp_body = tree_transformations.replace_selections(
         comp.result, comp.parameter_name, {(0,): replacement_ref}
     )
-    modified_comp = building_blocks.Lambda(
+    modified_comp = federated_language.framework.Lambda(
         replacement_ref.name, replacement_ref.type_signature, modified_comp_body
     )
-    tree_analysis.check_contains_no_unbound_references(modified_comp)
+    federated_language.framework.check_contains_no_unbound_references(
+        modified_comp
+    )
 
     return modified_comp
 
@@ -1376,22 +1419,24 @@ def get_distribute_aggregate_form_for_computation(
   # input that represents the intermediate state that was produced in the first
   # split.
   if args_needing_broadcast_dependency:
-    assert isinstance(after_broadcast.result.result, building_blocks.Struct)
+    assert isinstance(
+        after_broadcast.result.result, federated_language.framework.Struct
+    )
     # Check that the last element of the result is the expected empty struct
     # associated with the injected broadcast call.
     result_len = len(after_broadcast.result.result)
     injected_broadcast_result = after_broadcast.result.result[result_len - 1]
     assert isinstance(
         injected_broadcast_result.type_signature.member,
-        computation_types.StructType,
+        federated_language.StructType,
     )
     assert not injected_broadcast_result.type_signature.member
-    after_broadcast = building_blocks.Lambda(
+    after_broadcast = federated_language.framework.Lambda(
         after_broadcast.parameter_name,
         after_broadcast.parameter_type,
-        building_blocks.Block(
+        federated_language.framework.Block(
             after_broadcast.result.locals,
-            building_blocks.Struct(
+            federated_language.framework.Struct(
                 structure.to_elements(after_broadcast.result.result)[:-1]
             ),
         ),
@@ -1402,14 +1447,14 @@ def get_distribute_aggregate_form_for_computation(
   client_work, client_to_server_aggregation, server_result = (
       transformations.divisive_force_align_and_split_by_intrinsics(
           after_broadcast,
-          intrinsic_defs.get_aggregation_intrinsics(),
+          federated_language.framework.get_aggregation_intrinsics(),
           before_comp_allowed_original_arg_subparameters=[
               (client_data_index_in_after_broadcast_param,),
               (intrinsic_results_index_in_after_broadcast_param,),
           ],
-          intrinsic_comp_allowed_original_arg_subparameters=[
-              (intermediate_state_index_in_after_broadcast_param,)
-          ],
+          intrinsic_comp_allowed_original_arg_subparameters=[(
+              intermediate_state_index_in_after_broadcast_param,
+          )],
           after_comp_allowed_original_arg_subparameters=[
               (intermediate_state_index_in_after_broadcast_param,),
           ],
@@ -1419,7 +1464,7 @@ def get_distribute_aggregate_form_for_computation(
   # Drop the intermediate_state produced by the second split that is part of
   # the client_work output.
   index_of_intrinsic_args_in_client_work_result = 0
-  client_work = building_block_factory.select_output_from_lambda(
+  client_work = federated_language.framework.select_output_from_lambda(
       client_work, index_of_intrinsic_args_in_client_work_result
   )
 
@@ -1445,9 +1490,9 @@ def get_distribute_aggregate_form_for_computation(
   )
 
   def _create_comp(proto):
-    return computation_impl.ConcreteComputation(
+    return federated_language.framework.ConcreteComputation(
         computation_proto=proto,
-        context_stack=context_stack_impl.context_stack,
+        context_stack=federated_language.framework.global_context_stack,
     )
 
   comps = [_create_comp(bb.proto) for bb in blocks]

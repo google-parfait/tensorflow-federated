@@ -34,6 +34,7 @@ limitations under the License
 #include "include/grpcpp/impl/channel_interface.h"
 #include "include/grpcpp/security/credentials.h"
 #include "include/grpcpp/support/channel_arguments.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 #include "include/pybind11/cast.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
@@ -61,7 +62,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/xla_executor.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow {

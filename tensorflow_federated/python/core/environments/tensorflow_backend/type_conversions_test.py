@@ -17,23 +17,20 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions as tensorflow_type_conversions
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.impl.types import type_test_utils
-from tensorflow_federated.python.core.impl.types import typed_object
 
 
-class _TestTypedObject(typed_object.TypedObject):
+class _TestTypedObject(federated_language.TypedObject):
 
-  def __init__(self, type_signature: computation_types.Type):
+  def __init__(self, type_signature: federated_language.Type):
     self._type_signature = type_signature
 
   @property
-  def type_signature(self) -> computation_types.Type:
+  def type_signature(self) -> federated_language.Type:
     return self._type_signature
 
 
@@ -43,14 +40,14 @@ class TensorflowInferTypeTest(parameterized.TestCase):
       (
           'tensor',
           tf.ones(shape=[2, 3], dtype=tf.int32),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
+          federated_language.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'tensor_nested',
           [tf.ones(shape=[2, 3], dtype=tf.int32)],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
+                  federated_language.TensorType(np.int32, shape=[2, 3]),
               ],
               list,
           ),
@@ -58,10 +55,10 @@ class TensorflowInferTypeTest(parameterized.TestCase):
       (
           'tensor_mixed',
           [tf.ones(shape=[2, 3], dtype=tf.int32), 1.0],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
-                  computation_types.TensorType(np.float32),
+                  federated_language.TensorType(np.int32, shape=[2, 3]),
+                  federated_language.TensorType(np.float32),
               ],
               list,
           ),
@@ -69,14 +66,14 @@ class TensorflowInferTypeTest(parameterized.TestCase):
       (
           'variable',
           tf.Variable(tf.ones(shape=[2, 3], dtype=tf.int32)),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
+          federated_language.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'variable_nested',
           [tf.Variable(tf.ones(shape=[2, 3], dtype=tf.int32))],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
+                  federated_language.TensorType(np.int32, shape=[2, 3]),
               ],
               list,
           ),
@@ -84,10 +81,10 @@ class TensorflowInferTypeTest(parameterized.TestCase):
       (
           'variable_mixed',
           [tf.Variable(tf.ones(shape=[2, 3], dtype=tf.int32)), 1.0],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
-                  computation_types.TensorType(np.float32),
+                  federated_language.TensorType(np.int32, shape=[2, 3]),
+                  federated_language.TensorType(np.float32),
               ],
               list,
           ),
@@ -95,17 +92,17 @@ class TensorflowInferTypeTest(parameterized.TestCase):
       (
           'dataset',
           tf.data.Dataset.from_tensors(tf.ones(shape=[2, 3], dtype=tf.int32)),
-          computation_types.SequenceType(
-              computation_types.TensorType(np.int32, shape=[2, 3])
+          federated_language.SequenceType(
+              federated_language.TensorType(np.int32, shape=[2, 3])
           ),
       ),
       (
           'dataset_nested',
           [tf.data.Dataset.from_tensors(tf.ones(shape=[2, 3], dtype=tf.int32))],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.SequenceType(
-                      computation_types.TensorType(np.int32, shape=[2, 3])
+                  federated_language.SequenceType(
+                      federated_language.TensorType(np.int32, shape=[2, 3])
                   ),
               ],
               list,
@@ -119,12 +116,12 @@ class TensorflowInferTypeTest(parameterized.TestCase):
               ),
               1.0,
           ],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.SequenceType(
-                      computation_types.TensorType(np.int32, shape=[2, 3])
+                  federated_language.SequenceType(
+                      federated_language.TensorType(np.int32, shape=[2, 3])
                   ),
-                  computation_types.TensorType(np.float32),
+                  federated_language.TensorType(np.float32),
               ],
               list,
           ),
@@ -139,7 +136,7 @@ class TensorflowInferTypeTest(parameterized.TestCase):
       (
           'typed_object',
           _TestTypedObject(
-              computation_types.TensorType(np.int32, shape=[2, 3])
+              federated_language.TensorType(np.int32, shape=[2, 3])
           ),
       ),
       ('int', 1),
@@ -151,7 +148,7 @@ class TensorflowInferTypeTest(parameterized.TestCase):
   def test_delegates_result_with_obj(self, obj):
 
     with mock.patch.object(
-        type_conversions, 'infer_type', autospec=True, spec_set=True
+        federated_language.framework, 'infer_type', autospec=True, spec_set=True
     ) as mock_infer_type:
       tensorflow_type_conversions.tensorflow_infer_type(obj)
       mock_infer_type.assert_called_once_with(obj)
@@ -160,7 +157,7 @@ class TensorflowInferTypeTest(parameterized.TestCase):
 class TypeToTfDtypesAndShapesTest(absltest.TestCase):
 
   def test_with_int_scalar(self):
-    type_signature = computation_types.TensorType(np.int32)
+    type_signature = federated_language.TensorType(np.int32)
     dtypes, shapes = tensorflow_type_conversions._type_to_tf_dtypes_and_shapes(
         type_signature
     )
@@ -168,7 +165,7 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
     self.assertEqual(shapes, ())
 
   def test_with_int_vector(self):
-    type_signature = computation_types.TensorType(np.int32, [10])
+    type_signature = federated_language.TensorType(np.int32, [10])
     dtypes, shapes = tensorflow_type_conversions._type_to_tf_dtypes_and_shapes(
         type_signature
     )
@@ -176,11 +173,11 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
     self.assertEqual(shapes, (10,))
 
   def test_with_tensor_triple(self):
-    type_signature = computation_types.StructWithPythonType(
+    type_signature = federated_language.StructWithPythonType(
         [
-            ('a', computation_types.TensorType(np.int32, [5])),
-            ('b', computation_types.TensorType(np.bool_)),
-            ('c', computation_types.TensorType(np.float32, [3])),
+            ('a', federated_language.TensorType(np.int32, [5])),
+            ('b', federated_language.TensorType(np.bool_)),
+            ('c', federated_language.TensorType(np.float32, [3])),
         ],
         collections.OrderedDict,
     )
@@ -191,20 +188,20 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
     self.assertEqual(shapes, {'a': [5], 'b': [], 'c': [3]})
 
   def test_with_two_level_tuple(self):
-    type_signature = computation_types.StructWithPythonType(
+    type_signature = federated_language.StructWithPythonType(
         [
             ('a', np.bool_),
             (
                 'b',
-                computation_types.StructWithPythonType(
+                federated_language.StructWithPythonType(
                     [
-                        ('c', computation_types.TensorType(np.float32)),
-                        ('d', computation_types.TensorType(np.int32, [20])),
+                        ('c', federated_language.TensorType(np.float32)),
+                        ('d', federated_language.TensorType(np.int32, [20])),
                     ],
                     collections.OrderedDict,
                 ),
             ),
-            ('e', computation_types.StructType([])),
+            ('e', federated_language.StructType([])),
         ],
         collections.OrderedDict,
     )
@@ -220,25 +217,25 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
 class TypeToTfTensorSpecsTest(absltest.TestCase):
 
   def test_with_int_scalar(self):
-    type_signature = computation_types.TensorType(np.int32)
+    type_signature = federated_language.TensorType(np.int32)
     tensor_specs = tensorflow_type_conversions.type_to_tf_tensor_specs(
         type_signature
     )
     self.assertEqual(tensor_specs, tf.TensorSpec([], np.int32))
 
   def test_with_int_vector(self):
-    type_signature = computation_types.TensorType(np.int32, [10])
+    type_signature = federated_language.TensorType(np.int32, [10])
     tensor_specs = tensorflow_type_conversions.type_to_tf_tensor_specs(
         type_signature
     )
     self.assertEqual(tensor_specs, tf.TensorSpec([10], np.int32))
 
   def test_with_tensor_triple(self):
-    type_signature = computation_types.StructWithPythonType(
+    type_signature = federated_language.StructWithPythonType(
         [
-            ('a', computation_types.TensorType(np.int32, [5])),
-            ('b', computation_types.TensorType(np.bool_)),
-            ('c', computation_types.TensorType(np.float32, [3])),
+            ('a', federated_language.TensorType(np.int32, [5])),
+            ('b', federated_language.TensorType(np.bool_)),
+            ('c', federated_language.TensorType(np.float32, [3])),
         ],
         collections.OrderedDict,
     )
@@ -255,20 +252,20 @@ class TypeToTfTensorSpecsTest(absltest.TestCase):
     )
 
   def test_with_two_level_tuple(self):
-    type_signature = computation_types.StructWithPythonType(
+    type_signature = federated_language.StructWithPythonType(
         [
             ('a', np.bool_),
             (
                 'b',
-                computation_types.StructWithPythonType(
+                federated_language.StructWithPythonType(
                     [
-                        ('c', computation_types.TensorType(np.float32)),
-                        ('d', computation_types.TensorType(np.int32, [20])),
+                        ('c', federated_language.TensorType(np.float32)),
+                        ('d', federated_language.TensorType(np.int32, [20])),
                     ],
                     collections.OrderedDict,
                 ),
             ),
-            ('e', computation_types.StructType([])),
+            ('e', federated_language.StructType([])),
         ],
         collections.OrderedDict,
     )
@@ -292,7 +289,7 @@ class TypeToTfTensorSpecsTest(absltest.TestCase):
       tensorflow_type_conversions.type_to_tf_tensor_specs(np.float32(0.0))
 
   def test_with_unnamed_element(self):
-    type_signature = computation_types.StructType([np.int32])
+    type_signature = federated_language.StructType([np.int32])
     tensor_specs = tensorflow_type_conversions.type_to_tf_tensor_specs(
         type_signature
     )
@@ -312,15 +309,15 @@ class TypeToTfStructureTest(absltest.TestCase):
             ]),
         ),
     ])
-    type_spec = computation_types.StructWithPythonType(
+    type_spec = federated_language.StructWithPythonType(
         [
-            ('a', computation_types.TensorType(np.bool_)),
+            ('a', federated_language.TensorType(np.bool_)),
             (
                 'b',
-                computation_types.StructWithPythonType(
+                federated_language.StructWithPythonType(
                     [
-                        ('c', computation_types.TensorType(np.float32)),
-                        ('d', computation_types.TensorType(np.int32, (20,))),
+                        ('c', federated_language.TensorType(np.float32)),
+                        ('d', federated_language.TensorType(np.int32, (20,))),
                     ],
                     collections.OrderedDict,
                 ),
@@ -341,7 +338,7 @@ class TypeToTfStructureTest(absltest.TestCase):
         tf.TensorSpec(shape=(), dtype=np.bool_),
         tf.TensorSpec(shape=(), dtype=np.int32),
     )
-    type_spec = computation_types.StructType([np.bool_, np.int32])
+    type_spec = federated_language.StructType([np.bool_, np.int32])
     tf_structure = tensorflow_type_conversions.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(
@@ -357,18 +354,18 @@ class TypeToTfStructureTest(absltest.TestCase):
   def test_with_sequence_type(self):
     with self.assertRaises(ValueError):
       tensorflow_type_conversions.type_to_tf_structure(
-          computation_types.SequenceType(np.int32)
+          federated_language.SequenceType(np.int32)
       )
 
   def test_with_inconsistently_named_elements(self):
     with self.assertRaises(ValueError):
       tensorflow_type_conversions.type_to_tf_structure(
-          computation_types.StructType([('a', np.int32), np.bool_])
+          federated_language.StructType([('a', np.int32), np.bool_])
       )
 
   def test_with_no_elements(self):
     tf_structure = tensorflow_type_conversions.type_to_tf_structure(
-        computation_types.StructType([])
+        federated_language.StructType([])
     )
     self.assertEqual(tf_structure, ())
 
@@ -388,8 +385,8 @@ class StructureFromTensorTypeTreeTest(absltest.TestCase):
 
   def test_single_tensor(self):
     def expect_tfint32_return_5(tensor_type):
-      type_test_utils.assert_types_identical(
-          tensor_type, computation_types.TensorType(np.int32)
+      federated_language.framework.assert_types_identical(
+          tensor_type, federated_language.TensorType(np.int32)
       )
       return 5
 
@@ -399,7 +396,7 @@ class StructureFromTensorTypeTreeTest(absltest.TestCase):
     self.assertEqual(result, 5)
 
   def test_dict(self):
-    struct_type = computation_types.StructWithPythonType(
+    struct_type = federated_language.StructWithPythonType(
         [('a', np.int32), ('b', np.int32)], collections.OrderedDict
     )
     return_incr = self.get_incrementing_function()

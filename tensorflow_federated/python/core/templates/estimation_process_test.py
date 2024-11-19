@@ -13,12 +13,8 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
-
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import estimation_process
 
@@ -29,28 +25,28 @@ _EstimationProcessConstructionError = (
 )
 
 
-@federated_computation.federated_computation()
+@federated_language.federated_computation()
 def _initialize():
-  return intrinsics.federated_value(0, placements.SERVER)
+  return federated_language.federated_value(0, federated_language.SERVER)
 
 
-@federated_computation.federated_computation(
-    computation_types.FederatedType(np.int32, placements.SERVER)
+@federated_language.federated_computation(
+    federated_language.FederatedType(np.int32, federated_language.SERVER)
 )
 def _next(state):
   return state
 
 
-@federated_computation.federated_computation(
-    computation_types.FederatedType(np.int32, placements.SERVER)
+@federated_language.federated_computation(
+    federated_language.FederatedType(np.int32, federated_language.SERVER)
 )
 def _report(state):
   del state  # Unused.
-  return intrinsics.federated_value(1.0, placements.SERVER)
+  return federated_language.federated_value(1.0, federated_language.SERVER)
 
 
-@federated_computation.federated_computation(
-    computation_types.FederatedType(np.float32, placements.SERVER)
+@federated_language.federated_computation(
+    federated_language.FederatedType(np.float32, federated_language.SERVER)
 )
 def _map(state):
   return (state, state)
@@ -66,18 +62,18 @@ class EstimationProcessTest(absltest.TestCase):
 
   def test_construction_with_empty_state_does_not_raise(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_empty():
-      return intrinsics.federated_value((), placements.SERVER)
+      return federated_language.federated_value((), federated_language.SERVER)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType((), placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType((), federated_language.SERVER)
     )
     def _next_empty(state):
       return (state, 1.0)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType((), placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType((), federated_language.SERVER)
     )
     def _report_empty(state):
       return state
@@ -91,23 +87,25 @@ class EstimationProcessTest(absltest.TestCase):
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_unknown():
-      return intrinsics.federated_value(
-          np.array([], np.str_), placements.SERVER
+      return federated_language.federated_value(
+          np.array([], np.str_), federated_language.SERVER
       )
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(
-            computation_types.TensorType(np.str_, [None]), placements.SERVER
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            federated_language.TensorType(np.str_, [None]),
+            federated_language.SERVER,
         )
     )
     def _next_unknown(state):
       return state
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(
-            computation_types.TensorType(np.str_, [None]), placements.SERVER
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            federated_language.TensorType(np.str_, [None]),
+            federated_language.SERVER,
         )
     )
     def _report_unknown(state):
@@ -149,8 +147,8 @@ class EstimationProcessTest(absltest.TestCase):
 
   def test_init_param_not_empty_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER)
     )
     def _initialize_arg(x):
       return x
@@ -160,17 +158,17 @@ class EstimationProcessTest(absltest.TestCase):
 
   def test_init_state_not_assignable(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_float():
-      return intrinsics.federated_value(0.0, placements.SERVER)
+      return federated_language.federated_value(0.0, federated_language.SERVER)
 
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       estimation_process.EstimationProcess(_initialize_float, _next, _report)
 
   def test_next_state_not_assignable(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.float32, federated_language.SERVER)
     )
     def _next_float(state):
       return state
@@ -179,10 +177,15 @@ class EstimationProcessTest(absltest.TestCase):
       estimation_process.EstimationProcess(_initialize, _next_float, _report)
 
   def test_next_state_not_assignable_tuple_result(self):
-    @federated_computation.federated_computation(
-        computation_types.StructType([
-            computation_types.FederatedType(np.float32, placements.SERVER),
-            computation_types.FederatedType(np.float32, placements.SERVER),
+
+    @federated_language.federated_computation(
+        federated_language.StructType([
+            federated_language.FederatedType(
+                np.float32, federated_language.SERVER
+            ),
+            federated_language.FederatedType(
+                np.float32, federated_language.SERVER
+            ),
         ]),
     )
     def _next_float(state, value):
@@ -195,7 +198,7 @@ class EstimationProcessTest(absltest.TestCase):
 
   def test_report_state_not_assignable(self):
 
-    @federated_computation.federated_computation(np.float32)
+    @federated_language.federated_computation(np.float32)
     def _report_float(state):
       return state
 
@@ -220,7 +223,7 @@ class EstimationProcessTest(absltest.TestCase):
 
   def test_map_estimate_not_assignable(self):
 
-    @federated_computation.federated_computation(np.int32)
+    @federated_language.federated_computation(np.int32)
     def _map_int(x):
       return x
 

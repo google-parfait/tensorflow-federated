@@ -45,12 +45,11 @@ py_library(
     name = "xla_serialization",
     srcs = ["xla_serialization.py"],
     deps = [
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
         "@com_google_protobuf//:protobuf_python",
+        "@federated_language//federated_language",
+        "@federated_language//federated_language/proto:computation_py_pb2",
     ],
 )
 
@@ -60,9 +59,8 @@ py_test(
     srcs = ["xla_serialization_test.py"],
     deps = [
         ":xla_serialization",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
         "@com_google_protobuf//:protobuf_python",
+        "@federated_language//federated_language",
+        "@federated_language//federated_language/proto:computation_py_pb2",
     ],
 )

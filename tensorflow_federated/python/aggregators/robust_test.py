@@ -16,6 +16,7 @@ import collections
 import itertools
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -25,11 +26,6 @@ from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -57,31 +53,29 @@ def _zeroed_sum(clip=2.0, norm_order=2.0):
   return robust.zeroing_factory(clip, sum_factory.SumFactory(), norm_order)
 
 
-_float_at_server = computation_types.FederatedType(
-    computation_types.TensorType(np.float32), placements.SERVER
+_float_at_server = federated_language.FederatedType(
+    federated_language.TensorType(np.float32), federated_language.SERVER
 )
-_float_at_clients = computation_types.FederatedType(
-    computation_types.TensorType(np.float32), placements.CLIENTS
+_float_at_clients = federated_language.FederatedType(
+    federated_language.TensorType(np.float32), federated_language.CLIENTS
 )
 
 
-@federated_computation.federated_computation()
+@federated_language.federated_computation()
 def _test_init_fn():
-  return intrinsics.federated_value(1.0, placements.SERVER)
+  return federated_language.federated_value(1.0, federated_language.SERVER)
 
 
-@federated_computation.federated_computation(
-    _float_at_server, _float_at_clients
-)
+@federated_language.federated_computation(_float_at_server, _float_at_clients)
 def _test_next_fn(state, value):
   del value
-  return intrinsics.federated_map(
+  return federated_language.federated_map(
       tensorflow_computation.tf_computation(lambda x: x + 1.0, np.float32),
       state,
   )
 
 
-@federated_computation.federated_computation(_float_at_server)
+@federated_language.federated_computation(_float_at_server)
 def _test_report_fn(state):
   return state
 
@@ -100,17 +94,17 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_clip_type_properties_simple(self, value_type):
     factory = _clipped_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         collections.OrderedDict(
             clipping_norm=(), inner_agg=(), clipped_count_agg=()
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -119,25 +113,25 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             clipping=(),
             clipping_norm=robust.NORM_TF_TYPE,
             clipped_count=robust.COUNT_TF_TYPE,
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -154,21 +148,21 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_clip_type_properties_weighted(self, value_type, weight_type):
     factory = _clipped_mean()
-    value_type = computation_types.to_type(value_type)
-    weight_type = computation_types.to_type(weight_type)
+    value_type = federated_language.to_type(value_type)
+    weight_type = federated_language.to_type(weight_type)
     process = factory.create(value_type, weight_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     mean_state_type = collections.OrderedDict(
         value_sum_process=(), weight_sum_process=()
     )
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         collections.OrderedDict(
             clipping_norm=(), inner_agg=mean_state_type, clipped_count_agg=()
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -177,28 +171,28 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             clipping=collections.OrderedDict(mean_value=(), mean_weight=()),
             clipping_norm=robust.NORM_TF_TYPE,
             clipped_count=robust.COUNT_TF_TYPE,
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
-            weight=computation_types.FederatedType(
-                weight_type, placements.CLIENTS
+            weight=federated_language.FederatedType(
+                weight_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -213,17 +207,17 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_zero_type_properties_simple(self, value_type):
     factory = _zeroed_sum()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         collections.OrderedDict(
             zeroing_norm=(), inner_agg=(), zeroed_count_agg=()
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -232,25 +226,25 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             zeroing=(),
             zeroing_norm=robust.NORM_TF_TYPE,
             zeroed_count=robust.COUNT_TF_TYPE,
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -267,21 +261,21 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_zero_type_properties_weighted(self, value_type, weight_type):
     factory = _zeroed_mean()
-    value_type = computation_types.to_type(value_type)
-    weight_type = computation_types.to_type(weight_type)
+    value_type = federated_language.to_type(value_type)
+    weight_type = federated_language.to_type(weight_type)
     process = factory.create(value_type, weight_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     mean_state_type = collections.OrderedDict(
         value_sum_process=(), weight_sum_process=()
     )
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         collections.OrderedDict(
             zeroing_norm=(), inner_agg=mean_state_type, zeroed_count_agg=()
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -290,28 +284,28 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             zeroing=collections.OrderedDict(mean_value=(), mean_weight=()),
             zeroing_norm=robust.NORM_TF_TYPE,
             zeroed_count=robust.COUNT_TF_TYPE,
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
-            weight=computation_types.FederatedType(
-                weight_type, placements.CLIENTS
+            weight=federated_language.FederatedType(
+                weight_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -331,17 +325,17 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         norm_order=2.0,
         zeroed_count_sum_factory=aggregator_test_utils.SumPlusOneFactory(),
     )
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         collections.OrderedDict(
             zeroing_norm=(), inner_agg=(), zeroed_count_agg=np.int32
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -350,25 +344,25 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             zeroing=(),
             zeroing_norm=robust.NORM_TF_TYPE,
             zeroed_count=robust.COUNT_TF_TYPE,
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -389,17 +383,17 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         inner_agg_factory=sum_factory.SumFactory(),
         clipped_count_sum_factory=aggregator_test_utils.SumPlusOneFactory(),
     )
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.FederatedType(
+    server_state_type = federated_language.FederatedType(
         collections.OrderedDict(
             clipping_norm=(), inner_agg=(), clipped_count_agg=np.int32
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -408,25 +402,25 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             clipping=(),
             clipping_norm=robust.NORM_TF_TYPE,
             clipped_count=robust.COUNT_TF_TYPE,
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -441,9 +435,9 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_clip_preserves_aggregated_dtype_with_mixed_float(self, type_spec):
     factory = _clipped_sum()
-    mixed_float = computation_types.to_type(type_spec)
+    mixed_float = federated_language.to_type(type_spec)
     process = factory.create(mixed_float)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         mixed_float, process.next.type_signature.result.result.member
     )
 
@@ -471,23 +465,29 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       self, norm_order, type_spec
   ):
     factory = _zeroed_sum(norm_order=norm_order)
-    mixed_float = computation_types.to_type(type_spec)
+    mixed_float = federated_language.to_type(type_spec)
     process = factory.create(mixed_float)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         mixed_float, process.next.type_signature.result.result.member
     )
 
   @parameterized.named_parameters(
-      ('clip_float_on_clients', 1.0, placements.CLIENTS, _clipped_mean),
-      ('clip_string_on_server', 'bad', placements.SERVER, _clipped_mean),
-      ('zero_float_on_clients', 1.0, placements.CLIENTS, _zeroed_mean),
-      ('zero_string_on_server', 'bad', placements.SERVER, _zeroed_mean),
+      ('clip_float_on_clients', 1.0, federated_language.CLIENTS, _clipped_mean),
+      (
+          'clip_string_on_server',
+          'bad',
+          federated_language.SERVER,
+          _clipped_mean,
+      ),
+      ('zero_float_on_clients', 1.0, federated_language.CLIENTS, _zeroed_mean),
+      ('zero_string_on_server', 'bad', federated_language.SERVER, _zeroed_mean),
   )
   def test_raises_on_bad_norm_process_result(
       self, value, placement, make_factory
   ):
-    report_fn = federated_computation.federated_computation(
-        lambda s: intrinsics.federated_value(value, placement), _float_at_server
+    report_fn = federated_language.federated_computation(
+        lambda s: federated_language.federated_value(value, placement),
+        _float_at_server,
     )
     norm = _test_norm_process(report_fn=report_fn)
 
@@ -499,7 +499,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       ('zero', _zeroed_mean),
   )
   def test_raises_on_bad_process_next_single_param(self, make_factory):
-    next_fn = federated_computation.federated_computation(
+    next_fn = federated_language.federated_computation(
         lambda state: state, _float_at_server
     )
     norm = _test_norm_process(next_fn=next_fn)
@@ -512,7 +512,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       ('zero', _zeroed_mean),
   )
   def test_raises_on_bad_process_next_three_params(self, make_factory):
-    next_fn = federated_computation.federated_computation(
+    next_fn = federated_language.federated_computation(
         lambda state, value1, value2: state,
         _float_at_server,
         _float_at_clients,
@@ -528,10 +528,10 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       ('zero', _zeroed_mean),
   )
   def test_raises_on_bad_process_next_not_float(self, make_factory):
-    complex_at_clients = computation_types.FederatedType(
-        np.complex64, placements.CLIENTS
+    complex_at_clients = federated_language.FederatedType(
+        np.complex64, federated_language.CLIENTS
     )
-    next_fn = federated_computation.federated_computation(
+    next_fn = federated_language.federated_computation(
         lambda state, value: state, _float_at_server, complex_at_clients
     )
     norm = _test_norm_process(next_fn=next_fn)
@@ -546,7 +546,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       ('zero', _zeroed_mean),
   )
   def test_raises_on_bad_process_next_two_outputs(self, make_factory):
-    next_fn = federated_computation.federated_computation(
+    next_fn = federated_language.federated_computation(
         lambda state, val: (state, state), _float_at_server, _float_at_clients
     )
     norm = _test_norm_process(next_fn=next_fn)
@@ -564,7 +564,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_clip_sum(self):
     factory = _clipped_sum()
 
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -578,8 +578,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_clip_mean(self):
     factory = _clipped_mean()
 
-    value_type = computation_types.TensorType(np.float32)
-    weight_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
+    weight_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -594,7 +594,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_clip_sum_struct(self):
     factory = _clipped_sum(4.0)
 
-    value_type = computation_types.to_type(_test_struct_type)
+    value_type = federated_language.to_type(_test_struct_type)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -609,8 +609,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_clip_mean_struct(self):
     factory = _clipped_mean(4.0)
 
-    value_type = computation_types.to_type(_test_struct_type)
-    weight_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.to_type(_test_struct_type)
+    weight_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -626,7 +626,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_increasing_clip_sum(self):
     factory = _clipped_sum(_test_norm_process())
 
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -650,8 +650,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_increasing_clip_mean(self):
     factory = _clipped_mean(_test_norm_process())
 
-    value_type = computation_types.TensorType(np.float32)
-    weight_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
+    weight_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -675,7 +675,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_clip_mixed_float_dtype(self):
     factory = _clipped_sum(clip=3.0)
-    mixed_float = computation_types.to_type((np.float16, np.float32))
+    mixed_float = federated_language.to_type((np.float16, np.float32))
     process = factory.create(mixed_float)
 
     # Should not clip anything.
@@ -691,7 +691,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_zero_sum(self):
     factory = _zeroed_sum()
 
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -705,8 +705,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_zero_mean(self):
     factory = _zeroed_mean()
 
-    value_type = computation_types.TensorType(np.float32)
-    weight_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
+    weight_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -721,7 +721,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_zero_sum_struct(self):
     factory = _zeroed_sum(4.0)
 
-    value_type = computation_types.to_type(_test_struct_type)
+    value_type = federated_language.to_type(_test_struct_type)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -735,8 +735,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_zero_mean_struct(self):
     factory = _zeroed_mean(4.0)
 
-    value_type = computation_types.to_type(_test_struct_type)
-    weight_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.to_type(_test_struct_type)
+    weight_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -751,7 +751,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_zero_sum_struct_inf_norm(self):
     factory = _zeroed_sum(2.0, float('inf'))
 
-    value_type = computation_types.to_type(_test_struct_type)
+    value_type = federated_language.to_type(_test_struct_type)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -765,8 +765,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_zero_mean_struct_inf_norm(self):
     factory = _zeroed_mean(2.0, float('inf'))
 
-    value_type = computation_types.to_type(_test_struct_type)
-    weight_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.to_type(_test_struct_type)
+    weight_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -781,7 +781,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_increasing_zero_sum(self):
     factory = _zeroed_sum(_test_norm_process())
 
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -805,8 +805,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_increasing_zero_mean(self):
     factory = _zeroed_mean(_test_norm_process())
 
-    value_type = computation_types.TensorType(np.float32)
-    weight_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
+    weight_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -832,22 +832,22 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     # Tests when zeroing and clipping are performed with non-integer clips.
     # Zeroing norm grows by 0.75 each time, clipping norm grows by 0.25.
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         _float_at_server, _float_at_clients
     )
     def zeroing_next_fn(state, value):
       del value
-      return intrinsics.federated_map(
+      return federated_language.federated_map(
           tensorflow_computation.tf_computation(lambda x: x + 0.75, np.float32),
           state,
       )
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         _float_at_server, _float_at_clients
     )
     def clipping_next_fn(state, value):
       del value
-      return intrinsics.federated_map(
+      return federated_language.federated_map(
           tensorflow_computation.tf_computation(lambda x: x + 0.25, np.float32),
           state,
       )
@@ -863,7 +863,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         zeroing_norm_process, _clipped_sum(clipping_norm_process)
     )
 
-    value_type = computation_types.TensorType(np.float32)
+    value_type = federated_language.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -911,7 +911,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_zero_mixed_float_dtype(self, norm_order):
     factory = _zeroed_sum(clip=3.0, norm_order=norm_order)
-    mixed_float = computation_types.to_type((np.float16, np.float32))
+    mixed_float = federated_language.to_type((np.float16, np.float32))
     process = factory.create(mixed_float)
 
     # Should not zero-out anything.

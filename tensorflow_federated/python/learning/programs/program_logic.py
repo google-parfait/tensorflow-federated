@@ -17,12 +17,11 @@ import datetime
 import typing
 from typing import Optional, Protocol, Union
 
+import federated_language
+
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.program import data_source
-from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
-from tensorflow_federated.python.program import release_manager
 
 
 @typing.runtime_checkable
@@ -39,16 +38,16 @@ class TrainModelProgramLogic(Protocol):
       *,
       train_process: learning_process.LearningProcess,
       initial_train_state: composers.LearningAlgorithmState,
-      train_data_source: data_source.FederatedDataSource,
+      train_data_source: federated_language.program.FederatedDataSource,
       train_per_round_clients: int,
       train_total_rounds: int,
-      program_state_manager: program_state_manager_lib.ProgramStateManager,
-      model_output_manager: release_manager.ReleaseManager[
-          release_manager.ReleasableStructure, str
+      program_state_manager: federated_language.program.ProgramStateManager,
+      model_output_manager: federated_language.program.ReleaseManager[
+          federated_language.program.ReleasableStructure, str
       ],
       train_metrics_manager: Optional[
-          release_manager.ReleaseManager[
-              release_manager.ReleasableStructure, int
+          federated_language.program.ReleaseManager[
+              federated_language.program.ReleasableStructure, int
           ]
       ] = None,
       evaluation_manager: Optional[evaluation_program_logic.EvaluationManager],

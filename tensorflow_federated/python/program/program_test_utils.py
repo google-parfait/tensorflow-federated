@@ -22,43 +22,43 @@ from typing import NamedTuple, Optional, TypeVar, Union
 import warnings
 
 import attrs
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import serializable
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.program import value_reference
 
 
 T = TypeVar('T')
 
 
 class TestMaterializableValueReference(
-    value_reference.MaterializableValueReference
+    federated_language.program.MaterializableValueReference
 ):
   """A test implementation of `tff.program.MaterializableValueReference`."""
 
-  def __init__(self, value: value_reference.MaterializedValue):
+  def __init__(self, value: federated_language.program.MaterializedValue):
     self._value = value
 
     if isinstance(value, bool):
-      self._type_signature = computation_types.TensorType(np.bool_)
+      self._type_signature = federated_language.TensorType(np.bool_)
     elif isinstance(value, int):
-      self._type_signature = computation_types.TensorType(np.int32)
+      self._type_signature = federated_language.TensorType(np.int32)
     elif isinstance(value, str):
-      self._type_signature = computation_types.TensorType(np.str_)
+      self._type_signature = federated_language.TensorType(np.str_)
     elif isinstance(value, list):
-      self._type_signature = computation_types.SequenceType(np.int32)
+      self._type_signature = federated_language.SequenceType(np.int32)
     else:
       raise NotImplementedError(f'Unexpected type found: {type(value)}.')
 
   @property
-  def type_signature(self) -> value_reference.MaterializableTypeSignature:
+  def type_signature(
+      self,
+  ) -> federated_language.program.MaterializableTypeSignature:
     return self._type_signature
 
-  async def get_value(self) -> value_reference.MaterializedValue:
+  async def get_value(self) -> federated_language.program.MaterializedValue:
     return self._value
 
   def __eq__(self, other: object) -> bool:
@@ -68,13 +68,13 @@ class TestMaterializableValueReference(
       return NotImplemented
     if self._type_signature != other._type_signature:
       return False
-    if isinstance(self._type_signature, computation_types.SequenceType):
+    if isinstance(self._type_signature, federated_language.SequenceType):
       return list(self._value) == list(other._value)
     else:
       return self._value == other._value
 
 
-class TestSerializable(serializable.Serializable):
+class TestSerializable(federated_language.Serializable):
   """A test implementation of `tff.Serializable`."""
 
   def __init__(self, a: int, b: int) -> None:
@@ -110,7 +110,7 @@ class TestNamedTuple1(NamedTuple):
   a: bool
   b: int
   c: str
-  d: value_reference.MaterializableValueReference
+  d: federated_language.program.MaterializableValueReference
   e: Optional[TestSerializable]
 
 

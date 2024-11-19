@@ -26,12 +26,12 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "third_party/py/federated_language/proto/computation.pb.h"
 
 namespace tensorflow_federated {
 
 inline std::vector<std::string> NamesFromStructType(
-    const v0::StructType& struct_type) {
+    const federated_language::StructType& struct_type) {
   std::vector<std::string> names;
   for (const auto& struct_el : struct_type.element()) {
     if (struct_el.name().length()) {
@@ -44,7 +44,7 @@ inline std::vector<std::string> NamesFromStructType(
 using NameAndIndex = std::pair<std::string, uint32_t>;
 
 inline absl::StatusOr<std::vector<uint32_t>> TFNestTraversalOrderFromStruct(
-    const v0::StructType& struct_type) {
+    const federated_language::StructType& struct_type) {
   auto struct_names = NamesFromStructType(struct_type);
   std::vector<uint32_t> traversal_order(struct_type.element_size(), 0);
   // Initialize traversal order as iteration order over the structure.

@@ -17,34 +17,32 @@ from collections.abc import Callable
 from typing import Optional
 
 import attrs
+import federated_language
 import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.impl.types import typed_object
 
 
-def _tensor_to_type(tensor: tf.Tensor) -> computation_types.Type:
+def _tensor_to_type(tensor: tf.Tensor) -> federated_language.Type:
   """Returns a `tff.Type` for the `tensor`."""
   return tensorflow_types.to_type((tensor.dtype, tensor.shape))
 
 
-def _variable_to_type(variable: tf.Variable) -> computation_types.Type:
+def _variable_to_type(variable: tf.Variable) -> federated_language.Type:
   """Returns a `tff.Type` for the `variable`."""
   return tensorflow_types.to_type((variable.dtype, variable.shape))
 
 
-def _dataset_to_type(dataset: tf.data.Dataset) -> computation_types.Type:
+def _dataset_to_type(dataset: tf.data.Dataset) -> federated_language.Type:
   """Returns a `tff.Type` for the `dataset`."""
   dataset_spec = tf.data.DatasetSpec.from_value(dataset)
   return tensorflow_types.to_type(dataset_spec)
 
 
-def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
+def tensorflow_infer_type(obj: object) -> Optional[federated_language.Type]:
   """Returns a `tff.Type` for an `obj` containing TensorFlow values.
 
   This function extends `type_conversions.infer_type` to handle TensorFlow
@@ -74,13 +72,13 @@ def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
     obj: An object to infer a `tff.Type`.
   """
 
-  class _Placeholder(typed_object.TypedObject):
+  class _Placeholder(federated_language.TypedObject):
 
-    def __init__(self, type_signature: computation_types.Type):
+    def __init__(self, type_signature: federated_language.Type):
       self._type_signature = type_signature
 
     @property
-    def type_signature(self) -> computation_types.Type:
+    def type_signature(self) -> federated_language.Type:
       return self._type_signature
 
   def _infer_type(obj):
@@ -101,10 +99,10 @@ def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
       return None
 
   partial = tree.traverse(_infer_type, obj)
-  return type_conversions.infer_type(partial)
+  return federated_language.framework.infer_type(partial)
 
 
-def _type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
+def _type_to_tf_dtypes_and_shapes(type_spec: federated_language.Type):
   """Returns nested structures of tensor dtypes and shapes for a given TFF type.
 
   The returned dtypes and shapes match those used by `tf.data.Dataset`s to
@@ -112,7 +110,7 @@ def _type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
   arguments in constructing an iterator over a string handle.
 
   Args:
-    type_spec: A `computation_types.Type`, the type specification must be
+    type_spec: A `federated_language.Type`, the type specification must be
       composed of only named tuples and tensors. In all named tuples that appear
       in the type spec, all the elements must be named.
 
@@ -126,11 +124,11 @@ def _type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
     ValueError: if the `type_spec` is composed of something other than named
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  py_typecheck.check_type(type_spec, federated_language.Type)
+  if isinstance(type_spec, federated_language.TensorType):
     shape = tf.TensorShape(type_spec.shape)
     return (type_spec.dtype, shape)
-  elif isinstance(type_spec, computation_types.StructType):
+  elif isinstance(type_spec, federated_language.StructType):
     elements = structure.to_elements(type_spec)
     if not elements:
       output_dtypes = []
@@ -194,7 +192,7 @@ def _type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
     )
 
 
-def type_to_tf_tensor_specs(type_spec: computation_types.Type):
+def type_to_tf_tensor_specs(type_spec: federated_language.Type):
   """Returns nested structure of `tf.TensorSpec`s for a given TFF type.
 
   The dtypes and shapes of the returned `tf.TensorSpec`s match those used by
@@ -202,7 +200,7 @@ def type_to_tf_tensor_specs(type_spec: computation_types.Type):
   be used, e.g., as arguments in constructing an iterator over a string handle.
 
   Args:
-    type_spec: A `computation_types.Type`, the type specification must be
+    type_spec: A `federated_language.Type`, the type specification must be
       composed of only named tuples and tensors. In all named tuples that appear
       in the type spec, all the elements must be named.
 
@@ -218,11 +216,11 @@ def type_to_tf_tensor_specs(type_spec: computation_types.Type):
   )
 
 
-def type_to_tf_structure(type_spec: computation_types.Type):
+def type_to_tf_structure(type_spec: federated_language.Type):
   """Returns nested `tf.data.experimental.Structure` for a given TFF type.
 
   Args:
-    type_spec: A `computation_types.Type`, the type specification must be
+    type_spec: A `federated_language.Type`, the type specification must be
       composed of only named tuples and tensors. In all named tuples that appear
       in the type spec, all the elements must be named.
 
@@ -234,10 +232,10 @@ def type_to_tf_structure(type_spec: computation_types.Type):
     ValueError: if the `type_spec` is composed of something other than named
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  py_typecheck.check_type(type_spec, federated_language.Type)
+  if isinstance(type_spec, federated_language.TensorType):
     return tf.TensorSpec(type_spec.shape, type_spec.dtype)
-  elif isinstance(type_spec, computation_types.StructType):
+  elif isinstance(type_spec, federated_language.StructType):
     elements = structure.to_elements(type_spec)
     if not elements:
       return ()
@@ -269,10 +267,10 @@ def type_to_tf_structure(type_spec: computation_types.Type):
 
 
 def _structure_from_tensor_type_tree_inner(
-    fn, type_spec: computation_types.Type
+    fn, type_spec: federated_language.Type
 ):
   """Helper for `structure_from_tensor_type_tree`."""
-  if isinstance(type_spec, computation_types.StructType):
+  if isinstance(type_spec, federated_language.StructType):
     def _map_element(element):
       name, nested_type = element
       return (name, _structure_from_tensor_type_tree_inner(fn, nested_type))
@@ -280,7 +278,7 @@ def _structure_from_tensor_type_tree_inner(
     return structure.Struct(
         map(_map_element, structure.iter_elements(type_spec))
     )
-  elif isinstance(type_spec, computation_types.TensorType):
+  elif isinstance(type_spec, federated_language.TensorType):
     return fn(type_spec)
   else:
     raise ValueError(
@@ -290,7 +288,7 @@ def _structure_from_tensor_type_tree_inner(
 
 
 def structure_from_tensor_type_tree(
-    fn: Callable[[computation_types.TensorType], object], type_spec
+    fn: Callable[[federated_language.TensorType], object], type_spec
 ) -> object:
   """Constructs a structure from a `type_spec` tree of `tff.TensorType`s.
 
@@ -309,6 +307,8 @@ def structure_from_tensor_type_tree(
   Raises:
     ValueError: if the provided `type_spec` is not a structural or tensor type.
   """
-  type_spec = computation_types.to_type(type_spec)
+  type_spec = federated_language.to_type(type_spec)
   non_python_typed = _structure_from_tensor_type_tree_inner(fn, type_spec)
-  return type_conversions.type_to_py_container(non_python_typed, type_spec)
+  return federated_language.framework.type_to_py_container(
+      non_python_typed, type_spec
+  )

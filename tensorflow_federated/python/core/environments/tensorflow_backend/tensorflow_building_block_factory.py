@@ -17,25 +17,20 @@ from collections.abc import Callable
 import functools
 from typing import Optional, Union
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.types import array_shape
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 @functools.lru_cache()
 def _create_tensorflow_constant(
-    type_spec: computation_types.Type,
+    type_spec: federated_language.Type,
     scalar_value: Union[int, float, str],
     name=None,
-) -> building_blocks.Call:
+) -> federated_language.framework.Call:
   """Creates called graph returning constant `scalar_value` of type `type_spec`.
 
   `scalar_value` must be a scalar, and cannot be a float if any of the tensor
@@ -43,15 +38,15 @@ def _create_tensorflow_constant(
   only named tuples and tensor types, but these can be arbitrarily nested.
 
   Args:
-    type_spec: A `computation_types.Type` whose resulting type tree can only
+    type_spec: A `federated_language.Type` whose resulting type tree can only
       contain named tuples and tensors.
     scalar_value: Scalar value to place in all the tensor leaves of `type_spec`.
     name: An optional string name to use as the name of the computation.
 
   Returns:
-    An instance of `building_blocks.Call`, whose argument is `None`
+    An instance of `federated_language.framework.Call`, whose argument is `None`
     and whose function is a noarg
-    `building_blocks.CompiledComputation` which returns the
+    `federated_language.framework.CompiledComputation` which returns the
     specified `scalar_value` packed into a TFF structure of type `type_spec.
 
   Raises:
@@ -60,18 +55,18 @@ def _create_tensorflow_constant(
   proto, function_type = tensorflow_computation_factory.create_constant(
       scalar_value, type_spec
   )
-  compiled = building_blocks.CompiledComputation(
+  compiled = federated_language.framework.CompiledComputation(
       proto, name, type_signature=function_type
   )
-  return building_blocks.Call(compiled, None)
+  return federated_language.framework.Call(compiled, None)
 
 
-def create_null_federated_aggregate() -> building_blocks.Call:
+def create_null_federated_aggregate() -> federated_language.framework.Call:
   """Creates an aggregate over an empty struct and returns an empty struct."""
-  unit = building_blocks.Struct([])
+  unit = federated_language.framework.Struct([])
   unit_type = unit.type_signature
-  value = building_block_factory.create_federated_value(
-      unit, placements.CLIENTS
+  value = federated_language.framework.create_federated_value(
+      unit, federated_language.CLIENTS
   )
   zero = unit
   accumulate_proto, accumulate_type = (
@@ -79,73 +74,76 @@ def create_null_federated_aggregate() -> building_blocks.Call:
           lambda a, b: a, unit_type
       )
   )
-  accumulate = building_blocks.CompiledComputation(
+  accumulate = federated_language.framework.CompiledComputation(
       accumulate_proto, type_signature=accumulate_type
   )
   merge = accumulate
   report_proto, report_type = tensorflow_computation_factory.create_identity(
-      computation_types.StructType([])
+      federated_language.StructType([])
   )
-  report = building_blocks.CompiledComputation(
+  report = federated_language.framework.CompiledComputation(
       report_proto, type_signature=report_type
   )
-  return building_block_factory.create_federated_aggregate(
+  return federated_language.framework.create_federated_aggregate(
       value, zero, accumulate, merge, report
   )
 
 
 def create_null_federated_broadcast():
-  return building_block_factory.create_federated_broadcast(
-      building_block_factory.create_federated_value(
-          building_blocks.Struct([]), placements.SERVER
+  return federated_language.framework.create_federated_broadcast(
+      federated_language.framework.create_federated_value(
+          federated_language.framework.Struct([]), federated_language.SERVER
       )
   )
 
 
-def create_null_federated_map() -> building_blocks.Call:
+def create_null_federated_map() -> federated_language.framework.Call:
   fn_proto, fn_type = tensorflow_computation_factory.create_identity(
-      computation_types.StructType([])
+      federated_language.StructType([])
   )
-  fn = building_blocks.CompiledComputation(fn_proto, type_signature=fn_type)
-  return building_block_factory.create_federated_map(
+  fn = federated_language.framework.CompiledComputation(
+      fn_proto, type_signature=fn_type
+  )
+  return federated_language.framework.create_federated_map(
       fn,
-      building_block_factory.create_federated_value(
-          building_blocks.Struct([]), placements.CLIENTS
+      federated_language.framework.create_federated_value(
+          federated_language.framework.Struct([]), federated_language.CLIENTS
       ),
   )
 
 
 def create_null_federated_secure_sum():
-  return building_block_factory.create_federated_secure_sum(
-      building_block_factory.create_federated_value(
-          building_blocks.Struct([]), placements.CLIENTS
+  return federated_language.framework.create_federated_secure_sum(
+      federated_language.framework.create_federated_value(
+          federated_language.framework.Struct([]), federated_language.CLIENTS
       ),
-      building_blocks.Struct([]),
+      federated_language.framework.Struct([]),
   )
 
 
 def create_null_federated_secure_sum_bitwidth():
-  return building_block_factory.create_federated_secure_sum_bitwidth(
-      building_block_factory.create_federated_value(
-          building_blocks.Struct([]), placements.CLIENTS
+  return federated_language.framework.create_federated_secure_sum_bitwidth(
+      federated_language.framework.create_federated_value(
+          federated_language.framework.Struct([]), federated_language.CLIENTS
       ),
-      building_blocks.Struct([]),
+      federated_language.framework.Struct([]),
   )
 
 
 @functools.lru_cache()
 def create_generic_constant(
-    type_spec: Optional[computation_types.Type], scalar_value: Union[int, float]
-) -> building_blocks.ComputationBuildingBlock:
+    type_spec: Optional[federated_language.Type],
+    scalar_value: Union[int, float],
+) -> federated_language.framework.ComputationBuildingBlock:
   """Creates constant for a combination of federated, tuple and tensor types.
 
   Args:
-    type_spec: A `computation_types.Type` containing only federated, tuple or
+    type_spec: A `federated_language.Type` containing only federated, tuple or
       tensor types, or `None` to use to construct a generic constant.
     scalar_value: The scalar value we wish this constant to have.
 
   Returns:
-    Instance of `building_blocks.ComputationBuildingBlock`
+    Instance of `federated_language.framework.ComputationBuildingBlock`
     representing `scalar_value` packed into `type_spec`.
 
   Raises:
@@ -155,76 +153,82 @@ def create_generic_constant(
   """
   if type_spec is None:
     return _create_tensorflow_constant(type_spec, scalar_value)
-  py_typecheck.check_type(type_spec, computation_types.Type)
+  py_typecheck.check_type(type_spec, federated_language.Type)
   inferred_scalar_value_type = type_conversions.tensorflow_infer_type(
       scalar_value
   )
   if not isinstance(
-      inferred_scalar_value_type, computation_types.TensorType
-  ) or not array_shape.is_shape_scalar(inferred_scalar_value_type.shape):
+      inferred_scalar_value_type, federated_language.TensorType
+  ) or not federated_language.array_shape_is_scalar(
+      inferred_scalar_value_type.shape
+  ):
     raise TypeError(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
         'value {}'.format(scalar_value)
     )
 
-  def _check_parameters(type_spec: computation_types.Type) -> bool:
+  def _check_parameters(type_spec: federated_language.Type) -> bool:
     return isinstance(
         type_spec,
         (
-            computation_types.FederatedType,
-            computation_types.StructType,
-            computation_types.TensorType,
+            federated_language.FederatedType,
+            federated_language.StructType,
+            federated_language.TensorType,
         ),
     )
 
-  if not type_analysis.contains_only(type_spec, _check_parameters):
+  if not federated_language.framework.type_contains_only(
+      type_spec, _check_parameters
+  ):
     raise TypeError
 
-  def _predicate(type_spec: computation_types.Type) -> bool:
+  def _predicate(type_spec: federated_language.Type) -> bool:
     return isinstance(
         type_spec,
         (
-            computation_types.StructType,
-            computation_types.TensorType,
+            federated_language.StructType,
+            federated_language.TensorType,
         ),
     )
 
-  if type_analysis.contains_only(type_spec, _predicate):
+  if federated_language.framework.type_contains_only(type_spec, _predicate):
     return _create_tensorflow_constant(type_spec, scalar_value)
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif isinstance(type_spec, federated_language.FederatedType):
     unplaced_zero = _create_tensorflow_constant(type_spec.member, scalar_value)
-    if type_spec.placement is placements.CLIENTS:
-      placement_federated_type = computation_types.FederatedType(
+    if type_spec.placement is federated_language.CLIENTS:
+      placement_federated_type = federated_language.FederatedType(
           type_spec.member, type_spec.placement, all_equal=True
       )
-      placement_fn_type = computation_types.FunctionType(
+      placement_fn_type = federated_language.FunctionType(
           type_spec.member, placement_federated_type
       )
-      placement_function = building_blocks.Intrinsic(
-          intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri, placement_fn_type
+      placement_function = federated_language.framework.Intrinsic(
+          federated_language.framework.FEDERATED_VALUE_AT_CLIENTS.uri,
+          placement_fn_type,
       )
-    elif type_spec.placement is placements.SERVER:
-      placement_federated_type = computation_types.FederatedType(
+    elif type_spec.placement is federated_language.SERVER:
+      placement_federated_type = federated_language.FederatedType(
           type_spec.member, type_spec.placement, all_equal=True
       )
-      placement_fn_type = computation_types.FunctionType(
+      placement_fn_type = federated_language.FunctionType(
           type_spec.member, placement_federated_type
       )
-      placement_function = building_blocks.Intrinsic(
-          intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri, placement_fn_type
+      placement_function = federated_language.framework.Intrinsic(
+          federated_language.framework.FEDERATED_VALUE_AT_SERVER.uri,
+          placement_fn_type,
       )
     else:
       raise NotImplementedError(
           f'Unexpected placement found: {type_spec.placement}.'
       )
-    return building_blocks.Call(placement_function, unplaced_zero)
-  elif isinstance(type_spec, computation_types.StructType):
+    return federated_language.framework.Call(placement_function, unplaced_zero)
+  elif isinstance(type_spec, federated_language.StructType):
     elements = []
     for i, _ in enumerate(type_spec):
       elements.append(create_generic_constant(type_spec[i], scalar_value))
     names = [name for name, _ in structure.iter_elements(type_spec)]
-    packed_elements = building_blocks.Struct(elements)
-    named_tuple = building_block_factory.create_named_tuple(
+    packed_elements = federated_language.framework.Struct(elements)
+    named_tuple = federated_language.framework.create_named_tuple(
         packed_elements,
         names,
         type_spec.python_container,
@@ -238,9 +242,9 @@ def create_generic_constant(
 
 
 def apply_binary_operator_with_upcast(
-    arg: building_blocks.ComputationBuildingBlock,
+    arg: federated_language.framework.ComputationBuildingBlock,
     operator: Callable[[object, object], object],
-) -> building_blocks.Call:
+) -> federated_language.framework.Call:
   """Constructs result of applying `operator` to `arg` upcasting if appropriate.
 
   Notice `arg` here must be of federated type, with a named tuple member of
@@ -257,25 +261,27 @@ def apply_binary_operator_with_upcast(
   pointwise.
 
   Args:
-    arg: `building_blocks.ComputationBuildingBlock` of federated type whose
-      `member` attribute is a named tuple type of length 2, or named tuple type
-      of length 2.
+    arg: `federated_language.framework.ComputationBuildingBlock` of federated
+      type whose `member` attribute is a named tuple type of length 2, or named
+      tuple type of length 2.
     operator: Callable representing binary operator to apply to the 2-tuple
       represented by the federated `arg`.
 
   Returns:
-    Instance of `building_blocks.Call`
+    Instance of `federated_language.framework.Call`
     encapsulating the result of formally applying `operator` to
     `arg[0], `arg[1]`, upcasting `arg[1]` in the condition described above.
 
   Raises:
     TypeError: If the types don't match.
   """
-  py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  if isinstance(arg.type_signature, computation_types.FederatedType):
+  py_typecheck.check_type(
+      arg, federated_language.framework.ComputationBuildingBlock
+  )
+  if isinstance(arg.type_signature, federated_language.FederatedType):
     tuple_type = arg.type_signature.member
-    assert isinstance(tuple_type, computation_types.StructType)
-  elif isinstance(arg.type_signature, computation_types.StructType):
+    assert isinstance(tuple_type, federated_language.StructType)
+  elif isinstance(arg.type_signature, federated_language.StructType):
     tuple_type = arg.type_signature
   else:
     raise TypeError(
@@ -288,15 +294,15 @@ def apply_binary_operator_with_upcast(
           operator, tuple_type
       )
   )
-  tf_representing_op = building_blocks.CompiledComputation(
+  tf_representing_op = federated_language.framework.CompiledComputation(
       tf_representing_proto, type_signature=tf_representing_type
   )
 
-  if isinstance(arg.type_signature, computation_types.FederatedType):
-    called = building_block_factory.create_federated_map_or_apply(
+  if isinstance(arg.type_signature, federated_language.FederatedType):
+    called = federated_language.framework.create_federated_map_or_apply(
         tf_representing_op, arg
     )
   else:
-    called = building_blocks.Call(tf_representing_op, arg)
+    called = federated_language.framework.Call(tf_representing_op, arg)
 
   return called

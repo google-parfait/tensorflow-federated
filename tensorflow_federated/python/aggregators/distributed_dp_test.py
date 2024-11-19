@@ -16,6 +16,7 @@ import collections
 import types
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
@@ -29,12 +30,9 @@ from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.core.test import static_assert
 
 _test_struct_type = [(np.float32, (2, 2)), np.float32]
 _test_nested_struct_type = collections.OrderedDict(
@@ -130,7 +128,7 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
   def test_type_properties(self, value_type, mechanism):
     ddp_factory = _make_test_factory(mechanism=mechanism)
     self.assertIsInstance(ddp_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = ddp_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
@@ -172,26 +170,28 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
         padded_dim=np.int32,
         dp_query_metrics=dp_query_metrics_type,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
-            measurements=computation_types.FederatedType(
-                expected_measurements_type, placements.SERVER
+            measurements=federated_language.FederatedType(
+                expected_measurements_type, federated_language.SERVER
             ),
         ),
     )
     actual_next_type = process.next.type_signature
     self.assertTrue(actual_next_type.is_equivalent_to(expected_next_type))
-    static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        process.next
+    )
 
   @parameterized.named_parameters(
       ('negative', -1, ValueError),
@@ -312,13 +312,13 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('plain_struct', [('a', np.int32)]),
-      ('sequence', computation_types.SequenceType(np.int32)),
-      ('function', computation_types.FunctionType(np.int32, np.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
+      ('sequence', federated_language.SequenceType(np.int32)),
+      ('function', federated_language.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[federated_language.SequenceType(np.int32)]]]),
   )
   def test_tff_value_types_raise_on(self, value_type):
     ddp_factory = _make_test_factory()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'Expected `value_type` to be'):
       ddp_factory.create(value_type)
 
@@ -329,7 +329,7 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_component_tensor_dtypes_raise_on(self, value_type):
     test_factory = _make_test_factory()
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'must all be integers or floats'):
       test_factory.create(value_type)
 
@@ -374,7 +374,7 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
         l2_clip=10.0,
         beta=beta,
     )
-    process = ddp_factory.create(computation_types.to_type(value_type))
+    process = ddp_factory.create(federated_language.to_type(value_type))
     state = process.initialize()
     for _ in range(2):
       output = process.next(state, client_values)
@@ -410,7 +410,7 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
     dim = 99
     padded_dim = 100.0 if rotation_type == 'dft' else 128.0
     value_type = (np.float32, _make_onehot(0.0, dim).shape)
-    process = ddp_factory.create(computation_types.to_type(value_type))
+    process = ddp_factory.create(federated_language.to_type(value_type))
     state = process.initialize()
     _, discrete_state, _ = ddp_factory._unpack_state(state)
     cur_scale = discrete_state['scale_factor']
@@ -524,7 +524,7 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
         bits=20,
         mechanism=mechanism,
     )
-    process = ddp_factory.create(computation_types.TensorType(np.float32))
+    process = ddp_factory.create(federated_language.TensorType(np.float32))
     state = process.initialize()
     outputs = []
     for _ in range(num_iterations):

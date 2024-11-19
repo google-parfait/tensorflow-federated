@@ -19,6 +19,7 @@ import math
 import typing
 from typing import Optional, TypeVar, Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -26,12 +27,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -43,16 +38,20 @@ _T = TypeVar('_T', bound=factory.AggregationFactory)
 
 def _constant_process(value):
   """Creates an `EstimationProcess` that reports a constant value."""
-  init_fn = federated_computation.federated_computation(
-      lambda: intrinsics.federated_value((), placements.SERVER)
+  init_fn = federated_language.federated_computation(
+      lambda: federated_language.federated_value((), federated_language.SERVER)
   )
-  next_fn = federated_computation.federated_computation(
+  next_fn = federated_language.federated_computation(
       lambda state, value: state,
       init_fn.type_signature.result,
-      computation_types.FederatedType(NORM_TF_TYPE, placements.CLIENTS),
+      federated_language.FederatedType(
+          NORM_TF_TYPE, federated_language.CLIENTS
+      ),
   )
-  report_fn = federated_computation.federated_computation(
-      lambda state: intrinsics.federated_value(value, placements.SERVER),
+  report_fn = federated_language.federated_computation(
+      lambda state: federated_language.federated_value(
+          value, federated_language.SERVER
+      ),
       init_fn.type_signature.result,
   )
   return estimation_process.EstimationProcess(init_fn, next_fn, report_fn)
@@ -76,7 +75,7 @@ def _check_norm_process(
 
   next_parameter_type = norm_process.next.type_signature.parameter
   if (
-      not isinstance(next_parameter_type, computation_types.StructType)
+      not isinstance(next_parameter_type, federated_language.StructType)
       or len(next_parameter_type) != 2
   ):
     raise TypeError(
@@ -84,8 +83,8 @@ def _check_norm_process(
         f'{next_parameter_type}'
     )
 
-  norm_type_at_clients = computation_types.FederatedType(
-      NORM_TF_TYPE, placements.CLIENTS
+  norm_type_at_clients = federated_language.FederatedType(
+      NORM_TF_TYPE, federated_language.CLIENTS
   )
   if not next_parameter_type[1].is_assignable_from(norm_type_at_clients):  # pytype: disable=unsupported-operands
     raise TypeError(
@@ -102,8 +101,8 @@ def _check_norm_process(
     )
 
   result_type = norm_process.report.type_signature.result
-  norm_type_at_server = computation_types.FederatedType(
-      NORM_TF_TYPE, placements.SERVER
+  norm_type_at_server = federated_language.FederatedType(
+      NORM_TF_TYPE, federated_language.SERVER
   )
   if not norm_type_at_server.is_assignable_from(result_type):
     raise TypeError(
@@ -286,7 +285,9 @@ def _make_wrapper(
     clipping_norm: Union[float, estimation_process.EstimationProcess],
     inner_agg_factory: _T,
     clipped_count_sum_factory: factory.UnweightedAggregationFactory,
-    make_clip_fn: Callable[[factory.ValueType], computation_base.Computation],
+    make_clip_fn: Callable[
+        [factory.ValueType], federated_language.framework.Computation
+    ],
     attribute_prefix: str,
 ) -> _T:
   """Constructs an aggregation factory that applies clip_fn before aggregation.
@@ -326,7 +327,7 @@ def _make_wrapper(
   _check_norm_process(clipping_norm_process, 'clipping_norm_process')
 
   clipped_count_agg_process = clipped_count_sum_factory.create(
-      computation_types.to_type(COUNT_TF_TYPE)  # pytype: disable=wrong-arg-types
+      federated_language.to_type(COUNT_TF_TYPE)  # pytype: disable=wrong-arg-types
   )
 
   prefix = lambda s: attribute_prefix + s
@@ -337,16 +338,18 @@ def _make_wrapper(
         ('inner_agg', inner_agg_process.initialize()),
         (prefix('ed_count_agg'), clipped_count_agg_process.initialize()),
     ])
-    return intrinsics.federated_zip(state)
+    return federated_language.federated_zip(state)
 
   def next_fn_impl(state, value, clip_fn, inner_agg_process, weight=None):
     clipping_norm_state, agg_state, clipped_count_state = state
 
     clipping_norm = clipping_norm_process.report(clipping_norm_state)
 
-    clients_clipping_norm = intrinsics.federated_broadcast(clipping_norm)
+    clients_clipping_norm = federated_language.federated_broadcast(
+        clipping_norm
+    )
 
-    clipped_value, global_norm, was_clipped = intrinsics.federated_map(
+    clipped_value, global_norm, was_clipped = federated_language.federated_map(
         clip_fn, (value, clients_clipping_norm)
     )
 
@@ -375,9 +378,9 @@ def _make_wrapper(
     ])
 
     return measured_process.MeasuredProcessOutput(
-        state=intrinsics.federated_zip(new_state),
+        state=federated_language.federated_zip(new_state),
         result=agg_output.result,
-        measurements=intrinsics.federated_zip(measurements),
+        measurements=federated_language.federated_zip(measurements),
     )
 
   if isinstance(inner_agg_factory, factory.WeightedAggregationFactory):
@@ -395,14 +398,18 @@ def _make_wrapper(
         inner_agg_process = inner_agg_factory.create(value_type, weight_type)
         clip_fn = make_clip_fn(value_type)
 
-        @federated_computation.federated_computation()
+        @federated_language.federated_computation()
         def init_fn():
           return init_fn_impl(inner_agg_process)
 
-        @federated_computation.federated_computation(
+        @federated_language.federated_computation(
             init_fn.type_signature.result,
-            computation_types.FederatedType(value_type, placements.CLIENTS),
-            computation_types.FederatedType(weight_type, placements.CLIENTS),
+            federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
+            ),
+            federated_language.FederatedType(
+                weight_type, federated_language.CLIENTS
+            ),
         )
         def next_fn(state, value, weight):
           return next_fn_impl(state, value, clip_fn, inner_agg_process, weight)
@@ -423,13 +430,15 @@ def _make_wrapper(
         inner_agg_process = inner_agg_factory.create(value_type)
         clip_fn = make_clip_fn(value_type)
 
-        @federated_computation.federated_computation()
+        @federated_language.federated_computation()
         def init_fn():
           return init_fn_impl(inner_agg_process)
 
-        @federated_computation.federated_computation(
+        @federated_language.federated_computation(
             init_fn.type_signature.result,
-            computation_types.FederatedType(value_type, placements.CLIENTS),
+            federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
+            ),
         )
         def next_fn(state, value):
           return next_fn_impl(state, value, clip_fn, inner_agg_process)
@@ -444,7 +453,7 @@ def _make_wrapper(
 def _check_value_type(value_type):
   type_args = typing.get_args(factory.ValueType)
   py_typecheck.check_type(value_type, type_args)
-  if not type_analysis.is_structure_of_floats(value_type):
+  if not federated_language.framework.is_structure_of_floats(value_type):
     raise TypeError(
         'All values in provided value_type must be of floating '
         f'dtype. Provided value_type: {value_type}'

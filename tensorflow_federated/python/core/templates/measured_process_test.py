@@ -16,13 +16,10 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.core.impl.compiler import compiler_test_utils
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
@@ -36,15 +33,15 @@ _MeasuredProcessConstructionError = (
 )
 
 
-@federated_computation.federated_computation()
+@federated_language.federated_computation()
 def _initialize():
-  return intrinsics.federated_value(0, placements.SERVER)
+  return federated_language.federated_value(0, federated_language.SERVER)
 
 
-@federated_computation.federated_computation(
-    computation_types.StructType([
-        computation_types.FederatedType(np.int32, placements.SERVER),
-        computation_types.FederatedType(np.int32, placements.CLIENTS),
+@federated_language.federated_computation(
+    federated_language.StructType([
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     ])
 )
 def _next(state, value):
@@ -61,14 +58,16 @@ class MeasuredProcessTest(absltest.TestCase):
 
   def test_construction_with_empty_state_does_not_raise(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_empty():
-      return intrinsics.federated_value((), placements.SERVER)
+      return federated_language.federated_value((), federated_language.SERVER)
 
-    @federated_computation.federated_computation(
-        computation_types.StructType([
-            computation_types.FederatedType((), placements.SERVER),
-            computation_types.FederatedType(np.int32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.StructType([
+            federated_language.FederatedType((), federated_language.SERVER),
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
         ])
     )
     def _next_empty(state, value):
@@ -81,18 +80,21 @@ class MeasuredProcessTest(absltest.TestCase):
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_unknown():
-      return intrinsics.federated_value(
-          np.array([], np.str_), placements.SERVER
+      return federated_language.federated_value(
+          np.array([], np.str_), federated_language.SERVER
       )
 
-    @federated_computation.federated_computation(
-        computation_types.StructType([
-            computation_types.FederatedType(
-                computation_types.TensorType(np.str_, [None]), placements.SERVER
+    @federated_language.federated_computation(
+        federated_language.StructType([
+            federated_language.FederatedType(
+                federated_language.TensorType(np.str_, [None]),
+                federated_language.SERVER,
             ),
-            computation_types.FederatedType(np.int32, placements.CLIENTS),
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
         ])
     )
     def _next_unknown(state, value):
@@ -124,8 +126,8 @@ class MeasuredProcessTest(absltest.TestCase):
 
   def test_init_param_not_empty_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER)
     )
     def _initialize_arg(x):
       return x
@@ -135,19 +137,23 @@ class MeasuredProcessTest(absltest.TestCase):
 
   def test_init_state_not_assignable(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_float():
-      return intrinsics.federated_value(0.0, placements.SERVER)
+      return federated_language.federated_value(0.0, federated_language.SERVER)
 
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       measured_process.MeasuredProcess(_initialize_float, _next)
 
   def test_next_state_not_assignable(self):
 
-    @federated_computation.federated_computation(
-        computation_types.StructType([
-            computation_types.FederatedType(np.float32, placements.SERVER),
-            computation_types.FederatedType(np.int32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.StructType([
+            federated_language.FederatedType(
+                np.float32, federated_language.SERVER
+            ),
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
         ])
     )
     def _next_float(state, value):
@@ -160,17 +166,19 @@ class MeasuredProcessTest(absltest.TestCase):
 
   def test_measured_process_output_as_state_raises(self):
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def _initialize_process():
       value = measured_process.MeasuredProcessOutput((), (), ())
-      return intrinsics.federated_value(value, placements.SERVER)
+      return federated_language.federated_value(
+          value, federated_language.SERVER
+      )
 
-    @federated_computation.federated_computation(
-        computation_types.StructWithPythonType(
+    @federated_language.federated_computation(
+        federated_language.StructWithPythonType(
             elements=[[
-                computation_types.StructType([]),
-                computation_types.StructType([]),
-                computation_types.StructType([]),
+                federated_language.StructType([]),
+                federated_language.StructType([]),
+                federated_language.StructType([]),
             ]],
             container_type=measured_process.MeasuredProcessOutput,
         )
@@ -183,8 +191,8 @@ class MeasuredProcessTest(absltest.TestCase):
 
   def test_next_return_tensor_type_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER),
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
     )
     def _next_tensor(state):
       return state
@@ -194,10 +202,14 @@ class MeasuredProcessTest(absltest.TestCase):
 
   def test_next_return_tuple_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.StructType([
-            computation_types.FederatedType(np.int32, placements.SERVER),
-            computation_types.FederatedType(np.int32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.StructType([
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
         ])
     )
     def _next_tuple(state, value):
@@ -211,10 +223,14 @@ class MeasuredProcessTest(absltest.TestCase):
         'MeasuredProcessOutput', ['state', 'result', 'measurements']
     )
 
-    @federated_computation.federated_computation(
-        computation_types.StructType([
-            computation_types.FederatedType(np.int32, placements.SERVER),
-            computation_types.FederatedType(np.int32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.StructType([
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
         ])
     )
     def _next_named_tuple(state, value):
@@ -225,10 +241,14 @@ class MeasuredProcessTest(absltest.TestCase):
 
   def test_next_return_odict_raises(self):
 
-    @federated_computation.federated_computation(
-        computation_types.StructType([
-            computation_types.FederatedType(np.int32, placements.SERVER),
-            computation_types.FederatedType(np.int32, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.StructType([
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
         ])
     )
     def _next_odict(state, value):
@@ -242,16 +262,18 @@ class MeasuredProcessTest(absltest.TestCase):
       measured_process.MeasuredProcess(_initialize, _next_odict)
 
   def test_federated_measured_process_output_raises(self):
-    initialize_fn = federated_computation.federated_computation()(
-        lambda: intrinsics.federated_value(0, placements.SERVER)
+    initialize_fn = federated_language.federated_computation()(
+        lambda: federated_language.federated_value(0, federated_language.SERVER)
     )
-    empty = lambda: intrinsics.federated_value((), placements.SERVER)
+    empty = lambda: federated_language.federated_value(
+        (), federated_language.SERVER
+    )
     state_type = initialize_fn.type_signature.result
 
     # Using federated_zip to place FederatedType at the top of the hierarchy.
-    @federated_computation.federated_computation(state_type)
+    @federated_language.federated_computation(state_type)
     def next_fn(state):
-      return intrinsics.federated_zip(
+      return federated_language.federated_zip(
           measured_process.MeasuredProcessOutput(state, empty(), empty())
       )
 
@@ -264,24 +286,26 @@ class MeasuredProcessTest(absltest.TestCase):
 
 def _create_test_measured_process_double(state_type, state_init, values_type):
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def _initialize_double():
-    return intrinsics.federated_value(state_init, placements.SERVER)
+    return federated_language.federated_value(
+        state_init, federated_language.SERVER
+    )
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def _double(x):
     return x
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(state_type, placements.SERVER),
-      computation_types.FederatedType(values_type, placements.CLIENTS),
+  @federated_language.federated_computation(
+      federated_language.FederatedType(state_type, federated_language.SERVER),
+      federated_language.FederatedType(values_type, federated_language.CLIENTS),
   )
   def _next_double(state, values):
     return measured_process.MeasuredProcessOutput(
-        state=intrinsics.federated_map(_double, state),
-        result=intrinsics.federated_map(_double, values),
-        measurements=intrinsics.federated_value(
-            collections.OrderedDict(a=1), placements.SERVER
+        state=federated_language.federated_map(_double, state),
+        result=federated_language.federated_map(_double, values),
+        measurements=federated_language.federated_value(
+            collections.OrderedDict(a=1), federated_language.SERVER
         ),
     )
 
@@ -290,24 +314,26 @@ def _create_test_measured_process_double(state_type, state_init, values_type):
 
 def _create_test_measured_process_sum(state_type, state_init, values_type):
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def _initialize_sum():
-    return intrinsics.federated_value(state_init, placements.SERVER)
+    return federated_language.federated_value(
+        state_init, federated_language.SERVER
+    )
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def _sum(x):
     return x
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(state_type, placements.SERVER),
-      computation_types.FederatedType(values_type, placements.CLIENTS),
+  @federated_language.federated_computation(
+      federated_language.FederatedType(state_type, federated_language.SERVER),
+      federated_language.FederatedType(values_type, federated_language.CLIENTS),
   )
   def _next_sum(state, values):
     return measured_process.MeasuredProcessOutput(
-        state=intrinsics.federated_map(_sum, state),
-        result=intrinsics.federated_sum(values),
-        measurements=intrinsics.federated_value(
-            collections.OrderedDict(b=2), placements.SERVER
+        state=federated_language.federated_map(_sum, state),
+        result=federated_language.federated_sum(values),
+        measurements=federated_language.federated_value(
+            collections.OrderedDict(b=2), federated_language.SERVER
         ),
     )
 
@@ -316,20 +342,22 @@ def _create_test_measured_process_sum(state_type, state_init, values_type):
 
 def _create_test_measured_process_state_at_clients():
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(np.int32, placements.CLIENTS),
-      computation_types.FederatedType(np.int32, placements.CLIENTS),
+  @federated_language.federated_computation(
+      federated_language.FederatedType(np.int32, federated_language.CLIENTS),
+      federated_language.FederatedType(np.int32, federated_language.CLIENTS),
   )
   def next_fn(state, values):
     return measured_process.MeasuredProcessOutput(
         state,
-        intrinsics.federated_sum(values),
-        intrinsics.federated_value(1, placements.SERVER),
+        federated_language.federated_sum(values),
+        federated_language.federated_value(1, federated_language.SERVER),
     )
 
   return measured_process.MeasuredProcess(
-      initialize_fn=federated_computation.federated_computation(
-          lambda: intrinsics.federated_value(0, placements.CLIENTS)
+      initialize_fn=federated_language.federated_computation(
+          lambda: federated_language.federated_value(
+              0, federated_language.CLIENTS
+          )
       ),
       next_fn=next_fn,
   )
@@ -337,12 +365,12 @@ def _create_test_measured_process_state_at_clients():
 
 def _create_test_measured_process_state_missing_placement():
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def _initialize_unplaced():
     return 0
 
-  @federated_computation.federated_computation(
-      computation_types.StructType([np.int32, np.int32])
+  @federated_language.federated_computation(
+      federated_language.StructType([np.int32, np.int32])
   )
   def _next_unplaced(state, value):
     return measured_process.MeasuredProcessOutput(state, value, ())
@@ -352,20 +380,22 @@ def _create_test_measured_process_state_missing_placement():
 
 def _create_test_aggregation_process(state_type, state_init, values_type):
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(state_type, placements.SERVER),
-      computation_types.FederatedType(values_type, placements.CLIENTS),
+  @federated_language.federated_computation(
+      federated_language.FederatedType(state_type, federated_language.SERVER),
+      federated_language.FederatedType(values_type, federated_language.CLIENTS),
   )
   def next_fn(state, values):
     return measured_process.MeasuredProcessOutput(
         state,
-        intrinsics.federated_sum(values),
-        intrinsics.federated_value(1, placements.SERVER),
+        federated_language.federated_sum(values),
+        federated_language.federated_value(1, federated_language.SERVER),
     )
 
   return aggregation_process.AggregationProcess(
-      initialize_fn=federated_computation.federated_computation(
-          lambda: intrinsics.federated_value(state_init, placements.SERVER)
+      initialize_fn=federated_language.federated_computation(
+          lambda: federated_language.federated_value(
+              state_init, federated_language.SERVER
+          )
       ),
       next_fn=next_fn,
   )
@@ -373,11 +403,11 @@ def _create_test_aggregation_process(state_type, state_init, values_type):
 
 def _create_test_iterative_process(state_type, state_init):
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def _initialize_ip():
     return state_init
 
-  @federated_computation.federated_computation(state_type)
+  @federated_language.federated_computation(state_type)
   def _next_ip(state):
     return state
 
@@ -404,11 +434,11 @@ class MeasuredProcessCompositionComputationTest(parameterized.TestCase):
     )
     self.assertIsInstance(composite_process, measured_process.MeasuredProcess)
 
-    expected_state_type = computation_types.FederatedType(
+    expected_state_type = federated_language.FederatedType(
         collections.OrderedDict(double=state_type, last_process=state_type),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -417,20 +447,20 @@ class MeasuredProcessCompositionComputationTest(parameterized.TestCase):
         )
     )
 
-    param_value_type = computation_types.FederatedType(
-        values_type, placements.CLIENTS
+    param_value_type = federated_language.FederatedType(
+        values_type, federated_language.CLIENTS
     )
-    result_value_type = computation_types.FederatedType(
-        values_type, placements.SERVER
+    result_value_type = federated_language.FederatedType(
+        values_type, federated_language.SERVER
     )
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             double=collections.OrderedDict(a=np.int32),
             last_process=last_process.next.type_signature.result.measurements.member,
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type, values=param_value_type
         ),
@@ -564,11 +594,11 @@ class MeasuredProcessConcatenationComputationTest(parameterized.TestCase):
         concatenated_process, measured_process.MeasuredProcess
     )
 
-    expected_state_type = computation_types.FederatedType(
+    expected_state_type = federated_language.FederatedType(
         collections.OrderedDict(double=state_type, last_process=state_type),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -578,25 +608,29 @@ class MeasuredProcessConcatenationComputationTest(parameterized.TestCase):
     )
 
     param_value_type = collections.OrderedDict(
-        double=computation_types.FederatedType(values_type, placements.CLIENTS),
-        last_process=computation_types.FederatedType(
-            values_type, placements.CLIENTS
+        double=federated_language.FederatedType(
+            values_type, federated_language.CLIENTS
+        ),
+        last_process=federated_language.FederatedType(
+            values_type, federated_language.CLIENTS
         ),
     )
     result_value_type = collections.OrderedDict(
-        double=computation_types.FederatedType(values_type, placements.CLIENTS),
-        last_process=computation_types.FederatedType(
-            values_type, placements.SERVER
+        double=federated_language.FederatedType(
+            values_type, federated_language.CLIENTS
+        ),
+        last_process=federated_language.FederatedType(
+            values_type, federated_language.SERVER
         ),
     )
-    expected_measurements_type = computation_types.FederatedType(
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             double=collections.OrderedDict(a=np.int32),
             last_process=last_process.next.type_signature.result.measurements.member,
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type, values=param_value_type
         ),

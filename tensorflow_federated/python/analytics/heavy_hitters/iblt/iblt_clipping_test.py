@@ -13,13 +13,13 @@
 # limitations under the License.
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_clipping
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class IbltClippingTest(parameterized.TestCase):
@@ -109,8 +109,8 @@ class IbltClippingTest(parameterized.TestCase):
         capacity=100, string_max_bytes=10, repetitions=3, seed=0
     )
     clip_fac = iblt_clipping.ClippingIbltFactory(iblt_fac)
-    wrong_type = computation_types.SequenceType(
-        computation_types.TensorType(shape=[None], dtype=np.int32)
+    wrong_type = federated_language.SequenceType(
+        federated_language.TensorType(shape=[None], dtype=np.int32)
     )
     with self.assertRaises(ValueError):
       clip_fac.create(wrong_type)
@@ -122,8 +122,8 @@ class IbltClippingTest(parameterized.TestCase):
     clip_fac = iblt_clipping.ClippingIbltFactory(
         iblt_fac, max_words_per_user=4, unique_counts=True
     )
-    value_type = computation_types.SequenceType(
-        computation_types.TensorType(shape=[None], dtype=np.str_)
+    value_type = federated_language.SequenceType(
+        federated_language.TensorType(shape=[None], dtype=np.str_)
     )
     agg_process = clip_fac.create(value_type)
     data = [

@@ -16,6 +16,7 @@
 import collections
 from collections.abc import Callable
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -25,22 +26,14 @@ from tensorflow_federated.python.core.backends.mapreduce import intrinsics as ma
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 
 
 def _ensure_structure(
     int_or_structure, int_or_structure_type, possible_struct_type
 ):
   if isinstance(
-      int_or_structure_type, computation_types.StructType
-  ) or not isinstance(possible_struct_type, computation_types.StructType):
+      int_or_structure_type, federated_language.StructType
+  ) or not isinstance(possible_struct_type, federated_language.StructType):
     return int_or_structure
   else:
     # Broadcast int_or_structure to the same structure as the struct type
@@ -52,8 +45,8 @@ def _ensure_structure(
 def _get_secure_intrinsic_reductions() -> dict[
     str,
     Callable[
-        [building_blocks.ComputationBuildingBlock],
-        building_blocks.ComputationBuildingBlock,
+        [federated_language.framework.ComputationBuildingBlock],
+        federated_language.framework.ComputationBuildingBlock,
     ],
 ]:
   """Returns map from intrinsic to reducing function.
@@ -74,10 +67,12 @@ def _get_secure_intrinsic_reductions() -> dict[
   """
 
   def federated_secure_sum(arg):
-    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-    summand_arg = building_blocks.Selection(arg, index=0)
+    py_typecheck.check_type(
+        arg, federated_language.framework.ComputationBuildingBlock
+    )
+    summand_arg = federated_language.framework.Selection(arg, index=0)
     summand_type = summand_arg.type_signature.member  # pytype: disable=attribute-error
-    max_input_arg = building_blocks.Selection(arg, index=1)
+    max_input_arg = federated_language.framework.Selection(arg, index=1)
     max_input_type = max_input_arg.type_signature
 
     # Add the max_value as a second value in the zero, so it can be read during
@@ -89,7 +84,7 @@ def _get_secure_intrinsic_reductions() -> dict[
     summation_zero = tensorflow_building_block_factory.create_generic_constant(
         summand_type, 0
     )
-    aggregation_zero = building_blocks.Struct(
+    aggregation_zero = federated_language.framework.Struct(
         [summation_zero, max_input_arg], container_type=tuple
     )
 
@@ -132,9 +127,11 @@ def _get_secure_intrinsic_reductions() -> dict[
             second_operand_type=summand_type,
         )
     )
-    assert_less_equal_and_add = building_blocks.CompiledComputation(
-        assert_less_equal_and_add_proto,
-        type_signature=assert_less_equal_and_add_type,
+    assert_less_equal_and_add = (
+        federated_language.framework.CompiledComputation(
+            assert_less_equal_and_add_proto,
+            type_signature=assert_less_equal_and_add_type,
+        )
     )
 
     def nested_plus(a, b):
@@ -145,7 +142,7 @@ def _get_secure_intrinsic_reductions() -> dict[
             nested_plus, operand_type=aggregation_zero.type_signature
         )
     )
-    plus_op = building_blocks.CompiledComputation(
+    plus_op = federated_language.framework.CompiledComputation(
         plus_proto, type_signature=plus_type
     )
 
@@ -153,15 +150,17 @@ def _get_secure_intrinsic_reductions() -> dict[
     # of the struct (which was holding the max_value).
     drop_max_value_proto, drop_max_value_type = (
         tensorflow_computation_factory.create_unary_operator(
-            lambda x: type_conversions.type_to_py_container(x[0], summand_type),
+            lambda x: federated_language.framework.type_to_py_container(
+                x[0], summand_type
+            ),
             aggregation_zero.type_signature,
         )
     )
-    drop_max_value_op = building_blocks.CompiledComputation(
+    drop_max_value_op = federated_language.framework.CompiledComputation(
         drop_max_value_proto, type_signature=drop_max_value_type
     )
 
-    return building_block_factory.create_federated_aggregate(
+    return federated_language.framework.create_federated_aggregate(
         summand_arg,
         aggregation_zero,
         assert_less_equal_and_add,
@@ -170,9 +169,11 @@ def _get_secure_intrinsic_reductions() -> dict[
     )
 
   def federated_secure_sum_bitwidth(arg):
-    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-    summand_arg = building_blocks.Selection(arg, index=0)
-    bitwidth_arg = building_blocks.Selection(arg, index=1)
+    py_typecheck.check_type(
+        arg, federated_language.framework.ComputationBuildingBlock
+    )
+    summand_arg = federated_language.framework.Selection(arg, index=0)
+    bitwidth_arg = federated_language.framework.Selection(arg, index=1)
 
     # Comptue the max_input value from the provided bitwidth.
     def max_input_from_bitwidth(bitwidth):
@@ -200,34 +201,40 @@ def _get_secure_intrinsic_reductions() -> dict[
             max_input_from_bitwidth, bitwidth_arg.type_signature
         )
     )
-    compute_max_value_op = building_blocks.CompiledComputation(
+    compute_max_value_op = federated_language.framework.CompiledComputation(
         proto, type_signature=type_signature
     )
 
-    max_value = building_blocks.Call(compute_max_value_op, bitwidth_arg)
+    max_value = federated_language.framework.Call(
+        compute_max_value_op, bitwidth_arg
+    )
     return federated_secure_sum(
-        building_blocks.Struct([summand_arg, max_value])
+        federated_language.framework.Struct([summand_arg, max_value])
     )
 
   def federated_secure_modular_sum(arg):
-    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-    if not isinstance(arg.type_signature, computation_types.StructType):
+    py_typecheck.check_type(
+        arg, federated_language.framework.ComputationBuildingBlock
+    )
+    if not isinstance(arg.type_signature, federated_language.StructType):
       raise ValueError(
           f'Expected a `tff.StructType`, found {arg.type_signature}.'
       )
-    if isinstance(arg.type_signature, computation_types.StructWithPythonType):
+    if isinstance(arg.type_signature, federated_language.StructWithPythonType):
       container_type = arg.type_signature.python_container
     else:
       container_type = None
-    summand_arg = building_blocks.Selection(arg, index=0)
-    raw_summed_values = building_block_factory.create_federated_sum(summand_arg)
-
-    unplaced_modulus = building_blocks.Selection(arg, index=1)
-    placed_modulus = building_block_factory.create_federated_value(
-        unplaced_modulus, placements.SERVER
+    summand_arg = federated_language.framework.Selection(arg, index=0)
+    raw_summed_values = federated_language.framework.create_federated_sum(
+        summand_arg
     )
-    modulus_arg = building_block_factory.create_federated_zip(
-        building_blocks.Struct(
+
+    unplaced_modulus = federated_language.framework.Selection(arg, index=1)
+    placed_modulus = federated_language.framework.create_federated_value(
+        unplaced_modulus, federated_language.SERVER
+    )
+    modulus_arg = federated_language.framework.create_federated_zip(
+        federated_language.framework.Struct(
             [raw_summed_values, placed_modulus], container_type=container_type
         )
     )
@@ -247,22 +254,24 @@ def _get_secure_intrinsic_reductions() -> dict[
             second_operand_type=placed_modulus.type_signature.member,  # pytype: disable=attribute-error
         )
     )
-    modulus_fn = building_blocks.CompiledComputation(
+    modulus_fn = federated_language.framework.CompiledComputation(
         proto, type_signature=type_signature
     )
-    modulus_computed = building_block_factory.create_federated_apply(
+    modulus_computed = federated_language.framework.create_federated_apply(
         modulus_fn, modulus_arg
     )
 
     return modulus_computed
 
   def federated_secure_select(arg):
-    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-    client_keys_arg = building_blocks.Selection(arg, index=0)
-    max_key_arg = building_blocks.Selection(arg, index=1)
-    server_val_arg = building_blocks.Selection(arg, index=2)
-    select_fn_arg = building_blocks.Selection(arg, index=3)
-    return building_block_factory.create_federated_select(
+    py_typecheck.check_type(
+        arg, federated_language.framework.ComputationBuildingBlock
+    )
+    client_keys_arg = federated_language.framework.Selection(arg, index=0)
+    max_key_arg = federated_language.framework.Selection(arg, index=1)
+    server_val_arg = federated_language.framework.Selection(arg, index=2)
+    select_fn_arg = federated_language.framework.Selection(arg, index=3)
+    return federated_language.framework.create_federated_select(
         client_keys_arg,
         max_key_arg,
         server_val_arg,
@@ -272,15 +281,21 @@ def _get_secure_intrinsic_reductions() -> dict[
 
   secure_intrinsic_bodies_by_uri = collections.OrderedDict([
       (
-          intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
+          federated_language.framework.FEDERATED_SECURE_SUM_BITWIDTH.uri,
           federated_secure_sum_bitwidth,
       ),
       (
           mapreduce_intrinsics.FEDERATED_SECURE_MODULAR_SUM.uri,
           federated_secure_modular_sum,
       ),
-      (intrinsic_defs.FEDERATED_SECURE_SUM.uri, federated_secure_sum),
-      (intrinsic_defs.FEDERATED_SECURE_SELECT.uri, federated_secure_select),
+      (
+          federated_language.framework.FEDERATED_SECURE_SUM.uri,
+          federated_secure_sum,
+      ),
+      (
+          federated_language.framework.FEDERATED_SECURE_SELECT.uri,
+          federated_secure_select,
+      ),
   ])
   return secure_intrinsic_bodies_by_uri
 
@@ -289,7 +304,7 @@ def _replace_secure_intrinsics_with_insecure_bodies(comp):
   """Iterates over all secure intrinsic bodies, inlining the intrinsics.
 
   This function operates on the AST level; meaning, it takes in a
-  `building_blocks.ComputationBuildingBlock` as an argument and
+  `federated_language.framework.ComputationBuildingBlock` as an argument and
   returns one as well. `replace_intrinsics_with_bodies` is intended to be the
   standard reduction function, which will reduce all currently implemented
   intrinsics to their bodies.
@@ -299,18 +314,20 @@ def _replace_secure_intrinsics_with_insecure_bodies(comp):
   function is ordered from more complex intrinsic to less complex intrinsics.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` in which we
-      wish to replace all intrinsics with their bodies.
+    comp: Instance of `federated_language.framework.ComputationBuildingBlock` in
+      which we wish to replace all intrinsics with their bodies.
 
   Returns:
-    Instance of `building_blocks.ComputationBuildingBlock` with all
+    Instance of `federated_language.framework.ComputationBuildingBlock` with all
     the intrinsics from `intrinsic_bodies.py` inlined with their bodies, along
     with a Boolean indicating whether there was any inlining in fact done.
 
   Raises:
     TypeError: If the types don't match.
   """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      comp, federated_language.framework.ComputationBuildingBlock
+  )
   secure_bodies = _get_secure_intrinsic_reductions()
   transformed = False
   for uri, body in secure_bodies.items():
@@ -340,7 +357,7 @@ def replace_secure_intrinsics_with_bodies(comp):
   replaced_intrinsic_bodies, _ = (
       _replace_secure_intrinsics_with_insecure_bodies(comp.to_building_block())
   )
-  return computation_impl.ConcreteComputation(
+  return federated_language.framework.ConcreteComputation(
       computation_proto=replaced_intrinsic_bodies.proto,
-      context_stack=context_stack_impl.context_stack,
+      context_stack=federated_language.framework.global_context_stack,
   )

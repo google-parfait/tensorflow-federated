@@ -20,25 +20,17 @@ import math
 from typing import Generic, Optional, TypeVar, Union
 
 import attrs
+import federated_language
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
-from tensorflow_federated.python.core.impl.executors import cardinalities_utils
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
-from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.impl.types import typed_object
 
 # Type alias for the payload value in a partitioned data structure.
 Value = TypeVar('Value')
-_Computation = TypeVar('_Computation', bound=computation_base.Computation)
+_Computation = TypeVar(
+    '_Computation', bound=federated_language.framework.Computation
+)
 
 
 class MergeTypeNotAssignableError(TypeError):
@@ -118,15 +110,16 @@ class MergeableCompForm:
   def __init__(
       self,
       *,
-      up_to_merge: computation_base.Computation,
-      merge: computation_base.Computation,
-      after_merge: computation_base.Computation,
+      up_to_merge: federated_language.framework.Computation,
+      merge: federated_language.framework.Computation,
+      after_merge: federated_language.framework.Computation,
   ):
     if not (
         isinstance(
-            up_to_merge.type_signature.result, computation_types.FederatedType
+            up_to_merge.type_signature.result, federated_language.FederatedType
         )
-        and up_to_merge.type_signature.result.placement is placements.SERVER
+        and up_to_merge.type_signature.result.placement
+        is federated_language.SERVER
     ):
       raise UpToMergeTypeError(
           'Expected `up_to_merge` to return a single `tff.SERVER`-placed '
@@ -135,7 +128,7 @@ class MergeableCompForm:
 
     # TFF's StructType assignability relation ensures that an unnamed struct can
     # be assigned to any struct with names.
-    expected_merge_param_type = computation_types.StructType([
+    expected_merge_param_type = federated_language.StructType([
         (None, up_to_merge.type_signature.result.member),  # pytype: disable=attribute-error
         (None, up_to_merge.type_signature.result.member),  # pytype: disable=attribute-error
     ])
@@ -144,10 +137,10 @@ class MergeableCompForm:
     ):  # pytype: disable=attribute-error
       raise MergeTypeNotAssignableError(
           'Type mismatch checking `merge` type signature.\n'
-          + computation_types.type_mismatch_error_message(
+          + federated_language.framework.type_mismatch_error_message(
               merge.type_signature.parameter,
               expected_merge_param_type,
-              computation_types.TypeRelation.ASSIGNABLE,
+              federated_language.framework.TypeRelation.ASSIGNABLE,
               second_is_expected=True,
           )
       )
@@ -169,18 +162,18 @@ class MergeableCompForm:
     if up_to_merge.type_signature.parameter is not None:
       # TODO: b/147499373 - If None arguments were uniformly represented as
       # empty tuples, we could avoid this and related ugly if/else casing.
-      expected_after_merge_arg_type = computation_types.StructType([
+      expected_after_merge_arg_type = federated_language.StructType([
           (None, up_to_merge.type_signature.parameter),
           (
               None,
-              computation_types.FederatedType(
-                  merge.type_signature.result, placements.SERVER
+              federated_language.FederatedType(
+                  merge.type_signature.result, federated_language.SERVER
               ),
           ),
       ])
     else:
-      expected_after_merge_arg_type = computation_types.FederatedType(
-          merge.type_signature.result, placements.SERVER
+      expected_after_merge_arg_type = federated_language.FederatedType(
+          merge.type_signature.result, federated_language.SERVER
       )
 
     after_merge.type_signature.parameter.check_assignable_from(
@@ -188,24 +181,24 @@ class MergeableCompForm:
     )  # pytype: disable=attribute-error
 
     def _federated_type_predicate(
-        type_signature: computation_types.Type,
-        placement: placements.PlacementLiteral,
+        type_signature: federated_language.Type,
+        placement: federated_language.framework.PlacementLiteral,
     ) -> bool:
       return (
-          isinstance(type_signature, computation_types.FederatedType)
+          isinstance(type_signature, federated_language.FederatedType)
           and type_signature.placement is placement
       )
 
     def _moves_clients_to_server_predicate(
-        intrinsic: building_blocks.Intrinsic,
+        intrinsic: federated_language.framework.Intrinsic,
     ):
-      parameter_contains_clients_placement = type_analysis.contains(
+      parameter_contains_clients_placement = federated_language.framework.type_contains(
           intrinsic.type_signature.parameter,  # pytype: disable=attribute-error
-          lambda x: _federated_type_predicate(x, placements.CLIENTS),
+          lambda x: _federated_type_predicate(x, federated_language.CLIENTS),
       )
-      result_contains_server_placement = type_analysis.contains(
+      result_contains_server_placement = federated_language.framework.type_contains(
           intrinsic.type_signature.result,  # pytype: disable=attribute-error
-          lambda x: _federated_type_predicate(x, placements.SERVER),
+          lambda x: _federated_type_predicate(x, federated_language.SERVER),
       )
       return (
           parameter_contains_clients_placement
@@ -215,11 +208,11 @@ class MergeableCompForm:
     aggregations = set()
 
     def _aggregation_predicate(
-        comp: building_blocks.ComputationBuildingBlock,
+        comp: federated_language.framework.ComputationBuildingBlock,
     ) -> bool:
-      if not isinstance(comp, building_blocks.Intrinsic):
+      if not isinstance(comp, federated_language.framework.Intrinsic):
         return False
-      if not isinstance(comp.type_signature, computation_types.FunctionType):
+      if not isinstance(comp.type_signature, federated_language.FunctionType):
         return False
       if _moves_clients_to_server_predicate(comp):
         aggregations.add((comp.uri, comp.type_signature))
@@ -230,7 +223,9 @@ class MergeableCompForm:
     # computation.protos; to avoid opening up a visibility hole that isn't
     # technically necessary here, we prefer to simply skip the static check here
     # for computations which cannot convert themselves to building blocks.
-    if hasattr(after_merge, 'to_building_block') and tree_analysis.contains(
+    if hasattr(
+        after_merge, 'to_building_block'
+    ) and federated_language.framework.computation_contains(
         after_merge.to_building_block(), _aggregation_predicate
     ):
       formatted_aggregations = ', '.join(
@@ -259,10 +254,10 @@ class _PartitioningValue:
 
 
 def _partition_value(
-    val: _PartitioningValue, type_signature: computation_types.Type
+    val: _PartitioningValue, type_signature: federated_language.Type
 ) -> _PartitioningValue:
   """Partitions value as specified in _split_value_into_subrounds."""
-  if isinstance(type_signature, computation_types.StructType):
+  if isinstance(type_signature, federated_language.StructType):
     struct_val = structure.from_container(val.payload)
     partition_result: Optional[_PartitioningValue] = None
     result_container = []
@@ -287,8 +282,8 @@ def _partition_value(
         partition_result.last_client_index,
     )
   elif (
-      isinstance(type_signature, computation_types.FederatedType)
-      and type_signature.placement is placements.CLIENTS
+      isinstance(type_signature, federated_language.FederatedType)
+      and type_signature.placement is federated_language.CLIENTS
   ):
     if type_signature.all_equal:
       # In this case we simply replicate the argument for every subround.
@@ -315,7 +310,7 @@ def _partition_value(
 
 
 def _split_value_into_subrounds(
-    value: Value, type_spec: computation_types.Type, num_desired_subrounds: int
+    value: Value, type_spec: federated_language.Type, num_desired_subrounds: int
 ) -> list[Value]:
   """Partitions clients-placed values to subrounds, replicating other values.
 
@@ -334,26 +329,28 @@ def _split_value_into_subrounds(
     value: The argument to a computation intended to be invoked in subrounds,
       which will be partitioned. `value` can be any structure understood by
       TFF's native execution contexts.
-    type_spec: The `computation_types.Type` corresponding to `value`.
+    type_spec: The `federated_language.Type` corresponding to `value`.
     num_desired_subrounds: Int specifying the desired number of subrounds to
       run. Specifies the maximum length of the returned list.
 
   Returns:
     A list of partitioned values as described above.
   """
-  cardinalities = cardinalities_utils.infer_cardinalities(value, type_spec)
-  if cardinalities.get(placements.CLIENTS) is None:
+  cardinalities = federated_language.framework.infer_cardinalities(
+      value, type_spec
+  )
+  if cardinalities.get(federated_language.CLIENTS) is None:
     # The argument contains no clients-placed values, but may still perform
     # nontrivial clients-placed work.
     return [value for _ in range(num_desired_subrounds)]
-  elif cardinalities[placements.CLIENTS] == 0:
+  elif cardinalities[federated_language.CLIENTS] == 0:
     # Here the argument contains an empty clients-placed value; therefore this
     # computation should be run over an empty set of clients.
     return [value]
 
   partitioning_value = _PartitioningValue(
       payload=value,
-      num_remaining_clients=cardinalities[placements.CLIENTS],
+      num_remaining_clients=cardinalities[federated_language.CLIENTS],
       num_remaining_partitions=num_desired_subrounds,
       last_client_index=0,
   )
@@ -380,11 +377,11 @@ def _split_value_into_subrounds(
 
 def _repackage_partitioned_values(
     after_merge_results: Union[list[Value], tuple[Value, ...]],
-    result_type_spec: computation_types.Type,
+    result_type_spec: federated_language.Type,
 ) -> Value:
   """Inverts `_split_value_into_subrounds` above."""
   py_typecheck.check_type(after_merge_results, (tuple, list))
-  if isinstance(result_type_spec, computation_types.StructType):
+  if isinstance(result_type_spec, federated_language.StructType):
     after_merge_structs = [
         structure.from_container(x) for x in after_merge_results
     ]
@@ -400,8 +397,8 @@ def _repackage_partitioned_values(
       ))
     return structure.Struct(result_container)
   elif (
-      isinstance(result_type_spec, computation_types.FederatedType)
-      and result_type_spec.placement is placements.CLIENTS
+      isinstance(result_type_spec, federated_language.FederatedType)
+      and result_type_spec.placement is federated_language.CLIENTS
   ):
     if result_type_spec.all_equal:
       return after_merge_results[0]
@@ -413,16 +410,16 @@ def _repackage_partitioned_values(
     return after_merge_results[0]
 
 
-class MergeableCompExecutionContextValue(typed_object.TypedObject):
+class MergeableCompExecutionContextValue(federated_language.TypedObject):
   """Represents a value embedded in the `MergeableCompExecutionContext`."""
 
   def __init__(
       self,
       value: object,
-      type_spec: computation_types.Type,
+      type_spec: federated_language.Type,
       num_desired_subrounds: int,
   ):
-    py_typecheck.check_type(type_spec, computation_types.Type)
+    py_typecheck.check_type(type_spec, federated_language.Type)
     self._type_signature = type_spec
     self._partitioned_value = _split_value_into_subrounds(
         value, self._type_signature, num_desired_subrounds=num_desired_subrounds
@@ -437,7 +434,9 @@ class MergeableCompExecutionContextValue(typed_object.TypedObject):
 
 
 async def _invoke_up_to_merge_and_return_context(
-    comp: MergeableCompForm, arg, context: context_base.AsyncContext
+    comp: MergeableCompForm,
+    arg,
+    context: federated_language.framework.AsyncContext,
 ):
   return await context.invoke(
       comp.up_to_merge,  # pytype: disable=attribute-error
@@ -449,7 +448,7 @@ async def _merge_results(
     comp: MergeableCompForm,
     merge_partial,
     value_to_merge,
-    context: context_base.AsyncContext,
+    context: federated_language.framework.AsyncContext,
 ):
   return await context.invoke(
       comp.merge,  # pytype: disable=attribute-error
@@ -461,7 +460,7 @@ async def _compute_after_merged(
     comp: MergeableCompForm,
     original_arg,
     merge_result,
-    context: context_base.AsyncContext,
+    context: federated_language.framework.AsyncContext,
 ):
   if original_arg is not None:
     arg = structure.Struct.unnamed(original_arg, merge_result)
@@ -474,14 +473,17 @@ async def _compute_after_merged(
 
 
 async def _run_in_async_context_pool(
-    task_fn: Callable[[object, context_base.AsyncContext], asyncio.Task],
+    task_fn: Callable[
+        [object, federated_language.framework.AsyncContext], asyncio.Task
+    ],
     arg_list: Sequence[object],
-    execution_contexts: Sequence[context_base.AsyncContext],
+    execution_contexts: Sequence[federated_language.framework.AsyncContext],
     initial_result: object,
     postprocessing_hook: Callable[
-        [object, object, context_base.AsyncContext], Awaitable[Value]
+        [object, object, federated_language.framework.AsyncContext],
+        Awaitable[Value],
     ],
-) -> tuple[Value, Optional[context_base.AsyncContext]]:
+) -> tuple[Value, Optional[federated_language.framework.AsyncContext]]:
   """Runs the tasks against the execution pool, sequentializing the extra work.
 
   Args:
@@ -534,7 +536,7 @@ async def _run_in_async_context_pool(
 async def _invoke_merge_in_async_pool(
     comp: MergeableCompForm,
     arg_list: Sequence[object],
-    execution_contexts: Sequence[context_base.AsyncContext],
+    execution_contexts: Sequence[federated_language.framework.AsyncContext],
 ):
   """Invokes up to merge and merge in a pool of async contexts."""
 
@@ -561,7 +563,7 @@ async def _invoke_after_merge_in_async_pool(
     comp: MergeableCompForm,
     merge_result: object,
     arg_list: Sequence[object],
-    execution_contexts: Sequence[context_base.AsyncContext],
+    execution_contexts: Sequence[federated_language.framework.AsyncContext],
 ) -> list[object]:
   """Invokes after_merge in a pool of async contexts, returning result."""
 
@@ -586,7 +588,7 @@ async def _invoke_after_merge_in_async_pool(
 async def _invoke_mergeable_comp_form(
     comp: MergeableCompForm,
     arg: Optional[MergeableCompExecutionContextValue],
-    execution_contexts: Sequence[context_base.AsyncContext],
+    execution_contexts: Sequence[federated_language.framework.AsyncContext],
 ):
   """Invokes `comp` on `arg`, repackaging the results to a single value."""
 
@@ -599,13 +601,13 @@ async def _invoke_mergeable_comp_form(
       comp, arg_list, execution_contexts
   )
 
-  def _predicate(type_spec: computation_types.Type) -> bool:
+  def _predicate(type_spec: federated_language.Type) -> bool:
     return (
-        not isinstance(type_spec, computation_types.FederatedType)
+        not isinstance(type_spec, federated_language.FederatedType)
         or type_spec.all_equal
     )
 
-  if type_analysis.contains_only(
+  if federated_language.framework.type_contains_only(
       comp.after_merge.type_signature.result,  # pytype: disable=attribute-error
       _predicate,
   ):
@@ -630,7 +632,7 @@ async def _invoke_mergeable_comp_form(
 
 
 class MergeableCompExecutionContext(
-    context_base.SyncContext, Generic[_Computation]
+    federated_language.framework.SyncContext, Generic[_Computation]
 ):
   """Context which executes mergeable computations in subrounds.
 
@@ -643,7 +645,7 @@ class MergeableCompExecutionContext(
 
   def __init__(
       self,
-      async_contexts: Sequence[context_base.AsyncContext],
+      async_contexts: Sequence[federated_language.framework.AsyncContext],
       compiler_fn: Optional[Callable[[_Computation], MergeableCompForm]] = None,
       transform_args: Optional[Callable[[object], object]] = None,
       transform_result: Optional[Callable[[object], object]] = None,
@@ -670,7 +672,7 @@ class MergeableCompExecutionContext(
     """
     self._async_runner = async_utils.AsyncThreadRunner()
     for ctx in async_contexts:
-      py_typecheck.check_type(ctx, context_base.AsyncContext)
+      py_typecheck.check_type(ctx, federated_language.framework.AsyncContext)
     self._async_execution_contexts = async_contexts
     self._transform_args = transform_args
     self._transform_result = transform_result
@@ -680,20 +682,22 @@ class MergeableCompExecutionContext(
         else len(self._async_execution_contexts)
     )
     if compiler_fn is not None:
-      self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
+      self._compiler_pipeline = federated_language.framework.CompilerPipeline(
+          compiler_fn
+      )
     else:
       self._compiler_pipeline = None
 
   def invoke(
       self,
-      comp: Union[MergeableCompForm, computation_base.Computation],
+      comp: Union[MergeableCompForm, federated_language.framework.Computation],
       arg: Optional[object] = None,
   ):
     py_typecheck.check_type(
-        comp, (MergeableCompForm, computation_base.Computation)
+        comp, (MergeableCompForm, federated_language.framework.Computation)
     )
 
-    if isinstance(comp, computation_base.Computation):
+    if isinstance(comp, federated_language.framework.Computation):
       if self._compiler_pipeline is None:
         raise ValueError(
             'Without a compiler, mergeable comp execution context '
@@ -715,7 +719,7 @@ class MergeableCompExecutionContext(
           self._num_subrounds,
       )
 
-    result = type_conversions.type_to_py_container(
+    result = federated_language.framework.type_to_py_container(
         self._async_runner.run_coro_and_return_result(
             _invoke_mergeable_comp_form(
                 comp, arg, self._async_execution_contexts

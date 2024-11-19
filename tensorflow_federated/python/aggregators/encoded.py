@@ -17,6 +17,7 @@ import collections
 from collections.abc import Callable
 import typing
 
+import federated_language
 import tensorflow as tf
 import tree
 
@@ -24,11 +25,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import array_shape
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
@@ -115,7 +111,10 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
     _check_threshold(threshold)
 
     def encoder_fn(value_spec):
-      if array_shape.num_elements_in_shape(value_spec.shape) > threshold:
+      if (
+          federated_language.num_elements_in_array_shape(value_spec.shape)
+          > threshold
+      ):
         return te.encoders.as_gather_encoder(
             te.encoders.uniform_quantization(quantization_bits, **kwargs),
             value_spec,
@@ -157,8 +156,10 @@ def _encoded_init_fn(encoders):
   init_fn_tf = tensorflow_computation.tf_computation(
       lambda: tf.nest.map_structure(lambda e: e.initial_state(), encoders)
   )
-  init_fn = federated_computation.federated_computation(
-      lambda: intrinsics.federated_eval(init_fn_tf, placements.SERVER)
+  init_fn = federated_language.federated_computation(
+      lambda: federated_language.federated_eval(
+          init_fn_tf, federated_language.SERVER
+      )
   )
   return init_fn
 
@@ -320,36 +321,38 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
   def report_fn(acc):
     return acc
 
-  @federated_computation.federated_computation(
+  @federated_language.federated_computation(
       server_state_type,
-      computation_types.FederatedType(value_type, placements.CLIENTS),
+      federated_language.FederatedType(value_type, federated_language.CLIENTS),
   )
   def next_fn(state, value):
     encode_params, decode_before_sum_params, decode_after_sum_params = (
-        intrinsics.federated_map(get_params_fn, state)
+        federated_language.federated_map(get_params_fn, state)
     )
-    encode_params = intrinsics.federated_broadcast(encode_params)
-    decode_before_sum_params = intrinsics.federated_broadcast(
+    encode_params = federated_language.federated_broadcast(encode_params)
+    decode_before_sum_params = federated_language.federated_broadcast(
         decode_before_sum_params
     )
 
-    encoded_values = intrinsics.federated_map(
+    encoded_values = federated_language.federated_map(
         encode_fn, [value, encode_params, decode_before_sum_params]
     )
 
-    aggregated_values = intrinsics.federated_aggregate(
+    aggregated_values = federated_language.federated_aggregate(
         encoded_values, zero_fn(), accumulate_fn, merge_fn, report_fn
     )
 
-    decoded_values = intrinsics.federated_map(
+    decoded_values = federated_language.federated_map(
         decode_after_sum_fn, [aggregated_values.values, decode_after_sum_params]
     )
 
-    updated_state = intrinsics.federated_map(
+    updated_state = federated_language.federated_map(
         update_state_fn, [state, aggregated_values.state_update_tensors]
     )
 
-    empty_metrics = intrinsics.federated_value((), placements.SERVER)
+    empty_metrics = federated_language.federated_value(
+        (), federated_language.SERVER
+    )
     return measured_process.MeasuredProcessOutput(
         state=updated_state, result=decoded_values, measurements=empty_metrics
     )

@@ -24,10 +24,10 @@ import os
 import os.path
 import tempfile
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.simulation.datasets import file_per_user_client_data
 
 # A fake columnar dataset of (user id, value 1, value 2, value 3), roughly
@@ -211,7 +211,7 @@ class FilePerUserClientDataTest(tf.test.TestCase):
   def test_dataset_computation(self):
     data = self._create_fake_client_data()
     self.assertIsInstance(
-        data.dataset_computation, computation_base.Computation
+        data.dataset_computation, federated_language.framework.Computation
     )
     # Iterate over each client, ensuring we received a tf.data.Dataset with the
     # correct data.

@@ -16,6 +16,7 @@
 import collections
 from typing import Optional
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -23,11 +24,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -96,11 +92,11 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
       self, value_type: factory.ValueType
   ) -> aggregation_process.AggregationProcess:
     # Validate input args and value_type and parse out the TF dtypes.
-    if isinstance(value_type, computation_types.TensorType):
+    if isinstance(value_type, federated_language.TensorType):
       tf_dtype = value_type.dtype
     elif isinstance(
-        value_type, computation_types.StructWithPythonType
-    ) and type_analysis.is_structure_of_tensors(value_type):
+        value_type, federated_language.StructWithPythonType
+    ) and federated_language.framework.is_structure_of_tensors(value_type):
       tf_dtype = type_conversions.structure_from_tensor_type_tree(
           lambda x: x.dtype, value_type
       )
@@ -112,7 +108,7 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
       )
 
     # Check that all values are floats.
-    if not type_analysis.is_structure_of_floats(value_type):
+    if not federated_language.framework.is_structure_of_floats(value_type):
       raise TypeError(
           'Component dtypes of `value_type` must all be floats. '
           f'Found {repr(value_type)}.'
@@ -120,7 +116,7 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
 
     if self._distortion_aggregation_factory is not None:
       distortion_aggregation_process = self._distortion_aggregation_factory.create(
-          computation_types.to_type(np.float32)  # pytype: disable=wrong-arg-types
+          federated_language.to_type(np.float32)  # pytype: disable=wrong-arg-types
       )
 
     @tensorflow_computation.tf_computation(value_type, tf.float32)
@@ -157,32 +153,36 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
         discretize_fn.type_signature.result
     )
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
       state = collections.OrderedDict(
-          step_size=intrinsics.federated_value(
-              self._step_size, placements.SERVER
+          step_size=federated_language.federated_value(
+              self._step_size, federated_language.SERVER
           ),
           inner_agg_process=inner_agg_process.initialize(),
       )
-      return intrinsics.federated_zip(state)
+      return federated_language.federated_zip(state)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, value):
       server_step_size = state['step_size']
-      client_step_size = intrinsics.federated_broadcast(server_step_size)
+      client_step_size = federated_language.federated_broadcast(
+          server_step_size
+      )
 
-      discretized_value = intrinsics.federated_map(
+      discretized_value = federated_language.federated_map(
           discretize_fn, (value, client_step_size)
       )
 
       inner_state = state['inner_agg_process']
       inner_agg_output = inner_agg_process.next(inner_state, discretized_value)
 
-      undiscretized_agg_value = intrinsics.federated_map(
+      undiscretized_agg_value = federated_language.federated_map(
           undiscretize_fn, (inner_agg_output.result, server_step_size)
       )
 
@@ -194,7 +194,7 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
       )
 
       if self._distortion_aggregation_factory is not None:
-        distortions = intrinsics.federated_map(
+        distortions = federated_language.federated_map(
             distortion_measurement_fn, (value, client_step_size)
         )
         aggregate_distortion = distortion_aggregation_process.next(
@@ -203,9 +203,9 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
         measurements['distortion'] = aggregate_distortion
 
       return measured_process.MeasuredProcessOutput(
-          state=intrinsics.federated_zip(new_state),
+          state=federated_language.federated_zip(new_state),
           result=undiscretized_agg_value,
-          measurements=intrinsics.federated_zip(measurements),
+          measurements=federated_language.federated_zip(measurements),
       )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)

@@ -15,23 +15,18 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import iterative_process
-from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import debug_measurements
 from tensorflow_federated.python.learning import model_update_aggregator
 
-_FLOAT_TYPE = computation_types.TensorType(np.float32)
-_FLOAT_MATRIX_TYPE = computation_types.TensorType(np.float32, [200, 300])
+_FLOAT_TYPE = federated_language.TensorType(np.float32)
+_FLOAT_MATRIX_TYPE = federated_language.TensorType(np.float32, [200, 300])
 
 
 class ModelUpdateAggregatorTest(parameterized.TestCase):
@@ -197,19 +192,25 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
     aggregator = model_update_aggregator.secure_aggregator(
         weighted=True
     ).create(_FLOAT_MATRIX_TYPE, _FLOAT_TYPE)
-    static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        aggregator.next
+    )
 
   def test_unweighted_secure_aggregator_only_contains_secure_aggregation(self):
     aggregator = model_update_aggregator.secure_aggregator(
         weighted=False
     ).create(_FLOAT_MATRIX_TYPE)
-    static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        aggregator.next
+    )
 
   def test_ddp_secure_aggregator_only_contains_secure_aggregation(self):
     aggregator = model_update_aggregator.ddp_secure_aggregator(
         noise_multiplier=1e-2, expected_clients_per_round=10
     ).create(_FLOAT_MATRIX_TYPE)
-    static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        aggregator.next
+    )
 
   @parameterized.named_parameters(
       ('zeroing_float', True, _FLOAT_TYPE),
@@ -355,7 +356,7 @@ class CompilerIntegrationTest(parameterized.TestCase):
   ):
     aggregator = _mrfify_aggregator(aggregator)
     mrf = form_utils.get_map_reduce_form_for_computation(aggregator.next)
-    num_aggregated_scalars = type_analysis.count_tensors_in_type(
+    num_aggregated_scalars = federated_language.framework.count_tensors_in_type(
         mrf.work.type_signature.result
     )['parameters']
     self.assertLess(num_aggregated_scalars, max_scalars)
@@ -407,30 +408,30 @@ def _mrfify_aggregator(aggregator):
 
   if aggregator.is_weighted:
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         aggregator.next.type_signature.parameter[0],
-        computation_types.FederatedType(
+        federated_language.FederatedType(
             (
                 aggregator.next.type_signature.parameter[1].member,
                 aggregator.next.type_signature.parameter[2].member,
             ),
-            placements.CLIENTS,
+            federated_language.CLIENTS,
         ),
     )
     def next_fn(state, value):
       output = aggregator.next(state, value[0], value[1])
-      return output.state, intrinsics.federated_zip(
+      return output.state, federated_language.federated_zip(
           (output.result, output.measurements)
       )
 
   else:
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         aggregator.next.type_signature.parameter
     )
     def next_fn(state, value):
       output = aggregator.next(state, value)
-      return output.state, intrinsics.federated_zip(
+      return output.state, federated_language.federated_zip(
           (output.result, output.measurements)
       )
 

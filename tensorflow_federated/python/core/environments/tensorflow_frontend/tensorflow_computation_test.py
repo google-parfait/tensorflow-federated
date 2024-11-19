@@ -17,18 +17,12 @@ from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import ml_dtypes
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.computation import computation_wrapper
-from tensorflow_federated.python.core.impl.context_stack import get_context_stack
-from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 def one_arg_fn(x):
@@ -68,33 +62,35 @@ class ToNumpyTest(parameterized.TestCase):
 class TensorFlowComputationTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('tensor_bool', computation_types.TensorType(np.bool_)),
-      ('tensor_int8', computation_types.TensorType(np.int8)),
-      ('tensor_int16', computation_types.TensorType(np.int16)),
-      ('tensor_int32', computation_types.TensorType(np.int32)),
-      ('tensor_int64', computation_types.TensorType(np.int64)),
-      ('tensor_uint8', computation_types.TensorType(np.uint8)),
-      ('tensor_uint16', computation_types.TensorType(np.uint16)),
-      ('tensor_uint32', computation_types.TensorType(np.uint32)),
-      ('tensor_uint64', computation_types.TensorType(np.uint64)),
-      ('tensor_float16', computation_types.TensorType(np.float16)),
-      ('tensor_float32', computation_types.TensorType(np.float32)),
-      ('tensor_float64', computation_types.TensorType(np.float64)),
-      ('tensor_complex64', computation_types.TensorType(np.complex64)),
-      ('tensor_complex128', computation_types.TensorType(np.complex128)),
-      ('tensor_bfloat16', computation_types.TensorType(ml_dtypes.bfloat16)),
-      ('tensor_str', computation_types.TensorType(np.str_)),
-      ('tensor_generic', computation_types.TensorType(np.int32)),
-      ('tensor_array', computation_types.TensorType(np.int32, shape=[3])),
-      ('sequence', computation_types.SequenceType(np.int32)),
+      ('tensor_bool', federated_language.TensorType(np.bool_)),
+      ('tensor_int8', federated_language.TensorType(np.int8)),
+      ('tensor_int16', federated_language.TensorType(np.int16)),
+      ('tensor_int32', federated_language.TensorType(np.int32)),
+      ('tensor_int64', federated_language.TensorType(np.int64)),
+      ('tensor_uint8', federated_language.TensorType(np.uint8)),
+      ('tensor_uint16', federated_language.TensorType(np.uint16)),
+      ('tensor_uint32', federated_language.TensorType(np.uint32)),
+      ('tensor_uint64', federated_language.TensorType(np.uint64)),
+      ('tensor_float16', federated_language.TensorType(np.float16)),
+      ('tensor_float32', federated_language.TensorType(np.float32)),
+      ('tensor_float64', federated_language.TensorType(np.float64)),
+      ('tensor_complex64', federated_language.TensorType(np.complex64)),
+      ('tensor_complex128', federated_language.TensorType(np.complex128)),
+      ('tensor_bfloat16', federated_language.TensorType(ml_dtypes.bfloat16)),
+      ('tensor_str', federated_language.TensorType(np.str_)),
+      ('tensor_generic', federated_language.TensorType(np.int32)),
+      ('tensor_array', federated_language.TensorType(np.int32, shape=[3])),
+      ('sequence', federated_language.SequenceType(np.int32)),
   )
   def test_returns_concrete_computation_with_dtype(self, type_spec):
     @tensorflow_computation.tf_computation(type_spec)
     def _comp(x):
       return x
 
-    self.assertIsInstance(_comp, computation_impl.ConcreteComputation)
-    expected_type = computation_types.FunctionType(type_spec, type_spec)
+    self.assertIsInstance(
+        _comp, federated_language.framework.ConcreteComputation
+    )
+    expected_type = federated_language.FunctionType(type_spec, type_spec)
     self.assertEqual(_comp.type_signature, expected_type)
 
   @parameterized.named_parameters(
@@ -126,13 +122,13 @@ class TensorFlowComputationTest(parameterized.TestCase):
   def test_tf_computation_without_type(self, fn):
     fn = tensorflow_computation.tf_computation(fn)
     concrete_fn = fn.fn_for_argument_type(
-        computation_types.TensorType(np.int32)
+        federated_language.TensorType(np.int32)
     )
     self.assertEqual(
         concrete_fn.type_signature.compact_representation(), '(int32 -> bool)'
     )
     concrete_fn = fn.fn_for_argument_type(
-        computation_types.TensorType(np.float32)
+        federated_language.TensorType(np.float32)
     )
     self.assertEqual(
         concrete_fn.type_signature.compact_representation(), '(float32 -> bool)'
@@ -153,13 +149,13 @@ class TensorFlowComputationTest(parameterized.TestCase):
       return x > 10
 
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.TensorType(np.int32)
+        federated_language.TensorType(np.int32)
     )
     self.assertEqual(
         concrete_fn.type_signature.compact_representation(), '(int32 -> bool)'
     )
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.TensorType(np.float32)
+        federated_language.TensorType(np.float32)
     )
     self.assertEqual(
         concrete_fn.type_signature.compact_representation(), '(float32 -> bool)'
@@ -189,9 +185,9 @@ class TensorFlowComputationTest(parameterized.TestCase):
     foo = tensorflow_computation.tf_computation(foo)
 
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.StructType([
-            computation_types.TensorType(np.int32),
-            computation_types.TensorType(np.int32),
+        federated_language.StructType([
+            federated_language.TensorType(np.int32),
+            federated_language.TensorType(np.int32),
         ])
     )
     self.assertEqual(
@@ -199,9 +195,9 @@ class TensorFlowComputationTest(parameterized.TestCase):
         '(<int32,int32> -> int32)',
     )
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.StructType([
-            computation_types.TensorType(np.float32),
-            computation_types.TensorType(np.float32),
+        federated_language.StructType([
+            federated_language.TensorType(np.float32),
+            federated_language.TensorType(np.float32),
         ])
     )
     self.assertEqual(
@@ -258,7 +254,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     foo = tensorflow_computation.tf_computation(foo)
 
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.to_type([
+        federated_language.to_type([
             np.int32,
             (np.int32, np.int32),
             [np.int32, np.int32],
@@ -274,7 +270,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
         ),
     )
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.to_type([
+        federated_language.to_type([
             np.float32,
             (np.float32, np.float32),
             [np.float32, np.float32],
@@ -343,7 +339,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     foo = tensorflow_computation.tf_computation(foo)
 
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.StructWithPythonType(
+        federated_language.StructWithPythonType(
             [('x', np.int32), ('y', np.int32)], MyType
         )
     )
@@ -352,7 +348,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
         '(<x=int32,y=int32> -> int32)',
     )
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.StructWithPythonType(
+        federated_language.StructWithPythonType(
             [('x', np.float32), ('y', np.float32)], MyType
         )
     )
@@ -378,11 +374,13 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_fails_with_bad_types(self):
-    function = computation_types.FunctionType(
-        None, computation_types.TensorType(np.int32)
+    function = federated_language.FunctionType(
+        None, federated_language.TensorType(np.int32)
     )
-    federated = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    tuple_on_function = computation_types.StructType([federated, function])
+    federated = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
+    )
+    tuple_on_function = federated_language.StructType([federated, function])
 
     def foo(x):
       del x  # Unused.
@@ -403,14 +401,14 @@ class TensorFlowComputationTest(parameterized.TestCase):
         TypeError, r'you have attempted to create one with the type placement'
     ):
       tensorflow_computation.tf_computation(
-          foo, computation_types.PlacementType()
+          foo, federated_language.PlacementType()
       )
 
     with self.assertRaisesRegex(
         TypeError, r'you have attempted to create one with the type T'
     ):
       tensorflow_computation.tf_computation(
-          foo, computation_types.AbstractType('T')
+          foo, federated_language.AbstractType('T')
       )
 
     with self.assertRaisesRegex(
@@ -435,19 +433,21 @@ class TensorFlowComputationTest(parameterized.TestCase):
       tensorflow_computation.tf_computation(5)
 
   def test_stack_resets_on_none_returned(self):
-    stack = get_context_stack.get_context_stack()
+    stack = federated_language.framework.get_context_stack()
     self.assertIsInstance(
-        stack.current, runtime_error_context.RuntimeErrorContext
+        stack.current, federated_language.framework.RuntimeErrorContext
     )
 
-    with self.assertRaises(computation_wrapper.ComputationReturnedNoneError):
+    with self.assertRaises(
+        federated_language.framework.ComputationReturnedNoneError
+    ):
 
       @tensorflow_computation.tf_computation()
       def _():
         pass
 
     self.assertIsInstance(
-        stack.current, runtime_error_context.RuntimeErrorContext
+        stack.current, federated_language.framework.RuntimeErrorContext
     )
 
   def test_custom_numpy_dtype(self):
@@ -456,11 +456,11 @@ class TensorFlowComputationTest(parameterized.TestCase):
     def foo(x):
       return x
 
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         foo.type_signature,
-        computation_types.FunctionType(
-            parameter=computation_types.TensorType(tf.bfloat16.as_numpy_dtype),
-            result=computation_types.TensorType(tf.bfloat16.as_numpy_dtype),
+        federated_language.FunctionType(
+            parameter=federated_language.TensorType(tf.bfloat16.as_numpy_dtype),
+            result=federated_language.TensorType(tf.bfloat16.as_numpy_dtype),
         ),
     )
 

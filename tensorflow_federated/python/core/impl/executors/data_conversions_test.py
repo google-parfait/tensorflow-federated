@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
 
 from tensorflow_federated.python.core.impl.executors import data_conversions
-from tensorflow_federated.python.core.impl.types import placements
 
 
 class DataConversionsTest(absltest.TestCase):
@@ -23,12 +23,12 @@ class DataConversionsTest(absltest.TestCase):
   def test_converts_placement_keyed_to_string_keyed(self):
     num_clients = 10
     placement_keyed_mapping = {
-        placements.SERVER: 1,
-        placements.CLIENTS: num_clients,
+        federated_language.SERVER: 1,
+        federated_language.CLIENTS: num_clients,
     }
     expected_string_keyed_mapping = {
-        placements.SERVER.uri: 1,
-        placements.CLIENTS.uri: num_clients,
+        federated_language.SERVER.uri: 1,
+        federated_language.CLIENTS.uri: num_clients,
     }
 
     string_keyed_mapping = (
@@ -40,7 +40,10 @@ class DataConversionsTest(absltest.TestCase):
     self.assertEqual(string_keyed_mapping, expected_string_keyed_mapping)
 
   def test_raises_string_keyed_mapping(self):
-    string_keyed_mapping = {placements.SERVER.uri: 1, placements.CLIENTS.uri: 5}
+    string_keyed_mapping = {
+        federated_language.SERVER.uri: 1,
+        federated_language.CLIENTS.uri: 5,
+    }
 
     with self.assertRaises(TypeError):
       data_conversions.convert_cardinalities_dict_to_string_keyed(
@@ -49,8 +52,8 @@ class DataConversionsTest(absltest.TestCase):
 
   def test_raises_non_integer_values(self):
     placement_keyed_non_integer_valued_mapping = {
-        placements.SERVER: 1.0,
-        placements.CLIENTS: 10.0,
+        federated_language.SERVER: 1.0,
+        federated_language.CLIENTS: 10.0,
     }
 
     with self.assertRaises(TypeError):
