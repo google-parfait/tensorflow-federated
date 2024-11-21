@@ -34,6 +34,8 @@ and this project adheres to
     `DPQuantileAggregatorFactory::Deserialze` to save and load aggregator state.
 *   Ability to disable DP when `epsilon` is sufficiently large in
     `DPQuantileAggregator::ReportWithEpsilonAndDelta`.
+*   `DPTensorAggregatorBundle`, a wrapper around one or more instances of
+    `DPTensorAggregator`, and its factory.
 
 ### Removed
 

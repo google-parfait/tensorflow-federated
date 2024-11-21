@@ -39,3 +39,8 @@ message DPQuantileAggregatorState {
   uint64 reservoir_sampling_count = 2;
   bytes buffer = 3;
 }
+
+message DPTensorAggregatorBundleState {
+  uint64 num_inputs = 1;
+  repeated string nested_serialized_states = 2;
+}

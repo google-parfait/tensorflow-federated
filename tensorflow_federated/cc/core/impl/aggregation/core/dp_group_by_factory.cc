@@ -63,8 +63,6 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   TFF_RETURN_IF_ERROR(GroupByFactory::CheckIntrinsic(intrinsic, kDPGroupByUri));
 
   // DPGroupByAggregator expects parameters
-  constexpr int64_t kEpsilonIndex = 0;
-  constexpr int64_t kDeltaIndex = 1;
   constexpr int64_t kL0Index = 2;
   constexpr int kNumOpenDomainParameters = 3;
 

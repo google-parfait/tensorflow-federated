@@ -330,6 +330,24 @@ cc_library(
 )
 
 cc_library(
+    name = "dp_tensor_aggregator_bundle",
+    srcs = ["dp_tensor_aggregator_bundle.cc"],
+    hdrs = [
+        "dp_tensor_aggregator_bundle.h",
+    ],
+    deps = [
+        ":agg_core_cc_proto",
+        ":aggregator",
+        ":dp_fedsql_constants",
+        ":dp_tensor_aggregator",
+        ":intrinsic",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+    ],
+)
+
+cc_library(
     name = "dp_quantile_aggregator",
     srcs = ["dp_quantile_aggregator.cc"],
     hdrs = [
@@ -359,19 +377,21 @@ cc_library(
     deps = [
         ":agg_core_cc_proto",
         ":aggregator",
-        ":composite_key_combiner",
-        ":dp_closed_domain_histogram",
-        ":dp_composite_key_combiner",
-        ":dp_fedsql_constants",
+        ":composite_key_combiner",  # buildcleaner: keep
+        ":dp_closed_domain_histogram",  # buildcleaner: keep
+        ":dp_composite_key_combiner",  # buildcleaner: keep
+        ":dp_fedsql_constants",  # buildcleaner: keep
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
-        ":dp_noise_mechanisms",
-        ":dp_open_domain_histogram",
-        ":fedsql_constants",
+        ":dp_noise_mechanisms",  # buildcleaner: keep
+        ":dp_open_domain_histogram",  # buildcleaner: keep
+        ":dp_quantile_aggregator",  # buildcleaner: keep
+        ":dp_tensor_aggregator_bundle",  # buildcleaner: keep
+        ":fedsql_constants",  # buildcleaner: keep
         ":group_by_aggregator",
         ":grouping_federated_sum",
         ":intrinsic",
-        ":one_dim_grouping_aggregator",
+        ":one_dim_grouping_aggregator",  # buildcleaner: keep
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -685,6 +705,25 @@ cc_test(
         ":dp_fedsql_constants",
         ":dp_grouping_federated_sum",
         ":dp_quantile_aggregator",
+        ":intrinsic",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+    ],
+)
+
+cc_test(
+    name = "dp_tensor_aggregator_bundle_test",
+    srcs = ["dp_tensor_aggregator_bundle_test.cc"],
+    deps = [
+        ":aggregator",
+        ":dp_fedsql_constants",
+        ":dp_quantile_aggregator",  # buildcleaner: keep
+        ":dp_tensor_aggregator_bundle",
+        ":grouping_federated_sum",
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
