@@ -16,6 +16,7 @@ licenses(["notice"])
 exports_files([
     "LICENSE",
     "README.md",
+    "requirements.txt",
 ])
 
 filegroup(
