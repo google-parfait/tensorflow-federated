@@ -37,6 +37,11 @@ and this project adheres to
 *   `DPTensorAggregatorBundle`, a wrapper around one or more instances of
     `DPTensorAggregator`, and its factory.
 
+### Changed
+
+*   `DPTensorAggregatorBundleFactory::CreateInternal` now checks validity of the
+    epsilon and delta parameters of its given intrinsic.
+
 ### Removed
 
 *   `tff.types.tensorflow_to_type`, this function is no longer used.

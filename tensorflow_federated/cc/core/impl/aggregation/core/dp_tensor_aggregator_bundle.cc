@@ -22,6 +22,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -98,9 +99,34 @@ DPTensorAggregatorBundleFactory::CreateInternal(
            << "2 parameters, got " << intrinsic.parameters.size();
   }
 
-  // Tests for epsilon and delta parameters will be in the next CL.
+  // Validate epsilon and delta before splitting them.
+  if (internal::GetTypeKind(intrinsic.parameters[kEpsilonIndex].dtype()) !=
+      internal::TypeKind::kNumeric) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPTensorAggregatorBundleFactory::CreateInternal: Epsilon must "
+           << "be numerical.";
+  }
   double epsilon = intrinsic.parameters[kEpsilonIndex].AsScalar<double>();
+  if (internal::GetTypeKind(intrinsic.parameters[kDeltaIndex].dtype()) !=
+      internal::TypeKind::kNumeric) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPTensorAggregatorBundleFactory::CreateInternal: Delta must "
+           << "be numerical.";
+  }
   double delta = intrinsic.parameters[kDeltaIndex].AsScalar<double>();
+  if (epsilon <= 0) {
+    return TFF_STATUS(INVALID_ARGUMENT) << "DPTensorAggregatorBundleFactory::"
+                                           "CreateInternal: Epsilon must be "
+                                           "positive, but got "
+                                        << epsilon;
+  }
+  if (delta < 0 || delta >= 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPTensorAggregatorBundleFactory::CreateInternal: Delta must be "
+              "non-negative and less than 1, but got "
+           << delta;
+  }
+
   double epsilon_per_agg =
       (epsilon < kEpsilonThreshold ? epsilon / num_nested_intrinsics
                                    : kEpsilonThreshold);

@@ -131,6 +131,89 @@ TEST(DPTensorAggregatorBundleTest, CreateWrongNumberOfParameters) {
               HasSubstr("Expected 2 parameters, got 3"));
 }
 
+// Epsilon must be numerical.
+TEST(DPTensorAggregatorBundleTest, CreateWrongTypeOfEpsilon) {
+  Tensor epsilon =
+      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"blah"}))
+          .value();
+  Tensor delta =
+      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({1e-7})).value();
+  Intrinsic intrinsic = Intrinsic{kDPTensorAggregatorBundleUri, {}, {}, {}, {}};
+  intrinsic.parameters.push_back(std::move(epsilon));
+  intrinsic.parameters.push_back(std::move(delta));
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<double>());
+  auto status = CreateTensorAggregator(intrinsic);
+  EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(status.status().message(),
+              HasSubstr("Epsilon must be numerical"));
+}
+
+// Epsilon must be positive.
+TEST(DPTensorAggregatorBundleTest, CreateBadEpsilon) {
+  // Exclude 0
+  Intrinsic intrinsic = Intrinsic{
+      kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(0), {}};
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<double>());
+  auto status = CreateTensorAggregator(intrinsic);
+  EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(status.status().message(),
+              HasSubstr("Epsilon must be positive, but got 0"));
+
+  // Exclude negatives.
+  Intrinsic intrinsic2 = Intrinsic{
+      kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(-1.0), {}};
+  intrinsic2.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<double>());
+  status = CreateTensorAggregator(intrinsic2);
+  EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(status.status().message(),
+              HasSubstr("Epsilon must be positive, but got -1"));
+}
+
+// Delta must be numerical.
+TEST(DPTensorAggregatorBundleTest, CreateWrongTypeOfDelta) {
+  Tensor epsilon =
+      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({1.0})).value();
+  Tensor delta =
+      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"blah"}))
+          .value();
+  Intrinsic intrinsic = Intrinsic{kDPTensorAggregatorBundleUri, {}, {}, {}, {}};
+  intrinsic.parameters.push_back(std::move(epsilon));
+  intrinsic.parameters.push_back(std::move(delta));
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<double>());
+  auto status = CreateTensorAggregator(intrinsic);
+  EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(status.status().message(), HasSubstr("Delta must be numerical"));
+}
+
+// Delta must be non-negative and less than 1.
+TEST(DPTensorAggregatorBundleTest, CreateBadDelta) {
+  // Exclude larger-than-1.
+  Intrinsic intrinsic = Intrinsic{kDPTensorAggregatorBundleUri,
+                                  {},
+                                  {},
+                                  CreateBundleParameters(1.0, 1.5),
+                                  {}};
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<double>());
+  auto status = CreateTensorAggregator(intrinsic);
+  EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(status.status().message(),
+              HasSubstr("Delta must be non-negative and less than 1, "
+                        "but got 1.5"));
+
+  // Exclude negatives.
+  Intrinsic intrinsic2 = Intrinsic{kDPTensorAggregatorBundleUri,
+                                   {},
+                                   {},
+                                   CreateBundleParameters(1.0, -0.5),
+                                   {}};
+  intrinsic2.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<double>());
+  status = CreateTensorAggregator(intrinsic2);
+  EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(status.status().message(),
+              HasSubstr("Delta must be non-negative and less than 1, "
+                        "but got -0.5"));
+}
+
 // If there is no problem in an intrinsic with 1 quantile aggregator, the
 // bundle should be created successfully. Epsilon and delta should not be split.
 TEST(DPTensorAggregatorBundleTest, CreateSucceeds) {
