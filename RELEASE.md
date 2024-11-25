@@ -41,6 +41,9 @@ and this project adheres to
 
 *   `DPTensorAggregatorBundleFactory::CreateInternal` now checks validity of the
     epsilon and delta parameters of its given intrinsic.
+*   When `DPGroupByFactory::CreateInternal` receives an `epsilon` at or above
+    `kEpsilonThreshold`, it no longer bothers splitting it across the inner
+    aggregators.
 
 ### Removed
 

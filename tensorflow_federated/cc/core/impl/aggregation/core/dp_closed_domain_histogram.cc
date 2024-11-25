@@ -258,7 +258,6 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
     noisy_aggregates.push_back(std::move(new_tensor));
   }
 
-  // Future work will add noise to the aggregates.
   return noisy_aggregates;
 }
 

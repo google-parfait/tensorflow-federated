@@ -482,7 +482,7 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeyDoubleAggWithAllBounds) {
     // For agg 1, Linfinity bound is 20 and no other bounds provided.
     // For agg 2, Linfinity bound is 50, L1 bound is 100, L2 bound is 10.
     auto intrinsic = CreateIntrinsic2Agg<int64_t, int64_t>(
-        2 * kEpsilonThreshold, 0.01, 4, 20, -1, -1, 50, 100, 10);
+        kEpsilonThreshold, 0.01, 4, 20, -1, -1, 50, 100, 10);
     auto result = SingleKeyDoubleAgg<int64_t>(
         intrinsic, {5}, {"zero", "one", "two", "three", "four"},
         {60, 60, 60, 60, 60}, {60, 60, 60, 60, 60}, GetParam());
@@ -574,7 +574,7 @@ TEST_P(DPOpenDomainHistogramTest, DoubleKeyDoubleAggWithAllBounds) {
     // For agg 1, Linfinity bound is 20 and no other bounds provided.
     // For agg 2, Linfinity bound is 50, L1 bound is 100, L2 bound is 10.
     auto intrinsic = CreateIntrinsic2Key2Agg<int64_t, int64_t>(
-        2 * kEpsilonThreshold, 0.01, 4, 20, -1, -1, 50, 100, 10);
+        kEpsilonThreshold, 0.01, 4, 20, -1, -1, 50, 100, 10);
     auto result = DoubleKeyDoubleAgg<int64_t>(
         intrinsic, {5}, {"red", "green", "green", "blue", "gray"},
         {"zero", "one", "two", "three", "four"}, {60, 60, 60, 60, 60},
@@ -626,9 +626,9 @@ Intrinsic CreateIntrinsicNoKeys(double epsilon = kEpsilonThreshold,
 
 TEST_P(DPOpenDomainHistogramTest, NoKeyTripleAggWithAllBounds) {
   Intrinsic intrinsic = CreateIntrinsicNoKeys<int32_t, int64_t>(
-      3 * kEpsilonThreshold, 0.01, 100, 10, 9, 8,  // limit to 8
-      100, 9, -1,                                  // limit to 9
-      100, -1, -1);                                // 100
+      kEpsilonThreshold, 0.01, 100, 10, 9, 8,  // limit to 8
+      100, 9, -1,                              // limit to 9
+      100, -1, -1);                            // 100
 
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
   Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData({11})).value();
@@ -929,7 +929,7 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_SingleKey) {
 
 TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
   Intrinsic intrinsic = CreateIntrinsic2Key2Agg<int64_t, int64_t>(
-      2 * kEpsilonThreshold, 0.001, 1, 1, -1, -1);
+      kEpsilonThreshold, 0.001, 1, 1, -1, -1);
   auto agg1 = CreateTensorAggregator(intrinsic).value();
   auto agg2 = CreateTensorAggregator(intrinsic).value();
 
@@ -982,12 +982,11 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
 }
 
 TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
-  Intrinsic intrinsic{
-      "fedsql_dp_group_by",
-      {},
-      {},
-      {CreateTopLevelParameters(2 * kEpsilonThreshold, 0.01, 100)},
-      {}};
+  Intrinsic intrinsic{"fedsql_dp_group_by",
+                      {},
+                      {},
+                      {CreateTopLevelParameters(kEpsilonThreshold, 0.01, 100)},
+                      {}};
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<int64_t, int64_t>(10, 9, 8));
   intrinsic.nested_intrinsics.push_back(
