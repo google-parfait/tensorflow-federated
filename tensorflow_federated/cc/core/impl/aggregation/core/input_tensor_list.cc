@@ -34,6 +34,14 @@ InputTensorList::InputTensorList(std::initializer_list<const Tensor*> list)
   }
 }
 
+InputTensorList::InputTensorList(const std::vector<const Tensor*>& list)
+    : InputTensorList(list.size()) {
+  size_t i = 0;
+  for (const Tensor* t : list) {
+    data_ptr_[i++] = t;
+  }
+}
+
 InputTensorList::InputTensorList(size_t size)
     : size_(size), is_allocated_(size > kInlinedSize) {
   if (is_allocated_) {

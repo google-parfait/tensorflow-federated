@@ -25,6 +25,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
@@ -254,6 +255,80 @@ TEST(DPTensorAggregatorBundleTest, CreateSucceedsWithSplitEpsilonAndDelta) {
   EXPECT_EQ(bundle->GetDeltaPerAgg(), kDefaultDelta / 2);
 }
 
+// The second batch of tests concerns aggregation.
+
+// If a bundle contains k aggregators and each expects c Tensors for input,
+// the bundle expects c*k Tensors for input.
+TEST(DPTensorAggregatorBundleTest, AggregateWrongNumberOfInputs) {
+  Intrinsic intrinsic = Intrinsic{
+      kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(), {}};
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<int>());
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<float>());
+  auto status = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(status);
+  auto aggregator = std::move(status.value());
+
+  Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+  Tensor t2 = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1})).value();
+  Tensor t3 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+
+  // Too few inputs.
+  auto accumulate_status = aggregator->Accumulate(InputTensorList{&t1});
+  EXPECT_THAT(accumulate_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(accumulate_status.message(),
+              HasSubstr("Expected 2 tensors, got 1"));
+
+  // Too many inputs.
+  auto accumulate_status2 =
+      aggregator->Accumulate(InputTensorList{&t1, &t2, &t3});
+  EXPECT_THAT(accumulate_status2, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(accumulate_status2.message(),
+              HasSubstr("Expected 2 tensors, got 3"));
+}
+
+// If a bundle has two inner aggregators and receives inputs such that those
+// meant for aggregator 0 are correct but those meant for aggregator 1 are
+// incorrect, the bundle should return an error status *and not update state*.
+TEST(DPTensorAggregatorBundleTest, PartiallyCorrectInputDoesNotUpdateState) {
+  Intrinsic intrinsic = Intrinsic{
+      kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(), {}};
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<int>());
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<float>());
+  auto status = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(status);
+  auto aggregator = std::move(status.value());
+
+  // Give the first aggregator the right type of input, but not the second.
+  Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+  Tensor t2 =
+      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({1})).value();
+  auto accumulate_status = aggregator->Accumulate(InputTensorList{&t1, &t2});
+  EXPECT_THAT(accumulate_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(accumulate_status.message(),
+              HasSubstr("Expected an input of type 1,"  // DT_FLOAT
+                        " but got 2"));                 // DT_DOUBLE
+  EXPECT_EQ(aggregator->GetNumInputs(), 0);
+}
+
+// If all n inputs are valid, GetNumInputs() should return n after accumulation.
+TEST(DPTensorAggregatorBundleTest, AllCorrectInputs) {
+  Intrinsic intrinsic = Intrinsic{
+      kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(), {}};
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<int>());
+  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<float>());
+  auto status = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(status);
+  auto aggregator = std::move(status.value());
+
+  for (int i = 0; i < 10; i++) {
+    Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+    Tensor t2 =
+        Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1})).value();
+    auto accumulate_status = aggregator->Accumulate(InputTensorList{&t1, &t2});
+    TFF_EXPECT_OK(accumulate_status);
+  }
+  EXPECT_EQ(aggregator->GetNumInputs(), 10);
+}
 }  // namespace
 
 }  // namespace aggregation

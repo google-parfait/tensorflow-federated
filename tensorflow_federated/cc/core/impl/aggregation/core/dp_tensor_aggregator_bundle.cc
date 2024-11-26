@@ -16,6 +16,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_tensor_aggregator_bundle.h"
 
 #include <memory>
+#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,7 +26,9 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
@@ -39,10 +42,46 @@ DPTensorAggregatorBundle::DPTensorAggregatorBundle(
     std::vector<int> num_tensors_per_agg, double epsilon_per_agg,
     double delta_per_agg, int num_inputs)
     : aggregators_(std::move(aggregators)),
-      num_tensors_per_agg_(num_tensors_per_agg),
+      num_tensors_per_agg_(std::move(num_tensors_per_agg)),
       epsilon_per_agg_(epsilon_per_agg),
       delta_per_agg_(delta_per_agg),
-      num_inputs_(num_inputs) {}
+      num_inputs_(num_inputs) {
+  num_tensors_per_input_ = std::accumulate(num_tensors_per_agg_.begin(),
+                                           num_tensors_per_agg_.end(), 0);
+}
+
+Status DPTensorAggregatorBundle::AggregateTensors(InputTensorList tensors) {
+  if (tensors.size() != num_tensors_per_input_) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPTensorAggregatorBundle::AggregateTensors: Expected "
+           << num_tensors_per_input_ << " tensors, got " << tensors.size();
+  }
+
+  // Split input according to num_tensors_per_agg_ and verify that each batch
+  // is valid, by calling InputMatchesSpec() on the nested aggregators.
+  std::vector<InputTensorList> split_tensors;
+  int current_tensor_index = 0;
+  for (int i = 0; i < num_tensors_per_agg_.size(); ++i) {
+    std::vector<const Tensor*> current_batch;
+    current_batch.reserve(num_tensors_per_agg_[i]);
+    for (int j = 0; j < num_tensors_per_agg_[i]; ++j) {
+      current_batch.push_back(tensors[current_tensor_index++]);
+    }
+    auto current_input_tensor_list = InputTensorList(current_batch);
+    TFF_RETURN_IF_ERROR(
+        aggregators_[i]->InputMatchesSpec(current_input_tensor_list));
+    split_tensors.push_back(std::move(current_input_tensor_list));
+  }
+
+  // Accumulate the tensors in each nested aggregator.
+  for (int i = 0; i < aggregators_.size(); ++i) {
+    TFF_RETURN_IF_ERROR(
+        aggregators_[i]->Accumulate(std::move(split_tensors[i])));
+  }
+  num_inputs_++;
+
+  return TFF_STATUS(OK);
+}
 
 StatusOr<std::unique_ptr<TensorAggregator>>
 DPTensorAggregatorBundleFactory::CreateInternal(

@@ -54,9 +54,7 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
   inline double GetDeltaPerAgg() const { return delta_per_agg_; }
 
  protected:
-  Status AggregateTensors(InputTensorList tensors) override {
-    return TFF_STATUS(UNIMPLEMENTED) << "Not implemented yet.";
-  }
+  Status AggregateTensors(InputTensorList tensors) override;
 
   Status MergeWith(TensorAggregator&& other) override {
     return TFF_STATUS(UNIMPLEMENTED) << "Not implemented yet.";
@@ -84,6 +82,9 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
   // number of tensors in its given InputTensorList; this vector stores all
   // those numbers so that we can split the input accordingly.
   std::vector<int> num_tensors_per_agg_;
+
+  // The sum over all num_tensors_per_agg_.
+  int num_tensors_per_input_;
 
   // Budget for each nested aggregator.
   double epsilon_per_agg_, delta_per_agg_;

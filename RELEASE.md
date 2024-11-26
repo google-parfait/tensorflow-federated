@@ -36,6 +36,12 @@ and this project adheres to
     `DPQuantileAggregator::ReportWithEpsilonAndDelta`.
 *   `DPTensorAggregatorBundle`, a wrapper around one or more instances of
     `DPTensorAggregator`, and its factory.
+*   `DPTensorAggregatorBunde::AggregateTensors` checks inputs before delegating
+    work to the inner aggregators.
+*   A new constructor for `InputTensorList` that takes as input an `std::vector`
+    of `const Tensor*`. `DPTensorAggregatorBunde::AggregateTensors` uses this to
+    split its input across its inner aggregators, which may expect varying
+    sizes.
 
 ### Changed
 
