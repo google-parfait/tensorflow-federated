@@ -17,8 +17,13 @@
 #ifndef TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_TENSOR_AGGREGATOR_H_
 #define TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_TENSOR_AGGREGATOR_H_
 
+#include <utility>
+#include <vector>
+
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -27,17 +32,39 @@ namespace aggregation {
 // attributes.
 class DPTensorAggregator : public TensorAggregator {
  public:
+  explicit DPTensorAggregator(const std::vector<TensorSpec>& input_specs)
+      : input_specs_(input_specs) {}
+
   // This member function should be called in lieu of Report(). Given epsilon &
   // delta, it will perform the DP mechanism with those parameters and return
   // the result.
   virtual StatusOr<OutputTensorList> ReportWithEpsilonAndDelta(
       double epsilon, double delta) && = 0;
 
+  // Verify that the input tensors match the member specifications.
+  // Called within DPTensorAggregator::AggregateTensors(). Also called by
+  // DPTensorAggregatorBundle::AggregateTensors(), to check all inputs before
+  // passing them to the child aggregators.
+  Status InputMatchesSpec(const InputTensorList& input) const;
+
  protected:
   // TakeOutputs() is deprecated given the use of ReportWithEpsilonAndDelta().
   OutputTensorList TakeOutputs() && override {
     TFF_CHECK(false) << "DPTensorAggregator::TakeOutputs: Not implemented.";
   }
+
+  // Child-specific implementation of AggregateTensors().
+  virtual Status AggregateTensorsInternal(InputTensorList tensors) = 0;
+
+  // Verify that the input tensors match the expected specs and then call
+  // AggregateTensorsInternal().
+  Status AggregateTensors(InputTensorList tensors) override {
+    TFF_RETURN_IF_ERROR(InputMatchesSpec(tensors));
+    return AggregateTensorsInternal(std::move(tensors));
+  }
+
+ private:
+  std::vector<TensorSpec> input_specs_;
 };
 
 }  // namespace aggregation

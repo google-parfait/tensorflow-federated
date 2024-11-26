@@ -20,6 +20,7 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
@@ -33,6 +34,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -49,8 +51,9 @@ class DPQuantileAggregator final : public DPTensorAggregator {
  public:
   explicit DPQuantileAggregator(double target_quantile, int num_inputs,
                                 int reservoir_sampling_count,
-                                std::unique_ptr<MutableVectorData<T>> buffer)
-      : DPTensorAggregator(),
+                                std::unique_ptr<MutableVectorData<T>> buffer,
+                                const std::vector<TensorSpec>& input_specs)
+      : DPTensorAggregator(input_specs),
         target_quantile_(target_quantile),
         num_inputs_(num_inputs),
         reservoir_sampling_count_(reservoir_sampling_count),
@@ -59,9 +62,11 @@ class DPQuantileAggregator final : public DPTensorAggregator {
     TFF_CHECK(target_quantile > 0 && target_quantile < 1)
         << "Target quantile must be in (0, 1).";
   }
-  explicit DPQuantileAggregator(double target_quantile)
+  explicit DPQuantileAggregator(double target_quantile,
+                                const std::vector<TensorSpec>& input_specs)
       : DPQuantileAggregator(target_quantile, 0, 0,
-                             std::make_unique<MutableVectorData<T>>()) {}
+                             std::make_unique<MutableVectorData<T>>(),
+                             input_specs) {}
 
   inline int GetNumInputs() const override { return num_inputs_; }
 
@@ -138,7 +143,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // This DP mechanism expects one scalar tensor in the input. It pushes the
   // scalar into the buffer if the buffer is smaller than kDPQuantileMaxInputs.
   // Otherwise, it will perform reservoir sampling
-  Status AggregateTensors(InputTensorList tensors) override;
+  Status AggregateTensorsInternal(InputTensorList tensors) override;
 
   // Checks if the output has not already been consumed.
   Status CheckValid() const override;

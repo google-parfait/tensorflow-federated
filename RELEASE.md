@@ -44,6 +44,11 @@ and this project adheres to
 *   When `DPGroupByFactory::CreateInternal` receives an `epsilon` at or above
     `kEpsilonThreshold`, it no longer bothers splitting it across the inner
     aggregators.
+*   Moved the tests of input validity from `DPQuantileAggregator` to the parent
+    class `DPTensorAggregator`. This will enable `DPTensorAggregatorBundle` to
+    check that the input is valid before passing to the aggregators it contains.
+    Also, allow type mismatches if input is a 32-bit type and the spec is the
+    64-bit version.
 
 ### Removed
 

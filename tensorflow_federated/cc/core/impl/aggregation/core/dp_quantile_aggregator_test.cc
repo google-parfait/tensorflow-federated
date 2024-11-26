@@ -46,7 +46,7 @@ namespace {
 using ::testing::HasSubstr;
 
 TensorSpec CreateTensorSpec(std::string name, DataType dtype) {
-  return TensorSpec(name, dtype, {-1});
+  return TensorSpec(name, dtype, {});
 }
 
 // Function to create a variable number of parameters. If is_string is false,
@@ -167,6 +167,60 @@ TEST(DPQuantileAggregatorTest, LargeParameterInIntrinsic) {
               HasSubstr("Target quantile must be in (0, 1)"));
 }
 
+// Input and Output specs must each contain one tensor.
+TEST(DPQuantileAggregatorTest, MultipleInputOrOutputSpecs) {
+  Intrinsic two_output_intrinsic =
+      Intrinsic{kDPQuantileUri,
+                {CreateTensorSpec("value", DT_INT32)},
+                {CreateTensorSpec("value", DT_DOUBLE),
+                 CreateTensorSpec("value", DT_DOUBLE)},
+                {CreateDPQuantileParameters(0.5)},
+                {}};
+  auto aggregator_status1 = CreateTensorAggregator(two_output_intrinsic);
+  EXPECT_THAT(aggregator_status1, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status1.status().message(),
+              HasSubstr("Expected one output tensor, but got 2"));
+
+  Intrinsic two_input_intrinsic =
+      Intrinsic{kDPQuantileUri,
+                {CreateTensorSpec("value", DT_INT32),
+                 CreateTensorSpec("value", DT_INT32)},
+                {CreateTensorSpec("value", DT_DOUBLE)},
+                {CreateDPQuantileParameters(0.5)},
+                {}};
+  auto aggregator_status2 = CreateTensorAggregator(two_input_intrinsic);
+  EXPECT_THAT(aggregator_status2, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status2.status().message(),
+              HasSubstr("Expected one input tensor, but got 2"));
+}
+
+// The tensors in the specs must be scalars.
+TEST(DPQuantileAggregatorTest, NonScalarInputOrOutputSpecs) {
+  Intrinsic vector_output_intrinsic =
+      Intrinsic{kDPQuantileUri,
+                {CreateTensorSpec("value", DT_INT32)},
+                {TensorSpec("value", DT_DOUBLE, {2})},
+                {CreateDPQuantileParameters(0.5)},
+                {}};
+  auto aggregator_status1 = CreateTensorAggregator(vector_output_intrinsic);
+  EXPECT_THAT(aggregator_status1, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status1.status().message(),
+              HasSubstr("Expected a scalar output tensor, but got a tensor with"
+                        " 2 elements."));
+
+  Intrinsic vector_input_intrinsic =
+      Intrinsic{kDPQuantileUri,
+                {TensorSpec("value", DT_INT32, {2})},
+                {CreateTensorSpec("value", DT_DOUBLE)},
+                {CreateDPQuantileParameters(0.5)},
+                {}};
+  auto aggregator_status2 = CreateTensorAggregator(vector_input_intrinsic);
+  EXPECT_THAT(aggregator_status2, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status2.status().message(),
+              HasSubstr("Expected a scalar input tensor, but got a tensor with"
+                        " 2 elements."));
+}
+
 // Input and output types must be numeric.
 TEST(DPQuantileAggregatorTest, NonNumericInput) {
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
@@ -206,60 +260,35 @@ StatusOr<std::unique_ptr<TensorAggregator>> CreateDPQuantileAggregator(
   return CreateTensorAggregator(intrinsic);
 }
 
-// Cannot aggregate multiple tensors.
-TEST(DPQuantileAggregatorTest, AggregateMultipleTensors) {
-  auto aggregator_status = CreateDPQuantileAggregator(DT_INT32);
-  TFF_EXPECT_OK(aggregator_status);
-  auto aggregator = std::move(aggregator_status.value());
-  Tensor t1 =
-      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({2})).value();
-  auto accumulate_stauts = aggregator->Accumulate(InputTensorList({&t1, &t2}));
-  EXPECT_THAT(accumulate_stauts, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(accumulate_stauts.message(),
-              HasSubstr("Expected exactly one tensor, but got 2"));
-}
-
-// Cannot aggregate a tensor with the wrong shape.
-TEST(DPQuantileAggregatorTest, AggregateTensorWithWrongShape) {
-  auto aggregator_status = CreateDPQuantileAggregator(DT_INT64);
-  TFF_EXPECT_OK(aggregator_status);
-  auto aggregator = std::move(aggregator_status.value());
-  Tensor t =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 1})).value();
-  auto accumulate_stauts = aggregator->Accumulate(InputTensorList({&t}));
-  EXPECT_THAT(accumulate_stauts, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(
-      accumulate_stauts.message(),
-      HasSubstr("Expected a scalar tensor, but got a tensor with 2 elements"));
-}
-
-// Cannot aggregate a tensor with the wrong dtype.
-TEST(DPQuantileAggregatorTest, AggregateTensorWithWrongDtype) {
+// Can aggregate scalars. Expect buffer size to be <= kDPQuantileMaxInputs.
+TEST(DPQuantileAggregatorTest, AggregateTensorsSuccessful_Fractional) {
   auto aggregator_status = CreateDPQuantileAggregator(DT_FLOAT);
   TFF_EXPECT_OK(aggregator_status);
-  auto aggregator = std::move(aggregator_status.value());
-  Tensor t =
-      Tensor::Create(DT_DOUBLE, {1}, CreateTestData<double>({1.01})).value();
-  auto accumulate_stauts = aggregator->Accumulate(InputTensorList({&t}));
-  EXPECT_THAT(accumulate_stauts, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(accumulate_stauts.message(),
-              HasSubstr("Expected a DT_FLOAT tensor, but got a DT_DOUBLE"
-                        " tensor"));
-}
-
-// Can aggregate scalars. Expect buffer size to be <= kDPQuantileMaxInputs.
-TEST(DPQuantileAggregatorTest, AggregateTensorsSuccessful) {
-  auto aggregator_status = CreateDPQuantileAggregator(DT_DOUBLE);
-  TFF_EXPECT_OK(aggregator_status);
   auto& aggregator =
-      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status.value());
+      dynamic_cast<DPQuantileAggregator<float>&>(*aggregator_status.value());
 
   for (int i = 1; i <= kDPQuantileMaxInputs + 10; ++i) {
-    double val = 0.5 + i;
+    float val = 0.5 + i;
     Tensor t =
-        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})).value();
+        Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({val})).value();
+    auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
+    TFF_EXPECT_OK(accumulate_status);
+    EXPECT_EQ(aggregator.GetBufferSize(),
+              i < kDPQuantileMaxInputs ? i : kDPQuantileMaxInputs);
+    EXPECT_EQ(aggregator.GetNumInputs(), i);
+  }
+  EXPECT_EQ(aggregator.GetReservoirSamplingCount(), 10);
+}
+TEST(DPQuantileAggregatorTest, AggregateTensorsSuccessful_Integer) {
+  auto aggregator_status = CreateDPQuantileAggregator(DT_INT32);
+  TFF_EXPECT_OK(aggregator_status);
+  auto& aggregator =
+      dynamic_cast<DPQuantileAggregator<int32_t>&>(*aggregator_status.value());
+
+  for (int i = 1; i <= kDPQuantileMaxInputs + 10; ++i) {
+    int32_t val = i;
+    Tensor t =
+        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({val})).value();
     auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
     TFF_EXPECT_OK(accumulate_status);
     EXPECT_EQ(aggregator.GetBufferSize(),

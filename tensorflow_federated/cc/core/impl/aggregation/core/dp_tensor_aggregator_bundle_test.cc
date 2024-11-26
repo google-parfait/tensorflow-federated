@@ -40,7 +40,7 @@ namespace {
 using ::testing::HasSubstr;
 
 TensorSpec CreateTensorSpec(std::string name, DataType dtype) {
-  return TensorSpec(name, dtype, {-1});
+  return TensorSpec(name, dtype, {});
 }
 
 double kDefaultEpsilon = 1.0;

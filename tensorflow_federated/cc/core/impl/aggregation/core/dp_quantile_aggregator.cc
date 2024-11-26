@@ -95,34 +95,8 @@ Status DPQuantileAggregator<T>::MergeWith(TensorAggregator&& other) {
 
 // Push back the input into the buffer or perform reservoir sampling.
 template <typename T>
-Status DPQuantileAggregator<T>::AggregateTensors(InputTensorList tensors) {
-  TFF_RETURN_IF_ERROR(CheckValid());
-  // Ensure that there is exactly one tensor.
-  if (tensors.size() != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregator::AggregateTensors: Expected exactly one "
-              "tensor, but got "
-           << tensors.size();
-  }
-  // Ensure that the tensor only has one element.
-  auto num_elements_in_tensor = tensors[0]->num_elements();
-  if (num_elements_in_tensor != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregator::AggregateTensors: Expected a scalar "
-              "tensor, but got a tensor with "
-           << num_elements_in_tensor << " elements.";
-  }
-
-  // Ensure that the tensor is of the correct type.
-  DataType dtype = tensors[0]->dtype();
-  DataType expected_dtype = internal::TypeTraits<T>::kDataType;
-  if (dtype != expected_dtype) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregator::AggregateTensors: Expected a "
-           << DataType_Name(expected_dtype) << " tensor, but got a "
-           << DataType_Name(dtype) << " tensor.";
-  }
-
+Status DPQuantileAggregator<T>::AggregateTensorsInternal(
+    InputTensorList tensors) {
   num_inputs_++;
   T value = tensors[0]->CastToScalar<T>();
   if (buffer_.size() < kDPQuantileMaxInputs) {
@@ -277,11 +251,47 @@ DPQuantileAggregatorFactory::CreateInternal(
               "in (0, 1).";
   }
 
-  // Next, get the input and output types.
-  const TensorSpec& input_spec = intrinsic.inputs[0];
-  DataType input_type = input_spec.dtype();
-  const TensorSpec& output_spec = intrinsic.outputs[0];
-  DataType output_type = output_spec.dtype();
+  // Next, validate the input and output specs.
+  // Ensure that input spec has exactly one tensor.
+  if (intrinsic.inputs.size() != 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPQuantileAggregatorFactory::CreateInternal: Expected one input "
+              "tensor, but got "
+           << intrinsic.inputs.size();
+  }
+  const TensorSpec& input_spec_tensor = intrinsic.inputs[0];
+
+  // Ensure that the input spec's tensor is a scalar.
+  TFF_ASSIGN_OR_RETURN(auto num_elements_in_tensor,
+                       input_spec_tensor.shape().NumElements());
+  if (num_elements_in_tensor != 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPQuantileAggregatorFactory::CreateInternal: Expected a scalar "
+              "input tensor, but got a tensor with "
+           << num_elements_in_tensor << " elements.";
+  }
+
+  // Ensure that output spec has exactly one tensor.
+  if (intrinsic.outputs.size() != 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPQuantileAggregatorFactory::CreateInternal: Expected one output"
+              " tensor, but got "
+           << intrinsic.outputs.size();
+  }
+  const TensorSpec& output_spec_tensor = intrinsic.outputs[0];
+
+  // Ensure that the output spec's tensor is a scalar.
+  TFF_ASSIGN_OR_RETURN(num_elements_in_tensor,
+                       output_spec_tensor.shape().NumElements());
+  if (num_elements_in_tensor != 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPQuantileAggregatorFactory::CreateInternal: Expected a scalar "
+              "output tensor, but got a tensor with "
+           << num_elements_in_tensor << " elements.";
+  }
+
+  DataType input_type = input_spec_tensor.dtype();
+  DataType output_type = output_spec_tensor.dtype();
 
   // Quantile is only defined for numeric input types.
   if (internal::GetTypeKind(input_type) != internal::TypeKind::kNumeric) {
@@ -298,9 +308,9 @@ DPQuantileAggregatorFactory::CreateInternal(
   }
 
   if (aggregator_state == nullptr) {
-    DTYPE_CASES(
-        input_type, T,
-        return std::make_unique<DPQuantileAggregator<T>>(target_quantile));
+    DTYPE_CASES(input_type, T,
+                return std::make_unique<DPQuantileAggregator<T>>(
+                    target_quantile, intrinsic.inputs));
   }
   auto num_inputs = aggregator_state->num_inputs();
   auto reservoir_sampling_count = aggregator_state->reservoir_sampling_count();
@@ -308,7 +318,8 @@ DPQuantileAggregatorFactory::CreateInternal(
               return std::make_unique<DPQuantileAggregator<T>>(
                   target_quantile, num_inputs, reservoir_sampling_count,
                   MutableVectorData<T>::CreateFromEncodedContent(
-                      aggregator_state->buffer())));
+                      aggregator_state->buffer()),
+                  intrinsic.inputs));
 }
 
 REGISTER_AGGREGATOR_FACTORY(kDPQuantileUri, DPQuantileAggregatorFactory);
