@@ -20,7 +20,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
-from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_sgd
@@ -160,11 +159,6 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('robust_aggregator', model_update_aggregator.robust_aggregator),
-      (
-          'compression_aggregator',
-          model_update_aggregator.compression_aggregator,
-      ),
-      ('secure_aggreagtor', model_update_aggregator.secure_aggregator),
   )
   def test_construction_calls_model_fn(self, aggregation_factory):
     # Assert that the process building does not call `model_fn` too many times.
@@ -176,17 +170,6 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     )
     # TODO: b/186451541 - reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
-
-  def test_no_unsecure_aggregation_with_secure_aggregator(self):
-    model_fn = model_examples.LinearRegression
-    learning_process = fed_sgd.build_fed_sgd(
-        model_fn,
-        model_aggregator=model_update_aggregator.secure_aggregator(),
-        metrics_aggregator=aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
 
 
 class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
@@ -275,17 +258,6 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
   def test_build_functional_fed_sgd_succeeds(self):
     model = _build_functional_model()
     fed_sgd.build_fed_sgd(model_fn=model)
-
-  def test_no_unsecure_aggregation_with_secure_aggregator(self):
-    model = _build_functional_model()
-    learning_process = fed_sgd.build_fed_sgd(
-        model,
-        model_aggregator=model_update_aggregator.secure_aggregator(),
-        metrics_aggregator=aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
 
 
 if __name__ == '__main__':

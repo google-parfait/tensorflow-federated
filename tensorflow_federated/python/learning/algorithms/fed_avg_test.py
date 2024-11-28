@@ -18,38 +18,25 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from tensorflow_federated.python.aggregators import factory_utils
-from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_avg
-from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.models import model_examples
-from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
 class FedAvgTest(parameterized.TestCase):
   """Tests construction of the FedAvg training process."""
 
-  @parameterized.product(
-      optimizer_fn=[
-          sgdm.build_sgdm(learning_rate=0.1),
-      ],
-      aggregation_factory=[
-          model_update_aggregator.robust_aggregator,
-          model_update_aggregator.compression_aggregator,
-          model_update_aggregator.secure_aggregator,
-      ],
-  )
-  def test_construction_calls_model_fn(self, optimizer_fn, aggregation_factory):
+  def test_construction_calls_model_fn(self):
     # Assert that the process building does not call `model_fn` too many times.
     # `model_fn` can potentially be expensive (loading weights, processing, etc
     # ).
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
     fed_avg.build_weighted_fed_avg(
         model_fn=mock_model_fn,
-        client_optimizer_fn=optimizer_fn,
-        model_aggregator=aggregation_factory(),
+        client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1),
+        model_aggregator=model_update_aggregator.robust_aggregator(),
     )
     self.assertEqual(mock_model_fn.call_count, 3)
 
@@ -125,34 +112,6 @@ class FedAvgTest(parameterized.TestCase):
           model_aggregator=model_aggregator,
       )
 
-  def test_weighted_fed_avg_with_only_secure_aggregation(self):
-    model_fn = model_examples.LinearRegression
-    learning_process = fed_avg.build_weighted_fed_avg(
-        model_fn,
-        client_optimizer_fn=sgdm.build_sgdm(),
-        model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=True
-        ),
-        metrics_aggregator=aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
-
-  def test_unweighted_fed_avg_with_only_secure_aggregation(self):
-    model_fn = model_examples.LinearRegression
-    learning_process = fed_avg.build_unweighted_fed_avg(
-        model_fn,
-        client_optimizer_fn=sgdm.build_sgdm(),
-        model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=False
-        ),
-        metrics_aggregator=aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
-
 
 class FunctionalFedAvgTest(parameterized.TestCase):
   """Tests construction of the FedAvg training process."""
@@ -166,25 +125,6 @@ class FunctionalFedAvgTest(parameterized.TestCase):
       constructor(
           model_fn=0, client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1)
       )
-
-  @parameterized.named_parameters(
-      ('weighted', fed_avg.build_weighted_fed_avg),
-      ('unweighted', fed_avg.build_unweighted_fed_avg),
-  )
-  def test_weighted_fed_avg_with_only_secure_aggregation(self, constructor):
-    model = test_models.build_functional_linear_regression()
-    learning_process = constructor(
-        model_fn=model,
-        client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1),
-        server_optimizer_fn=sgdm.build_sgdm(),
-        model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=constructor is fed_avg.build_weighted_fed_avg
-        ),
-        metrics_aggregator=aggregator.secure_sum_then_finalize,
-    )
-    static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next
-    )
 
 
 if __name__ == '__main__':

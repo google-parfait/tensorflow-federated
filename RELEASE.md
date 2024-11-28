@@ -59,6 +59,10 @@ and this project adheres to
 ### Removed
 
 *   `tff.types.tensorflow_to_type`, this function is no longer used.
+*   `tff.learning.dp_aggregator` removed. Prefer using the class methods on
+    `tff.aggregators.DifferentiallyPrivateFactory`.
+*   `tff.learning.ddp_secure_aggregator` and `tff.learning.secure_aggregator`
+    removed.
 
 ## Release 0.88.0
 
