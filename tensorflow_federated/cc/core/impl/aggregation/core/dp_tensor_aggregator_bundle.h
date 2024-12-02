@@ -71,7 +71,7 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
 
   // Consumes the output of this TensorAggregator. Calls the
   // ReportWithEpsilonAndDelta() method of the underlying aggregators.
-  OutputTensorList TakeOutputs() && override { return OutputTensorList(); }
+  OutputTensorList TakeOutputs() && override;
 
  private:
   std::vector<std::unique_ptr<DPTensorAggregator>> aggregators_;
