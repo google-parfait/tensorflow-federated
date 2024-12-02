@@ -83,6 +83,48 @@ Status DPTensorAggregatorBundle::AggregateTensors(InputTensorList tensors) {
   return TFF_STATUS(OK);
 }
 
+Status DPTensorAggregatorBundle::IsCompatible(
+    const TensorAggregator& other) const {
+  const auto* other_ptr = dynamic_cast<const DPTensorAggregatorBundle*>(&other);
+  if (other_ptr == nullptr) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPTensorAggregatorBundle::IsCompatible: Can only merge with "
+              "another DPTensorAggregatorBundle";
+  }
+  // Check that the number of nested aggregators is the same.
+  if (aggregators_.size() != other_ptr->aggregators_.size()) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPTensorAggregatorBundle::IsCompatible: One bundle has "
+           << aggregators_.size() << " nested aggregators, but the other has "
+           << other_ptr->aggregators_.size() << ".";
+  }
+  // Loop over inner aggregators and check compatibility.
+  for (int i = 0; i < aggregators_.size(); ++i) {
+    const auto& other_aggregators = other_ptr->aggregators_;
+    TFF_RETURN_IF_ERROR(aggregators_[i]->IsCompatible(*(other_aggregators[i])));
+  }
+
+  return TFF_STATUS(OK);
+}
+
+Status DPTensorAggregatorBundle::MergeWith(TensorAggregator&& other) {
+  TFF_RETURN_IF_ERROR(CheckValid());
+  TFF_RETURN_IF_ERROR(IsCompatible(other));
+  auto* other_ptr = dynamic_cast<DPTensorAggregatorBundle*>(&other);
+  TFF_CHECK(other_ptr != nullptr);
+  TFF_RETURN_IF_ERROR(other_ptr->CheckValid());
+
+  // Merge the nested aggregators.
+  for (int i = 0; i < aggregators_.size(); ++i) {
+    TFF_RETURN_IF_ERROR(
+        aggregators_[i]->MergeWith(static_cast<TensorAggregator&&>(
+            *std::move(other_ptr->aggregators_[i]))));
+  }
+  num_inputs_ += other_ptr->num_inputs_;
+
+  return TFF_STATUS(OK);
+}
+
 StatusOr<std::unique_ptr<TensorAggregator>>
 DPTensorAggregatorBundleFactory::CreateInternal(
     const Intrinsic& intrinsic,

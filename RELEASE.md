@@ -45,6 +45,9 @@ and this project adheres to
 *   `DPTensorAggregator::IsCompatible` will allow `DPTensorAggregatorBundle` to
     check if all inner aggregators are compatible for merge prior to calling
     their `MergeWith` functions.
+*   `DPTensorAggregatorBundle::MergeWith` checks compatibility before delegating
+    merging to inner aggregators. The compatibility check is done by
+    `DPTensorAggregatorBundle::IsCompatible`.
 
 ### Changed
 

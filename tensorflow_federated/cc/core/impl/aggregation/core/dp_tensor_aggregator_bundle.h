@@ -53,12 +53,12 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
   inline double GetEpsilonPerAgg() const { return epsilon_per_agg_; }
   inline double GetDeltaPerAgg() const { return delta_per_agg_; }
 
+  Status IsCompatible(const TensorAggregator& other) const;
+
+  Status MergeWith(TensorAggregator&& other) override;
+
  protected:
   Status AggregateTensors(InputTensorList tensors) override;
-
-  Status MergeWith(TensorAggregator&& other) override {
-    return TFF_STATUS(UNIMPLEMENTED) << "Not implemented yet.";
-  }
 
   // Checks if the current TensorAggregator is valid e.g. the resulting output
   // hasn't been consumed.

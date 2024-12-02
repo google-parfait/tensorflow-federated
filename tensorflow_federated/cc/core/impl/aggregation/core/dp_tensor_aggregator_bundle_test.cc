@@ -256,14 +256,18 @@ TEST(DPTensorAggregatorBundleTest, CreateSucceedsWithSplitEpsilonAndDelta) {
 }
 
 // The second batch of tests concerns aggregation.
-
-// If a bundle contains k aggregators and each expects c Tensors for input,
-// the bundle expects c*k Tensors for input.
-TEST(DPTensorAggregatorBundleTest, AggregateWrongNumberOfInputs) {
+Intrinsic CreateBundleOfTwo() {
   Intrinsic intrinsic = Intrinsic{
       kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(), {}};
   intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<int>());
   intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<float>());
+  return intrinsic;
+}
+
+// If a bundle contains k aggregators and each expects c Tensors for input,
+// the bundle expects c*k Tensors for input.
+TEST(DPTensorAggregatorBundleTest, AggregateWrongNumberOfInputs) {
+  Intrinsic intrinsic = CreateBundleOfTwo();
   auto status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(status);
   auto aggregator = std::move(status.value());
@@ -290,10 +294,7 @@ TEST(DPTensorAggregatorBundleTest, AggregateWrongNumberOfInputs) {
 // meant for aggregator 0 are correct but those meant for aggregator 1 are
 // incorrect, the bundle should return an error status *and not update state*.
 TEST(DPTensorAggregatorBundleTest, PartiallyCorrectInputDoesNotUpdateState) {
-  Intrinsic intrinsic = Intrinsic{
-      kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(), {}};
-  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<int>());
-  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<float>());
+  Intrinsic intrinsic = CreateBundleOfTwo();
   auto status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(status);
   auto aggregator = std::move(status.value());
@@ -312,10 +313,7 @@ TEST(DPTensorAggregatorBundleTest, PartiallyCorrectInputDoesNotUpdateState) {
 
 // If all n inputs are valid, GetNumInputs() should return n after accumulation.
 TEST(DPTensorAggregatorBundleTest, AllCorrectInputs) {
-  Intrinsic intrinsic = Intrinsic{
-      kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(), {}};
-  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<int>());
-  intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<float>());
+  Intrinsic intrinsic = CreateBundleOfTwo();
   auto status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(status);
   auto aggregator = std::move(status.value());
@@ -329,6 +327,122 @@ TEST(DPTensorAggregatorBundleTest, AllCorrectInputs) {
   }
   EXPECT_EQ(aggregator->GetNumInputs(), 10);
 }
+
+// The third batch of tests concerns merging. Tests of compatibility are also
+// covered here.
+
+// MergeWith is only compatible with other bundles.
+TEST(DPTensorAggregatorBundleTest, DifferentTypesIncompatible) {
+  Intrinsic intrinsic = CreateBundleOfTwo();
+  auto status = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(status);
+  auto aggregator_ptr = std::move(status.value());
+  auto& aggregator =
+      dynamic_cast<DPTensorAggregatorBundle&>(*aggregator_ptr.get());
+
+  Intrinsic intrinsic2 = Intrinsic{kDPQuantileUri,
+                                   {CreateTensorSpec("unused", DT_DOUBLE)},
+                                   {CreateTensorSpec("unused", DT_DOUBLE)},
+                                   {},
+                                   {}};
+  intrinsic2.parameters.push_back(
+      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({0.8})).value());
+  auto status2 = CreateTensorAggregator(intrinsic2);
+  TFF_EXPECT_OK(status2);
+  auto aggregator_ptr2 = std::move(status2.value());
+  auto compatible = aggregator.IsCompatible(*std::move(aggregator_ptr2));
+  EXPECT_THAT(compatible, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      compatible.message(),
+      HasSubstr("Can only merge with another DPTensorAggregatorBundle"));
+}
+
+// Two merging bundles need to have the same number of inner aggregators.
+TEST(DPTensorAggregatorBundleTest, DifferentSizesIncompatible) {
+  Intrinsic intrinsic1 = CreateBundleOfTwo();
+  auto status1 = CreateTensorAggregator(intrinsic1);
+  TFF_EXPECT_OK(status1);
+  auto aggregator_ptr1 = std::move(status1.value());
+  auto& aggregator1 =
+      dynamic_cast<DPTensorAggregatorBundle&>(*aggregator_ptr1.get());
+
+  Intrinsic intrinsic2 = CreateBundleOfTwo();
+  intrinsic2.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<int>());
+  auto status2 = CreateTensorAggregator(intrinsic2);
+  TFF_EXPECT_OK(status2);
+  auto aggregator_ptr2 = std::move(status2.value());
+  auto& aggregator2 =
+      dynamic_cast<DPTensorAggregatorBundle&>(*aggregator_ptr2.get());
+
+  auto compatible = aggregator1.IsCompatible(aggregator2);
+  EXPECT_THAT(compatible, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      compatible.message(),
+      HasSubstr("One bundle has 2 nested aggregators, but the other has 3"));
+}
+
+// If any of the inner aggregators are incompatible, the bundles are as well.
+TEST(DPTensorAggregatorBundleTest, DifferentInnerAggregatorsIncompatible) {
+  Intrinsic intrinsic1 = CreateBundleOfTwo();
+  auto status1 = CreateTensorAggregator(intrinsic1);
+  TFF_EXPECT_OK(status1);
+  auto aggregator_ptr1 = std::move(status1.value());
+  auto& aggregator1 =
+      dynamic_cast<DPTensorAggregatorBundle&>(*aggregator_ptr1.get());
+
+  Intrinsic intrinsic2 = Intrinsic{
+      kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(), {}};
+  intrinsic2.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<int>());
+  intrinsic2.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<double>());
+  auto status2 = CreateTensorAggregator(intrinsic2);
+  TFF_EXPECT_OK(status2);
+  auto aggregator_ptr2 = std::move(status2.value());
+  auto& aggregator2 =
+      dynamic_cast<DPTensorAggregatorBundle&>(*aggregator_ptr2.get());
+
+  auto compatible = aggregator1.IsCompatible(aggregator2);
+  EXPECT_THAT(compatible, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      compatible.message(),
+      HasSubstr("Can only merge with another DPQuantileAggregator of the same"
+                " input type."));
+}
+
+// After a successful merge, num_inputs_ should be the sum of the number of
+// inputs of the pre-merge bundles.
+TEST(DPTensorAggregatorBundleTest, SuccessfulMerge) {
+  Intrinsic intrinsic1 = CreateBundleOfTwo();
+  auto status1 = CreateTensorAggregator(intrinsic1);
+  TFF_EXPECT_OK(status1);
+  auto aggregator_ptr1 = std::move(status1.value());
+  auto& aggregator1 =
+      dynamic_cast<DPTensorAggregatorBundle&>(*aggregator_ptr1.get());
+  for (int i = 0; i < 4; i++) {
+    Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+    Tensor t2 =
+        Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1})).value();
+    auto accumulate_status = aggregator1.Accumulate(InputTensorList{&t1, &t2});
+    TFF_EXPECT_OK(accumulate_status);
+  }
+
+  Intrinsic intrinsic2 = CreateBundleOfTwo();
+  auto status2 = CreateTensorAggregator(intrinsic2);
+  TFF_EXPECT_OK(status2);
+  auto aggregator_ptr2 = std::move(status2.value());
+  auto& aggregator2 =
+      dynamic_cast<DPTensorAggregatorBundle&>(*aggregator_ptr2.get());
+  for (int i = 0; i < 6; i++) {
+    Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+    Tensor t2 =
+        Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1})).value();
+    auto accumulate_status = aggregator2.Accumulate(InputTensorList{&t1, &t2});
+    TFF_EXPECT_OK(accumulate_status);
+  }
+
+  auto merge_status = aggregator2.MergeWith(std::move(aggregator1));
+  EXPECT_EQ(aggregator2.GetNumInputs(), 10);
+}
+
 }  // namespace
 
 }  // namespace aggregation
