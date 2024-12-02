@@ -47,6 +47,11 @@ class DPTensorAggregator : public TensorAggregator {
   // passing them to the child aggregators.
   Status InputMatchesSpec(const InputTensorList& input) const;
 
+  // Verify that the other aggregator can be merged with this one.
+  // Called by MergeWith. Also called by DPTensorAggregatorBundle::IsCompatible,
+  // to check all child aggregators before merging.
+  virtual Status IsCompatible(const TensorAggregator& other) const = 0;
+
  protected:
   // TakeOutputs() is deprecated given the use of ReportWithEpsilonAndDelta().
   OutputTensorList TakeOutputs() && override {

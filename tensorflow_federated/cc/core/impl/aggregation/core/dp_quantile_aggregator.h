@@ -82,6 +82,8 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // other buffer, we will perform reservoir sampling.
   Status MergeWith(TensorAggregator&& other) override;
 
+  Status IsCompatible(const TensorAggregator& other) const override;
+
   StatusOr<std::string> Serialize() && override {
     DPQuantileAggregatorState aggregator_state;
     aggregator_state.set_num_inputs(num_inputs_);

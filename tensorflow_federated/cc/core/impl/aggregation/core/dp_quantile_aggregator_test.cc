@@ -299,20 +299,22 @@ TEST(DPQuantileAggregatorTest, AggregateTensorsSuccessful_Integer) {
 }
 
 // The third batch of tests is on merging with another DPQuantileAggregator.
+// The IsCompatible function is tested as part of this batch.
 
-// Cannot merge with the wrong type.
-TEST(DPQuantileAggregatorTest, MergeWithWrongType) {
+// Cannot merge with a different type.
+TEST(DPQuantileAggregatorTest, DifferentTypeIncompatible) {
   // Cannot merge DPQualtileAggregator<double> with DPQuantileAggregator<float>.
   auto aggregator_status = CreateDPQuantileAggregator(DT_DOUBLE);
   TFF_EXPECT_OK(aggregator_status);
-  auto& aggregator = *aggregator_status.value();
+  auto& aggregator =
+      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status.value());
 
   auto mismatched_aggregator_status1 = CreateDPQuantileAggregator(DT_FLOAT);
   TFF_EXPECT_OK(mismatched_aggregator_status1);
   auto& mismatched_aggregator1 = *mismatched_aggregator_status1.value();
-  auto merge_status = aggregator.MergeWith(std::move(mismatched_aggregator1));
-  EXPECT_THAT(merge_status, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(merge_status.message(),
+  auto compatibility = aggregator.IsCompatible(mismatched_aggregator1);
+  EXPECT_THAT(compatibility, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(compatibility.message(),
               HasSubstr("Can only merge with another DPQuantileAggregator of"
                         " the same input type."));
 
@@ -330,25 +332,26 @@ TEST(DPQuantileAggregatorTest, MergeWithWrongType) {
   auto mismatched_aggregator_status2 = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(mismatched_aggregator_status2);
   auto& mismatched_aggregator2 = *mismatched_aggregator_status2.value();
-  merge_status = aggregator.MergeWith(std::move(mismatched_aggregator2));
-  EXPECT_THAT(merge_status, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(merge_status.message(),
+  compatibility = aggregator.IsCompatible(mismatched_aggregator2);
+  EXPECT_THAT(compatibility, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(compatibility.message(),
               HasSubstr("Can only merge with another DPQuantileAggregator of"
                         " the same input type."));
 }
 
 // Cannot merge with a different target quantile.
-TEST(DPQuantileAggregatorTest, MergeWithDifferentTargetQuantile) {
+TEST(DPQuantileAggregatorTest, DifferentTargetQuantileIncompatible) {
   auto aggregator_status1 = CreateDPQuantileAggregator(DT_DOUBLE, 0.5);
   TFF_EXPECT_OK(aggregator_status1);
-  auto& aggregator1 = *aggregator_status1.value();
+  auto& aggregator1 =
+      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status1.value());
 
   auto aggregator_status2 = CreateDPQuantileAggregator(DT_DOUBLE, 0.75);
   TFF_EXPECT_OK(aggregator_status2);
   auto& aggregator2 = *aggregator_status2.value();
-  auto merge_status = aggregator1.MergeWith(std::move(aggregator2));
-  EXPECT_THAT(merge_status, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(merge_status.message(),
+  auto compatibility = aggregator1.IsCompatible(aggregator2);
+  EXPECT_THAT(compatibility, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(compatibility.message(),
               HasSubstr("Target quantiles must match."));
 }
 

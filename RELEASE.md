@@ -42,6 +42,9 @@ and this project adheres to
     of `const Tensor*`. `DPTensorAggregatorBunde::AggregateTensors` uses this to
     split its input across its inner aggregators, which may expect varying
     sizes.
+*   `DPTensorAggregator::IsCompatible` will allow `DPTensorAggregatorBundle` to
+    check if all inner aggregators are compatible for merge prior to calling
+    their `MergeWith` functions.
 
 ### Changed
 
@@ -53,8 +56,8 @@ and this project adheres to
 *   Moved the tests of input validity from `DPQuantileAggregator` to the parent
     class `DPTensorAggregator`. This will enable `DPTensorAggregatorBundle` to
     check that the input is valid before passing to the aggregators it contains.
-    Also, allow type mismatches if input is a 32-bit type and the spec is the
-    64-bit version.
+*   Moved the tests of compatibility from `DPQuantileAggregator::MergeWith` to
+    `DPQuantileAggregator::IsCompatible`.
 
 ### Removed
 

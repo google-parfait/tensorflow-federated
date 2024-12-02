@@ -52,24 +52,34 @@ inline void DPQuantileAggregator<T>::InsertWithReservoirSampling(T value) {
   reservoir_sampling_count_++;
 }
 
-// To merge, we insert up to capacity and then perform reservoir sampling.
 template <typename T>
-Status DPQuantileAggregator<T>::MergeWith(TensorAggregator&& other) {
-  // Check validity and that the types match.
-  TFF_RETURN_IF_ERROR(CheckValid());
-  auto* other_ptr = dynamic_cast<DPQuantileAggregator<T>*>(&other);
+Status DPQuantileAggregator<T>::IsCompatible(
+    const TensorAggregator& other) const {
+  auto* other_ptr = dynamic_cast<const DPQuantileAggregator<T>*>(&other);
   if (other_ptr == nullptr) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregator::MergeWith: Can only merge with "
+           << "DPQuantileAggregator::IsCompatible: Can only merge with "
               "another DPQuantileAggregator of the same input type.";
   }
-  TFF_RETURN_IF_ERROR(other_ptr->CheckValid());
 
   // Ensure that the other aggregator has the same target quantile.
   if (target_quantile_ != other_ptr->target_quantile_) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregator::MergeWith: Target quantiles must match.";
+    return TFF_STATUS(INVALID_ARGUMENT) << "DPQuantileAggregator::IsCompatible:"
+                                           " Target quantiles must match.";
   }
+
+  return TFF_STATUS(OK);
+}
+
+// To merge, we insert up to capacity and then perform reservoir sampling.
+template <typename T>
+Status DPQuantileAggregator<T>::MergeWith(TensorAggregator&& other) {
+  // Check validity and compatibility.
+  TFF_RETURN_IF_ERROR(CheckValid());
+  TFF_RETURN_IF_ERROR(IsCompatible(other));
+  auto* other_ptr = dynamic_cast<const DPQuantileAggregator<T>*>(&other);
+  TFF_CHECK(other_ptr != nullptr);
+  TFF_RETURN_IF_ERROR(other_ptr->CheckValid());
 
   // Then use std::vector<T>::insert to copy as much as possible to our buffer.
   int remaining_capacity = kDPQuantileMaxInputs - buffer_.size();
