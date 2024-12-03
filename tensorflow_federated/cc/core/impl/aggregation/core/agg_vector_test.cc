@@ -17,6 +17,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 
 #include <cstddef>
+#include <utility>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
@@ -74,6 +75,29 @@ TEST(AggVectorTest, PreIncrementIterator) {
     sum += it.value();
   }
   EXPECT_THAT(sum, Eq(14));
+}
+
+TEST(AggVectorTest, Empty_DenseTensor_WithNullTensorDataBuffer) {
+  auto data = CreateTestData<int>({});
+  EXPECT_THAT(data->data(), Eq(nullptr));
+  auto t = Tensor::Create(DT_INT32, {0}, std::move(data));
+  auto agg_vector = t->AsAggVector<int>();
+  // Iterating over the agg vector should return zero elements.
+  EXPECT_THAT(agg_vector.begin(), Eq(agg_vector.end()));
+}
+
+TEST(AggVectorTest, Empty_DenseTensor_WithReservedTensorDataBuffer) {
+  auto data = CreateTestData<int>({});
+  // Ensures that the test data buffer is not simply null (empty vectors
+  // generally don't allocate a buffer at all). The triggers the condition where
+  // the AggVectorIterator start pointer is non-null and non-equal to end(),
+  // which should still be handled correctly.
+  data->reserve(100);
+  EXPECT_THAT(data->data(), testing::NotNull());
+  auto t = Tensor::Create(DT_INT32, {0}, std::move(data));
+  auto agg_vector = t->AsAggVector<int>();
+  // Iterating over the agg vector should return zero elements.
+  EXPECT_THAT(agg_vector.begin(), Eq(agg_vector.end()));
 }
 
 }  // namespace

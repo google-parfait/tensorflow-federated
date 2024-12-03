@@ -11,6 +11,8 @@ and this project adheres to
 *   Updated `MeasuredProcessOutput` to be a `NamedTuple`.
 *   Added number of round retries to training metrics in
     `tff.learning.programs.train_model`.
+*   Fix buffer overrun in `AggVectorIterator` when passing in an empty
+    `TensorData`.
 
 ### Added
 

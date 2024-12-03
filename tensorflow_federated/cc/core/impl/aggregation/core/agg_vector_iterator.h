@@ -52,7 +52,16 @@ struct AggVectorIterator {
   using reference = value_type&;
 
   explicit AggVectorIterator(const TensorData* data)
-      : AggVectorIterator(get_start_ptr(data), get_end_ptr(data), 0) {}
+      : AggVectorIterator(get_start_ptr(data), get_end_ptr(data), 0) {
+    // If the TensorData buffer is non-null but empty then `ptr` will equal
+    // `end_ptr`. We must in that case ensure that the iterator returned by this
+    // constructor is equal to end(), otherwise using operator== to compare
+    // against end() would indicate that there is an element to access, which is
+    // incorrect and would lead to a buffer overrun.
+    if (ptr == end_ptr) {
+      *this = end();
+    }
+  }
 
   // Current dense index corresponding to the current value.
   size_t index() const { return dense_index; }
