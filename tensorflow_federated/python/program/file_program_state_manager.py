@@ -26,18 +26,16 @@ import os.path
 from typing import Optional, Union
 
 from absl import logging
+import federated_language
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.program import file_utils
-from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import structure_utils
-from tensorflow_federated.python.program import value_reference
 
 
 class FileProgramStateManager(
-    program_state_manager.ProgramStateManager[
-        program_state_manager.ProgramStateStructure
+    federated_language.program.ProgramStateManager[
+        federated_language.program.ProgramStateStructure
     ]
 ):
   """A `tff.program.ProgramStateManager` that is backed by a file system.
@@ -160,8 +158,10 @@ class FileProgramStateManager(
     return os.path.join(self._root_dir, basename)
 
   async def load(
-      self, version: int, structure: program_state_manager.ProgramStateStructure
-  ) -> program_state_manager.ProgramStateStructure:
+      self,
+      version: int,
+      structure: federated_language.program.ProgramStateStructure,
+  ) -> federated_language.program.ProgramStateStructure:
     """Returns the program state for the given `version`.
 
     Args:
@@ -176,12 +176,12 @@ class FileProgramStateManager(
     """
     path = self._get_path_for_version(version)
     if not await file_utils.exists(path):
-      raise program_state_manager.ProgramStateNotFoundError(version)
+      raise federated_language.program.ProgramStateNotFoundError(version)
     program_state = await file_utils.read_saved_model(path)
 
     def _normalize(
-        value: program_state_manager.ProgramStateValue,
-    ) -> program_state_manager.ProgramStateValue:
+        value: federated_language.program.ProgramStateValue,
+    ) -> federated_language.program.ProgramStateValue:
       """Returns a normalized value.
 
       The `tff.program.FileProgramStateManager` saves and loads program state to
@@ -201,7 +201,7 @@ class FileProgramStateManager(
     normalized_state = structure_utils.map_structure(_normalize, program_state)
 
     def _deserialize_as(structure, value):
-      if isinstance(structure, serializable.Serializable):
+      if isinstance(structure, federated_language.Serializable):
         serializable_cls = type(structure)
         value = serializable_cls.from_bytes(value)
       return value
@@ -255,7 +255,7 @@ class FileProgramStateManager(
 
   async def save(
       self,
-      program_state: program_state_manager.ProgramStateStructure,
+      program_state: federated_language.program.ProgramStateStructure,
       version: int,
   ) -> None:
     """Saves `program_state` for the given `version`.
@@ -271,13 +271,15 @@ class FileProgramStateManager(
     """
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):
-      raise program_state_manager.ProgramStateExistsError(
+      raise federated_language.program.ProgramStateExistsError(
           version=version, path=self._root_dir
       )
-    materialized_state = await value_reference.materialize_value(program_state)
+    materialized_state = await federated_language.program.materialize_value(
+        program_state
+    )
 
     def _serialize(value):
-      if isinstance(value, serializable.Serializable):
+      if isinstance(value, federated_language.Serializable):
         value = value.to_bytes()
       return value
 

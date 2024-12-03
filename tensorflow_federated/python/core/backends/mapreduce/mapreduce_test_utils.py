@@ -15,20 +15,13 @@
 
 import collections
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 
 MapReduceFormExample = collections.namedtuple(
@@ -38,61 +31,63 @@ MapReduceFormExample = collections.namedtuple(
 
 def generate_unnamed_type_signature(update, work):
   """Generates a type signature for the MapReduceForm based on components."""
-  parameter = computation_types.StructType([
+  parameter = federated_language.StructType([
       (
           None,
-          computation_types.FederatedType(
-              update.type_signature.parameter[0], placements.SERVER
+          federated_language.FederatedType(
+              update.type_signature.parameter[0], federated_language.SERVER
           ),
       ),
       (
           None,
-          computation_types.FederatedType(
-              work.type_signature.parameter[0], placements.CLIENTS
-          ),
-      ),
-  ])
-  result = computation_types.StructType([
-      (
-          None,
-          computation_types.FederatedType(
-              update.type_signature.parameter[0], placements.SERVER
-          ),
-      ),
-      (
-          None,
-          computation_types.FederatedType(
-              update.type_signature.result[1], placements.SERVER
+          federated_language.FederatedType(
+              work.type_signature.parameter[0], federated_language.CLIENTS
           ),
       ),
   ])
-  return computation_types.FunctionType(parameter, result)
+  result = federated_language.StructType([
+      (
+          None,
+          federated_language.FederatedType(
+              update.type_signature.parameter[0], federated_language.SERVER
+          ),
+      ),
+      (
+          None,
+          federated_language.FederatedType(
+              update.type_signature.result[1], federated_language.SERVER
+          ),
+      ),
+  ])
+  return federated_language.FunctionType(parameter, result)
 
 
 def _make_map_reduce_form_example(
-    initialize: computation_impl.ConcreteComputation,
-    type_signature: computation_types.FunctionType,
-    prepare: computation_impl.ConcreteComputation,
-    work: computation_impl.ConcreteComputation,
-    zero: computation_impl.ConcreteComputation,
-    accumulate: computation_impl.ConcreteComputation,
-    merge: computation_impl.ConcreteComputation,
-    report: computation_impl.ConcreteComputation,
-    secure_sum_bitwidth: computation_impl.ConcreteComputation,
-    secure_sum_max_input: computation_impl.ConcreteComputation,
-    secure_sum_modulus: computation_impl.ConcreteComputation,
-    update: computation_impl.ConcreteComputation,
+    initialize: federated_language.framework.ConcreteComputation,
+    type_signature: federated_language.FunctionType,
+    prepare: federated_language.framework.ConcreteComputation,
+    work: federated_language.framework.ConcreteComputation,
+    zero: federated_language.framework.ConcreteComputation,
+    accumulate: federated_language.framework.ConcreteComputation,
+    merge: federated_language.framework.ConcreteComputation,
+    report: federated_language.framework.ConcreteComputation,
+    secure_sum_bitwidth: federated_language.framework.ConcreteComputation,
+    secure_sum_max_input: federated_language.framework.ConcreteComputation,
+    secure_sum_modulus: federated_language.framework.ConcreteComputation,
+    update: federated_language.framework.ConcreteComputation,
 ) -> MapReduceFormExample:
   """Constructs a MapReduceFormExample given the component comps."""
 
-  def _uniquify_reference_names(comp: computation_impl.ConcreteComputation):
+  def _uniquify_reference_names(
+      comp: federated_language.framework.ConcreteComputation,
+  ):
     building_block = comp.to_building_block()
     transformed_comp = tree_transformations.uniquify_reference_names(
         building_block
     )[0]
-    return computation_impl.ConcreteComputation(
+    return federated_language.framework.ConcreteComputation(
         computation_proto=transformed_comp.proto,
-        context_stack=context_stack_impl.context_stack,
+        context_stack=federated_language.framework.global_context_stack,
     )
 
   return MapReduceFormExample(
@@ -121,17 +116,20 @@ def get_temperature_sensor_example():
 
   Returns:
     A tuple of: (1) an instance of `forms.MapReduceForm` and (2) an associated
-    `computation_base.Computation` that generates an initial state compatible
+    `federated_language.framework.Computation` that generates an initial state
+    compatible
     with the server state expected by the `forms.MapReduceForm`.
   """
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def initialize():
     @tensorflow_computation.tf_computation
     def initialize_tf():
       return collections.OrderedDict(num_rounds=0)
 
-    return intrinsics.federated_value(initialize_tf(), placements.SERVER)
+    return federated_language.federated_value(
+        initialize_tf(), federated_language.SERVER
+    )
 
   # The state of the server is a singleton tuple containing just the integer
   # counter `num_rounds`.
@@ -148,7 +146,7 @@ def get_temperature_sensor_example():
   client_state_type = collections.OrderedDict(max_temperature=np.float32)
 
   # The client data is a sequence of floats.
-  client_data_type = computation_types.SequenceType(np.float32)
+  client_data_type = federated_language.SequenceType(np.float32)
 
   @tensorflow_computation.tf_computation(client_data_type, client_state_type)
   def work(data, state):
@@ -243,7 +241,7 @@ def get_temperature_sensor_example():
 
 def get_federated_sum_example(
     *, secure_sum: bool = False
-) -> tuple[forms.MapReduceForm, computation_base.Computation]:
+) -> tuple[forms.MapReduceForm, federated_language.framework.Computation]:
   """Constructs `forms.MapReduceForm` which performs a sum aggregation.
 
   Args:
@@ -258,9 +256,11 @@ def get_federated_sum_example(
   def initialize_tf():
     return ()
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def initialize():
-    return intrinsics.federated_value(initialize_tf(), placements.SERVER)
+    return federated_language.federated_value(
+        initialize_tf(), federated_language.SERVER
+    )
 
   server_state_type = initialize_tf.type_signature.result
 
@@ -269,7 +269,7 @@ def get_federated_sum_example(
     return state
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(np.int32), prepare.type_signature.result
+      federated_language.SequenceType(np.int32), prepare.type_signature.result
   )
   def work(data, _):
     client_sum = data.reduce(initial_state=0, reduce_func=tf.add)
@@ -351,7 +351,7 @@ def get_mnist_training_example():
   server_state_nt = collections.namedtuple('ServerState', 'model num_rounds')
 
   # Start with a model filled with zeros, and the round counter set to zero.
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def _initialize():
     @tensorflow_computation.tf_computation
     def initialize_tf():
@@ -363,7 +363,9 @@ def get_mnist_training_example():
           num_rounds=0,
       )
 
-    return intrinsics.federated_value(initialize_tf(), placements.SERVER)
+    return federated_language.federated_value(
+        initialize_tf(), federated_language.SERVER
+    )
 
   server_state_tff_type = server_state_nt(
       model=model_nt(weights=(np.float32, [784, 10]), bias=(np.float32, [10])),
@@ -380,7 +382,7 @@ def get_mnist_training_example():
 
   batch_nt = collections.namedtuple('Batch', 'x y')
   batch_tff_type = batch_nt(x=(np.float32, [None, 784]), y=(np.int32, [None]))
-  dataset_tff_type = computation_types.SequenceType(batch_tff_type)
+  dataset_tff_type = federated_language.SequenceType(batch_tff_type)
   model_tff_type = model_nt(
       weights=(np.float32, [784, 10]), bias=(np.float32, [10])
   )
@@ -550,43 +552,49 @@ def get_iterative_process_for_example_with_unused_lambda_arg():
   server_state_type = collections.OrderedDict(num_clients=np.int32)
 
   def _bind_federated_value(unused_input, input_type, federated_output_value):
-    federated_input_type = computation_types.FederatedType(
-        input_type, placements.CLIENTS
+    federated_input_type = federated_language.FederatedType(
+        input_type, federated_language.CLIENTS
     )
-    wrapper = federated_computation.federated_computation(
+    wrapper = federated_language.federated_computation(
         lambda _: federated_output_value, federated_input_type
     )
     return wrapper(unused_input)
 
   def count_clients_federated(client_data):
-    client_ones = intrinsics.federated_value(1, placements.CLIENTS)
+    client_ones = federated_language.federated_value(
+        1, federated_language.CLIENTS
+    )
 
     client_ones = _bind_federated_value(
-        client_data, computation_types.SequenceType(np.str_), client_ones
+        client_data, federated_language.SequenceType(np.str_), client_ones
     )
-    return intrinsics.federated_sum(client_ones)
+    return federated_language.federated_sum(client_ones)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_value(
-        collections.OrderedDict(num_clients=0), placements.SERVER
+    return federated_language.federated_value(
+        collections.OrderedDict(num_clients=0), federated_language.SERVER
     )
 
-  @federated_computation.federated_computation([
-      computation_types.FederatedType(server_state_type, placements.SERVER),
-      computation_types.FederatedType(
-          computation_types.SequenceType(np.str_), placements.CLIENTS
+  @federated_language.federated_computation([
+      federated_language.FederatedType(
+          server_state_type, federated_language.SERVER
+      ),
+      federated_language.FederatedType(
+          federated_language.SequenceType(np.str_), federated_language.CLIENTS
       ),
   ])
   def next_fn(server_state, client_val):
     """`next` function for `tff.templates.IterativeProcess`."""
-    server_update = intrinsics.federated_zip(
+    server_update = federated_language.federated_zip(
         collections.OrderedDict(num_clients=count_clients_federated(client_val))
     )
 
-    server_output = intrinsics.federated_value((), placements.SERVER)
+    server_output = federated_language.federated_value(
+        (), federated_language.SERVER
+    )
     server_output = _bind_federated_value(
-        intrinsics.federated_broadcast(server_state),
+        federated_language.federated_broadcast(server_state),
         server_state_type,
         server_output,
     )
@@ -607,7 +615,7 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
         tf_wrapper,
         input_federated_type.member,  # pytype: disable=attribute-error
     )
-    return intrinsics.federated_map(wrapper, unused_input)
+    return federated_language.federated_map(wrapper, unused_input)
 
   def count_clients_federated(client_data):
     @tf.function
@@ -615,29 +623,31 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
       return np.ones(shape=[], dtype=np.int32)
 
     client_ones = _bind_tf_function(client_data, client_ones_fn)
-    return intrinsics.federated_sum(client_ones)
+    return federated_language.federated_sum(client_ones)
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_value(
-        collections.OrderedDict(num_clients=0), placements.SERVER
+    return federated_language.federated_value(
+        collections.OrderedDict(num_clients=0), federated_language.SERVER
     )
 
-  @federated_computation.federated_computation([
-      computation_types.FederatedType(server_state_type, placements.SERVER),
-      computation_types.FederatedType(
-          computation_types.SequenceType(np.str_), placements.CLIENTS
+  @federated_language.federated_computation([
+      federated_language.FederatedType(
+          server_state_type, federated_language.SERVER
+      ),
+      federated_language.FederatedType(
+          federated_language.SequenceType(np.str_), federated_language.CLIENTS
       ),
   ])
   def next_fn(server_state, client_val):
     """`next` function for `tff.templates.IterativeProcess`."""
-    server_update = intrinsics.federated_zip(
+    server_update = federated_language.federated_zip(
         collections.OrderedDict(num_clients=count_clients_federated(client_val))
     )
 
-    server_output = intrinsics.federated_sum(
+    server_output = federated_language.federated_sum(
         _bind_tf_function(
-            intrinsics.federated_broadcast(server_state), tf.timestamp
+            federated_language.federated_broadcast(server_state), tf.timestamp
         )
     )
 
@@ -649,22 +659,22 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
 def get_iterative_process_for_example_with_lambda_returning_aggregation():
   """Gets iterative process with indirection to the called intrinsic."""
   server_state_type = collections.OrderedDict(num_clients=np.int32)
-  client_val_type = computation_types.FederatedType(
-      server_state_type, placements.CLIENTS
+  client_val_type = federated_language.FederatedType(
+      server_state_type, federated_language.CLIENTS
   )
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def computation_returning_lambda():
 
-    @federated_computation.federated_computation(np.int32)
+    @federated_language.federated_computation(np.int32)
     def computation_returning_sum(x):
       tuple_containing_intrinsic = [
-          building_blocks.Intrinsic(
+          federated_language.framework.Intrinsic(
               'federated_sum',
-              computation_types.FunctionType(
+              federated_language.FunctionType(
                   client_val_type,
-                  computation_types.FederatedType(
-                      client_val_type.member, placements.SERVER
+                  federated_language.FederatedType(
+                      client_val_type.member, federated_language.SERVER
                   ),
               ),
           ),
@@ -675,20 +685,22 @@ def get_iterative_process_for_example_with_lambda_returning_aggregation():
 
     return computation_returning_sum
 
-  @federated_computation.federated_computation
+  @federated_language.federated_computation
   def init_fn():
-    return intrinsics.federated_value(
-        collections.OrderedDict(num_clients=0), placements.SERVER
+    return federated_language.federated_value(
+        collections.OrderedDict(num_clients=0), federated_language.SERVER
     )
 
-  @federated_computation.federated_computation([
-      computation_types.FederatedType(server_state_type, placements.SERVER),
+  @federated_language.federated_computation([
+      federated_language.FederatedType(
+          server_state_type, federated_language.SERVER
+      ),
       client_val_type,
   ])
   def next_fn(server_state, client_val):
     """`next` function for `tff.templates.IterativeProcess`."""
-    server_update = intrinsics.federated_sum(client_val)
-    state_at_clients = intrinsics.federated_broadcast(server_state)
+    server_update = federated_language.federated_sum(client_val)
+    state_at_clients = federated_language.federated_broadcast(server_state)
     lambda_returning_sum = computation_returning_lambda()
     sum_fn = lambda_returning_sum(1)
     server_output = sum_fn(state_at_clients)

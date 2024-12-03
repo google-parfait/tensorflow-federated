@@ -18,25 +18,23 @@ import collections
 import datetime
 from typing import Optional, Protocol, Union
 
+import federated_language
 from vizier import pyvizier
 from vizier.client import client_abc
 
-from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.programs import program_logic
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.program import data_source
-from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
-from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
-from tensorflow_federated.python.program import value_reference
 
 
 class IntReleaseManagerFactory(Protocol):
 
   def __call__(
       self, trial: client_abc.TrialInterface
-  ) -> release_manager.ReleaseManager[release_manager.ReleasableStructure, int]:
+  ) -> federated_language.program.ReleaseManager[
+      federated_language.program.ReleasableStructure, int
+  ]:
     pass
 
 
@@ -44,7 +42,9 @@ class StrReleaseManagerFactory(Protocol):
 
   def __call__(
       self, trial: client_abc.TrialInterface
-  ) -> release_manager.ReleaseManager[release_manager.ReleasableStructure, str]:
+  ) -> federated_language.program.ReleaseManager[
+      federated_language.program.ReleasableStructure, str
+  ]:
     pass
 
 
@@ -52,7 +52,7 @@ class ProgramStateManagerFactory(Protocol):
 
   def __call__(
       self, trial: client_abc.TrialInterface
-  ) -> program_state_manager_lib.ProgramStateManager:
+  ) -> federated_language.program.ProgramStateManager:
     pass
 
 
@@ -74,12 +74,12 @@ class TrainProcessFactory(Protocol):
 
 
 async def _create_measurement(
-    value: value_reference.MaterializableStructure,
+    value: federated_language.program.MaterializableStructure,
     steps: int,
     creation_time: datetime.datetime,
 ) -> pyvizier.Measurement:
   """Creates a Vizier Measurement for the given `value`."""
-  materialized_value = await value_reference.materialize_value(value)
+  materialized_value = await federated_language.program.materialize_value(value)
   flattened_value = structure_utils.flatten_with_name(materialized_value)
   metrics = {k: v for k, v in flattened_value}
   elapsed_time = datetime.datetime.now().astimezone() - creation_time
@@ -90,7 +90,9 @@ async def _create_measurement(
 
 
 class _IntermediateMeasurementReleaseManager(
-    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+    federated_language.program.ReleaseManager[
+        federated_language.program.ReleasableStructure, int
+    ]
 ):
   """Releases metrics as a trial's intermediate measurement."""
 
@@ -98,7 +100,7 @@ class _IntermediateMeasurementReleaseManager(
     self._trial = trial
 
   async def release(
-      self, value: release_manager.ReleasableStructure, key: int
+      self, value: federated_language.program.ReleasableStructure, key: int
   ) -> None:
     creation_time = self._trial.materialize().creation_time
     measurement = await _create_measurement(
@@ -116,7 +118,9 @@ class _IntermediateMeasurementReleaseManager(
 
 
 class _FinalMeasurementReleaseManager(
-    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+    federated_language.program.ReleaseManager[
+        federated_language.program.ReleasableStructure, int
+    ]
 ):
   """Releases metrics as a trial's final measurement."""
 
@@ -124,7 +128,7 @@ class _FinalMeasurementReleaseManager(
     self._trial = trial
 
   async def release(
-      self, value: release_manager.ReleasableStructure, key: int
+      self, value: federated_language.program.ReleasableStructure, key: int
   ) -> None:
     creation_time = self._trial.materialize().creation_time
     measurement = await _create_measurement(
@@ -145,10 +149,10 @@ async def train_model_with_vizier(
     study: client_abc.StudyInterface,
     total_trials: int,
     num_parallel_trials: int = 1,
-    update_hparams: computation_base.Computation,
+    update_hparams: federated_language.framework.Computation,
     train_model_program_logic: program_logic.TrainModelProgramLogic,
     train_process_factory: TrainProcessFactory,
-    train_data_source: data_source.FederatedDataSource,
+    train_data_source: federated_language.program.FederatedDataSource,
     total_rounds: int,
     num_clients: int,
     program_state_manager_factory: ProgramStateManagerFactory,
@@ -216,20 +220,24 @@ async def train_model_with_vizier(
       )
       if train_metrics_manager_factory is not None:
         manager = train_metrics_manager_factory(trial)
-        train_metrics_manager = release_manager.GroupingReleaseManager([
-            manager,
-            intermediate_release_manager,
-        ])
+        train_metrics_manager = (
+            federated_language.program.GroupingReleaseManager([
+                manager,
+                intermediate_release_manager,
+            ])
+        )
       else:
         train_metrics_manager = intermediate_release_manager
 
       final_release_manager = _FinalMeasurementReleaseManager(trial)
       evaluation_manager = evaluation_manager_factory(trial)
       if evaluation_manager.aggregated_metrics_manager is not None:
-        aggregated_metrics_manager = release_manager.GroupingReleaseManager([
-            evaluation_manager.aggregated_metrics_manager,
-            final_release_manager,
-        ])
+        aggregated_metrics_manager = (
+            federated_language.program.GroupingReleaseManager([
+                evaluation_manager.aggregated_metrics_manager,
+                final_release_manager,
+            ])
+        )
       else:
         aggregated_metrics_manager = final_release_manager
       evaluation_manager = evaluation_program_logic.EvaluationManager(

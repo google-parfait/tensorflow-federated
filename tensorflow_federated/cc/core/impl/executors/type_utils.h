@@ -17,12 +17,13 @@ limitations under the License
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_TYPE_UTILS_H_
 
 #include "absl/status/statusor.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
-absl::StatusOr<v0::Type> InferTypeFromValue(const v0::Value& value_pb);
+absl::StatusOr<federated_language::Type> InferTypeFromValue(
+    const v0::Value& value_pb);
 
 }  // namespace tensorflow_federated
 

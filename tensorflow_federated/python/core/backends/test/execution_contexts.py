@@ -13,12 +13,10 @@
 # limitations under the License.
 """Execution contexts for the test backend."""
 
+import federated_language
 from tensorflow_federated.python.core.backends.native import compiler as native_compiler
 from tensorflow_federated.python.core.backends.test import compiler as test_compiler
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
-from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
 
 
@@ -27,7 +25,7 @@ def create_async_test_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> async_execution_context.AsyncExecutionContext:
+) -> federated_language.framework.AsyncExecutionContext:
   """Creates an execution context that executes computations locally."""
   factory = executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
@@ -42,7 +40,7 @@ def create_async_test_cpp_execution_context(
     comp = native_compiler.desugar_and_transform_to_native(comp)
     return comp
 
-  return async_execution_context.AsyncExecutionContext(
+  return federated_language.framework.AsyncExecutionContext(
       executor_fn=factory,
       compiler_fn=_compile,
       transform_args=tensorflow_computation.transform_args,
@@ -62,7 +60,7 @@ def set_async_test_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
   )
-  context_stack_impl.context_stack.set_default_context(context)
+  federated_language.framework.global_context_stack.set_default_context(context)
 
 
 def create_sync_test_cpp_execution_context(
@@ -70,7 +68,7 @@ def create_sync_test_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> sync_execution_context.SyncExecutionContext:
+) -> federated_language.framework.SyncExecutionContext:
   """Creates an execution context that executes computations locally."""
   factory = executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
@@ -85,7 +83,7 @@ def create_sync_test_cpp_execution_context(
     comp = native_compiler.desugar_and_transform_to_native(comp)
     return comp
 
-  return sync_execution_context.SyncExecutionContext(
+  return federated_language.framework.SyncExecutionContext(
       executor_fn=factory,
       compiler_fn=_compile,
       transform_args=tensorflow_computation.transform_args,
@@ -105,4 +103,4 @@ def set_sync_test_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
   )
-  context_stack_impl.context_stack.set_default_context(context)
+  federated_language.framework.global_context_stack.set_default_context(context)

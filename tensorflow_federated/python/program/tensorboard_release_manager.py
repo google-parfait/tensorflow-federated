@@ -16,16 +16,17 @@
 import os
 from typing import Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
-from tensorflow_federated.python.program import value_reference
 
 
 class TensorBoardReleaseManager(
-    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+    federated_language.program.ReleaseManager[
+        federated_language.program.ReleasableStructure, int
+    ]
 ):
   """A `tff.program.ReleaseManager` that releases values to TensorBoard.
 
@@ -67,7 +68,7 @@ class TensorBoardReleaseManager(
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
   async def release(
-      self, value: release_manager.ReleasableStructure, key: int
+      self, value: federated_language.program.ReleasableStructure, key: int
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -76,12 +77,14 @@ class TensorBoardReleaseManager(
       key: A integer used to reference the released `value`; `key` represents a
         step in a federated program.
     """
-    materialized_value = await value_reference.materialize_value(value)
+    materialized_value = await federated_language.program.materialize_value(
+        value
+    )
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
     def _normalize(
-        value: value_reference.MaterializedValue,
-    ) -> value_reference.MaterializedValue:
+        value: federated_language.program.MaterializedValue,
+    ) -> federated_language.program.MaterializedValue:
       if isinstance(value, tf.data.Dataset):
         value = list(value)
       return value

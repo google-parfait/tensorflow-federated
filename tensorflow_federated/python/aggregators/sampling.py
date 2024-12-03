@@ -16,6 +16,7 @@
 import collections
 from typing import Any, Optional
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -23,13 +24,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
-from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -40,31 +34,31 @@ SEED_SENTINEL = -1
 
 
 def _is_tensor_or_structure_of_tensors(
-    value_type: computation_types.Type,
+    value_type: federated_language.Type,
 ) -> bool:
   """Return True if `value_type` is a TensorType or structure of TensorTypes."""
 
   # TODO: b/181365504 - relax this to allow `StructType` once a `Struct` can be
   # returned from `tf.function` decorated methods.
   def is_tensor_or_struct_with_py_type(
-      type_spec: computation_types.Type,
+      type_spec: federated_language.Type,
   ) -> bool:
     return isinstance(
         type_spec,
         (
-            computation_types.TensorType,
-            computation_types.StructWithPythonType,
+            federated_language.TensorType,
+            federated_language.StructWithPythonType,
         ),
     )
 
-  return type_analysis.contains_only(
+  return federated_language.framework.type_contains_only(
       value_type, is_tensor_or_struct_with_py_type
   )
 
 
 def build_reservoir_type(
-    sample_value_type: computation_types.Type,
-) -> computation_types.Type:
+    sample_value_type: federated_language.Type,
+) -> federated_language.Type:
   """Create the TFF type for the reservoir's state.
 
   `UnweightedReservoirSamplingFactory` will use this type as the "state" type in
@@ -101,9 +95,9 @@ def build_reservoir_type(
     )
 
   def add_unknown_dimension(t):
-    if isinstance(t, computation_types.TensorType):
+    if isinstance(t, federated_language.TensorType):
       return (
-          computation_types.TensorType(dtype=t.dtype, shape=(None,) + t.shape),
+          federated_language.TensorType(dtype=t.dtype, shape=(None,) + t.shape),
           True,
       )
     return t, False
@@ -111,11 +105,11 @@ def build_reservoir_type(
   # TODO: b/181155367 - creating a value from a type for the `zero` is a common
   # pattern for users of `tff.federated_aggregate` that could be made easier
   # for TFF users. Replace this once such helper exists.
-  return computation_types.to_type(
+  return federated_language.to_type(
       collections.OrderedDict(
-          random_seed=computation_types.TensorType(np.int64, shape=[2]),
-          random_values=computation_types.TensorType(np.int32, shape=[None]),
-          samples=type_transformations.transform_type_postorder(
+          random_seed=federated_language.TensorType(np.int64, shape=[2]),
+          random_values=federated_language.TensorType(np.int32, shape=[None]),
+          samples=federated_language.framework.transform_type_postorder(
               sample_value_type, add_unknown_dimension
           )[0],
       )
@@ -123,7 +117,7 @@ def build_reservoir_type(
 
 
 def build_initial_sample_reservoir(
-    sample_value_type: computation_types.Type, seed: Optional[Any] = None
+    sample_value_type: federated_language.Type, seed: Optional[Any] = None
 ):
   """Build up the initial state of the reservoir for sampling.
 
@@ -148,7 +142,7 @@ def build_initial_sample_reservoir(
     else:
       real_seed = tf.convert_to_tensor(seed, dtype=tf.int64)
 
-    def zero_for_tensor_type(t: computation_types.TensorType):
+    def zero_for_tensor_type(t: federated_language.TensorType):
       """Add an extra first dimension to create a tensor that collects samples.
 
       The first dimension will have size `0` for the algebraic zero, resulting
@@ -166,7 +160,7 @@ def build_initial_sample_reservoir(
         `TypeError` if `t` is not a `tff.TensorType`.
         ValueError: If `t.shape` is `None`'
       """
-      if not isinstance(t, computation_types.TensorType):
+      if not isinstance(t, federated_language.TensorType):
         raise TypeError(f'Cannot create zero for non TesnorType: {type(t)}')
       if t.shape is None:
         raise ValueError('Expected `t.shape` to not be `None`.')
@@ -192,8 +186,8 @@ def build_initial_sample_reservoir(
 
 
 def _build_sample_value_computation(
-    value_type: computation_types.Type, sample_size: int
-) -> computation_base.Computation:
+    value_type: federated_language.Type, sample_size: int
+) -> federated_language.framework.Computation:
   """Builds the `accumulate` computation for sampling."""
   reservoir_type = build_reservoir_type(value_type)
 
@@ -284,8 +278,8 @@ def _build_sample_value_computation(
 
 
 def build_merge_samples_computation(
-    value_type: computation_types.Type, sample_size: int
-) -> computation_base.Computation:
+    value_type: federated_language.Type, sample_size: int
+) -> federated_language.framework.Computation:
   """Builds the `merge` computation for a sampling."""
   reservoir_type = build_reservoir_type(value_type)
 
@@ -334,9 +328,9 @@ def build_merge_samples_computation(
 
 
 def _build_finalize_sample_computation(
-    value_type: computation_types.Type,
+    value_type: federated_language.Type,
     return_sampling_metadata: bool = False,
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Builds the `report` computation for sampling."""
   reservoir_type = build_reservoir_type(value_type)
 
@@ -352,8 +346,8 @@ def _build_finalize_sample_computation(
 
 
 def _build_check_non_finite_leaves_computation(
-    value_type: computation_types.Type,
-) -> computation_base.Computation:
+    value_type: federated_language.Type,
+) -> federated_language.framework.Computation:
   """Builds the computation for checking non-finite leaves in the client value.
 
   Args:
@@ -462,27 +456,31 @@ class UnweightedReservoirSamplingFactory(factory.UnweightedAggregationFactory):
 
   def create(
       self,
-      value_type: computation_types.Type,
+      value_type: federated_language.Type,
   ) -> aggregation_process.AggregationProcess:
-    if not type_analysis.is_structure_of_tensors(value_type):
+    if not federated_language.framework.is_structure_of_tensors(value_type):
       raise TypeError(
           f'`value_type` must be a structure of tensors, got a {value_type!r}.'
       )
 
-    @federated_computation.federated_computation()
+    @federated_language.federated_computation()
     def init_fn():
       # Empty/null state, nothing is tracked across invocations.
-      return intrinsics.federated_value((), placements.SERVER)
+      return federated_language.federated_value((), federated_language.SERVER)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType((), placements.SERVER),
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+    @federated_language.federated_computation(
+        federated_language.FederatedType((), federated_language.SERVER),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(unused_state, value):
       # Empty tuple is the `None` of TFF.
-      empty_tuple = intrinsics.federated_value((), placements.SERVER)
-      non_finite_leaves_counts = intrinsics.federated_sum(
-          intrinsics.federated_map(
+      empty_tuple = federated_language.federated_value(
+          (), federated_language.SERVER
+      )
+      non_finite_leaves_counts = federated_language.federated_sum(
+          federated_language.federated_map(
               _build_check_non_finite_leaves_computation(value_type), value
           )
       )
@@ -496,7 +494,7 @@ class UnweightedReservoirSamplingFactory(factory.UnweightedAggregationFactory):
       finalize_sample = _build_finalize_sample_computation(
           value_type, self._return_sampling_metadata
       )
-      samples = intrinsics.federated_aggregate(
+      samples = federated_language.federated_aggregate(
           value,
           zero=initial_reservoir,
           accumulate=sample_value,

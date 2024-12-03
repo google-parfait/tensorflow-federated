@@ -18,14 +18,14 @@ limitations under the License
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "federated_language/proto/array.pb.h"
+#include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -34,7 +34,7 @@ absl::Status SerializeTensorValue(const tensorflow::Tensor tensor,
                                   v0::Value* value_pb) {
   // Repeated fields are used for strings and constants to maintain
   // compatibility with TensorFlow.
-  v0::Array array_pb;
+  federated_language::Array array_pb;
   if ((tensor.shape().dims() == 0 && !tensor.shape().unknown_rank()) ||
       tensor.dtype() == tensorflow::DataType::DT_STRING) {
     array_pb = TFF_TRY(ArrayFromTensor(tensor));
@@ -58,7 +58,7 @@ absl::StatusOr<tensorflow::Tensor> DeserializeTensorValue(
   // Repeated fields are used for strings and constants to maintain
   // compatibility with TensorFlow.
   if (tensorflow_federated::IsScalar(value_pb.array().shape()) ||
-      value_pb.array().dtype() == v0::DataType::DT_STRING) {
+      value_pb.array().dtype() == federated_language::DataType::DT_STRING) {
     return TensorFromArray(value_pb.array());
   } else {
     return TensorFromArrayContent(value_pb.array());

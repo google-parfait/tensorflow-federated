@@ -17,6 +17,7 @@ from collections.abc import Callable
 from typing import Any, Optional
 
 import attrs
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -26,11 +27,6 @@ from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_lib
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tensor
 from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 # Convenience Aliases
 _CharacterEncoding = chunkers.CharacterEncoding
@@ -76,7 +72,7 @@ def build_iblt_computation(
     seed: int = 0,
     batch_size: int = 1,
     repetitions: int = 3,
-) -> computation_base.Computation:
+) -> federated_language.framework.Computation:
   """Builds the `tff.Computation` for heavy-hitters discovery with IBLT.
 
   Args:
@@ -178,8 +174,8 @@ def build_iblt_computation(
   if decode_iblt_fn is None:
     decode_iblt_fn = iblt_tensor.decode_iblt_tensor_tf
 
-  dataset_type = computation_types.SequenceType(
-      computation_types.TensorType(shape=[None], dtype=np.str_)
+  dataset_type = federated_language.SequenceType(
+      federated_language.TensorType(shape=[None], dtype=np.str_)
   )
 
   @tensorflow_computation.tf_computation(dataset_type)
@@ -276,7 +272,7 @@ def build_iblt_computation(
     )
 
   def secure_sum(x):
-    return intrinsics.federated_secure_sum(
+    return federated_language.federated_secure_sum(
         x, max_input=2**secure_sum_bitwidth - 1
     )
 
@@ -285,8 +281,8 @@ def build_iblt_computation(
         x, modulus=np.int64(iblt_lib.DEFAULT_FIELD_SIZE)
     )
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(dataset_type, placements.CLIENTS)
+  @federated_language.federated_computation(
+      federated_language.FederatedType(dataset_type, federated_language.CLIENTS)
   )
   def one_round_computation(examples):
     """The TFF computation to compute the aggregated IBLT sketch."""
@@ -296,16 +292,20 @@ def build_iblt_computation(
       sketch_sum_fn = secure_modular_sum
       count_sum_fn = secure_sum
     else:
-      sketch_sum_fn = intrinsics.federated_sum
-      count_sum_fn = intrinsics.federated_sum
-    round_timestamp = intrinsics.federated_eval(
+      sketch_sum_fn = federated_language.federated_sum
+      count_sum_fn = federated_language.federated_sum
+    round_timestamp = federated_language.federated_eval(
         tensorflow_computation.tf_computation(
             lambda: tf.cast(tf.timestamp(), np.int64)
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
-    clients = count_sum_fn(intrinsics.federated_value(1, placements.CLIENTS))
-    sketch, count_tensor = intrinsics.federated_map(compute_sketch, examples)
+    clients = count_sum_fn(
+        federated_language.federated_value(1, federated_language.CLIENTS)
+    )
+    sketch, count_tensor = federated_language.federated_map(
+        compute_sketch, examples
+    )
     sketch = sketch_sum_fn(sketch)
     count_tensor = count_sum_fn(count_tensor)
 
@@ -314,8 +314,10 @@ def build_iblt_computation(
         heavy_hitters_unique_counts,
         heavy_hitters_counts,
         num_not_decoded,
-    ) = intrinsics.federated_map(decode_heavy_hitters, (sketch, count_tensor))
-    server_output = intrinsics.federated_zip(
+    ) = federated_language.federated_map(
+        decode_heavy_hitters, (sketch, count_tensor)
+    )
+    server_output = federated_language.federated_zip(
         ServerOutput(
             clients=clients,
             heavy_hitters=heavy_hitters,

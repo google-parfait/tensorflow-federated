@@ -16,11 +16,11 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class TensorflowToTypeTest(parameterized.TestCase):
@@ -29,14 +29,14 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'dtype',
           tf.int32,
-          computation_types.TensorType(np.int32),
+          federated_language.TensorType(np.int32),
       ),
       (
           'dtype_nested',
           [tf.int32],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32),
+                  federated_language.TensorType(np.int32),
               ],
               list,
           ),
@@ -44,10 +44,10 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'dtype_mixed',
           [tf.int32, np.float32],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32),
-                  computation_types.TensorType(np.float32),
+                  federated_language.TensorType(np.int32),
+                  federated_language.TensorType(np.float32),
               ],
               list,
           ),
@@ -55,39 +55,39 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'tensor_like_shape_fully_defined',
           (tf.int32, tf.TensorShape([2, 3])),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
+          federated_language.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'tensor_like_shape_partially_defined',
           (tf.int32, tf.TensorShape([2, None])),
-          computation_types.TensorType(np.int32, shape=[2, None]),
+          federated_language.TensorType(np.int32, shape=[2, None]),
       ),
       (
           'tensor_like_shape_unknown',
           (tf.int32, tf.TensorShape(None)),
-          computation_types.TensorType(np.int32, shape=None),
+          federated_language.TensorType(np.int32, shape=None),
       ),
       (
           'tensor_like_shape_scalar',
           (tf.int32, tf.TensorShape([])),
-          computation_types.TensorType(np.int32),
+          federated_language.TensorType(np.int32),
       ),
       (
           'tensor_like_dtype_only',
           (tf.int32, [2, 3]),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
+          federated_language.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'tensor_like_shape_only',
           (np.int32, tf.TensorShape([2, 3])),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
+          federated_language.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'tensor_like_nested',
           [(tf.int32, tf.TensorShape([2, 3]))],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
+                  federated_language.TensorType(np.int32, shape=[2, 3]),
               ],
               list,
           ),
@@ -95,10 +95,10 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'tensor_like_mixed',
           [(tf.int32, tf.TensorShape([2, 3])), np.float32],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
-                  computation_types.TensorType(np.float32),
+                  federated_language.TensorType(np.int32, shape=[2, 3]),
+                  federated_language.TensorType(np.float32),
               ],
               list,
           ),
@@ -106,14 +106,14 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'tensor_spec',
           tf.TensorSpec(shape=[2, 3], dtype=tf.int32),
-          computation_types.TensorType(np.int32, shape=[2, 3]),
+          federated_language.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'tensor_spec_nested',
           [tf.TensorSpec(shape=[2, 3], dtype=tf.int32)],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
+                  federated_language.TensorType(np.int32, shape=[2, 3]),
               ],
               list,
           ),
@@ -121,10 +121,10 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'tensor_spec_mixed',
           [tf.TensorSpec(shape=[2, 3], dtype=tf.int32), np.float32],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, shape=[2, 3]),
-                  computation_types.TensorType(np.float32),
+                  federated_language.TensorType(np.int32, shape=[2, 3]),
+                  federated_language.TensorType(np.float32),
               ],
               list,
           ),
@@ -132,8 +132,8 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'dataset_spec',
           tf.data.DatasetSpec(tf.TensorSpec(shape=[2, 3], dtype=tf.int32)),
-          computation_types.SequenceType(
-              computation_types.TensorType(np.int32, shape=[2, 3])
+          federated_language.SequenceType(
+              federated_language.TensorType(np.int32, shape=[2, 3])
           ),
       ),
       (
@@ -141,10 +141,10 @@ class TensorflowToTypeTest(parameterized.TestCase):
           [
               tf.data.DatasetSpec(tf.TensorSpec(shape=[2, 3], dtype=tf.int32)),
           ],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.SequenceType(
-                      computation_types.TensorType(np.int32, shape=[2, 3])
+                  federated_language.SequenceType(
+                      federated_language.TensorType(np.int32, shape=[2, 3])
                   ),
               ],
               list,
@@ -156,12 +156,12 @@ class TensorflowToTypeTest(parameterized.TestCase):
               tf.data.DatasetSpec(tf.TensorSpec(shape=[2, 3], dtype=tf.int32)),
               np.float32,
           ],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
-                  computation_types.SequenceType(
-                      computation_types.TensorType(np.int32, shape=[2, 3])
+                  federated_language.SequenceType(
+                      federated_language.TensorType(np.int32, shape=[2, 3])
                   ),
-                  computation_types.TensorType(np.float32),
+                  federated_language.TensorType(np.float32),
               ],
               list,
           ),
@@ -172,7 +172,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
-      ('type', computation_types.TensorType(np.int32)),
+      ('type', federated_language.TensorType(np.int32)),
       ('dtype', np.int32),
       ('tensor_like', (np.int32, [2, 3])),
       ('sequence_unnamed', [np.float64, np.int32, np.str_]),
@@ -182,7 +182,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
   def test_delegates_result_with_obj(self, obj):
 
     with mock.patch.object(
-        computation_types, 'to_type', autospec=True, spec_set=True
+        federated_language, 'to_type', autospec=True, spec_set=True
     ) as mock_to_type:
       tensorflow_types.to_type(obj)
       mock_to_type.assert_called_once_with(obj)

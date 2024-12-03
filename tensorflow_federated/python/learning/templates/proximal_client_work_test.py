@@ -16,16 +16,13 @@ import collections
 from unittest import mock
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import loop_builder
@@ -66,41 +63,46 @@ class ProximalClientWorkComputationTest(
     self.assertIsInstance(client_work_process, client_works.ClientWorkProcess)
 
     mw_type = model_weights.ModelWeights(
-        trainable=computation_types.to_type([(np.float32, (2, 1)), np.float32]),
-        non_trainable=computation_types.to_type([np.float32]),
+        trainable=federated_language.to_type(
+            [(np.float32, (2, 1)), np.float32]
+        ),
+        non_trainable=federated_language.to_type([np.float32]),
     )
-    expected_param_model_weights_type = computation_types.FederatedType(
-        mw_type, placements.CLIENTS
+    expected_param_model_weights_type = federated_language.FederatedType(
+        mw_type, federated_language.CLIENTS
     )
     element_type = tensorflow_types.to_type(model_fn().input_spec)
-    expected_param_data_type = computation_types.FederatedType(
-        computation_types.SequenceType(element_type), placements.CLIENTS
+    expected_param_data_type = federated_language.FederatedType(
+        federated_language.SequenceType(element_type),
+        federated_language.CLIENTS,
     )
-    expected_result_type = computation_types.FederatedType(
+    expected_result_type = federated_language.FederatedType(
         client_works.ClientResult(
             update=mw_type.trainable,
-            update_weight=computation_types.TensorType(np.float32),
+            update_weight=federated_language.TensorType(np.float32),
         ),
-        placements.CLIENTS,
+        federated_language.CLIENTS,
     )
-    expected_state_type = computation_types.FederatedType((), placements.SERVER)
-    expected_measurements_type = computation_types.FederatedType(
+    expected_state_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
+    expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             train=collections.OrderedDict(
                 loss=np.float32, num_examples=np.int32
             )
         ),
-        placements.SERVER,
+        federated_language.SERVER,
     )
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     expected_initialize_type.check_equivalent_to(
         client_work_process.initialize.type_signature
     )
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
             weights=expected_param_model_weights_type,
@@ -239,9 +241,10 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_custom_metrics_aggregator(self):
 
     def sum_then_finalize_then_times_two(metric_finalizers):
-      @federated_computation.federated_computation
+
+      @federated_language.federated_computation
       def aggregation_computation(client_local_unfinalized_metrics):
-        unfinalized_metrics_sum = intrinsics.federated_sum(
+        unfinalized_metrics_sum = federated_language.federated_sum(
             client_local_unfinalized_metrics
         )
 
@@ -254,7 +257,7 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
             )
           return finalized_metrics
 
-        return intrinsics.federated_map(
+        return federated_language.federated_map(
             finalizer_computation, unfinalized_metrics_sum
         )
 
@@ -433,13 +436,13 @@ class FunctionalProximalClientWorkExecutionTest(
         metric_finalizers, local_unfinalized_metrics_type
     ):
 
-      @federated_computation.federated_computation(
-          computation_types.FederatedType(
-              local_unfinalized_metrics_type, placements.CLIENTS
+      @federated_language.federated_computation(
+          federated_language.FederatedType(
+              local_unfinalized_metrics_type, federated_language.CLIENTS
           )
       )
       def aggregation_computation(client_local_unfinalized_metrics):
-        unfinalized_metrics_sum = intrinsics.federated_sum(
+        unfinalized_metrics_sum = federated_language.federated_sum(
             client_local_unfinalized_metrics
         )
 
@@ -449,7 +452,7 @@ class FunctionalProximalClientWorkExecutionTest(
               lambda x: x * 2, metric_finalizers(unfinalized_metrics)
           )
 
-        return intrinsics.federated_map(
+        return federated_language.federated_map(
             finalizer_computation, unfinalized_metrics_sum
         )
 

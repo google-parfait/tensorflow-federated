@@ -15,16 +15,15 @@
 
 from typing import Optional
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 
 
 def _is_nonempty_struct(type_signature) -> bool:
   return (
-      isinstance(type_signature, computation_types.StructType)
+      isinstance(type_signature, federated_language.StructType)
       and type_signature
   )
 
@@ -120,8 +119,8 @@ class IterativeProcess:
 
   def __init__(
       self,
-      initialize_fn: computation_base.Computation,
-      next_fn: computation_base.Computation,
+      initialize_fn: federated_language.framework.Computation,
+      next_fn: federated_language.framework.Computation,
       next_is_multi_arg: Optional[bool] = None,
   ):
     """Creates a `tff.templates.IterativeProcess`.
@@ -148,7 +147,9 @@ class IterativeProcess:
         `initialize_fn` or `next_fn` is not assignable to the first input
         argument of `next_fn`.
     """
-    py_typecheck.check_type(initialize_fn, computation_base.Computation)
+    py_typecheck.check_type(
+        initialize_fn, federated_language.framework.Computation
+    )
     if initialize_fn.type_signature.parameter is not None:
       raise errors.TemplateInitFnParamNotEmptyError(
           'Provided `initialize_fn` must be a no-arg function, but found '
@@ -156,7 +157,7 @@ class IterativeProcess:
       )
     initialize_result_type = initialize_fn.type_signature.result
 
-    py_typecheck.check_type(next_fn, computation_base.Computation)
+    py_typecheck.check_type(next_fn, federated_language.framework.Computation)
     next_parameter_type = next_fn.type_signature.parameter
     state_type = _infer_state_type(
         initialize_result_type, next_parameter_type, next_is_multi_arg
@@ -186,12 +187,12 @@ class IterativeProcess:
     self._next_fn = next_fn
 
   @property
-  def initialize(self) -> computation_base.Computation:
+  def initialize(self) -> federated_language.framework.Computation:
     """A no-arg `tff.Computation` that returns the initial state."""
     return self._initialize_fn
 
   @property
-  def next(self) -> computation_base.Computation:
+  def next(self) -> federated_language.framework.Computation:
     """A `tff.Computation` that produces the next state.
 
     Its first argument should always be the current state (originally produced
@@ -204,7 +205,7 @@ class IterativeProcess:
     return self._next_fn
 
   @property
-  def state_type(self) -> computation_types.Type:
+  def state_type(self) -> federated_language.Type:
     """The `tff.Type` of the state of the process."""
     return self._state_type  # pytype: disable=bad-return-type
 
@@ -227,8 +228,8 @@ def is_stateful(process: IterativeProcess) -> bool:
     contains types other than `tff.types.StructType`, `False` otherwise.
   """
   state_type = process.state_type
-  if isinstance(state_type, computation_types.FederatedType):
+  if isinstance(state_type, federated_language.FederatedType):
     state_type = state_type.member
-  return not type_analysis.contains_only(
-      state_type, lambda t: isinstance(t, computation_types.StructType)
+  return not federated_language.framework.type_contains_only(
+      state_type, lambda t: isinstance(t, federated_language.StructType)
   )

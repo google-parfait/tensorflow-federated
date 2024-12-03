@@ -17,15 +17,16 @@ import collections
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.simulation.datasets import client_data
 
 CentralOrClientData = Union[tf.data.Dataset, client_data.ClientData]
 PreprocessFnType = Union[
-    Callable[[tf.data.Dataset], tf.data.Dataset], computation_base.Computation
+    Callable[[tf.data.Dataset], tf.data.Dataset],
+    federated_language.framework.Computation,
 ]
 
 

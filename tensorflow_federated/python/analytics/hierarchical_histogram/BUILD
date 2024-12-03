@@ -46,10 +46,9 @@ py_test(
         "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -60,11 +59,8 @@ py_library(
         ":clipping_factory",
         ":hierarchical_histogram_factory",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -75,7 +71,7 @@ py_test(
     deps = [
         ":hierarchical_histogram_lib",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/test:static_assert",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -112,12 +108,8 @@ py_library(
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:aggregation_process",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -128,9 +120,8 @@ py_test(
         ":clipping_factory",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@federated_language//federated_language",
     ],
 )

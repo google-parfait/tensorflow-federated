@@ -87,6 +87,22 @@ http_archive(
 #     },
 # )
 
+http_archive(
+    name = "federated_language",
+    patches = [
+        "//third_party/federated_language:proto_library_loads.patch",
+        "//third_party/federated_language:python_deps.patch",
+        # Must come after `python_deps.patch`, this patches the output of `python_deps.patch`.
+        "//third_party/federated_language:structure_visibility.patch",
+    ],
+    repo_mapping = {
+        "@protobuf": "@com_google_protobuf",
+    },
+    sha256 = "de4bbfd93ee10c3797463d6a96911963d8969fb5ed0b264ae4f3f3088013fed4",
+    strip_prefix = "federated-language-5405fd4b2965e2f7c6c240b386f0540e4114818e",
+    url = "https://github.com/google-parfait/federated-language/archive/5405fd4b2965e2f7c6c240b386f0540e4114818e.tar.gz",
+)
+
 # The version of TensorFlow should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
 http_archive(

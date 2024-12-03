@@ -71,8 +71,8 @@ py_library(
     name = "task_data",
     srcs = ["task_data.py"],
     deps = [
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/simulation/datasets:client_data",
+        "@federated_language//federated_language",
     ],
 )
 

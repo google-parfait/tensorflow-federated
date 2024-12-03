@@ -17,16 +17,16 @@ from collections.abc import Sequence
 import random
 from typing import Optional
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.program import data_source
 from tensorflow_federated.python.program import serialization_utils
 
 
-class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
+class DatasetDataSourceIterator(
+    federated_language.program.FederatedDataSourceIterator
+):
   """A `tff.program.FederatedDataSourceIterator` backed by `tf.data.Dataset`s.
 
   A `tff.program.FederatedDataSourceIterator` backed by a sequence of
@@ -38,7 +38,7 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
   def __init__(
       self,
       datasets: Sequence[tf.data.Dataset],
-      federated_type: computation_types.FederatedType,
+      federated_type: federated_language.FederatedType,
   ):
     """Returns an initialized `tff.program.DatasetDataSourceIterator`.
 
@@ -77,7 +77,7 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     federated_type, _ = serialization_utils.unpack_type_spec_from(
         buffer, offset=offset
     )
-    if not isinstance(federated_type, computation_types.FederatedType):
+    if not isinstance(federated_type, federated_language.FederatedType):
       raise TypeError(
           'Expected `federated_type` to be a `tff.FederatedType`, found '
           f'{type(federated_type)}.'
@@ -97,7 +97,7 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     return datasets_bytes + federated_type_bytes
 
   @property
-  def federated_type(self) -> computation_types.FederatedType:
+  def federated_type(self) -> federated_language.FederatedType:
     """The type of the data returned by calling `select`."""
     return self._federated_type
 
@@ -134,7 +134,7 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     return True
 
 
-class DatasetDataSource(data_source.FederatedDataSource):
+class DatasetDataSource(federated_language.program.FederatedDataSource):
   """A `tff.program.FederatedDataSource` backed by `tf.data.Dataset`s.
 
   A `tff.program.FederatedDataSource` backed by a sequence of
@@ -168,12 +168,13 @@ class DatasetDataSource(data_source.FederatedDataSource):
 
     self._datasets = datasets
     element_type = tensorflow_types.to_type(element_spec)
-    self._federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(element_type), placements.CLIENTS
+    self._federated_type = federated_language.FederatedType(
+        federated_language.SequenceType(element_type),
+        federated_language.CLIENTS,
     )
 
   @property
-  def federated_type(self) -> computation_types.FederatedType:
+  def federated_type(self) -> federated_language.FederatedType:
     """The type of the data returned by calling `select` on an iterator."""
     return self._federated_type
 

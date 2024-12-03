@@ -16,10 +16,9 @@
 from collections.abc import Callable
 
 import cachetools
+import federated_language
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_factory
 
 # Place a limit on the maximum size of the executor caches managed by the
 # ExecutorFactories, to prevent unbounded thread and memory growth in the case
@@ -27,37 +26,43 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 _EXECUTOR_CACHE_SIZE = 10
 
 
-def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
+def _get_hashable_key(
+    cardinalities: federated_language.framework.CardinalitiesType,
+):
   return tuple(sorted((str(k), v) for k, v in cardinalities.items()))
 
 
-class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
+class ResourceManagingExecutorFactory(
+    federated_language.framework.ExecutorFactory
+):
   """Implementation of executor factory holding an executor per cardinality."""
 
   def __init__(
       self,
       executor_stack_fn: Callable[
-          [executor_factory.CardinalitiesType], executor_base.Executor
+          [federated_language.framework.CardinalitiesType],
+          federated_language.framework.Executor,
       ],
   ):
     """Initializes `ResourceManagingExecutorFactory`.
 
     `ResourceManagingExecutorFactory` manages a mapping from `cardinalities`
-    to `executor_base.Executors`, closing and destroying the executors in this
+    to `federated_language.framework.Executors`, closing and destroying the
+    executors in this
     mapping when asked.
 
     Args:
       executor_stack_fn: Callable taking a mapping from
-        `placements.PlacementLiteral` to integers, and returning an
-        `executor_base.Executor`. The returned executor will be configured to
-        handle these cardinalities.
+        `federated_language.framework.PlacementLiteral` to integers, and
+        returning an `federated_language.framework.Executor`. The returned
+        executor will be configured to handle these cardinalities.
     """
     self._executor_stack_fn = executor_stack_fn
     self._executors = cachetools.LRUCache(_EXECUTOR_CACHE_SIZE)
 
   def create_executor(
-      self, cardinalities: executor_factory.CardinalitiesType
-  ) -> executor_base.Executor:
+      self, cardinalities: federated_language.framework.CardinalitiesType
+  ) -> federated_language.framework.Executor:
     """Constructs or gets existing executor.
 
     Returns a previously-constructed executor if this method has already been
@@ -65,13 +70,14 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
     with `cardinalities` and returns the result.
 
     Args:
-      cardinalities: `dict` with `placements.PlacementLiteral` keys and integer
-        values, specifying the population size at each placement. The executor
-        stacks returned from this method are not themselves polymorphic; a
-        concrete stack must have fixed sizes at each placement.
+      cardinalities: `dict` with `federated_language.framework.PlacementLiteral`
+        keys and integer values, specifying the population size at each
+        placement. The executor stacks returned from this method are not
+        themselves polymorphic; a concrete stack must have fixed sizes at each
+        placement.
 
     Returns:
-      Instance of `executor_base.Executor` as described above.
+      Instance of `federated_language.framework.Executor` as described above.
     """
     py_typecheck.check_type(cardinalities, dict)
     key = _get_hashable_key(cardinalities)
@@ -79,12 +85,12 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
     if ex is not None:
       return ex
     ex = self._executor_stack_fn(cardinalities)
-    py_typecheck.check_type(ex, executor_base.Executor)
+    py_typecheck.check_type(ex, federated_language.framework.Executor)
     self._executors[key] = ex
     return ex
 
   def clean_up_executor(
-      self, cardinalities: executor_factory.CardinalitiesType
+      self, cardinalities: federated_language.framework.CardinalitiesType
   ):
     """Calls `close` on constructed executors, resetting internal cache.
 

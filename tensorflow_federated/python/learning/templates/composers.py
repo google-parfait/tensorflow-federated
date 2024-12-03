@@ -17,14 +17,11 @@ import collections
 from collections.abc import Callable
 from typing import Any, NamedTuple
 
+import federated_language
+
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
@@ -61,7 +58,7 @@ class LearningAlgorithmState(NamedTuple):
 
 # pyformat: disable
 def compose_learning_process(
-    initial_model_weights_fn: computation_base.Computation,
+    initial_model_weights_fn: federated_language.framework.Computation,
     model_weights_distributor: distributors.DistributionProcess,
     client_work: client_works.ClientWorkProcess,
     model_update_aggregator: aggregation_process.AggregationProcess,
@@ -138,18 +135,18 @@ def compose_learning_process(
                  client_work, model_update_aggregator, model_finalizer)
   client_data_type = client_work.next.type_signature.parameter[2]  # pytype: disable=unsupported-operands
 
-  @federated_computation.federated_computation()
+  @federated_language.federated_computation()
   def init_fn():
-    initial_model_weights = intrinsics.federated_eval(initial_model_weights_fn,
-                                                      placements.SERVER)
-    return intrinsics.federated_zip(
+    initial_model_weights = federated_language.federated_eval(initial_model_weights_fn,
+                                                      federated_language.SERVER)
+    return federated_language.federated_zip(
         LearningAlgorithmState(initial_model_weights,
                                model_weights_distributor.initialize(),
                                client_work.initialize(),
                                model_update_aggregator.initialize(),
                                model_finalizer.initialize()))
 
-  @federated_computation.federated_computation(init_fn.type_signature.result,
+  @federated_language.federated_computation(init_fn.type_signature.result,
                                                client_data_type)
   def next_fn(state, client_data):
     # Compose processes.
@@ -167,12 +164,12 @@ def compose_learning_process(
 
     # Form the learning process output.
     new_global_model_weights = finalizer_output.result
-    new_state = intrinsics.federated_zip(
+    new_state = federated_language.federated_zip(
         LearningAlgorithmState(new_global_model_weights,
                                distributor_output.state,
                                client_work_output.state,
                                aggregator_output.state, finalizer_output.state))
-    metrics = intrinsics.federated_zip(
+    metrics = federated_language.federated_zip(
         collections.OrderedDict(
             distributor=distributor_output.measurements,
             client_work=client_work_output.measurements,
@@ -248,20 +245,20 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
                    client_work, model_update_aggregator, model_finalizer):
   """Checks `compose_learning_process` args meet the documented constraints."""
   py_typecheck.check_type(initial_model_weights_fn,
-                          computation_base.Computation)
+                          federated_language.framework.Computation)
   if initial_model_weights_fn.type_signature.parameter is not None:
     raise TypeError(
         f'Provided initial_model_weights_fn must be a no-arg tff.Computation.\n'
         f'Found input parameter: '
         f'{initial_model_weights_fn.type_signature.parameter}')
   global_model_weights_type = initial_model_weights_fn.type_signature.result
-  if isinstance(global_model_weights_type, computation_types.FederatedType):
+  if isinstance(global_model_weights_type, federated_language.FederatedType):
     raise TypeError(
         f'Provided initial_model_weights_fn must be a tff.Computation with '
         f'unplaced return type.\n'
         f'Return type found: {global_model_weights_type}')
-  global_model_weights_type = computation_types.FederatedType(
-      global_model_weights_type, placements.SERVER)
+  global_model_weights_type = federated_language.FederatedType(
+      global_model_weights_type, federated_language.SERVER)
   py_typecheck.check_type(model_weights_distributor,
                           distributors.DistributionProcess)
   py_typecheck.check_type(client_work, client_works.ClientWorkProcess)

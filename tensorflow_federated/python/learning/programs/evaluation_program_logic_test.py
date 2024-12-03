@@ -19,28 +19,21 @@ import unittest
 from unittest import mock
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.program import data_source
-from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import file_program_state_manager
 from tensorflow_federated.python.program import native_platform
-from tensorflow_federated.python.program import release_manager
 
 # Convenience aliases.
-TensorType = computation_types.TensorType
+TensorType = federated_language.TensorType
 
 
 class _NumpyMatcher:
@@ -118,10 +111,10 @@ class ExtractAndRewrapMetricsTest(
       return native_platform.NativeValueReference(task, value_type)
 
     test_value = collections.OrderedDict(
-        a=awaitable_value('foo', computation_types.TensorType(np.str_)),
+        a=awaitable_value('foo', federated_language.TensorType(np.str_)),
         b=collections.OrderedDict(
-            x=awaitable_value('bar', computation_types.TensorType(np.str_)),
-            z=awaitable_value(1.0, computation_types.TensorType(np.float32)),
+            x=awaitable_value('bar', federated_language.TensorType(np.str_)),
+            z=awaitable_value(1.0, federated_language.TensorType(np.float32)),
         ),
     )
 
@@ -133,7 +126,7 @@ class ExtractAndRewrapMetricsTest(
       self.fail(f'Unexpected error raised: {e}')
 
 
-def _create_test_context() -> federated_context.FederatedContext:
+def _create_test_context() -> federated_language.program.FederatedContext:
   return native_platform.NativeFederatedContext(
       execution_contexts.create_async_local_cpp_execution_context()
   )
@@ -141,14 +134,18 @@ def _create_test_context() -> federated_context.FederatedContext:
 
 def _create_mock_datasource() -> mock.Mock:
   mock_datasource = mock.create_autospec(
-      data_source.FederatedDataSource, instance=True, spec_set=True
+      federated_language.program.FederatedDataSource,
+      instance=True,
+      spec_set=True,
   )
 
   def create_mock_iterator(*args, **kwargs) -> mock.Mock:
     del args  # Unused
     del kwargs  # Unused
     return mock.create_autospec(
-        data_source.FederatedDataSourceIterator, instance=True, spec_set=True
+        federated_language.program.FederatedDataSourceIterator,
+        instance=True,
+        spec_set=True,
     )
 
   mock_datasource.iterator.side_effect = create_mock_iterator
@@ -202,14 +199,18 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
   def setUp(self):
     super().setUp()
     self.maxDiff = None
-    context_stack_impl.context_stack.set_default_context(_create_test_context())
+    federated_language.framework.global_context_stack.set_default_context(
+        _create_test_context()
+    )
 
   async def test_resume_nothing(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True
+        federated_language.program.FederatedDataSource,
+        instance=True,
+        spec_set=True,
     )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     mock_create_state_manager = mock.Mock()
     mock_meta_eval_manager = mock.create_autospec(
@@ -241,10 +242,12 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
 
   async def test_start_evaluations(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True
+        federated_language.program.FederatedDataSource,
+        instance=True,
+        spec_set=True,
     )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     # Create a state manager with no previous evaluations.
     mock_meta_eval_manager = mock.create_autospec(
@@ -284,10 +287,14 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
     processes = [_create_mock_eval_process(), _create_mock_eval_process()]
     metrics_managers = [
         mock.create_autospec(
-            release_manager.ReleaseManager, instance=True, spec_set=True
+            federated_language.program.ReleaseManager,
+            instance=True,
+            spec_set=True,
         ),
         mock.create_autospec(
-            release_manager.ReleaseManager, instance=True, spec_set=True
+            federated_language.program.ReleaseManager,
+            instance=True,
+            spec_set=True,
         ),
     ]
     mock_create_process_fn = mock.Mock(
@@ -369,10 +376,12 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
 
   async def test_record_finished_evaluations_removes_from_state(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True
+        federated_language.program.FederatedDataSource,
+        instance=True,
+        spec_set=True,
     )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     # Create a state manager with two inflight evaluations.
     mock_meta_eval_manager = mock.create_autospec(
@@ -421,10 +430,12 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
 
   async def test_record_two_evaluations_finished_removes_from_state(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True
+        federated_language.program.FederatedDataSource,
+        instance=True,
+        spec_set=True,
     )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     # Create a state manager with two inflight evaluations.
     mock_meta_eval_manager = mock.create_autospec(
@@ -468,10 +479,12 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
 
   async def test_resume_previous_evaluations(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True
+        federated_language.program.FederatedDataSource,
+        instance=True,
+        spec_set=True,
     )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     mock_create_state_manager = mock.Mock()
     mock_meta_eval_manager = mock.create_autospec(
@@ -519,10 +532,14 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
     ] + mock_resumed_eval_managers
     metrics_managers = [
         mock.create_autospec(
-            release_manager.ReleaseManager, instance=True, spec_set=True
+            federated_language.program.ReleaseManager,
+            instance=True,
+            spec_set=True,
         ),
         mock.create_autospec(
-            release_manager.ReleaseManager, instance=True, spec_set=True
+            federated_language.program.ReleaseManager,
+            instance=True,
+            spec_set=True,
         ),
     ]
     mock_create_process_fn = mock.Mock(
@@ -574,10 +591,12 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
 
   async def test_failed_evaluation_raises(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True
+        federated_language.program.FederatedDataSource,
+        instance=True,
+        spec_set=True,
     )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True
+        federated_language.program.ReleaseManager, instance=True, spec_set=True
     )
     mock_create_state_manager = mock.Mock()
     mock_create_process_fn = mock.Mock()
@@ -618,17 +637,20 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       return self.time_after_end
 
     self._mock_return_time_fn = _return_time
-    context_stack_impl.context_stack.set_default_context(_create_test_context())
+    federated_language.framework.global_context_stack.set_default_context(
+        _create_test_context()
+    )
 
   async def test_invalid_process_rasies(self):
-    @federated_computation.federated_computation
-    def empty_initialize():
-      return intrinsics.federated_value((), placements.SERVER)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType((), placements.SERVER),
-        computation_types.FederatedType(
-            computation_types.SequenceType(()), placements.CLIENTS
+    @federated_language.federated_computation
+    def empty_initialize():
+      return federated_language.federated_value((), federated_language.SERVER)
+
+    @federated_language.federated_computation(
+        federated_language.FederatedType((), federated_language.SERVER),
+        federated_language.FederatedType(
+            federated_language.SequenceType(()), federated_language.CLIENTS
         ),
     )
     def next_fn(state, inputs):
@@ -653,10 +675,10 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           evaluation_per_round_clients_number=num_clients,
           evaluation_end_time=self.end_time,
           per_round_metrics_manager=mock.create_autospec(
-              release_manager.ReleaseManager, instance=True
+              federated_language.program.ReleaseManager, instance=True
           ),
           aggregated_metrics_manager=mock.create_autospec(
-              release_manager.ReleaseManager, instance=True
+              federated_language.program.ReleaseManager, instance=True
           ),
       )
 
@@ -669,10 +691,10 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     state_manager.load_latest.return_value = (None, 0)
     num_clients = 3
     mock_per_round_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     train_round_num = 1
     with self.assertRaisesRegex(
@@ -698,10 +720,10 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     state_manager.load_latest.return_value = (eval_process.initialize(), 0)
     num_clients = 3
     mock_per_round_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     train_round_num = 1
     await evaluation_program_logic._run_evaluation(
@@ -744,10 +766,10 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     state_manager.load_latest.return_value = (eval_process.initialize(), 0)
     num_clients = 3
     mock_per_round_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     train_round_num = 10
     with mock.patch.object(datetime, 'datetime') as m_datetime:
@@ -806,10 +828,10 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     num_clients = 3
     mock_per_round_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     train_round_num = 10
     with mock.patch.object(datetime, 'datetime') as m_datetime:
@@ -870,10 +892,10 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     num_clients = 3
     mock_per_round_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True
+        federated_language.program.ReleaseManager, instance=True
     )
     train_round_num = 10
     await evaluation_program_logic._run_evaluation(

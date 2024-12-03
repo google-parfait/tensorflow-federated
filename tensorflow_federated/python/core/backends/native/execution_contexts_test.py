@@ -20,13 +20,13 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 
 
@@ -93,7 +93,7 @@ class DatasetsTest(parameterized.TestCase):
 
 
 def _create_mock_remote_executor_grpc_stub(
-    computation: computation_impl.ConcreteComputation,
+    computation: federated_language.framework.ConcreteComputation,
 ) -> remote_executor_grpc_stub.RemoteExecutorGrpcStub:
   class _GetExecutorResponse:
 

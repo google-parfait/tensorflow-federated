@@ -15,16 +15,11 @@
 import unittest
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 
 from tensorflow_federated.python.core.backends.xla import cpp_execution_contexts
 from tensorflow_federated.python.core.environments.jax_frontend import jax_computation
-from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 
 class AsyncLocalCppExecutionContextTest(
@@ -33,9 +28,9 @@ class AsyncLocalCppExecutionContextTest(
 
   def test_create_async_local_cpp_execution_context_returns_async_context(self):
     context = cpp_execution_contexts.create_async_local_cpp_execution_context()
-    self.assertIsInstance(context, context_base.AsyncContext)
+    self.assertIsInstance(context, federated_language.framework.AsyncContext)
 
-  @context_stack_test_utils.with_context(
+  @federated_language.framework.with_context(
       cpp_execution_contexts.create_async_local_cpp_execution_context
   )
   async def test_jax_computation_returns_result(self):
@@ -52,9 +47,9 @@ class SyncLocalCppExecutionContextTest(absltest.TestCase):
 
   def test_create_sync_local_cpp_execution_context_returns_sync_context(self):
     context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
-    self.assertIsInstance(context, context_base.SyncContext)
+    self.assertIsInstance(context, federated_language.framework.SyncContext)
 
-  @context_stack_test_utils.with_context(
+  @federated_language.framework.with_context(
       cpp_execution_contexts.create_sync_local_cpp_execution_context
   )
   def test_jax_computation_returns_result(self):
@@ -66,7 +61,7 @@ class SyncLocalCppExecutionContextTest(absltest.TestCase):
 
     self.assertEqual(actual_result, 3)
 
-  @context_stack_test_utils.with_context(
+  @federated_language.framework.with_context(
       cpp_execution_contexts.create_sync_local_cpp_execution_context
   )
   def test_federated_aggergate(self):
@@ -85,11 +80,11 @@ class SyncLocalCppExecutionContextTest(absltest.TestCase):
     def zeros():
       return np.float32(0)
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.float32, federated_language.CLIENTS)
     )
     def aggregate(client_values):
-      return intrinsics.federated_aggregate(
+      return federated_language.federated_aggregate(
           client_values,
           zero=zeros(),
           accumulate=_add,
@@ -101,14 +96,14 @@ class SyncLocalCppExecutionContextTest(absltest.TestCase):
         aggregate([np.float32(1), np.float32(2), np.float32(3)]), np.float32(6)
     )
 
-  @context_stack_test_utils.with_context(
+  @federated_language.framework.with_context(
       cpp_execution_contexts.create_sync_local_cpp_execution_context
   )
   def test_sequence_reduce(self):
     sequence = list(range(10))
 
-    @federated_computation.federated_computation(
-        computation_types.SequenceType(np.int32)
+    @federated_language.federated_computation(
+        federated_language.SequenceType(np.int32)
     )
     def comp(x):
       @jax_computation.jax_computation
@@ -119,19 +114,19 @@ class SyncLocalCppExecutionContextTest(absltest.TestCase):
       def _add(a, b):
         return a + b
 
-      return intrinsics.sequence_reduce(x, _zero(), _add)
+      return federated_language.sequence_reduce(x, _zero(), _add)
 
     self.assertEqual(comp(sequence), sum(range(10)))
 
-  @context_stack_test_utils.with_context(
+  @federated_language.framework.with_context(
       cpp_execution_contexts.create_sync_local_cpp_execution_context
   )
   def test_federated_sequence_reduce(self):
     sequence = list(range(10))
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(
-            computation_types.SequenceType(np.int32), placements.SERVER
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            federated_language.SequenceType(np.int32), federated_language.SERVER
         )
     )
     def comp(x):
@@ -143,26 +138,26 @@ class SyncLocalCppExecutionContextTest(absltest.TestCase):
       def _add(a, b):
         return a + b
 
-      @federated_computation.federated_computation(
-          computation_types.SequenceType(np.int32)
+      @federated_language.federated_computation(
+          federated_language.SequenceType(np.int32)
       )
       def _sum(sequence):
-        return intrinsics.sequence_reduce(sequence, _zero(), _add)
+        return federated_language.sequence_reduce(sequence, _zero(), _add)
 
-      return intrinsics.federated_map(_sum, x)
+      return federated_language.federated_map(_sum, x)
 
     self.assertEqual(comp(sequence), sum(range(10)))
 
-  @context_stack_test_utils.with_context(
+  @federated_language.framework.with_context(
       cpp_execution_contexts.create_sync_local_cpp_execution_context
   )
   def test_federated_sum(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def comp(x):
-      return intrinsics.federated_sum(x)
+      return federated_language.federated_sum(x)
 
     # TODO: b/27340091 - use a TFF specific error message after converting the
     # result coming out of the execution stack.
@@ -172,16 +167,16 @@ class SyncLocalCppExecutionContextTest(absltest.TestCase):
       # self.assertEqual(comp([1, 2, 3]), 6)
       comp([1, 2, 3])
 
-  @context_stack_test_utils.with_context(
+  @federated_language.framework.with_context(
       cpp_execution_contexts.create_sync_local_cpp_execution_context
   )
   def test_unweighted_federated_mean(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.CLIENTS)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.float32, federated_language.CLIENTS)
     )
     def comp(x):
-      return intrinsics.federated_mean(x)
+      return federated_language.federated_mean(x)
 
     # TODO: b/27340091 - use a TFF specific error message after converting the
     # result coming out of the execution stack.

@@ -16,14 +16,12 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import jax
 import ml_dtypes
 import numpy as np
 
 from tensorflow_federated.python.core.environments.jax_frontend import jax_computation
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.computation import polymorphic_computation
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class ToNumpyTest(parameterized.TestCase):
@@ -54,8 +52,10 @@ class JaxComputationTest(parameterized.TestCase):
     def _comp():
       return 1
 
-    self.assertIsInstance(_comp, computation_impl.ConcreteComputation)
-    expected_type = computation_types.FunctionType(None, np.int32)
+    self.assertIsInstance(
+        _comp, federated_language.framework.ConcreteComputation
+    )
+    expected_type = federated_language.FunctionType(None, np.int32)
     self.assertEqual(_comp.type_signature, expected_type)
 
   def test_returns_concrete_computation_with_one_arg(self):
@@ -63,8 +63,10 @@ class JaxComputationTest(parameterized.TestCase):
     def _comp(x):
       return jax.numpy.add(x, 1)
 
-    self.assertIsInstance(_comp, computation_impl.ConcreteComputation)
-    expected_type = computation_types.FunctionType(np.int32, np.int32)
+    self.assertIsInstance(
+        _comp, federated_language.framework.ConcreteComputation
+    )
+    expected_type = federated_language.FunctionType(np.int32, np.int32)
     self.assertEqual(_comp.type_signature, expected_type)
 
   def test_returns_concrete_computation_with_two_args(self):
@@ -72,9 +74,11 @@ class JaxComputationTest(parameterized.TestCase):
     def _comp(x, y):
       return jax.numpy.add(x, y)
 
-    self.assertIsInstance(_comp, computation_impl.ConcreteComputation)
-    expected_type = computation_types.FunctionType(
-        computation_types.StructWithPythonType(
+    self.assertIsInstance(
+        _comp, federated_language.framework.ConcreteComputation
+    )
+    expected_type = federated_language.FunctionType(
+        federated_language.StructWithPythonType(
             [('x', np.int32), ('y', np.int32)], collections.OrderedDict
         ),
         np.int32,
@@ -82,17 +86,20 @@ class JaxComputationTest(parameterized.TestCase):
     self.assertEqual(_comp.type_signature, expected_type)
 
   def test_returns_concrete_computation_with_correct_arg_order(self):
+
     @jax_computation.jax_computation(
-        computation_types.TensorType(np.int32, (10,)), np.int32
+        federated_language.TensorType(np.int32, (10,)), np.int32
     )
     def _comp(y, x):
       return jax.numpy.add(x, jax.numpy.sum(y))
 
-    self.assertIsInstance(_comp, computation_impl.ConcreteComputation)
-    expected_type = computation_types.FunctionType(
-        computation_types.StructWithPythonType(
+    self.assertIsInstance(
+        _comp, federated_language.framework.ConcreteComputation
+    )
+    expected_type = federated_language.FunctionType(
+        federated_language.StructWithPythonType(
             [
-                ('y', computation_types.TensorType(np.int32, (10,))),
+                ('y', federated_language.TensorType(np.int32, (10,))),
                 ('x', np.int32),
             ],
             collections.OrderedDict,
@@ -102,34 +109,36 @@ class JaxComputationTest(parameterized.TestCase):
     self.assertEqual(_comp.type_signature, expected_type)
 
   @parameterized.named_parameters(
-      ('bool', computation_types.TensorType(np.bool_)),
-      ('int8', computation_types.TensorType(np.int8)),
-      ('int16', computation_types.TensorType(np.int16)),
-      ('int32', computation_types.TensorType(np.int32)),
-      ('uint8', computation_types.TensorType(np.uint8)),
-      ('uint16', computation_types.TensorType(np.uint16)),
-      ('uint32', computation_types.TensorType(np.uint32)),
-      ('float16', computation_types.TensorType(np.float16)),
-      ('float32', computation_types.TensorType(np.float32)),
-      ('complex64', computation_types.TensorType(np.complex64)),
-      ('bfloat16', computation_types.TensorType(ml_dtypes.bfloat16)),
-      ('generic', computation_types.TensorType(np.int32)),
-      ('array', computation_types.TensorType(np.int32, shape=[3])),
+      ('bool', federated_language.TensorType(np.bool_)),
+      ('int8', federated_language.TensorType(np.int8)),
+      ('int16', federated_language.TensorType(np.int16)),
+      ('int32', federated_language.TensorType(np.int32)),
+      ('uint8', federated_language.TensorType(np.uint8)),
+      ('uint16', federated_language.TensorType(np.uint16)),
+      ('uint32', federated_language.TensorType(np.uint32)),
+      ('float16', federated_language.TensorType(np.float16)),
+      ('float32', federated_language.TensorType(np.float32)),
+      ('complex64', federated_language.TensorType(np.complex64)),
+      ('bfloat16', federated_language.TensorType(ml_dtypes.bfloat16)),
+      ('generic', federated_language.TensorType(np.int32)),
+      ('array', federated_language.TensorType(np.int32, shape=[3])),
   )
   def test_returns_concrete_computation_with_dtype(self, type_spec):
     @jax_computation.jax_computation(type_spec)
     def _comp(x):
       return x
 
-    self.assertIsInstance(_comp, computation_impl.ConcreteComputation)
-    expected_type = computation_types.FunctionType(type_spec, type_spec)
+    self.assertIsInstance(
+        _comp, federated_language.framework.ConcreteComputation
+    )
+    expected_type = federated_language.FunctionType(type_spec, type_spec)
     self.assertEqual(_comp.type_signature, expected_type)
 
   @parameterized.named_parameters(
-      ('int64', computation_types.TensorType(np.int64)),
-      ('uint64', computation_types.TensorType(np.uint64)),
-      ('float64', computation_types.TensorType(np.float64)),
-      ('complex128', computation_types.TensorType(np.complex128)),
+      ('int64', federated_language.TensorType(np.int64)),
+      ('uint64', federated_language.TensorType(np.uint64)),
+      ('float64', federated_language.TensorType(np.float64)),
+      ('complex128', federated_language.TensorType(np.complex128)),
   )
   def test_returns_concrete_computation_with_dtype_and_enable_x64(
       self, type_spec
@@ -140,17 +149,19 @@ class JaxComputationTest(parameterized.TestCase):
     def _comp(x):
       return x
 
-    self.assertIsInstance(_comp, computation_impl.ConcreteComputation)
-    expected_type = computation_types.FunctionType(type_spec, type_spec)
+    self.assertIsInstance(
+        _comp, federated_language.framework.ConcreteComputation
+    )
+    expected_type = federated_language.FunctionType(type_spec, type_spec)
     self.assertEqual(_comp.type_signature, expected_type)
     jax.config.update('jax_enable_x64', False)
 
   @parameterized.named_parameters(
-      ('int64', computation_types.TensorType(np.int64)),
-      ('uint64', computation_types.TensorType(np.uint64)),
-      ('float64', computation_types.TensorType(np.float64)),
-      ('complex128', computation_types.TensorType(np.complex128)),
-      ('str', computation_types.TensorType(np.str_)),
+      ('int64', federated_language.TensorType(np.int64)),
+      ('uint64', federated_language.TensorType(np.uint64)),
+      ('float64', federated_language.TensorType(np.float64)),
+      ('complex128', federated_language.TensorType(np.complex128)),
+      ('str', federated_language.TensorType(np.str_)),
   )
   async def test_raises_raises_value_error_with_dtype(self, type_spec):
     with self.assertRaises(ValueError):
@@ -164,7 +175,9 @@ class JaxComputationTest(parameterized.TestCase):
     def _comp(x):
       return jax.numpy.add(x, 1)
 
-    self.assertIsInstance(_comp, polymorphic_computation.PolymorphicComputation)
+    self.assertIsInstance(
+        _comp, federated_language.framework.PolymorphicComputation
+    )
 
 
 if __name__ == '__main__':

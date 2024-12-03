@@ -12,35 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Libraries for interacting with the type of a computation."""
+import federated_language
 
 # pylint: disable=g-importing-member
-from tensorflow_federated.python.core.impl.types.array_shape import ArrayShape
-from tensorflow_federated.python.core.impl.types.array_shape import is_shape_fully_defined
-from tensorflow_federated.python.core.impl.types.array_shape import num_elements_in_shape
-from tensorflow_federated.python.core.impl.types.computation_types import AbstractType
-from tensorflow_federated.python.core.impl.types.computation_types import FederatedType
-from tensorflow_federated.python.core.impl.types.computation_types import FunctionType
-from tensorflow_federated.python.core.impl.types.computation_types import PlacementType
-from tensorflow_federated.python.core.impl.types.computation_types import SequenceType
-from tensorflow_federated.python.core.impl.types.computation_types import StructType
-from tensorflow_federated.python.core.impl.types.computation_types import StructWithPythonType
-from tensorflow_federated.python.core.impl.types.computation_types import TensorType
-from tensorflow_federated.python.core.impl.types.computation_types import to_type
-from tensorflow_federated.python.core.impl.types.computation_types import Type
-from tensorflow_federated.python.core.impl.types.computation_types import type_mismatch_error_message
-from tensorflow_federated.python.core.impl.types.computation_types import TypeNotAssignableError
-from tensorflow_federated.python.core.impl.types.computation_types import TypeRelation
-from tensorflow_federated.python.core.impl.types.computation_types import TypesNotEquivalentError
-from tensorflow_federated.python.core.impl.types.computation_types import TypesNotIdenticalError
-from tensorflow_federated.python.core.impl.types.computation_types import UnexpectedTypeError
-from tensorflow_federated.python.core.impl.types.type_analysis import contains
-from tensorflow_federated.python.core.impl.types.type_analysis import contains_only
-from tensorflow_federated.python.core.impl.types.type_analysis import count
-from tensorflow_federated.python.core.impl.types.type_analysis import is_structure_of_floats
-from tensorflow_federated.python.core.impl.types.type_analysis import is_structure_of_integers
-from tensorflow_federated.python.core.impl.types.type_analysis import is_structure_of_tensors
-from tensorflow_federated.python.core.impl.types.type_analysis import is_tensorflow_compatible_type
-from tensorflow_federated.python.core.impl.types.type_conversions import type_to_py_container
-from tensorflow_federated.python.core.impl.types.type_serialization import deserialize_type
-from tensorflow_federated.python.core.impl.types.type_serialization import serialize_type
+ArrayShape = federated_language.ArrayShape
+is_shape_fully_defined = federated_language.array_shape_is_fully_defined
+num_elements_in_shape = federated_language.num_elements_in_array_shape
+AbstractType = federated_language.AbstractType
+FederatedType = federated_language.FederatedType
+FunctionType = federated_language.FunctionType
+PlacementType = federated_language.PlacementType
+SequenceType = federated_language.SequenceType
+StructType = federated_language.StructType
+StructWithPythonType = federated_language.StructWithPythonType
+TensorType = federated_language.TensorType
+to_type = federated_language.to_type
+Type = federated_language.Type
+type_mismatch_error_message = (
+    federated_language.framework.type_mismatch_error_message
+)
+TypeNotAssignableError = federated_language.framework.TypeNotAssignableError
+TypeRelation = federated_language.framework.TypeRelation
+TypesNotEquivalentError = federated_language.framework.TypesNotEquivalentError
+TypesNotIdenticalError = federated_language.framework.TypesNotIdenticalError
+UnexpectedTypeError = federated_language.framework.UnexpectedTypeError
+contains = federated_language.framework.type_contains
+contains_only = federated_language.framework.type_contains_only
+count = federated_language.framework.type_count
+is_structure_of_floats = federated_language.framework.is_structure_of_floats
+is_structure_of_integers = federated_language.framework.is_structure_of_integers
+is_structure_of_tensors = federated_language.framework.is_structure_of_tensors
+is_tensorflow_compatible_type = (
+    federated_language.framework.is_tensorflow_compatible_type
+)
+type_to_py_container = federated_language.framework.type_to_py_container
+deserialize_type = federated_language.framework.deserialize_type
+serialize_type = federated_language.framework.serialize_type
 # pylint: disable=g-importing-member

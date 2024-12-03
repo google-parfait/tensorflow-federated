@@ -17,17 +17,17 @@ import collections
 import typing
 from typing import Union
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.metrics import types
 
 
 def check_finalizers_matches_unfinalized_metrics(
     metric_finalizers: types.MetricFinalizersType,
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    local_unfinalized_metrics_type: federated_language.StructWithPythonType,
 ):
   """Verifies that compatibility of variables and finalizers.
 
@@ -92,7 +92,7 @@ def check_metric_finalizers(
 
 
 def check_local_unfinalized_metrics_type(
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    local_unfinalized_metrics_type: federated_language.StructWithPythonType,
 ):
   """Validates `local_unfinalized_metrics_type` raising error on failure.
 
@@ -108,7 +108,7 @@ def check_local_unfinalized_metrics_type(
   # the error message has a better format (specifically, the expected type is
   # shown as `tff.types.StructWithPythonType` in the error message).
   if not isinstance(
-      local_unfinalized_metrics_type, computation_types.StructWithPythonType
+      local_unfinalized_metrics_type, federated_language.StructWithPythonType
   ):
     raise TypeError(
         'Expected the input `local_unfinalized_metrics_type` to be a '
@@ -130,8 +130,8 @@ def build_finalizer_computation(
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
-) -> computation_base.Computation:
+    local_unfinalized_metrics_type: federated_language.StructWithPythonType,
+) -> federated_language.framework.Computation:
   """Builds computation for finalizing metrics."""
   if callable(metric_finalizers):
     return tensorflow_computation.tf_computation(

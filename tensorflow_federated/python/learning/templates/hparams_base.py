@@ -15,10 +15,10 @@
 
 import collections
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class GetHparamsTypeError(TypeError):
@@ -30,11 +30,13 @@ class SetHparamsTypeError(TypeError):
 
 
 def type_check_get_hparams_fn(
-    get_hparams_fn: computation_base.Computation,
-    state_type: computation_types.Type,
+    get_hparams_fn: federated_language.framework.Computation,
+    state_type: federated_language.Type,
 ):
   """Validates the type signature of `get_hparams_fn` in `ClientWorkProcess`."""
-  py_typecheck.check_type(get_hparams_fn, computation_base.Computation)
+  py_typecheck.check_type(
+      get_hparams_fn, federated_language.framework.Computation
+  )
   get_hparams_state_type = get_hparams_fn.type_signature.parameter
   if (
       get_hparams_state_type is None
@@ -47,14 +49,16 @@ def type_check_get_hparams_fn(
 
 
 def type_check_set_hparams_fn(
-    set_hparams_fn: computation_base.Computation,
-    state_type: computation_types.Type,
+    set_hparams_fn: federated_language.framework.Computation,
+    state_type: federated_language.Type,
 ):
   """Validates the type signature of `set_hparams_fn` in `ClientWorkProcess`."""
-  py_typecheck.check_type(set_hparams_fn, computation_base.Computation)
+  py_typecheck.check_type(
+      set_hparams_fn, federated_language.framework.Computation
+  )
   set_hparams_parameter = set_hparams_fn.type_signature.parameter
   if (
-      not isinstance(set_hparams_parameter, computation_types.StructType)
+      not isinstance(set_hparams_parameter, federated_language.StructType)
       or len(set_hparams_parameter) != 2
   ):
     raise SetHparamsTypeError(
@@ -76,8 +80,8 @@ def type_check_set_hparams_fn(
 
 
 def build_basic_hparams_getter(
-    state_type: computation_types.Type,
-) -> computation_base.Computation:
+    state_type: federated_language.Type,
+) -> federated_language.framework.Computation:
   """Creates a `tff.Computation` that returns an empty ordered dictionary."""
 
   @tensorflow_computation.tf_computation(state_type)
@@ -89,8 +93,8 @@ def build_basic_hparams_getter(
 
 
 def build_basic_hparams_setter(
-    state_type: computation_types.Type, hparams_type: computation_types.Type
-) -> computation_base.Computation:
+    state_type: federated_language.Type, hparams_type: federated_language.Type
+) -> federated_language.framework.Computation:
   """Creates a `tff.Computation` that returns the state, unchanged."""
 
   @tensorflow_computation.tf_computation(state_type, hparams_type)

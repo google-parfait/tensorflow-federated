@@ -15,41 +15,43 @@
 
 import collections
 
+import federated_language
+
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
 
 
 # Name the compiled computations to avoid the issue that the TF graphs being
 # generated are different at HEAD vs in OSS, resulting in different hash values
 # for the computation name which fail to compare.
 def _name_compiled_computations(
-    tree: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.ComputationBuildingBlock:
+    tree: federated_language.framework.ComputationBuildingBlock,
+) -> federated_language.framework.ComputationBuildingBlock:
   """Name the compiled computations."""
   counter = 1
 
   def _transform(building_block):
     nonlocal counter
-    if isinstance(building_block, building_blocks.CompiledComputation):
+    if isinstance(
+        building_block, federated_language.framework.CompiledComputation
+    ):
       new_name = str(counter)
       counter += 1
       return (
-          building_blocks.CompiledComputation(
+          federated_language.framework.CompiledComputation(
               proto=building_block.proto, name=new_name
           ),
           True,
       )
     return building_block, False
 
-  return transformation_utils.transform_postorder(tree, _transform)[0]
+  return federated_language.framework.transform_postorder(tree, _transform)[0]
 
 
 def check_computations(
     filename: str,
     computations: collections.OrderedDict[
-        str, building_blocks.ComputationBuildingBlock
+        str, federated_language.framework.ComputationBuildingBlock
     ],
 ) -> None:
   """Check the AST of computations matches the contents of the golden file.
@@ -57,7 +59,7 @@ def check_computations(
   Args:
     filename: String filename of the golden file.
     computations: An `collections.OrderedDict` of computation names to
-      `building_blocks.ComputationBuildingBlock`.
+      `federated_language.framework.ComputationBuildingBlock`.
 
   Raises:
     TypeError: If any argument type mismatches.
@@ -67,7 +69,7 @@ def check_computations(
   values = []
   for name, computation in computations.items():
     py_typecheck.check_type(
-        computation, building_blocks.ComputationBuildingBlock, name
+        computation, federated_language.framework.ComputationBuildingBlock, name
     )
     computation_ast = _name_compiled_computations(computation)
     values.append(

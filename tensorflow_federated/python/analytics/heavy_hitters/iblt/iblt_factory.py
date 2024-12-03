@@ -17,6 +17,7 @@ import collections
 from typing import Any, Optional
 
 import attrs
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -26,10 +27,6 @@ from tensorflow_federated.python.analytics import data_processing
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tensor
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -159,7 +156,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     self._seed = seed
 
   def create(
-      self, value_type: computation_types.SequenceType
+      self, value_type: federated_language.SequenceType
   ) -> aggregation_process.AggregationProcess:  # pytype: disable=signature-mismatch
     """Creates an AggregationProcess using IBLT to aggregate strings.
 
@@ -176,12 +173,12 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       A `tff.templates.AggregationProcess` to aggregate strings and values
         associate with the strings.
     """
-    expected_value_type = computation_types.SequenceType(
+    expected_value_type = federated_language.SequenceType(
         collections.OrderedDict([
             (DATASET_KEY, np.str_),
             (
                 DATASET_VALUE,
-                computation_types.TensorType(shape=[None], dtype=np.int64),
+                federated_language.TensorType(shape=[None], dtype=np.int64),
             ),
         ])
     )
@@ -235,19 +232,25 @@ class IbltFactory(factory.UnweightedAggregationFactory):
         encode_iblt.type_signature.result[1]
     )
 
-    @federated_computation.federated_computation
+    @federated_language.federated_computation
     def init_fn():
       sketch_state = inner_aggregator_sketch.initialize()
       value_tensor_state = inner_aggregator_value_tensor.initialize()
-      return intrinsics.federated_zip((sketch_state, value_tensor_state))
+      return federated_language.federated_zip(
+          (sketch_state, value_tensor_state)
+      )
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, dataset):
       sketch_state, value_tensor_state = state
-      sketch, value_tensor = intrinsics.federated_map(encode_iblt, dataset)
+      sketch, value_tensor = federated_language.federated_map(
+          encode_iblt, dataset
+      )
       sketch_output = inner_aggregator_sketch.next(sketch_state, sketch)
       value_tensor_output = inner_aggregator_value_tensor.next(
           value_tensor_state, value_tensor
@@ -255,21 +258,21 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       summed_sketch = sketch_output.result
       summed_value_tensor = value_tensor_output.result
       (output_strings, string_values, num_not_decoded) = (
-          intrinsics.federated_map(
+          federated_language.federated_map(
               decode_iblt, (summed_sketch, summed_value_tensor)
           )
       )
-      result = intrinsics.federated_zip(
+      result = federated_language.federated_zip(
           ServerOutput(
               output_strings=output_strings,
               string_values=string_values,
               num_not_decoded=num_not_decoded,
           )
       )
-      updated_state = intrinsics.federated_zip(
+      updated_state = federated_language.federated_zip(
           (sketch_output.state, value_tensor_output.state)
       )
-      updated_measurements = intrinsics.federated_zip(
+      updated_measurements = federated_language.federated_zip(
           collections.OrderedDict(
               num_not_decoded=num_not_decoded,
               sketch=sketch_output.measurements,

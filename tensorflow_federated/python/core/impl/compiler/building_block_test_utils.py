@@ -15,19 +15,15 @@
 
 from typing import Union
 
+import federated_language
 import numpy as np
 
 from google.protobuf import any_pb2
-from tensorflow_federated.python.core.impl.compiler import array
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 
 def create_any_proto_from_array(value: np.ndarray):
   """Creates an `Any` proto for the given `np.array` value."""
-  test_proto = array.to_proto(value)
+  test_proto = federated_language.array_to_proto(value)
   any_proto = any_pb2.Any()
   any_proto.Pack(test_proto)
   return any_proto
@@ -51,10 +47,10 @@ def create_chained_calls(functions, arg):
 
   Args:
     functions: A Python list of functional computations.
-    arg: A `building_blocks.ComputationBuildingBlock`.
+    arg: A `federated_language.framework.ComputationBuildingBlock`.
 
   Returns:
-    A `building_blocks.Call`.
+    A `federated_language.framework.Call`.
   """
   for fn in functions:
     if not fn.parameter_type.is_assignable_from(arg.type_signature):
@@ -64,7 +60,7 @@ def create_chained_calls(functions, arg):
               str(fn.parameter_type), str(arg.type_signature)
           )
       )
-    call = building_blocks.Call(fn, arg)
+    call = federated_language.framework.Call(fn, arg)
     arg = call
   return call
 
@@ -83,8 +79,10 @@ def create_whimsy_block(
     variable_name: The name of the variable.
     variable_type: The type of the variable.
   """
-  ref = building_blocks.Literal(1, computation_types.TensorType(variable_type))
-  return building_blocks.Block([(variable_name, ref)], comp)
+  ref = federated_language.framework.Literal(
+      1, federated_language.TensorType(variable_type)
+  )
+  return federated_language.framework.Block([(variable_name, ref)], comp)
 
 
 def create_whimsy_called_intrinsic(parameter_name, parameter_type=np.int32):
@@ -98,12 +96,14 @@ def create_whimsy_called_intrinsic(parameter_name, parameter_type=np.int32):
     parameter_name: The name of the parameter.
     parameter_type: The type of the parameter.
   """
-  intrinsic_type = computation_types.FunctionType(
+  intrinsic_type = federated_language.FunctionType(
       parameter_type, parameter_type
   )
-  intrinsic = building_blocks.Intrinsic('intrinsic', intrinsic_type)
-  ref = building_blocks.Reference(parameter_name, parameter_type)
-  return building_blocks.Call(intrinsic, ref)
+  intrinsic = federated_language.framework.Intrinsic(
+      'intrinsic', intrinsic_type
+  )
+  ref = federated_language.framework.Reference(parameter_name, parameter_type)
+  return federated_language.framework.Call(intrinsic, ref)
 
 
 def create_whimsy_called_federated_aggregate(
@@ -128,25 +128,28 @@ def create_whimsy_called_federated_aggregate(
     report_parameter_name: The name of the report parameter.
     value_type: The TFF type of the value to be aggregated, placed at CLIENTS.
   """
-  tensor_type = computation_types.TensorType(value_type)
-  value = building_block_factory.create_federated_value(
-      building_blocks.Literal(1, tensor_type), placements.CLIENTS
+  tensor_type = federated_language.TensorType(value_type)
+  value = federated_language.framework.create_federated_value(
+      federated_language.framework.Literal(1, tensor_type),
+      federated_language.CLIENTS,
   )
-  literal_block = building_blocks.Literal(1, tensor_type)
+  literal_block = federated_language.framework.Literal(1, tensor_type)
   zero = literal_block
-  accumulate_type = computation_types.StructType((value_type, value_type))
+  accumulate_type = federated_language.StructType((value_type, value_type))
   accumulate_result = literal_block
-  accumulate = building_blocks.Lambda(
+  accumulate = federated_language.framework.Lambda(
       accumulate_parameter_name, accumulate_type, accumulate_result
   )
-  merge_type = computation_types.StructType((value_type, value_type))
+  merge_type = federated_language.StructType((value_type, value_type))
   merge_result = literal_block
-  merge = building_blocks.Lambda(merge_parameter_name, merge_type, merge_result)
+  merge = federated_language.framework.Lambda(
+      merge_parameter_name, merge_type, merge_result
+  )
   report_result = literal_block
-  report = building_blocks.Lambda(
+  report = federated_language.framework.Lambda(
       report_parameter_name, value_type, report_result
   )
-  return building_block_factory.create_federated_aggregate(
+  return federated_language.framework.create_federated_aggregate(
       value, zero, accumulate, merge, report
   )
 
@@ -170,11 +173,12 @@ def create_whimsy_called_federated_apply(
   """
   value = parameter_type(1)
   fn = create_identity_function(parameter_name, parameter_type)
-  arg_type = computation_types.TensorType(parameter_type)
-  arg = building_block_factory.create_federated_value(
-      building_blocks.Literal(value, arg_type), placement=placements.SERVER
+  arg_type = federated_language.TensorType(parameter_type)
+  arg = federated_language.framework.create_federated_value(
+      federated_language.framework.Literal(value, arg_type),
+      placement=federated_language.SERVER,
   )
-  return building_block_factory.create_federated_apply(fn, arg)
+  return federated_language.framework.create_federated_apply(fn, arg)
 
 
 def create_whimsy_called_federated_broadcast(
@@ -190,11 +194,12 @@ def create_whimsy_called_federated_broadcast(
     value_type: The type of the value.
   """
   value = value_type(1)
-  tensor_type = computation_types.TensorType(value_type)
-  value = building_block_factory.create_federated_value(
-      building_blocks.Literal(value, tensor_type), placement=placements.SERVER
+  tensor_type = federated_language.TensorType(value_type)
+  value = federated_language.framework.create_federated_value(
+      federated_language.framework.Literal(value, tensor_type),
+      placement=federated_language.SERVER,
   )
-  return building_block_factory.create_federated_broadcast(value)
+  return federated_language.framework.create_federated_broadcast(value)
 
 
 def create_whimsy_called_federated_map(
@@ -216,18 +221,19 @@ def create_whimsy_called_federated_map(
   """
   value = parameter_type(1)
   fn = create_identity_function(parameter_name, parameter_type)
-  arg_type = computation_types.TensorType(parameter_type)
-  arg = building_block_factory.create_federated_value(
-      building_blocks.Literal(value, arg_type), placement=placements.CLIENTS
+  arg_type = federated_language.TensorType(parameter_type)
+  arg = federated_language.framework.create_federated_value(
+      federated_language.framework.Literal(value, arg_type),
+      placement=federated_language.CLIENTS,
   )
   # TODO: b/338284242 - Replace this with a `Data` block once the compiler tests
   # do not use string equality.
   # pylint: disable=protected-access
-  arg._type_signature = computation_types.FederatedType(
-      arg_type, placements.CLIENTS, all_equal=False
+  arg._type_signature = federated_language.FederatedType(
+      arg_type, federated_language.CLIENTS, all_equal=False
   )
   # pylint: enable=protected-access
-  return building_block_factory.create_federated_map(fn, arg)
+  return federated_language.framework.create_federated_map(fn, arg)
 
 
 def create_whimsy_called_federated_map_all_equal(
@@ -249,11 +255,12 @@ def create_whimsy_called_federated_map_all_equal(
   """
   value = parameter_type(1)
   fn = create_identity_function(parameter_name, parameter_type)
-  arg_type = computation_types.TensorType(parameter_type)
-  arg = building_block_factory.create_federated_value(
-      building_blocks.Literal(value, arg_type), placement=placements.CLIENTS
+  arg_type = federated_language.TensorType(parameter_type)
+  arg = federated_language.framework.create_federated_value(
+      federated_language.framework.Literal(value, arg_type),
+      placement=federated_language.CLIENTS,
   )
-  return building_block_factory.create_federated_map_all_equal(fn, arg)
+  return federated_language.framework.create_federated_map_all_equal(fn, arg)
 
 
 def create_whimsy_called_federated_mean(
@@ -262,21 +269,21 @@ def create_whimsy_called_federated_mean(
 ):
   """Returns a called federated mean."""
   value = value_type(1)
-  value_type = computation_types.TensorType(value_type)
-  values = building_block_factory.create_federated_value(
-      building_blocks.Literal(value, value_type),
-      placement=placements.CLIENTS,
+  value_type = federated_language.TensorType(value_type)
+  values = federated_language.framework.create_federated_value(
+      federated_language.framework.Literal(value, value_type),
+      placement=federated_language.CLIENTS,
   )
   if weights_type is not None:
     weights_value = weights_type(1)
-    weights_type = computation_types.TensorType(weights_type)
-    weights = building_block_factory.create_federated_value(
-        building_blocks.Literal(weights_value, weights_type),
-        placement=placements.CLIENTS,
+    weights_type = federated_language.TensorType(weights_type)
+    weights = federated_language.framework.create_federated_value(
+        federated_language.framework.Literal(weights_value, weights_type),
+        placement=federated_language.CLIENTS,
     )
   else:
     weights = None
-  return building_block_factory.create_federated_mean(values, weights)
+  return federated_language.framework.create_federated_mean(values, weights)
 
 
 def create_whimsy_called_federated_secure_sum_bitwidth(
@@ -292,13 +299,13 @@ def create_whimsy_called_federated_secure_sum_bitwidth(
     value_type: The type of the value.
   """
   lit_value = value_type(1)
-  tensor_type = computation_types.TensorType(value_type)
-  value = building_block_factory.create_federated_value(
-      building_blocks.Literal(lit_value, tensor_type),
-      placement=placements.CLIENTS,
+  tensor_type = federated_language.TensorType(value_type)
+  value = federated_language.framework.create_federated_value(
+      federated_language.framework.Literal(lit_value, tensor_type),
+      placement=federated_language.CLIENTS,
   )
-  bitwidth = building_blocks.Literal(lit_value, tensor_type)
-  return building_block_factory.create_federated_secure_sum_bitwidth(
+  bitwidth = federated_language.framework.Literal(lit_value, tensor_type)
+  return federated_language.framework.create_federated_secure_sum_bitwidth(
       value, bitwidth
   )
 
@@ -316,11 +323,12 @@ def create_whimsy_called_federated_sum(
     value_type: The type of the value.
   """
   value = value_type(1)
-  tensor_type = computation_types.TensorType(value_type)
-  value = building_block_factory.create_federated_value(
-      building_blocks.Literal(value, tensor_type), placement=placements.CLIENTS
+  tensor_type = federated_language.TensorType(value_type)
+  value = federated_language.framework.create_federated_value(
+      federated_language.framework.Literal(value, tensor_type),
+      placement=federated_language.CLIENTS,
   )
-  return building_block_factory.create_federated_sum(value)
+  return federated_language.framework.create_federated_sum(value)
 
 
 def create_whimsy_called_sequence_map(
@@ -342,20 +350,20 @@ def create_whimsy_called_sequence_map(
     any_proto: The any proto to use for the data block.
   """
   fn = create_identity_function(parameter_name, parameter_type)
-  arg_type = computation_types.SequenceType(parameter_type)
-  arg = building_blocks.Data(any_proto, arg_type)
-  return building_block_factory.create_sequence_map(fn, arg)
+  arg_type = federated_language.SequenceType(parameter_type)
+  arg = federated_language.framework.Data(any_proto, arg_type)
+  return federated_language.framework.create_sequence_map(fn, arg)
 
 
 def create_whimsy_called_federated_value(
-    placement: placements.PlacementLiteral,
+    placement: federated_language.framework.PlacementLiteral,
     value_type: type[np.generic] = np.int32,
 ):
   value = value_type(1)
-  value = building_blocks.Literal(
-      value, computation_types.TensorType(value_type)
+  value = federated_language.framework.Literal(
+      value, federated_language.TensorType(value_type)
   )
-  return building_block_factory.create_federated_value(value, placement)
+  return federated_language.framework.create_federated_value(value, placement)
 
 
 def create_identity_block(variable_name, comp):
@@ -369,8 +377,10 @@ def create_identity_block(variable_name, comp):
     variable_name: The name of the variable.
     comp: The computation to use as the variable.
   """
-  ref = building_blocks.Reference(variable_name, comp.type_signature)
-  return building_blocks.Block([(variable_name, comp)], ref)
+  ref = federated_language.framework.Reference(
+      variable_name, comp.type_signature
+  )
+  return federated_language.framework.Block([(variable_name, comp)], ref)
 
 
 def create_identity_block_with_whimsy_ref(
@@ -387,8 +397,8 @@ def create_identity_block_with_whimsy_ref(
     variable_type: The type of the variable.
   """
   value = variable_type(1)
-  literal = building_blocks.Literal(
-      value, computation_types.TensorType(variable_type)
+  literal = federated_language.framework.Literal(
+      value, federated_language.TensorType(variable_type)
   )
   return create_identity_block(variable_name, literal)
 
@@ -404,8 +414,8 @@ def create_identity_function(parameter_name, parameter_type=np.int32):
     parameter_name: The name of the parameter.
     parameter_type: The type of the parameter.
   """
-  ref = building_blocks.Reference(parameter_name, parameter_type)
-  return building_blocks.Lambda(ref.name, ref.type_signature, ref)
+  ref = federated_language.framework.Reference(parameter_name, parameter_type)
+  return federated_language.framework.Lambda(ref.name, ref.type_signature, ref)
 
 
 def create_lambda_to_whimsy_called_intrinsic(
@@ -426,7 +436,9 @@ def create_lambda_to_whimsy_called_intrinsic(
   call = create_whimsy_called_intrinsic(
       parameter_name=parameter_name, parameter_type=parameter_type
   )
-  return building_blocks.Lambda(parameter_name, parameter_type, call)
+  return federated_language.framework.Lambda(
+      parameter_name, parameter_type, call
+  )
 
 
 def create_nested_syntax_tree():
@@ -441,7 +453,7 @@ def create_nested_syntax_tree():
   parameter*, so that if we were actually executing this call the argument will
   be thrown away.
 
-  All leaf nodes are instances of `building_blocks.Lit`.
+  All leaf nodes are instances of `federated_language.framework.Lit`.
 
                             Call
                            /    \
@@ -497,38 +509,46 @@ def create_nested_syntax_tree():
   [arg, y, z, t, u, v, x, w]
 
   Returns:
-    An instance of `building_blocks.ComputationBuildingBlock`
+    An instance of `federated_language.framework.ComputationBuildingBlock`
     satisfying the description above.
   """
-  tensor_type = computation_types.TensorType(np.int32)
-  lit_c = building_blocks.Literal(3, tensor_type)
-  lit_d = building_blocks.Literal(4, tensor_type)
-  left_most_leaf = building_blocks.Block([('t', lit_c)], lit_d)
+  tensor_type = federated_language.TensorType(np.int32)
+  lit_c = federated_language.framework.Literal(3, tensor_type)
+  lit_d = federated_language.framework.Literal(4, tensor_type)
+  left_most_leaf = federated_language.framework.Block([('t', lit_c)], lit_d)
 
-  lit_e = building_blocks.Literal(5, tensor_type)
-  lit_f = building_blocks.Literal(6, tensor_type)
-  center_leaf = building_blocks.Block([('u', lit_e)], lit_f)
-  inner_tuple = building_blocks.Struct([left_most_leaf, center_leaf])
+  lit_e = federated_language.framework.Literal(5, tensor_type)
+  lit_f = federated_language.framework.Literal(6, tensor_type)
+  center_leaf = federated_language.framework.Block([('u', lit_e)], lit_f)
+  inner_tuple = federated_language.framework.Struct(
+      [left_most_leaf, center_leaf]
+  )
 
-  selected = building_blocks.Selection(inner_tuple, index=0)
-  lit_g = building_blocks.Literal(7, tensor_type)
-  middle_block = building_blocks.Block([('v', selected)], lit_g)
+  selected = federated_language.framework.Selection(inner_tuple, index=0)
+  lit_g = federated_language.framework.Literal(7, tensor_type)
+  middle_block = federated_language.framework.Block([('v', selected)], lit_g)
 
-  lit_i = building_blocks.Literal(8, tensor_type)
-  lit_j = building_blocks.Literal(9, tensor_type)
-  right_most_endpoint = building_blocks.Block([('w', lit_i)], lit_j)
+  lit_i = federated_language.framework.Literal(8, tensor_type)
+  lit_j = federated_language.framework.Literal(9, tensor_type)
+  right_most_endpoint = federated_language.framework.Block(
+      [('w', lit_i)], lit_j
+  )
 
-  lit_h = building_blocks.Literal(10, tensor_type)
-  right_child = building_blocks.Block([('x', lit_h)], right_most_endpoint)
+  lit_h = federated_language.framework.Literal(10, tensor_type)
+  right_child = federated_language.framework.Block(
+      [('x', lit_h)], right_most_endpoint
+  )
 
-  result = building_blocks.Struct([middle_block, right_child])
-  lit_a = building_blocks.Literal(1, tensor_type)
-  lit_b = building_blocks.Literal(2, tensor_type)
-  whimsy_outer_block = building_blocks.Block(
+  result = federated_language.framework.Struct([middle_block, right_child])
+  lit_a = federated_language.framework.Literal(1, tensor_type)
+  lit_b = federated_language.framework.Literal(2, tensor_type)
+  whimsy_outer_block = federated_language.framework.Block(
       [('y', lit_a), ('z', lit_b)], result
   )
-  whimsy_lambda = building_blocks.Lambda('arg', tensor_type, whimsy_outer_block)
-  whimsy_arg = building_blocks.Literal(11, tensor_type)
-  called_lambda = building_blocks.Call(whimsy_lambda, whimsy_arg)
+  whimsy_lambda = federated_language.framework.Lambda(
+      'arg', tensor_type, whimsy_outer_block
+  )
+  whimsy_arg = federated_language.framework.Literal(11, tensor_type)
+  called_lambda = federated_language.framework.Call(whimsy_lambda, whimsy_arg)
 
   return called_lambda

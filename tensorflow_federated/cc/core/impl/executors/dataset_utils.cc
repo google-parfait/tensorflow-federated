@@ -22,6 +22,8 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "federated_language/proto/computation.pb.h"
+#include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/tstring.h"
@@ -29,8 +31,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/dataset_from_tensor_structures.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 namespace tensorflow_federated {
 
@@ -39,11 +39,11 @@ absl::StatusOr<tensorflow::Tensor> GraphDefTensorFromSequence(
   std::vector<std::vector<tensorflow::Tensor>> tensor_structures;
   for (const v0::Value::Sequence::Element& element_pb : sequence_pb.element()) {
     std::vector<tensorflow::Tensor> tensors;
-    for (const v0::Array& array_pb : element_pb.flat_value()) {
+    for (const federated_language::Array& array_pb : element_pb.flat_value()) {
       // Repeated fields are used for strings and scalars to maintain
       // compatibility with TensorFlow.
       if (tensorflow_federated::IsScalar(array_pb.shape()) ||
-          array_pb.dtype() == v0::DataType::DT_STRING) {
+          array_pb.dtype() == federated_language::DataType::DT_STRING) {
         tensors.push_back(TFF_TRY(TensorFromArray(array_pb)));
       } else {
         tensors.push_back(TFF_TRY(TensorFromArrayContent(array_pb)));

@@ -34,6 +34,9 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
+#include "federated_language/proto/array.pb.h"
+#include "federated_language/proto/computation.pb.h"
+#include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
@@ -44,9 +47,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
-#include "tensorflow_federated/proto/v0/array.pb.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
-#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -54,9 +54,10 @@ namespace testing {
 
 inline v0::Value IntrinsicV(
     std::string_view uri,
-    std::optional<v0::FunctionType> type_spec = std::nullopt) {
+    std::optional<federated_language::FunctionType> type_spec = std::nullopt) {
   v0::Value value_proto;
-  v0::Computation* computation_pb = value_proto.mutable_computation();
+  federated_language::Computation* computation_pb =
+      value_proto.mutable_computation();
   // Construct an explicit string from this string-view; this silent conversion
   // is not present in OSS.
   *computation_pb->mutable_intrinsic()->mutable_uri() = std::string(uri);
@@ -69,7 +70,7 @@ inline v0::Value IntrinsicV(
 // NOTE: Returns a value whose federated type `.member` field is unset.
 inline v0::Value ServerV(v0::Value server_val) {
   v0::Value value_proto;
-  v0::FederatedType* type_proto =
+  federated_language::FederatedType* type_proto =
       value_proto.mutable_federated()->mutable_type();
   type_proto->set_all_equal(true);
   *type_proto->mutable_placement()->mutable_value()->mutable_uri() = kServerUri;
@@ -81,7 +82,7 @@ inline v0::Value ServerV(v0::Value server_val) {
 inline v0::Value ClientsV(const absl::Span<const v0::Value> client_values,
                           bool all_equal = false) {
   v0::Value value_proto;
-  v0::FederatedType* type_proto =
+  federated_language::FederatedType* type_proto =
       value_proto.mutable_federated()->mutable_type();
   type_proto->set_all_equal(all_equal);
   *type_proto->mutable_placement()->mutable_value()->mutable_uri() =
@@ -130,15 +131,15 @@ inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
 
   for (int i = start; i < stop; i += step) {
     v0::Value::Sequence::Element* element_pb = sequence_pb->add_element();
-    v0::Array* array_pb = element_pb->add_flat_value();
-    array_pb->set_dtype(v0::DT_INT64);
+    federated_language::Array* array_pb = element_pb->add_flat_value();
+    array_pb->set_dtype(federated_language::DT_INT64);
     array_pb->mutable_shape()->mutable_dim()->Clear();
     array_pb->mutable_int64_list()->add_value(i);
   }
 
-  v0::TensorType* tensor_type_pb =
+  federated_language::TensorType* tensor_type_pb =
       sequence_pb->mutable_element_type()->mutable_tensor();
-  tensor_type_pb->set_dtype(v0::DataType::DT_INT64);
+  tensor_type_pb->set_dtype(federated_language::DataType::DT_INT64);
   tensor_type_pb->add_dims(1);
 
   return value_pb;
@@ -152,30 +153,31 @@ inline v0::Value SequenceV(std::vector<std::vector<int64_t>> elements) {
   for (const std::vector<int64_t>& flat_values : elements) {
     v0::Value::Sequence::Element* element_pb = sequence_pb->add_element();
     for (const int64_t value : flat_values) {
-      v0::Array* array_pb = element_pb->add_flat_value();
-      array_pb->set_dtype(v0::DT_INT64);
+      federated_language::Array* array_pb = element_pb->add_flat_value();
+      array_pb->set_dtype(federated_language::DT_INT64);
       array_pb->mutable_shape()->mutable_dim()->Clear();
       array_pb->mutable_int64_list()->add_value(value);
     }
   }
 
-  v0::StructType* struct_type_pb =
+  federated_language::StructType* struct_type_pb =
       sequence_pb->mutable_element_type()->mutable_struct_();
   for (int i = 0; i < elements[0].size(); i++) {
-    v0::StructType::Element* element_pb = struct_type_pb->add_element();
-    v0::TensorType* tensor_type_pb =
+    federated_language::StructType::Element* element_pb =
+        struct_type_pb->add_element();
+    federated_language::TensorType* tensor_type_pb =
         element_pb->mutable_value()->mutable_tensor();
-    tensor_type_pb->set_dtype(v0::DataType::DT_INT64);
+    tensor_type_pb->set_dtype(federated_language::DataType::DT_INT64);
     tensor_type_pb->add_dims(1);
   }
 
   return value_pb;
 }
 
-inline v0::Type MakeInt64ScalarType() {
-  v0::Type type;
-  v0::TensorType* tensor_type = type.mutable_tensor();
-  tensor_type->set_dtype(v0::DataType::DT_INT64);
+inline federated_language::Type MakeInt64ScalarType() {
+  federated_language::Type type;
+  federated_language::TensorType* tensor_type = type.mutable_tensor();
+  tensor_type->set_dtype(federated_language::DataType::DT_INT64);
   tensor_type->add_dims(1);
   return type;
 }
@@ -224,10 +226,11 @@ MATCHER(TensorsProtoEqual,
 
 namespace intrinsic {
 
-#define INTRINSIC_FUNC(name, uri)                                   \
-  inline v0::Value name(std::optional<v0::FunctionType> type_spec = \
-                            std::nullopt) {                         \
-    return IntrinsicV(#uri, type_spec);                             \
+#define INTRINSIC_FUNC(name, uri)                                 \
+  inline v0::Value name(                                          \
+      std::optional<federated_language::FunctionType> type_spec = \
+          std::nullopt) {                                         \
+    return IntrinsicV(#uri, type_spec);                           \
   }
 
 INTRINSIC_FUNC(ArgsIntoSequenceV, args_into_sequence);
@@ -247,37 +250,38 @@ INTRINSIC_FUNC(FederatedZipAtServerV, federated_zip_at_server);
 
 }  // namespace intrinsic
 
-inline v0::Value ComputationV(v0::Computation computation_pb) {
+inline v0::Value ComputationV(federated_language::Computation computation_pb) {
   v0::Value value_pb;
   *value_pb.mutable_computation() = computation_pb;
   return value_pb;
 }
 
-inline v0::Computation SelectionComputation(v0::Computation source_pb,
-                                            int32_t index) {
-  v0::Computation computation_pb;
-  v0::Selection* selection_pb = computation_pb.mutable_selection();
+inline federated_language::Computation SelectionComputation(
+    federated_language::Computation source_pb, int32_t index) {
+  federated_language::Computation computation_pb;
+  federated_language::Selection* selection_pb =
+      computation_pb.mutable_selection();
   *selection_pb->mutable_source() = source_pb;
   selection_pb->set_index(index);
   return computation_pb;
 }
 
-inline v0::Computation StructComputation(
-    std::vector<v0::Computation> elements) {
-  v0::Computation computation_pb;
-  v0::Struct* struct_pb = computation_pb.mutable_struct_();
+inline federated_language::Computation StructComputation(
+    std::vector<federated_language::Computation> elements) {
+  federated_language::Computation computation_pb;
+  federated_language::Struct* struct_pb = computation_pb.mutable_struct_();
   for (const auto& element : elements) {
-    v0::Struct::Element* element_pb = struct_pb->add_element();
+    federated_language::Struct::Element* element_pb = struct_pb->add_element();
     *element_pb->mutable_value() = element;
   }
   return computation_pb;
 }
 
-inline v0::Computation LambdaComputation(
+inline federated_language::Computation LambdaComputation(
     std::optional<std::string_view> parameter_name,
-    v0::Computation result_computation_value) {
-  v0::Computation computation_pb;
-  v0::Lambda* lambda_pb = computation_pb.mutable_lambda();
+    federated_language::Computation result_computation_value) {
+  federated_language::Computation computation_pb;
+  federated_language::Lambda* lambda_pb = computation_pb.mutable_lambda();
   if (parameter_name != std::nullopt) {
     lambda_pb->mutable_parameter_name()->assign(parameter_name.value().data(),
                                                 parameter_name.value().size());
@@ -286,13 +290,14 @@ inline v0::Computation LambdaComputation(
   return computation_pb;
 }
 
-inline v0::Computation BlockComputation(
-    std::vector<std::tuple<std::string, v0::Computation>> locals,
-    v0::Computation result) {
-  v0::Computation computation_pb;
-  v0::Block* block_pb = computation_pb.mutable_block();
+inline federated_language::Computation BlockComputation(
+    std::vector<std::tuple<std::string, federated_language::Computation>>
+        locals,
+    federated_language::Computation result) {
+  federated_language::Computation computation_pb;
+  federated_language::Block* block_pb = computation_pb.mutable_block();
   for (const auto& local : locals) {
-    v0::Block::Local* new_local_pb = block_pb->add_local();
+    federated_language::Block::Local* new_local_pb = block_pb->add_local();
     *new_local_pb->mutable_name() = std::get<0>(local);
     *new_local_pb->mutable_value() = std::get<1>(local);
   }
@@ -300,35 +305,39 @@ inline v0::Computation BlockComputation(
   return computation_pb;
 }
 
-inline v0::Computation ReferenceComputation(std::string_view reference_name) {
-  v0::Computation computation_pb;
+inline federated_language::Computation ReferenceComputation(
+    std::string_view reference_name) {
+  federated_language::Computation computation_pb;
   computation_pb.mutable_reference()->mutable_name()->assign(
       reference_name.data(), reference_name.size());
   return computation_pb;
 }
 
-inline v0::Computation IntrinsicComputation(std::string_view uri) {
-  v0::Computation computation_pb;
+inline federated_language::Computation IntrinsicComputation(
+    std::string_view uri) {
+  federated_language::Computation computation_pb;
   computation_pb.mutable_intrinsic()->mutable_uri()->assign(uri.data(),
                                                             uri.size());
   return computation_pb;
 }
 
-inline v0::Computation DataComputation(std::string_view uri) {
-  v0::Computation computation_pb;
+inline federated_language::Computation DataComputation(std::string_view uri) {
+  federated_language::Computation computation_pb;
   computation_pb.mutable_data()->mutable_uri()->assign(uri.data(), uri.size());
   return computation_pb;
 }
 
-inline v0::Computation PlacementComputation(std::string_view uri) {
-  v0::Computation computation_pb;
+inline federated_language::Computation PlacementComputation(
+    std::string_view uri) {
+  federated_language::Computation computation_pb;
   computation_pb.mutable_placement()->mutable_uri()->assign(uri.data(),
                                                             uri.size());
   return computation_pb;
 }
 
-inline v0::Computation LiteralComputation(v0::Array array_pb) {
-  v0::Computation computation_pb;
+inline federated_language::Computation LiteralComputation(
+    federated_language::Array array_pb) {
+  federated_language::Computation computation_pb;
   computation_pb.mutable_literal()->mutable_value()->Swap(&array_pb);
   return computation_pb;
 }

@@ -16,18 +16,13 @@
 import functools
 from typing import TypeVar
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -56,13 +51,13 @@ def _next_fn_impl(
     state, value, concat_fn, unconcat_fn, inner_agg_process, weight=None
 ):
   """Implements the next_fn for concat_factory's resulting AggregationProcess."""
-  concat_value = intrinsics.federated_map(concat_fn, value)
+  concat_value = federated_language.federated_map(concat_fn, value)
   if weight is None:
     inner_agg_output = inner_agg_process.next(state, concat_value)
   else:
     inner_agg_output = inner_agg_process.next(state, concat_value, weight)
 
-  unconcat_value = intrinsics.federated_map(
+  unconcat_value = federated_language.federated_map(
       unconcat_fn, inner_agg_output.result
   )
   return measured_process.MeasuredProcessOutput(
@@ -74,17 +69,20 @@ def _next_fn_impl(
 
 def create_concat_fns(
     value_type: factory.ValueType,
-) -> tuple[computation_base.Computation, computation_base.Computation]:
+) -> tuple[
+    federated_language.framework.Computation,
+    federated_language.framework.Computation,
+]:
   """Creates the forward and backward flattening/concatenation functions."""
   # As the factory alters the tensor specs, we compute the Python structure
   # of the types for the unconcat procedure.
   if isinstance(
-      value_type, computation_types.StructWithPythonType
-  ) and type_analysis.is_structure_of_tensors(value_type):
+      value_type, federated_language.StructWithPythonType
+  ) and federated_language.framework.is_structure_of_tensors(value_type):
     original_structure = type_conversions.structure_from_tensor_type_tree(
         lambda x: tf.TensorSpec(x.shape, x.dtype), value_type
     )
-  elif isinstance(value_type, computation_types.TensorType):
+  elif isinstance(value_type, federated_language.TensorType):
     original_structure = tf.TensorSpec(value_type.shape, value_type.dtype)
   else:
     raise TypeError(
@@ -118,8 +116,8 @@ def _check_component_dtypes(value_type):
 
   # Restrict dtypes to integers and floats for now.
   if not (
-      type_analysis.is_structure_of_floats(value_type)
-      or type_analysis.is_structure_of_integers(value_type)
+      federated_language.framework.is_structure_of_floats(value_type)
+      or federated_language.framework.is_structure_of_integers(value_type)
   ):
     raise TypeError(
         'Components of `value_type` must all be integers or '
@@ -141,9 +139,11 @@ def _unweighted_concat_factory(inner_agg_factory):
       init_fn = inner_agg_process.initialize
       state_type = init_fn.type_signature.result
 
-      @federated_computation.federated_computation(
+      @federated_language.federated_computation(
           state_type,
-          computation_types.FederatedType(value_type, placements.CLIENTS),
+          federated_language.FederatedType(
+              value_type, federated_language.CLIENTS
+          ),
       )
       def next_fn(state, value):
         return _next_fn_impl(
@@ -170,10 +170,14 @@ def _weighted_concat_factory(inner_agg_factory):
       )
       init_fn = inner_agg_process.initialize
 
-      @federated_computation.federated_computation(
+      @federated_language.federated_computation(
           init_fn.type_signature.result,
-          computation_types.FederatedType(value_type, placements.CLIENTS),
-          computation_types.FederatedType(weight_type, placements.CLIENTS),
+          federated_language.FederatedType(
+              value_type, federated_language.CLIENTS
+          ),
+          federated_language.FederatedType(
+              weight_type, federated_language.CLIENTS
+          ),
       )
       def next_fn(state, value, weight):
         return _next_fn_impl(

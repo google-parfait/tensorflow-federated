@@ -15,9 +15,10 @@
 
 from collections.abc import Mapping
 
+import federated_language
+
 from tensorflow_federated.cc.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import data_conversions
-from tensorflow_federated.python.core.impl.types import placements
 
 # Import classes.
 OwnedValueId = executor_bindings.OwnedValueId
@@ -40,7 +41,7 @@ GRPCChannel = executor_bindings.GRPCChannelInterface
 def create_federating_executor(
     inner_server_executor: executor_bindings.Executor,
     inner_client_executor: executor_bindings.Executor,
-    cardinalities: Mapping[placements.PlacementLiteral, int],
+    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a FederatingExecutor with a specified placement."""
   uri_cardinalities = (
@@ -53,7 +54,7 @@ def create_federating_executor(
 
 def create_remote_executor(
     channel: GRPCChannel,
-    cardinalities: Mapping[placements.PlacementLiteral, int],
+    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a RemoteExecutor proxying service on `channel`."""
   uri_cardinalities = (
@@ -64,7 +65,7 @@ def create_remote_executor(
 
 def create_streaming_remote_executor(
     channel: GRPCChannel,
-    cardinalities: Mapping[placements.PlacementLiteral, int],
+    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a StreamingRemoteExecutor proxying service on `channel`."""
   uri_cardinalities = (
@@ -77,7 +78,7 @@ def create_streaming_remote_executor(
 
 def create_composing_child(
     executor: executor_bindings.Executor,
-    cardinalities: Mapping[placements.PlacementLiteral, int],
+    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a ComposingChild with specified cardinalities."""
   uri_cardinalities = (

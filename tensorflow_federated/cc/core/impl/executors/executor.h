@@ -36,9 +36,9 @@ limitations under the License
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "absl/utility/utility.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {

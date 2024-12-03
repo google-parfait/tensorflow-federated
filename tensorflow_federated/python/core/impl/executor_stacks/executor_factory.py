@@ -21,14 +21,13 @@ import sys
 import time
 
 from absl import logging
+import federated_language
 import grpc
 import portpicker
 
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
-from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
-from tensorflow_federated.python.core.impl.types import placements
 
 _LOCALHOST_SERVER_WAIT_TIME_SEC = 1.0
 
@@ -45,7 +44,7 @@ def local_cpp_executor_factory(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> executor_factory.ExecutorFactory:
+) -> federated_language.framework.ExecutorFactory:
   """Returns an execution context backed by C++ runtime.
 
   Args:
@@ -150,8 +149,8 @@ def local_cpp_executor_factory(
   service_manager = ServiceManager()
 
   def stack_fn(cardinalities):
-    if cardinalities.get(placements.CLIENTS) is None:
-      cardinalities[placements.CLIENTS] = default_num_clients
+    if cardinalities.get(federated_language.CLIENTS) is None:
+      cardinalities[federated_language.CLIENTS] = default_num_clients
     stub = service_manager.get_stub()
     ex = remote_executor.RemoteExecutor(stub, stream_structs=stream_structs)
     ex.set_cardinalities(cardinalities)

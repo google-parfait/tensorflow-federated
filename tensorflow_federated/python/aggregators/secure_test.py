@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -22,23 +23,22 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.core.test import static_assert
 
-_float_at_server = computation_types.FederatedType(
-    np.float32, placements.SERVER
+_float_at_server = federated_language.FederatedType(
+    np.float32, federated_language.SERVER
 )
-_float_at_clients = computation_types.FederatedType(
-    np.float32, placements.CLIENTS
+_float_at_clients = federated_language.FederatedType(
+    np.float32, federated_language.CLIENTS
 )
-_int_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
-_int_at_clients = computation_types.FederatedType(np.int32, placements.CLIENTS)
+_int_at_server = federated_language.FederatedType(
+    np.int32, federated_language.SERVER
+)
+_int_at_clients = federated_language.FederatedType(
+    np.int32, federated_language.CLIENTS
+)
 
 
 def _test_struct_type(dtype):
@@ -46,8 +46,10 @@ def _test_struct_type(dtype):
 
 
 def _test_float_init_fn(factor):
-  return federated_computation.federated_computation(
-      lambda: intrinsics.federated_value(factor * 1.0, placements.SERVER)
+  return federated_language.federated_computation(
+      lambda: federated_language.federated_value(
+          factor * 1.0, federated_language.SERVER
+      )
   )
 
 
@@ -56,14 +58,14 @@ def _test_float_next_fn(factor):
   def shift_one(x):
     return x + (factor * 1.0)
 
-  return federated_computation.federated_computation(
-      lambda state, value: intrinsics.federated_map(shift_one, state),
+  return federated_language.federated_computation(
+      lambda state, value: federated_language.federated_map(shift_one, state),
       _float_at_server,
       _float_at_clients,
   )
 
 
-_test_float_report_fn = federated_computation.federated_computation(
+_test_float_report_fn = federated_language.federated_computation(
     lambda state: state, _float_at_server
 )
 
@@ -77,14 +79,14 @@ def _test_estimation_process(factor):
 
 
 def _measurements_type(bound_type):
-  return computation_types.FederatedType(
+  return federated_language.FederatedType(
       collections.OrderedDict(
           secure_upper_clipped_count=secure.COUNT_TYPE,
           secure_lower_clipped_count=secure.COUNT_TYPE,
           secure_upper_threshold=bound_type,
           secure_lower_threshold=bound_type,
       ),
-      placements.SERVER,
+      federated_language.SERVER,
   )
 
 
@@ -107,14 +109,16 @@ class SecureModularSumFactoryComputationTest(
         modulus=modulus, symmetric_range=symmetric_range
     )
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = factory_.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    expected_state_type = computation_types.FederatedType((), placements.SERVER)
+    expected_state_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
     expected_measurements_type = expected_state_type
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -123,17 +127,17 @@ class SecureModularSumFactoryComputationTest(
         )
     )
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -141,7 +145,9 @@ class SecureModularSumFactoryComputationTest(
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        process.next
+    )
 
   def test_float_modulus_raises(self):
     with self.assertRaises(TypeError):
@@ -160,14 +166,14 @@ class SecureModularSumFactoryComputationTest(
       secure.SecureModularSumFactory(modulus=8, symmetric_range='True')
 
   @parameterized.named_parameters(
-      ('float_type', computation_types.TensorType(np.float32)),
-      ('mixed_type', computation_types.to_type([np.float32, np.int32])),
+      ('float_type', federated_language.TensorType(np.float32)),
+      ('mixed_type', federated_language.to_type([np.float32, np.int32])),
       (
           'federated_type',
-          computation_types.FederatedType(np.int32, placements.SERVER),
+          federated_language.FederatedType(np.int32, federated_language.SERVER),
       ),
-      ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(np.float32)),
+      ('function_type', federated_language.FunctionType(None, ())),
+      ('sequence_type', federated_language.SequenceType(np.float32)),
   )
   def test_incorrect_value_type_raises(self, bad_value_type):
     with self.assertRaises(TypeError):
@@ -190,7 +196,7 @@ class SecureModularSumFactoryExecutionTest(
   )
   def test_non_symmetric(self, modulus, client_data, expected_sum):
     factory_ = secure.SecureModularSumFactory(modulus, symmetric_range=False)
-    process = factory_.create(computation_types.TensorType(np.int32))
+    process = factory_.create(federated_language.TensorType(np.int32))
     state = process.initialize()
     output = process.next(state, client_data)
     self.assertEqual(expected_sum, output.result)
@@ -212,7 +218,7 @@ class SecureModularSumFactoryExecutionTest(
   )
   def test_symmetric(self, modulus, client_data, expected_sum):
     factory_ = secure.SecureModularSumFactory(modulus, symmetric_range=True)
-    process = factory_.create(computation_types.TensorType(np.int32))
+    process = factory_.create(federated_language.TensorType(np.int32))
     state = process.initialize()
     output = process.next(state, client_data)
     self.assertEqual(expected_sum, output.result)
@@ -220,7 +226,7 @@ class SecureModularSumFactoryExecutionTest(
   def test_struct_type(self):
     factory_ = secure.SecureModularSumFactory(8)
     process = factory_.create(
-        computation_types.to_type(_test_struct_type(np.int32))
+        federated_language.to_type(_test_struct_type(np.int32))
     )
     state = process.initialize()
     client_data = [
@@ -279,14 +285,16 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         upper_bound_threshold=upper_bound, lower_bound_threshold=lower_bound
     )
     self.assertIsInstance(secure_sum_f, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = secure_sum_f.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    expected_state_type = computation_types.FederatedType((), placements.SERVER)
+    expected_state_type = federated_language.FederatedType(
+        (), federated_language.SERVER
+    )
     expected_measurements_type = _measurements_type(measurements_dtype)
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -295,17 +303,17 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -313,7 +321,9 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        process.next
+    )
 
   @parameterized.named_parameters(
       ('float32_scalar', np.float32, np.float32),
@@ -327,17 +337,17 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         upper_bound_threshold=upper_bound_process
     )
     self.assertIsInstance(secure_sum_f, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = secure_sum_f.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     threshold_type = upper_bound_process.report.type_signature.result.member
-    expected_state_type = computation_types.FederatedType(
-        computation_types.to_type(threshold_type), placements.SERVER
+    expected_state_type = federated_language.FederatedType(
+        federated_language.to_type(threshold_type), federated_language.SERVER
     )
     expected_measurements_type = _measurements_type(dtype)
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -346,17 +356,17 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -364,7 +374,9 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        process.next
+    )
 
   @parameterized.named_parameters(
       ('float32_scalar', np.float32, np.float32),
@@ -380,18 +392,18 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         lower_bound_threshold=lower_bound_process,
     )
     self.assertIsInstance(secure_sum_f, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type(value_type)
+    value_type = federated_language.to_type(value_type)
     process = secure_sum_f.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     threshold_type = upper_bound_process.report.type_signature.result.member
-    expected_state_type = computation_types.FederatedType(
-        computation_types.to_type((threshold_type, threshold_type)),
-        placements.SERVER,
+    expected_state_type = federated_language.FederatedType(
+        federated_language.to_type((threshold_type, threshold_type)),
+        federated_language.SERVER,
     )
     expected_measurements_type = _measurements_type(dtype)
 
-    expected_initialize_type = computation_types.FunctionType(
+    expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
     self.assertTrue(
@@ -400,17 +412,17 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
-    expected_next_type = computation_types.FunctionType(
+    expected_next_type = federated_language.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.FederatedType(
-                value_type, placements.CLIENTS
+            value=federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
             ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.FederatedType(
-                value_type, placements.SERVER
+            result=federated_language.FederatedType(
+                value_type, federated_language.SERVER
             ),
             measurements=expected_measurements_type,
         ),
@@ -418,7 +430,9 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    federated_language.framework.assert_not_contains_unsecure_aggregation(
+        process.next
+    )
 
   @parameterized.named_parameters(
       ('int_smaller', -1, 1),
@@ -433,7 +447,7 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   def test_int_ranges_beyond_2_pow_32(self):
     secure_sum_f = secure.SecureSumFactory(2**33, -(2**33))
     # Bounds this large should be provided only with np.int64 value_type.
-    process = secure_sum_f.create(computation_types.TensorType(np.int64))
+    process = secure_sum_f.create(federated_language.TensorType(np.int64))
     self.assertEqual(
         process.next.type_signature.result.result.member.dtype, np.int64
     )
@@ -446,7 +460,7 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   ):
     secure_sum_f = secure.SecureSumFactory(upper, lower)
     with self.assertRaises(TypeError):
-      secure_sum_f.create(computation_types.TensorType(np.float32))
+      secure_sum_f.create(federated_language.TensorType(np.float32))
 
   @parameterized.named_parameters(
       ('py', 1.0, -1.0), ('np', np.float32(1.0), np.float32(-1.0))
@@ -456,27 +470,29 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   ):
     secure_sum_f = secure.SecureSumFactory(upper, lower)
     with self.assertRaises(TypeError):
-      secure_sum_f.create(computation_types.TensorType(np.int32))
+      secure_sum_f.create(federated_language.TensorType(np.int32))
 
   def test_value_type_incompatible_with_config_mode_raises_single_process(self):
     secure_sum_f = secure.SecureSumFactory(_test_estimation_process(1))
     with self.assertRaises(TypeError):
-      secure_sum_f.create(computation_types.TensorType(np.int32))
+      secure_sum_f.create(federated_language.TensorType(np.int32))
 
   def test_value_type_incompatible_with_config_mode_raises_two_processes(self):
     secure_sum_f = secure.SecureSumFactory(
         _test_estimation_process(1), _test_estimation_process(-1)
     )
     with self.assertRaises(TypeError):
-      secure_sum_f.create(computation_types.TensorType(np.int32))
+      secure_sum_f.create(federated_language.TensorType(np.int32))
 
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(np.float32, placements.SERVER),
+          federated_language.FederatedType(
+              np.float32, federated_language.SERVER
+          ),
       ),
-      ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(np.float32)),
+      ('function_type', federated_language.FunctionType(None, ())),
+      ('sequence_type', federated_language.SequenceType(np.float32)),
   )
   def test_incorrect_value_type_raises(self, bad_value_type):
     secure_sum_f = secure.SecureSumFactory(1.0, -1.0)
@@ -490,7 +506,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
     secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=1, lower_bound_threshold=-1
     )
-    process = secure_sum_f.create(computation_types.TensorType(np.int32))
+    process = secure_sum_f.create(federated_language.TensorType(np.int32))
     client_data = [-2, -1, 0, 1, 2, 3]
 
     state = process.initialize()
@@ -508,7 +524,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
     secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=1.0, lower_bound_threshold=-1.0
     )
-    process = secure_sum_f.create(computation_types.TensorType(np.float32))
+    process = secure_sum_f.create(federated_language.TensorType(np.float32))
     client_data = [-2.5, -0.5, 0.0, 1.0, 1.5, 2.5]
 
     state = process.initialize()
@@ -526,7 +542,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
     secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=_test_estimation_process(1)
     )
-    process = secure_sum_f.create(computation_types.TensorType(np.float32))
+    process = secure_sum_f.create(federated_language.TensorType(np.float32))
     client_data = [-2.5, -0.5, 0.0, 1.0, 1.5, 3.5]
 
     state = process.initialize()
@@ -565,7 +581,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
         upper_bound_threshold=_test_estimation_process(1),
         lower_bound_threshold=_test_estimation_process(-1),
     )
-    process = secure_sum_f.create(computation_types.TensorType(np.float32))
+    process = secure_sum_f.create(federated_language.TensorType(np.float32))
     client_data = [-2.5, -0.5, 0.0, 1.0, 1.5, 3.5]
 
     state = process.initialize()
@@ -600,7 +616,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
 
   def test_float_32_larger_than_2_pow_32(self):
     secure_sum_f = secure.SecureSumFactory(upper_bound_threshold=float(2**34))
-    process = secure_sum_f.create(computation_types.TensorType(np.float32))
+    process = secure_sum_f.create(federated_language.TensorType(np.float32))
     client_data = [float(2**33), float(2**33), float(2**34)]
 
     state = process.initialize()
@@ -618,7 +634,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
     secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=np.float64(2**66)
     )
-    process = secure_sum_f.create(computation_types.TensorType(np.float64))
+    process = secure_sum_f.create(federated_language.TensorType(np.float64))
     client_data = [
         np.float64(2**65),
         np.float64(2**65),
@@ -663,22 +679,22 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
 class IsStructureOfSingleDtypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('bool', computation_types.TensorType(np.bool_)),
-      ('int', computation_types.TensorType(np.int32)),
-      ('ints', computation_types.StructType([np.int32, np.int32])),
-      ('floats', computation_types.StructType([np.float32, np.float32])),
+      ('bool', federated_language.TensorType(np.bool_)),
+      ('int', federated_language.TensorType(np.int32)),
+      ('ints', federated_language.StructType([np.int32, np.int32])),
+      ('floats', federated_language.StructType([np.float32, np.float32])),
       (
           'nested_struct',
-          computation_types.StructType([
-              computation_types.TensorType(np.int32),
-              computation_types.StructType([np.int32, np.int32]),
+          federated_language.StructType([
+              federated_language.TensorType(np.int32),
+              federated_language.StructType([np.int32, np.int32]),
           ]),
       ),
       (
           'federated_floats_at_clients',
-          computation_types.FederatedType(
-              computation_types.StructType([np.float32, np.float32]),
-              placements.CLIENTS,
+          federated_language.FederatedType(
+              federated_language.StructType([np.float32, np.float32]),
+              federated_language.CLIENTS,
           ),
       ),
   )
@@ -686,24 +702,24 @@ class IsStructureOfSingleDtypeTest(parameterized.TestCase):
     self.assertTrue(secure._is_structure_of_single_dtype(type_spec))
 
   @parameterized.named_parameters(
-      ('empty_struct', computation_types.StructType([])),
-      ('int_and_float', computation_types.StructType([np.int32, np.float32])),
-      ('int32_and_int64', computation_types.StructType([np.int32, np.int64])),
+      ('empty_struct', federated_language.StructType([])),
+      ('int_and_float', federated_language.StructType([np.int32, np.float32])),
+      ('int32_and_int64', federated_language.StructType([np.int32, np.int64])),
       (
           'float32_and_float64',
-          computation_types.StructType([np.float32, np.float64]),
+          federated_language.StructType([np.float32, np.float64]),
       ),
       (
           'nested_struct',
-          computation_types.StructType([
-              computation_types.TensorType(np.int32),
-              computation_types.StructType([np.float32, np.float32]),
+          federated_language.StructType([
+              federated_language.TensorType(np.int32),
+              federated_language.StructType([np.float32, np.float32]),
           ]),
       ),
-      ('sequence_of_ints', computation_types.SequenceType(np.int32)),
-      ('placement', computation_types.PlacementType()),
-      ('function', computation_types.FunctionType(np.int32, np.int32)),
-      ('abstract', computation_types.AbstractType('T')),
+      ('sequence_of_ints', federated_language.SequenceType(np.int32)),
+      ('placement', federated_language.PlacementType()),
+      ('function', federated_language.FunctionType(np.int32, np.int32)),
+      ('abstract', federated_language.AbstractType('T')),
   )
   def test_returns_false(self, type_spec):
     self.assertFalse(secure._is_structure_of_single_dtype(type_spec))

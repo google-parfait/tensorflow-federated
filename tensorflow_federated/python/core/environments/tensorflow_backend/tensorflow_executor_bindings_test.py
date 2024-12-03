@@ -16,6 +16,7 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -25,9 +26,6 @@ from tensorflow_federated.python.core.environments.tensorflow_backend import ten
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 # Creating logical devices should be done only once before TF runtime startup
@@ -75,7 +73,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_create_value(self):
     executor = get_executor()
     # 1. Test a simple tensor.
-    expected_type_spec = computation_types.TensorType(np.int64, [3])
+    expected_type_spec = federated_language.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
         [1, 2, 3], expected_type_spec
     )
@@ -88,12 +86,14 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value
     )
-    type_test_utils.assert_types_identical(type_spec, expected_type_spec)
+    federated_language.framework.assert_types_identical(
+        type_spec, expected_type_spec
+    )
     self.assertAllEqual(deserialized_value, [1, 2, 3])
     # 2. Test a struct of tensors, ensure that we get a different ID.
-    expected_type_spec = computation_types.StructType([
-        ('a', computation_types.TensorType(np.int64, [3])),
-        ('b', computation_types.TensorType(np.float32, [])),
+    expected_type_spec = federated_language.StructType([
+        ('a', federated_language.TensorType(np.int64, [3])),
+        ('b', federated_language.TensorType(np.float32, [])),
     ])
     value = collections.OrderedDict(
         a=np.array([1, 2, 3], np.int64),
@@ -113,7 +113,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     # Note: here we've lost the names `a` and `b` in the output. The output
     # is a more _strict_ type.
     self.assertTrue(expected_type_spec.is_assignable_from(type_spec))
-    deserialized_value = type_conversions.type_to_py_container(
+    deserialized_value = federated_language.framework.type_to_py_container(
         deserialized_value, expected_type_spec
     )
     self.assertAllClose(
@@ -123,8 +123,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     # 3. Test creating a value from a computation.
     foo, _ = tensorflow_computation_factory.create_binary_operator(
         tf.add,
-        computation_types.TensorType(np.int64),
-        computation_types.TensorType(np.int64),
+        federated_language.TensorType(np.int64),
+        federated_language.TensorType(np.int64),
     )
 
     value_pb = executor_pb2.Value(computation=foo)
@@ -163,7 +163,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     sequence = list(dataset.as_numpy_iterator())
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
     element_type = tensorflow_types.to_type(dataset.element_spec)
-    sequence_type = computation_types.SequenceType(element_type)
+    sequence_type = federated_language.SequenceType(element_type)
     arg_value_pb, _ = value_serialization.serialize_value(
         sequence, sequence_type
     )
@@ -184,19 +184,19 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
     result, result_type_spec = value_serialization.deserialize_value(output_pb)
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         result_type_spec,
-        computation_types.TensorType(sequence_type.element.dtype),
+        federated_language.TensorType(sequence_type.element.dtype),
     )
     self.assertEqual(result, expected_result)
 
   def test_create_tuple_of_value_sequence(self):
     sequences = ([0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
-    element_type = computation_types.TensorType(np.int32)
-    struct_of_sequence_type = computation_types.StructType([
-        computation_types.SequenceType(element_type),
-        computation_types.SequenceType(element_type),
+    element_type = federated_language.TensorType(np.int32)
+    struct_of_sequence_type = federated_language.StructType([
+        federated_language.SequenceType(element_type),
+        federated_language.SequenceType(element_type),
     ])
     arg_value_pb, _ = value_serialization.serialize_value(
         sequences, struct_of_sequence_type
@@ -224,13 +224,13 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     _, result_type_spec = value_serialization.deserialize_value(
         output_pb, type_hint=struct_of_sequence_type
     )
-    type_test_utils.assert_types_identical(
+    federated_language.framework.assert_types_identical(
         result_type_spec, struct_of_sequence_type
     )
 
   def test_create_struct(self):
     executor = get_executor()
-    expected_type_spec = computation_types.TensorType(np.int64, [3])
+    expected_type_spec = federated_language.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
         np.array([1, 2, 3], np.int64), expected_type_spec
     )
@@ -243,11 +243,13 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value
     )
-    struct_type_spec = computation_types.to_type(
+    struct_type_spec = federated_language.to_type(
         [expected_type_spec, expected_type_spec]
     )
-    type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
-    deserialized_value = type_conversions.type_to_py_container(
+    federated_language.framework.assert_types_equivalent(
+        type_spec, struct_type_spec
+    )
+    deserialized_value = federated_language.framework.type_to_py_container(
         deserialized_value, struct_type_spec
     )
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
@@ -257,18 +259,20 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value
     )
-    struct_type_spec = computation_types.to_type(
+    struct_type_spec = federated_language.to_type(
         [struct_type_spec, expected_type_spec]
     )
-    type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
-    deserialized_value = type_conversions.type_to_py_container(
+    federated_language.framework.assert_types_equivalent(
+        type_spec, struct_type_spec
+    )
+    deserialized_value = federated_language.framework.type_to_py_container(
         deserialized_value, struct_type_spec
     )
     self.assertAllClose([[(1, 2, 3), (1, 2, 3)], (1, 2, 3)], deserialized_value)
 
   def test_create_selection(self):
     executor = get_executor()
-    expected_type_spec = computation_types.TensorType(np.int64, [3])
+    expected_type_spec = federated_language.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
         np.array([1, 2, 3], np.int64), expected_type_spec
     )
@@ -281,11 +285,13 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value
     )
-    struct_type_spec = computation_types.to_type(
+    struct_type_spec = federated_language.to_type(
         [expected_type_spec, expected_type_spec]
     )
-    type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
-    deserialized_value = type_conversions.type_to_py_container(
+    federated_language.framework.assert_types_equivalent(
+        type_spec, struct_type_spec
+    )
+    deserialized_value = federated_language.framework.type_to_py_container(
         deserialized_value, struct_type_spec
     )
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
@@ -295,8 +301,10 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value
     )
-    type_test_utils.assert_types_equivalent(type_spec, expected_type_spec)
-    deserialized_value = type_conversions.type_to_py_container(
+    federated_language.framework.assert_types_equivalent(
+        type_spec, expected_type_spec
+    )
+    deserialized_value = federated_language.framework.type_to_py_container(
         deserialized_value, struct_type_spec
     )
     self.assertAllClose((1, 2, 3), deserialized_value)
@@ -305,15 +313,15 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = get_executor()
     value_pb, _ = value_serialization.serialize_value(
         np.array([1, 2, 3], np.int64),
-        computation_types.TensorType(np.int64, [3]),
+        federated_language.TensorType(np.int64, [3]),
     )
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
 
     foo, _ = tensorflow_computation_factory.create_binary_operator(
         tf.add,
-        computation_types.TensorType(np.int64),
-        computation_types.TensorType(np.int64),
+        federated_language.TensorType(np.int64),
+        federated_language.TensorType(np.int64),
     )
 
     comp_pb = executor_pb2.Value(computation=foo)
@@ -327,7 +335,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = get_executor()
 
     foo, _ = tensorflow_computation_factory.create_constant(
-        123.0, computation_types.TensorType(np.float32)
+        123.0, federated_language.TensorType(np.float32)
     )
 
     comp_pb = executor_pb2.Value(computation=foo)

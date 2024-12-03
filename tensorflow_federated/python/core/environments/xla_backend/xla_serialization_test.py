@@ -13,15 +13,14 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
+from federated_language.proto import computation_pb2 as pb
 import jax
 import jax.numpy as jnp
 import numpy as np
 
 from google.protobuf import any_pb2
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.environments.xla_backend import xla_serialization
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 def _make_xla_shape(shapes_and_dtypes_pytree):
@@ -68,11 +67,11 @@ class XlaUtilsTest(absltest.TestCase):
   def test_create_xla_tff_computation_noarg(self):
     xla_comp = _make_test_xla_comp_noarg_to_int32()
     comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_comp, [], computation_types.FunctionType(None, np.int32)
+        xla_comp, [], federated_language.FunctionType(None, np.int32)
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
     self.assertEqual(str(type_spec), '( -> int32)')
     xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
     self.assertIn(
@@ -85,14 +84,14 @@ class XlaUtilsTest(absltest.TestCase):
     xla_comp = _make_test_xla_comp_noarg_to_int32()
     with self.assertRaises(ValueError):
       xla_serialization.create_xla_tff_computation(
-          xla_comp, [0], computation_types.FunctionType(np.int32, np.int32)
+          xla_comp, [0], federated_language.FunctionType(np.int32, np.int32)
       )
 
   def test_create_xla_tff_computation_raises_missing_arg_in_type_spec(self):
     xla_comp = _make_test_xla_comp_int32x10_to_int32x10()
     with self.assertRaises(ValueError):
       xla_serialization.create_xla_tff_computation(
-          xla_comp, [], computation_types.FunctionType(None, np.int32)
+          xla_comp, [], federated_language.FunctionType(None, np.int32)
       )
 
   def test_create_xla_tff_computation_raises_arg_type_mismatch(self):
@@ -101,7 +100,7 @@ class XlaUtilsTest(absltest.TestCase):
       xla_serialization.create_xla_tff_computation(
           xla_comp,
           [0],
-          computation_types.FunctionType(np.int32, (np.int32, (10,))),
+          federated_language.FunctionType(np.int32, (np.int32, (10,))),
       )
 
   def test_create_xla_tff_computation_raises_result_type_mismatch(self):
@@ -110,7 +109,7 @@ class XlaUtilsTest(absltest.TestCase):
       xla_serialization.create_xla_tff_computation(
           xla_comp,
           [0],
-          computation_types.FunctionType((np.int32, (10,)), np.int32),
+          federated_language.FunctionType((np.int32, (10,)), np.int32),
       )
 
   def test_create_xla_tff_computation_int32x10_to_int32x10(self):
@@ -118,11 +117,11 @@ class XlaUtilsTest(absltest.TestCase):
     comp_pb = xla_serialization.create_xla_tff_computation(
         xla_comp,
         [0],
-        computation_types.FunctionType((np.int32, (10,)), (np.int32, (10,))),
+        federated_language.FunctionType((np.int32, (10,)), (np.int32, (10,))),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = type_serialization.deserialize_type(comp_pb.type)
+    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
     self.assertEqual(str(type_spec), '(int32[10] -> int32[10])')
 
   def test_create_xla_tff_computation_with_reordered_tensor_indexes(self):
@@ -138,28 +137,28 @@ class XlaUtilsTest(absltest.TestCase):
     comp_pb_1 = xla_serialization.create_xla_tff_computation(
         xla_comp,
         [0, 1],
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             ((np.int32, (10, 1)), (np.int32, (1, 20))),
             (np.int32, (10, 20)),
         ),
     )
     self.assertIsInstance(comp_pb_1, pb.Computation)
     self.assertEqual(comp_pb_1.WhichOneof('computation'), 'xla')
-    type_spec_1 = type_serialization.deserialize_type(comp_pb_1.type)
+    type_spec_1 = federated_language.framework.deserialize_type(comp_pb_1.type)
     self.assertEqual(
         str(type_spec_1), '(<int32[10,1],int32[1,20]> -> int32[10,20])'
     )
     comp_pb_2 = xla_serialization.create_xla_tff_computation(
         xla_comp,
         [1, 0],
-        computation_types.FunctionType(
+        federated_language.FunctionType(
             ((np.int32, (1, 20)), (np.int32, (10, 1))),
             (np.int32, (10, 20)),
         ),
     )
     self.assertIsInstance(comp_pb_2, pb.Computation)
     self.assertEqual(comp_pb_2.WhichOneof('computation'), 'xla')
-    type_spec_2 = type_serialization.deserialize_type(comp_pb_2.type)
+    type_spec_2 = federated_language.framework.deserialize_type(comp_pb_2.type)
     self.assertEqual(
         str(type_spec_2), '(<int32[1,20],int32[10,1]> -> int32[10,20])'
     )

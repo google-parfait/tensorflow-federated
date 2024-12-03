@@ -30,9 +30,9 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -55,7 +55,8 @@ using NamedValue = std::tuple<std::string, std::shared_ptr<ExecutorValue>>;
 // References within the lambda will be resolved using the attached scope.
 class ScopedLambda {
  public:
-  explicit ScopedLambda(v0::Lambda lambda_pb, std::shared_ptr<Scope> scope)
+  explicit ScopedLambda(federated_language::Lambda lambda_pb,
+                        std::shared_ptr<Scope> scope)
       : lambda_pb_(std::move(lambda_pb)), scope_(std::move(scope)) {}
   ScopedLambda(ScopedLambda&& other)
       : lambda_pb_(std::move(other.lambda_pb_)),
@@ -72,7 +73,7 @@ class ScopedLambda {
   }
 
  private:
-  v0::Lambda lambda_pb_;
+  federated_language::Lambda lambda_pb_;
   std::shared_ptr<Scope> scope_;
 };
 
@@ -197,7 +198,7 @@ class ReferenceResolvingExecutor
   // etc. The method delegates to other Evaluate*() methods, and the result
   // depends on the type of computation being evaluated.
   absl::StatusOr<std::shared_ptr<ExecutorValue>> Evaluate(
-      const v0::Computation& computation_pb,
+      const federated_language::Computation& computation_pb,
       const std::shared_ptr<Scope>& scope) const;
 
  protected:
@@ -242,51 +243,55 @@ class ReferenceResolvingExecutor
   // Evaluates a block.
   //
   // The semantics of a block are documented on the
-  // `tensorflow_federated::v0::Block` message defined in
+  // `federated_language::Block` message defined in
   // tensorflow_federated/proto/v0/computation.proto
   absl::StatusOr<std::shared_ptr<ExecutorValue>> EvaluateBlock(
-      const v0::Block& block_pb, const std::shared_ptr<Scope>& scope) const;
+      const federated_language::Block& block_pb,
+      const std::shared_ptr<Scope>& scope) const;
 
   // Evaluates a reference.
   //
   // The semantics of a reference are documented on the
-  // `tensorflow_federated::v0::Reference` message defined in
+  // `federated_language::Reference` message defined in
   // tensorflow_federated/proto/v0/computation.proto
   absl::StatusOr<std::shared_ptr<ExecutorValue>> EvaluateReference(
-      const v0::Reference& reference_pb,
+      const federated_language::Reference& reference_pb,
       const std::shared_ptr<Scope>& scope) const;
 
   // Evaluates a lambda.
   //
   // The semantics of a reference are documented on the
-  // `tensorflow_federated::v0::Lambda` message defined in
+  // `federated_language::Lambda` message defined in
   // tensorflow_federated/proto/v0/computation.proto
   absl::StatusOr<std::shared_ptr<ExecutorValue>> EvaluateLambda(
-      const v0::Lambda& lambda_pb, const std::shared_ptr<Scope>& scope) const;
+      const federated_language::Lambda& lambda_pb,
+      const std::shared_ptr<Scope>& scope) const;
 
   // Evaluates a call.
   //
   // The semantics of a reference are documented on the
-  // `tensorflow_federated::v0::Call` message defined in
+  // `federated_language::Call` message defined in
   // tensorflow_federated/proto/v0/computation.proto
   absl::StatusOr<std::shared_ptr<ExecutorValue>> EvaluateCall(
-      const v0::Call& call_pb, const std::shared_ptr<Scope>& scope) const;
+      const federated_language::Call& call_pb,
+      const std::shared_ptr<Scope>& scope) const;
 
   // Evaluates a struct.
   //
   // The semantics of a struct are documented on the
-  // `tensorflow_federated::v0::Struct` message defined in
+  // `federated_language::Struct` message defined in
   // tensorflow_federated/proto/v0/computation.proto
   absl::StatusOr<std::shared_ptr<ExecutorValue>> EvaluateStruct(
-      const v0::Struct& struct_pb, const std::shared_ptr<Scope>& scope) const;
+      const federated_language::Struct& struct_pb,
+      const std::shared_ptr<Scope>& scope) const;
 
   // Evaluates a selection.
   //
   // The semantics of a selection are documented on the
-  // `tensorflow_federated::v0::Selection` message defined in
+  // `federated_language::Selection` message defined in
   // tensorflow_federated/proto/v0/computation.proto
   absl::StatusOr<std::shared_ptr<ExecutorValue>> EvaluateSelection(
-      const v0::Selection& selection_pb,
+      const federated_language::Selection& selection_pb,
       const std::shared_ptr<Scope>& scope) const;
 };
 
@@ -505,42 +510,42 @@ absl::StatusOr<ValueId> ReferenceResolvingExecutor::Embed(
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::Evaluate(
-    const v0::Computation& computation_pb,
+    const federated_language::Computation& computation_pb,
     const std::shared_ptr<Scope>& scope) const {
   switch (computation_pb.computation_case()) {
-    case v0::Computation::kTensorflow:
-    case v0::Computation::kIntrinsic:
-    case v0::Computation::kData:
-    case v0::Computation::kPlacement:
-    case v0::Computation::kLiteral:
-    case v0::Computation::kXla: {
+    case federated_language::Computation::kTensorflow:
+    case federated_language::Computation::kIntrinsic:
+    case federated_language::Computation::kData:
+    case federated_language::Computation::kPlacement:
+    case federated_language::Computation::kLiteral:
+    case federated_language::Computation::kXla: {
       // Note: we're copying the Computation proto here, possibly a TensorFlow
       // graph which might have large constants, possibly making it expensive.
       // However, we've taken this approach because we don't always have a
-      // `Value` for each `Computation` proto (see `v0::Block::local`); this
-      // code is simpler and more homogenous. If profiling shows this is a
-      // hotspot we can optimize.
+      // `Value` for each `Computation` proto (see
+      // `federated_language::Block::local`); this code is simpler and more
+      // homogenous. If profiling shows this is a hotspot we can optimize.
       v0::Value child_value_pb;
       *child_value_pb.mutable_computation() = computation_pb;
       return std::make_shared<ExecutorValue>(
           TFF_TRY(child_executor_->CreateValue(child_value_pb)));
     }
-    case v0::Computation::kReference: {
+    case federated_language::Computation::kReference: {
       return EvaluateReference(computation_pb.reference(), scope);
     }
-    case v0::Computation::kBlock: {
+    case federated_language::Computation::kBlock: {
       return EvaluateBlock(computation_pb.block(), scope);
     }
-    case v0::Computation::kLambda: {
+    case federated_language::Computation::kLambda: {
       return EvaluateLambda(computation_pb.lambda(), scope);
     }
-    case v0::Computation::kCall: {
+    case federated_language::Computation::kCall: {
       return EvaluateCall(computation_pb.call(), scope);
     }
-    case v0::Computation::kStruct: {
+    case federated_language::Computation::kStruct: {
       return EvaluateStruct(computation_pb.struct_(), scope);
     }
-    case v0::Computation::kSelection: {
+    case federated_language::Computation::kSelection: {
       return EvaluateSelection(computation_pb.selection(), scope);
     }
     default:
@@ -552,14 +557,15 @@ ReferenceResolvingExecutor::Evaluate(
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::EvaluateBlock(
-    const v0::Block& block_pb, const std::shared_ptr<Scope>& scope) const {
+    const federated_language::Block& block_pb,
+    const std::shared_ptr<Scope>& scope) const {
   std::shared_ptr<Scope> current_scope = scope;
-  auto local_pb_formatter = [](std::string* out,
-                               const v0::Block::Local& local_pb) {
-    out->append(local_pb.name());
-  };
+  auto local_pb_formatter =
+      [](std::string* out, const federated_language::Block::Local& local_pb) {
+        out->append(local_pb.name());
+      };
   for (int i = 0; i < block_pb.local_size(); ++i) {
-    const v0::Block::Local& local_pb = block_pb.local(i);
+    const federated_language::Block::Local& local_pb = block_pb.local(i);
     std::shared_ptr<ExecutorValue> value = TFF_TRY(
         Evaluate(local_pb.value(), current_scope),
         absl::StrCat(
@@ -574,7 +580,7 @@ ReferenceResolvingExecutor::EvaluateBlock(
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::EvaluateReference(
-    const v0::Reference& reference_pb,
+    const federated_language::Reference& reference_pb,
     const std::shared_ptr<Scope>& scope) const {
   std::shared_ptr<ExecutorValue> resolved_value =
       TFF_TRY(scope->Resolve(reference_pb.name()),
@@ -589,13 +595,15 @@ ReferenceResolvingExecutor::EvaluateReference(
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::EvaluateLambda(
-    const v0::Lambda& lambda_pb, const std::shared_ptr<Scope>& scope) const {
+    const federated_language::Lambda& lambda_pb,
+    const std::shared_ptr<Scope>& scope) const {
   return std::make_shared<ExecutorValue>(ScopedLambda{lambda_pb, scope});
 }
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::EvaluateCall(
-    const v0::Call& call_pb, const std::shared_ptr<Scope>& scope) const {
+    const federated_language::Call& call_pb,
+    const std::shared_ptr<Scope>& scope) const {
   std::shared_ptr<ExecutorValue> function =
       TFF_TRY(Evaluate(call_pb.function(), scope));
   std::optional<std::shared_ptr<ExecutorValue>> argument;
@@ -607,10 +615,12 @@ ReferenceResolvingExecutor::EvaluateCall(
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::EvaluateStruct(
-    const v0::Struct& struct_pb, const std::shared_ptr<Scope>& scope) const {
+    const federated_language::Struct& struct_pb,
+    const std::shared_ptr<Scope>& scope) const {
   std::vector<std::shared_ptr<ExecutorValue>> elements;
   elements.reserve(struct_pb.element_size());
-  for (const v0::Struct::Element& element_pb : struct_pb.element()) {
+  for (const federated_language::Struct::Element& element_pb :
+       struct_pb.element()) {
     elements.emplace_back(TFF_TRY(Evaluate(element_pb.value(), scope)));
   }
   return std::make_shared<ExecutorValue>(std::move(elements));
@@ -618,7 +628,7 @@ ReferenceResolvingExecutor::EvaluateStruct(
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::EvaluateSelection(
-    const v0::Selection& selection_pb,
+    const federated_language::Selection& selection_pb,
     const std::shared_ptr<Scope>& scope) const {
   return CreateSelectionInternal(
       TFF_TRY(Evaluate(selection_pb.source(), scope)), selection_pb.index());

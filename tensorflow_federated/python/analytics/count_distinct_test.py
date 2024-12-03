@@ -14,12 +14,12 @@
 """Tests for count_distinct.py."""
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics import count_distinct
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def hll_sketch_python(values):
@@ -69,9 +69,11 @@ class CountDistinctComputationTest(tf.test.TestCase):
 
     client_hyperloglog = count_distinct.build_client_hyperloglog_computation()
 
-    expected_type_signature = computation_types.FunctionType(
-        computation_types.SequenceType(computation_types.TensorType(np.int64)),
-        computation_types.TensorType(
+    expected_type_signature = federated_language.FunctionType(
+        federated_language.SequenceType(
+            federated_language.TensorType(np.int64)
+        ),
+        federated_language.TensorType(
             np.int64, [count_distinct.HLL_SKETCH_SIZE]
         ),
     )

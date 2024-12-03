@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 
 
@@ -102,7 +102,7 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
   def test_keras_metric_finalizer_returns_correct_result(self, metric):
     # The unfinalized accuracy contains two tensors `total` and `count`.
     unfinalized_accuracy = [tf.constant(2.0), tf.constant(2.0)]
-    unfinalized_accuracy_type = computation_types.StructWithPythonType(
+    unfinalized_accuracy_type = federated_language.StructWithPythonType(
         [np.float32, np.float32], list
     )
     finalizer_computation = wrap_tf_function_in_tff_tf_computation(
@@ -120,18 +120,18 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
           'one_variable',
           CustomSumMetric(has_extra_variables=False),
           [tf.constant(1.0)],
-          computation_types.StructWithPythonType([np.float32], list),
+          federated_language.StructWithPythonType([np.float32], list),
           1.0,
       ),
       (
           'three_variables',
           CustomSumMetric(has_extra_variables=True),
           [tf.constant(1.0), tf.constant(1.0), tf.constant([1.0, 1.0])],
-          computation_types.StructWithPythonType(
+          federated_language.StructWithPythonType(
               [
                   np.float32,
                   np.float32,
-                  computation_types.TensorType(np.float32, [2]),
+                  federated_language.TensorType(np.float32, [2]),
               ],
               list,
           ),
@@ -192,7 +192,7 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
       ),
       (
           'unmatched_shape',
-          [computation_types.TensorType(np.float32, shape=(2,)), np.float32],
+          [federated_language.TensorType(np.float32, shape=(2,)), np.float32],
           ValueError,
           r'found a `tf.Tensor` of shape \(2,\) and dtype tf.float32',
       ),

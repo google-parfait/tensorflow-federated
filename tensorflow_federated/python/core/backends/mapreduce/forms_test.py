@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -20,16 +21,12 @@ from tensorflow_federated.python.core.backends.mapreduce import distribute_aggre
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 
 def _test_broadcast_form_computations():
   server_data_type = (np.int32, np.int32)
   context_type = np.int32
-  client_data_type = computation_types.SequenceType(np.float32)
+  client_data_type = federated_language.SequenceType(np.float32)
 
   @tensorflow_computation.tf_computation(server_data_type)
   def compute_server_context(server_data):
@@ -53,7 +50,7 @@ def _test_map_reduce_form_computations():
     return 1.0
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(np.float32), np.float32
+      federated_language.SequenceType(np.float32), np.float32
   )
   def work(client_data, client_input):
     del client_data  # Unused
@@ -87,7 +84,7 @@ def _test_map_reduce_form_computations():
   bitwidth = unit_comp
   max_input = unit_comp
   modulus = unit_comp
-  unit_type = computation_types.to_type([])
+  unit_type = federated_language.to_type([])
 
   @tensorflow_computation.tf_computation(
       np.int32, (np.float32, unit_type, unit_type, unit_type)
@@ -159,8 +156,8 @@ def _build_test_map_reduce_form_with_computations(
 
 def _test_distribute_aggregate_form_computations():
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(np.int32, placements.SERVER)
+  @federated_language.federated_computation(
+      federated_language.FederatedType(np.int32, federated_language.SERVER)
   )
   def server_prepare(server_state):
     @tensorflow_computation.tf_computation
@@ -171,25 +168,28 @@ def _test_distribute_aggregate_form_computations():
     def server_prepare_state_tf():
       return 32
 
-    return [
-        [
-            intrinsics.federated_value(
-                server_prepare_broadcast_tf(), placements.SERVER
-            )
-        ]
-    ], [server_prepare_state_tf(), server_state]
+    return [[
+        federated_language.federated_value(
+            server_prepare_broadcast_tf(), federated_language.SERVER
+        )
+    ]], [server_prepare_state_tf(), server_state]
 
-  @federated_computation.federated_computation(
-      [[computation_types.FederatedType(np.float32, placements.SERVER)]]
-  )
+  @federated_language.federated_computation([[
+      federated_language.FederatedType(np.float32, federated_language.SERVER)
+  ]])
   def server_to_client_broadcast(context_at_server):
-    return [intrinsics.federated_broadcast(context_at_server[0][0])]
+    return [federated_language.federated_broadcast(context_at_server[0][0])]
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(
-          computation_types.SequenceType(np.float32), placements.CLIENTS
+  @federated_language.federated_computation(
+      federated_language.FederatedType(
+          federated_language.SequenceType(np.float32),
+          federated_language.CLIENTS,
       ),
-      [computation_types.FederatedType(np.float32, placements.CLIENTS)],
+      [
+          federated_language.FederatedType(
+              np.float32, federated_language.CLIENTS
+          )
+      ],
   )
   def client_work(client_data, context_at_clients):
     @tensorflow_computation.tf_computation
@@ -198,32 +198,48 @@ def _test_distribute_aggregate_form_computations():
 
     del client_data  # Unused
     del context_at_clients  # Unused
-    return [[intrinsics.federated_value(client_work_tf(), placements.CLIENTS)]]
+    return [[
+        federated_language.federated_value(
+            client_work_tf(), federated_language.CLIENTS
+        )
+    ]]
 
-  @federated_computation.federated_computation(
-      [np.int32, computation_types.FederatedType(np.int32, placements.SERVER)],
+  @federated_language.federated_computation(
+      [
+          np.int32,
+          federated_language.FederatedType(np.int32, federated_language.SERVER),
+      ],
       [[
-          computation_types.FederatedType(
-              computation_types.TensorType(np.int32, [2]), placements.CLIENTS
+          federated_language.FederatedType(
+              federated_language.TensorType(np.int32, [2]),
+              federated_language.CLIENTS,
           )
       ]],
   )
   def client_to_server_aggregation(temp_server_state, client_updates):
     del temp_server_state  # Unused.
-    return [intrinsics.federated_secure_sum_bitwidth(client_updates[0][0], 100)]
+    return [
+        federated_language.federated_secure_sum_bitwidth(
+            client_updates[0][0], 100
+        )
+    ]
 
-  @federated_computation.federated_computation(
-      [np.int32, computation_types.FederatedType(np.int32, placements.SERVER)],
+  @federated_language.federated_computation(
       [
-          computation_types.FederatedType(
-              computation_types.TensorType(np.int32, [2]), placements.SERVER
+          np.int32,
+          federated_language.FederatedType(np.int32, federated_language.SERVER),
+      ],
+      [
+          federated_language.FederatedType(
+              federated_language.TensorType(np.int32, [2]),
+              federated_language.SERVER,
           )
       ],
   )
   def server_result(temp_server_state, aggregated_results):
     del aggregated_results  # Unused
-    return temp_server_state[1], intrinsics.federated_value(
-        [], placements.SERVER
+    return temp_server_state[1], federated_language.federated_value(
+        [], federated_language.SERVER
     )
 
   return (
@@ -308,7 +324,7 @@ class MapReduceFormTest(absltest.TestCase):
       self.fail('Raised TypeError unexpectedly.')
 
   def test_init_does_not_raise_type_error_with_unknown_dimensions(self):
-    server_state_type = computation_types.TensorType(np.int32, [None])
+    server_state_type = federated_language.TensorType(np.int32, [None])
 
     @tensorflow_computation.tf_computation(server_state_type)
     def prepare(server_state):
@@ -316,7 +332,7 @@ class MapReduceFormTest(absltest.TestCase):
       return 1.0
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(np.float32), np.float32
+        federated_language.SequenceType(np.float32), np.float32
     )
     def work(client_data, client_input):
       del client_data  # Unused
@@ -328,7 +344,7 @@ class MapReduceFormTest(absltest.TestCase):
       return tf.constant([], dtype=tf.string)
 
     @tensorflow_computation.tf_computation(
-        computation_types.TensorType(np.str_, [None]), np.bool_
+        federated_language.TensorType(np.str_, [None]), np.bool_
     )
     def accumulate(accumulator, client_update):
       del accumulator  # Unused
@@ -336,8 +352,8 @@ class MapReduceFormTest(absltest.TestCase):
       return tf.constant(['abc'])
 
     @tensorflow_computation.tf_computation(
-        computation_types.TensorType(np.str_, [None]),
-        computation_types.TensorType(np.str_, [None]),
+        federated_language.TensorType(np.str_, [None]),
+        federated_language.TensorType(np.str_, [None]),
     )
     def merge(accumulator1, accumulator2):
       del accumulator1  # Unused
@@ -345,7 +361,7 @@ class MapReduceFormTest(absltest.TestCase):
       return tf.constant(['abc'])
 
     @tensorflow_computation.tf_computation(
-        computation_types.TensorType(np.str_, [None])
+        federated_language.TensorType(np.str_, [None])
     )
     def report(accumulator):
       del accumulator  # Unused
@@ -355,7 +371,7 @@ class MapReduceFormTest(absltest.TestCase):
     bitwidth = unit_comp
     max_input = unit_comp
     modulus = unit_comp
-    unit_type = computation_types.to_type([])
+    unit_type = federated_language.to_type([])
 
     @tensorflow_computation.tf_computation(
         server_state_type, (np.float32, unit_type, unit_type, unit_type)
@@ -409,8 +425,9 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(prepare=prepare)
 
   def test_init_raises_type_error_with_bad_work_second_parameter_type(self):
+
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(np.float32), np.int32
+        federated_language.SequenceType(np.float32), np.int32
     )
     def work(client_data, client_input):
       del client_data  # Unused
@@ -421,8 +438,9 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(work=work)
 
   def test_init_raises_type_error_with_bad_work_result_type(self):
+
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(np.float32), np.float32
+        federated_language.SequenceType(np.float32), np.float32
     )
     def work(client_data, client_input):
       del client_data  # Unused
@@ -534,8 +552,9 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(report=report)
 
   def test_init_raises_type_error_with_bad_update_first_parameter_type(self):
+
     @tensorflow_computation.tf_computation(
-        np.float32, (np.float32, computation_types.StructType([]))
+        np.float32, (np.float32, federated_language.StructType([]))
     )
     def update(server_state, global_update):
       del server_state  # Unused
@@ -546,8 +565,9 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(update=update)
 
   def test_init_raises_type_error_with_bad_update_second_parameter_type(self):
+
     @tensorflow_computation.tf_computation(
-        np.int32, (np.int32, computation_types.StructType([]))
+        np.int32, (np.int32, federated_language.StructType([]))
     )
     def update(server_state, global_update):
       del server_state  # Unused
@@ -558,8 +578,9 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(update=update)
 
   def test_init_raises_type_error_with_bad_update_result_type(self):
+
     @tensorflow_computation.tf_computation(
-        np.int32, (np.float32, computation_types.StructType([]))
+        np.int32, (np.float32, federated_language.StructType([]))
     )
     def update(server_state, global_update):
       del server_state  # Unused
@@ -618,43 +639,52 @@ class DistributeAggregateFormTest(absltest.TestCase):
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
     assert daf.type_signature.is_equivalent_to(
-        computation_types.FunctionType(
-            computation_types.StructType([
-                computation_types.FederatedType(np.int32, placements.SERVER),
-                computation_types.FederatedType(
-                    computation_types.SequenceType(np.float32),
-                    placements.CLIENTS,
+        federated_language.FunctionType(
+            federated_language.StructType([
+                federated_language.FederatedType(
+                    np.int32, federated_language.SERVER
+                ),
+                federated_language.FederatedType(
+                    federated_language.SequenceType(np.float32),
+                    federated_language.CLIENTS,
                 ),
             ]),
-            computation_types.StructType([
-                computation_types.FederatedType(np.int32, placements.SERVER),
-                computation_types.FederatedType([], placements.SERVER),
+            federated_language.StructType([
+                federated_language.FederatedType(
+                    np.int32, federated_language.SERVER
+                ),
+                federated_language.FederatedType([], federated_language.SERVER),
             ]),
         )
     )
 
   def test_init_does_not_raise_type_error_with_unknown_dimensions(self):
-    state_type = computation_types.TensorType(np.int32, [None])
+    state_type = federated_language.TensorType(np.int32, [None])
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(state_type, placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(state_type, federated_language.SERVER)
     )
     def server_prepare(server_state):
       return [[
           server_state,
       ]], [server_state]
 
-    @federated_computation.federated_computation(
-        [[computation_types.FederatedType(state_type, placements.SERVER)]]
-    )
+    @federated_language.federated_computation([[
+        federated_language.FederatedType(state_type, federated_language.SERVER)
+    ]])
     def server_to_client_broadcast(context_at_server):
-      return [intrinsics.federated_broadcast(context_at_server[0][0])]
+      return [federated_language.federated_broadcast(context_at_server[0][0])]
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(
-            computation_types.SequenceType(np.float32), placements.CLIENTS
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            federated_language.SequenceType(np.float32),
+            federated_language.CLIENTS,
         ),
-        [computation_types.FederatedType(state_type, placements.CLIENTS)],
+        [
+            federated_language.FederatedType(
+                state_type, federated_language.CLIENTS
+            )
+        ],
     )
     def client_work(client_data, context_at_clients):
       @tensorflow_computation.tf_computation
@@ -663,21 +693,35 @@ class DistributeAggregateFormTest(absltest.TestCase):
 
       del client_data  # Unused
       del context_at_clients  # Unused
-      return [
-          [intrinsics.federated_value(client_work_tf(), placements.CLIENTS)]
-      ]
+      return [[
+          federated_language.federated_value(
+              client_work_tf(), federated_language.CLIENTS
+          )
+      ]]
 
-    @federated_computation.federated_computation(
-        [computation_types.FederatedType(state_type, placements.SERVER)],
-        [[computation_types.FederatedType(np.int32, placements.CLIENTS)]],
+    @federated_language.federated_computation(
+        [
+            federated_language.FederatedType(
+                state_type, federated_language.SERVER
+            )
+        ],
+        [[
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            )
+        ]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
       del temp_server_state  # Unused
-      return [intrinsics.federated_sum(client_updates[0][0])]
+      return [federated_language.federated_sum(client_updates[0][0])]
 
-    @federated_computation.federated_computation(
-        [computation_types.FederatedType(state_type, placements.SERVER)],
-        [computation_types.FederatedType(np.int32, placements.SERVER)],
+    @federated_language.federated_computation(
+        [
+            federated_language.FederatedType(
+                state_type, federated_language.SERVER
+            )
+        ],
+        [federated_language.FederatedType(np.int32, federated_language.SERVER)],
     )
     def server_result(temp_server_state, aggregated_results):
       return temp_server_state[0], aggregated_results[0]
@@ -701,8 +745,8 @@ class DistributeAggregateFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_server_prepare_parameter_type(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.float32, federated_language.SERVER)
     )
     def server_prepare(server_state):
       del server_state  # Unused
@@ -715,16 +759,14 @@ class DistributeAggregateFormTest(absltest.TestCase):
       def server_prepare_state_tf():
         return 32
 
-      return [
-          [
-              intrinsics.federated_value(
-                  server_prepare_broadcast_tf(), placements.SERVER
-              )
-          ]
-      ], [
+      return [[
+          federated_language.federated_value(
+              server_prepare_broadcast_tf(), federated_language.SERVER
+          )
+      ]], [
           server_prepare_state_tf(),
-          intrinsics.federated_value(
-              server_prepare_state_tf(), placements.SERVER
+          federated_language.federated_value(
+              server_prepare_state_tf(), federated_language.SERVER
           ),
       ]
 
@@ -737,8 +779,8 @@ class DistributeAggregateFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_broadcast_input_type_mismatch(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.SERVER)
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.SERVER)
     )
     def server_prepare(server_state):
       @tensorflow_computation.tf_computation
@@ -757,11 +799,16 @@ class DistributeAggregateFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_broadcast_output_type_mismatch(self):
 
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(
-            computation_types.SequenceType(np.float32), placements.CLIENTS
+    @federated_language.federated_computation(
+        federated_language.FederatedType(
+            federated_language.SequenceType(np.float32),
+            federated_language.CLIENTS,
         ),
-        [computation_types.FederatedType(np.int32, placements.CLIENTS)],
+        [
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            )
+        ],
     )
     def client_work(client_data, context_at_clients):
       @tensorflow_computation.tf_computation
@@ -770,9 +817,11 @@ class DistributeAggregateFormTest(absltest.TestCase):
 
       del client_data  # Unused
       del context_at_clients  # Unused
-      return [
-          [intrinsics.federated_value(client_work_tf(), placements.CLIENTS)]
-      ]
+      return [[
+          federated_language.federated_value(
+              client_work_tf(), federated_language.CLIENTS
+          )
+      ]]
 
     with self.assertRaisesRegex(
         TypeError, 'The `client_work` computation expects an argument type'
@@ -786,12 +835,12 @@ class DistributeAggregateFormTest(absltest.TestCase):
     def multiply_tf(x):
       return x * 2.0
 
-    @federated_computation.federated_computation(
-        [[computation_types.FederatedType(np.float32, placements.SERVER)]]
-    )
+    @federated_language.federated_computation([[
+        federated_language.FederatedType(np.float32, federated_language.SERVER)
+    ]])
     def server_to_client_broadcast(context_at_server):
-      a = intrinsics.federated_map(multiply_tf, context_at_server[0][0])
-      return [intrinsics.federated_broadcast(a)]
+      a = federated_language.federated_map(multiply_tf, context_at_server[0][0])
+      return [federated_language.federated_broadcast(a)]
 
     with self.assertRaisesRegex(
         ValueError, 'Expected only broadcast intrinsics'
@@ -802,17 +851,25 @@ class DistributeAggregateFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_aggregation_input_type_mismatch(self):
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         [
             np.int32,
-            computation_types.FederatedType(np.int32, placements.SERVER),
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
         ],
-        [[computation_types.FederatedType(np.int32, placements.CLIENTS)]],
+        [[
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            )
+        ]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
       del temp_server_state  # Unused.
       return [
-          intrinsics.federated_secure_sum_bitwidth(client_updates[0][0], 100)
+          federated_language.federated_secure_sum_bitwidth(
+              client_updates[0][0], 100
+          )
       ]
 
     with self.assertRaisesRegex(
@@ -828,21 +885,24 @@ class DistributeAggregateFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_aggregation_output_type_mismatch(self):
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         [
             np.int32,
-            computation_types.FederatedType(np.int32, placements.SERVER),
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
         ],
         [[
-            computation_types.FederatedType(
-                computation_types.TensorType(np.int32, [2]), placements.CLIENTS
+            federated_language.FederatedType(
+                federated_language.TensorType(np.int32, [2]),
+                federated_language.CLIENTS,
             )
         ]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
       del temp_server_state  # Unused
-      a = intrinsics.federated_sum(client_updates[0][0])
-      b = intrinsics.federated_sum(client_updates[0][0])
+      a = federated_language.federated_sum(client_updates[0][0])
+      b = federated_language.federated_sum(client_updates[0][0])
       return [a, b]
 
     with self.assertRaisesRegex(
@@ -854,41 +914,50 @@ class DistributeAggregateFormTest(absltest.TestCase):
 
   def test_init_raises_assertion_error_with_bad_aggregation_body(self):
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         [
             np.int32,
-            computation_types.FederatedType(np.int32, placements.SERVER),
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
         ],
         [[
-            computation_types.FederatedType(
-                computation_types.TensorType(np.int32, [2]), placements.CLIENTS
+            federated_language.FederatedType(
+                federated_language.TensorType(np.int32, [2]),
+                federated_language.CLIENTS,
             )
         ]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
       del temp_server_state  # Unused.
-      a = intrinsics.federated_secure_sum_bitwidth(client_updates[0][0], 100)
-      b = intrinsics.federated_sum(client_updates[0][0])
+      a = federated_language.federated_secure_sum_bitwidth(
+          client_updates[0][0], 100
+      )
+      b = federated_language.federated_sum(client_updates[0][0])
       return [b, a]
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         [
             np.int32,
-            computation_types.FederatedType(np.int32, placements.SERVER),
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
         ],
         [
-            computation_types.FederatedType(
-                computation_types.TensorType(np.int32, [2]), placements.SERVER
+            federated_language.FederatedType(
+                federated_language.TensorType(np.int32, [2]),
+                federated_language.SERVER,
             ),
-            computation_types.FederatedType(
-                computation_types.TensorType(np.int32, [2]), placements.SERVER
+            federated_language.FederatedType(
+                federated_language.TensorType(np.int32, [2]),
+                federated_language.SERVER,
             ),
         ],
     )
     def server_result(temp_server_state, aggregated_results):
       del aggregated_results  # Unused
-      return temp_server_state[1], intrinsics.federated_value(
-          [], placements.SERVER
+      return temp_server_state[1], federated_language.federated_value(
+          [], federated_language.SERVER
       )
 
     with self.assertRaisesRegex(
@@ -901,40 +970,48 @@ class DistributeAggregateFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_temporary_state_type_mismatch(self):
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         [
             np.int32,
-            computation_types.FederatedType(np.int32, placements.SERVER),
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
             np.int32,
         ],
         [[
-            computation_types.FederatedType(
-                computation_types.TensorType(np.int32, [2]), placements.CLIENTS
+            federated_language.FederatedType(
+                federated_language.TensorType(np.int32, [2]),
+                federated_language.CLIENTS,
             )
         ]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
       del temp_server_state  # Unused.
       return [
-          intrinsics.federated_secure_sum_bitwidth(client_updates[0][0], 100)
+          federated_language.federated_secure_sum_bitwidth(
+              client_updates[0][0], 100
+          )
       ]
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         [
             np.int32,
-            computation_types.FederatedType(np.int32, placements.SERVER),
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
             np.int32,
         ],
         [
-            computation_types.FederatedType(
-                computation_types.TensorType(np.int32, [2]), placements.SERVER
+            federated_language.FederatedType(
+                federated_language.TensorType(np.int32, [2]),
+                federated_language.SERVER,
             )
         ],
     )
     def server_result(temp_server_state, aggregated_results):
       del aggregated_results  # Unused
-      return temp_server_state[1], intrinsics.federated_value(
-          [], placements.SERVER
+      return temp_server_state[1], federated_language.federated_value(
+          [], federated_language.SERVER
       )
 
     with self.assertRaisesRegex(
@@ -965,30 +1042,30 @@ class DistributeAggregateFormTest(absltest.TestCase):
         )
     )
 
-    bad_server_state_parameter = computation_types.StructType([
-        computation_types.FederatedType(np.float32, placements.SERVER),
+    bad_server_state_parameter = federated_language.StructType([
+        federated_language.FederatedType(np.float32, federated_language.SERVER),
         test_client_work.type_signature.parameter[0],
     ])
-    bad_client_data_parameter = computation_types.StructType([
+    bad_client_data_parameter = federated_language.StructType([
         test_server_result.type_signature.parameter[0],
-        computation_types.FederatedType(np.str_, placements.CLIENTS),
+        federated_language.FederatedType(np.str_, federated_language.CLIENTS),
     ])
 
-    bad_server_state_result = computation_types.StructType([
-        computation_types.FederatedType(np.float32, placements.SERVER),
+    bad_server_state_result = federated_language.StructType([
+        federated_language.FederatedType(np.float32, federated_language.SERVER),
         test_server_result.type_signature.result[1],
     ])
 
-    bad_server_output_result = computation_types.StructType([
+    bad_server_output_result = federated_language.StructType([
         test_server_result.type_signature.parameter[0],
-        computation_types.FederatedType(np.float32, placements.SERVER),
+        federated_language.FederatedType(np.float32, federated_language.SERVER),
     ])
 
     with self.assertRaisesRegex(
         TypeError, 'The original computation argument type'
     ):
       _build_test_distribute_aggregate_form_with_computations(
-          type_signature=computation_types.FunctionType(
+          type_signature=federated_language.FunctionType(
               bad_server_state_parameter, correct_type_signature.result
           )
       )
@@ -997,7 +1074,7 @@ class DistributeAggregateFormTest(absltest.TestCase):
         TypeError, 'The original computation argument type'
     ):
       _build_test_distribute_aggregate_form_with_computations(
-          type_signature=computation_types.FunctionType(
+          type_signature=federated_language.FunctionType(
               bad_client_data_parameter, correct_type_signature.result
           )
       )
@@ -1006,7 +1083,7 @@ class DistributeAggregateFormTest(absltest.TestCase):
         TypeError, 'the original computation result type'
     ):
       _build_test_distribute_aggregate_form_with_computations(
-          type_signature=computation_types.FunctionType(
+          type_signature=federated_language.FunctionType(
               correct_type_signature.parameter, bad_server_state_result
           )
       )
@@ -1015,7 +1092,7 @@ class DistributeAggregateFormTest(absltest.TestCase):
         TypeError, 'the original computation result type'
     ):
       _build_test_distribute_aggregate_form_with_computations(
-          type_signature=computation_types.FunctionType(
+          type_signature=federated_language.FunctionType(
               correct_type_signature.parameter, bad_server_output_result
           )
       )

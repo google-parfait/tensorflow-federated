@@ -16,6 +16,7 @@
 import collections
 from typing import Optional
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 
@@ -23,10 +24,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.analytics import data_processing
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_factory
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 
 
@@ -161,8 +158,8 @@ class ClippingIbltFactory(factory.UnweightedAggregationFactory):
   def create(
       self, value_type: factory.ValueType
   ) -> aggregation_process.AggregationProcess:
-    expected_type = computation_types.SequenceType(
-        computation_types.TensorType(shape=[None], dtype=np.str_)
+    expected_type = federated_language.SequenceType(
+        federated_language.TensorType(shape=[None], dtype=np.str_)
     )
 
     if value_type != expected_type:
@@ -184,12 +181,14 @@ class ClippingIbltFactory(factory.UnweightedAggregationFactory):
 
     inner_process = self.inner_iblt_agg.create(preprocess.type_signature.result)
 
-    @federated_computation.federated_computation(
+    @federated_language.federated_computation(
         inner_process.initialize.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS),
+        federated_language.FederatedType(
+            value_type, federated_language.CLIENTS
+        ),
     )
     def next_fn(state, client_data):
-      preprocessed = intrinsics.federated_map(preprocess, client_data)
+      preprocessed = federated_language.federated_map(preprocess, client_data)
       return inner_process.next(state, preprocessed)
 
     return aggregation_process.AggregationProcess(

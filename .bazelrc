@@ -27,11 +27,8 @@ build --compilation_mode=opt
 # build --define=use_fast_cpp_protos=true
 build --define=allow_oversize_protos=true
 
-# pybind_abseil does not include a __init__.py, which breaks dependencies when
-# bazel produces an empty __init__.py and hides the symbols from the `.so`
-# python extension. We must ask bazel not to generate these and rely on
-# explicit __init__.py files.
-# build --incompatible_default_to_explicit_init_py
+# Do not automatically create `__init__.py` in the runfiles of Python targets.
+build --incompatible_default_to_explicit_init_py
 
 # Haswell processor and later optimizations. This covers most processors deployed
 # today, includin Colab CPU runtimes.

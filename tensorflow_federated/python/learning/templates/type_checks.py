@@ -15,9 +15,7 @@
 
 from typing import Optional
 
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
+import federated_language
 
 
 class ClientSequenceTypeError(Exception):
@@ -25,7 +23,7 @@ class ClientSequenceTypeError(Exception):
 
 
 def check_is_client_placed_structure_of_sequences(
-    type_spec: computation_types.Type, error_message: Optional[str] = None
+    type_spec: federated_language.Type, error_message: Optional[str] = None
 ) -> None:
   """Checks that a type is a structure of sequences, placed at `tff.CLIENTS`.
 
@@ -39,10 +37,12 @@ def check_is_client_placed_structure_of_sequences(
     if its member type is not a structure of TensorFlow-compatible sequences.
   """
 
-  def is_structure_of_sequences(member_spec: computation_types.Type) -> bool:
-    if isinstance(member_spec, computation_types.SequenceType):
-      return type_analysis.is_tensorflow_compatible_type(member_spec.element)
-    elif isinstance(member_spec, computation_types.StructType):
+  def is_structure_of_sequences(member_spec: federated_language.Type) -> bool:
+    if isinstance(member_spec, federated_language.SequenceType):
+      return federated_language.framework.is_tensorflow_compatible_type(
+          member_spec.element
+      )
+    elif isinstance(member_spec, federated_language.StructType):
       return all(
           is_structure_of_sequences(element_type)
           for element_type in member_spec.children()
@@ -58,8 +58,8 @@ def check_is_client_placed_structure_of_sequences(
     )
 
   if (
-      not isinstance(type_spec, computation_types.FederatedType)
-      or type_spec.placement is not placements.CLIENTS
+      not isinstance(type_spec, federated_language.FederatedType)
+      or type_spec.placement is not federated_language.CLIENTS
       or not is_structure_of_sequences(type_spec.member)
   ):
     raise ClientSequenceTypeError(error_message)

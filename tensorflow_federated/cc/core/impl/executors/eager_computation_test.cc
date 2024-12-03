@@ -57,16 +57,16 @@ namespace {
 
 // TODO: b/256948367 - Move these common methods to a base test utility file.
 template <class TfOp>
-inline v0::TensorFlow::Binding TensorB(const TfOp& op) {
+inline federated_language::TensorFlow::Binding TensorB(const TfOp& op) {
   const tensorflow::Node* node = op.node();
-  v0::TensorFlow::Binding binding;
+  federated_language::TensorFlow::Binding binding;
   *binding.mutable_tensor()->mutable_tensor_name() = node->name();
   return binding;
 }
 
-inline v0::TensorFlow::Binding StructB(
-    const absl::Span<const v0::TensorFlow::Binding> elements) {
-  v0::TensorFlow::Binding binding;
+inline federated_language::TensorFlow::Binding StructB(
+    const absl::Span<const federated_language::TensorFlow::Binding> elements) {
+  federated_language::TensorFlow::Binding binding;
   auto struct_mut = binding.mutable_struct_();
   for (const auto& element : elements) {
     *struct_mut->add_element() = element;
@@ -74,14 +74,14 @@ inline v0::TensorFlow::Binding StructB(
   return binding;
 }
 
-inline v0::Computation ComputationV(
+inline federated_language::Computation ComputationV(
     const tensorflow::Scope& scope,
-    std::optional<v0::TensorFlow::Binding> in_binding,
-    v0::TensorFlow::Binding out_binding,
+    std::optional<federated_language::TensorFlow::Binding> in_binding,
+    federated_language::TensorFlow::Binding out_binding,
     const std::optional<const tensorflow::Operation>& init_op = std::nullopt,
     const std::vector<tensorflow::FunctionDef> function_defs = {}) {
-  v0::Computation comp_pb;
-  v0::TensorFlow* tensorflow_pb = comp_pb.mutable_tensorflow();
+  federated_language::Computation comp_pb;
+  federated_language::TensorFlow* tensorflow_pb = comp_pb.mutable_tensorflow();
 
   tensorflow::GraphDef graphdef_pb;
 
@@ -418,8 +418,8 @@ TEST_F(EagerComputationTest, CallAddGraphDefWithFunctionDef) {
 }
 
 TEST_F(EagerComputationTest, InvalidComputationProto) {
-  v0::Computation comp_pb;
-  v0::TensorFlow* tensorflow_pb = comp_pb.mutable_tensorflow();
+  federated_language::Computation comp_pb;
+  federated_language::TensorFlow* tensorflow_pb = comp_pb.mutable_tensorflow();
   tensorflow::TensorProto tensor_pb;
 
   tensorflow_pb->mutable_graph_def()->PackFrom(tensor_pb);

@@ -13,10 +13,8 @@
 # limitations under the License.
 """Defines a template for a stateful process that aggregates values."""
 
+import federated_language
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -73,8 +71,8 @@ class AggregationProcess(measured_process.MeasuredProcess):
 
   def __init__(
       self,
-      initialize_fn: computation_base.Computation,
-      next_fn: computation_base.Computation,
+      initialize_fn: federated_language.framework.Computation,
+      next_fn: federated_language.framework.Computation,
   ):
     """Creates a `tff.templates.AggregationProcess`.
 
@@ -112,7 +110,7 @@ class AggregationProcess(measured_process.MeasuredProcess):
     super().__init__(initialize_fn, next_fn, next_is_multi_arg=True)
 
     if not isinstance(
-        initialize_fn.type_signature.result, computation_types.FederatedType
+        initialize_fn.type_signature.result, federated_language.FederatedType
     ):
       raise AggregationNotFederatedError(
           'Provided `initialize_fn` must return a federated type, but found '
@@ -126,7 +124,7 @@ class AggregationProcess(measured_process.MeasuredProcess):
     non_federated_types = [
         t
         for t in next_types
-        if not isinstance(t, computation_types.FederatedType)
+        if not isinstance(t, federated_language.FederatedType)
     ]
     if non_federated_types:
       offending_types_str = '\n- '.join(str(t) for t in non_federated_types)
@@ -137,7 +135,10 @@ class AggregationProcess(measured_process.MeasuredProcess):
           f'The non-federated types are:\n {offending_types_str}.'
       )
 
-    if initialize_fn.type_signature.result.placement != placements.SERVER:
+    if (
+        initialize_fn.type_signature.result.placement
+        != federated_language.SERVER
+    ):
       raise AggregationPlacementError(
           'The state controlled by an `AggregationProcess` must be placed at '
           f'the SERVER, but found type: {initialize_fn.type_signature.result}.'
@@ -154,25 +155,28 @@ class AggregationProcess(measured_process.MeasuredProcess):
           f'the following input type: {next_fn_param}.'
       )
 
-    if next_fn_param[_INPUT_PARAM_INDEX].placement != placements.CLIENTS:
+    if (
+        next_fn_param[_INPUT_PARAM_INDEX].placement
+        != federated_language.CLIENTS
+    ):
       raise AggregationPlacementError(
           'The second input argument of `next_fn` must be placed at CLIENTS '
           f'but found {next_fn_param[_INPUT_PARAM_INDEX]}.'
       )
 
-    if next_fn_result.result.placement != placements.SERVER:
+    if next_fn_result.result.placement != federated_language.SERVER:
       raise AggregationPlacementError(
           'The "result" attribute of return type of `next_fn` must be placed '
           f'at SERVER, but found {next_fn_result.result}.'
       )
-    if next_fn_result.measurements.placement != placements.SERVER:
+    if next_fn_result.measurements.placement != federated_language.SERVER:
       raise AggregationPlacementError(
           'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.'
       )
 
   @property
-  def next(self) -> computation_base.Computation:
+  def next(self) -> federated_language.framework.Computation:
     """A `tff.Computation` that runs one iteration of the process.
 
     Its first argument should always be the current state (originally produced

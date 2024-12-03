@@ -207,10 +207,10 @@ void AddControlEdgeForInitOp(tensorflow::Graph* graph,
 }
 
 absl::Status PopulateBindingNames(
-    const v0::TensorFlow::Binding& binding,
+    const federated_language::TensorFlow::Binding& binding,
     std::vector<std::string>& tensor_names_from_binding) {
   switch (binding.binding_case()) {
-    case v0::TensorFlow::Binding::kTensor: {
+    case federated_language::TensorFlow::Binding::kTensor: {
       if (!binding.tensor().has_tensor_name()) {
         return absl::InternalError("Tensor binding does not have a name.");
       }
@@ -219,13 +219,13 @@ absl::Status PopulateBindingNames(
           GetNodeName(binding.tensor().tensor_name()));
       break;
     }
-    case v0::TensorFlow::Binding::kStruct: {
+    case federated_language::TensorFlow::Binding::kStruct: {
       for (const auto& b : binding.struct_().element()) {
         TFF_TRY(PopulateBindingNames(b, tensor_names_from_binding));
       }
       break;
     }
-    case v0::TensorFlow::Binding::kSequence: {
+    case federated_language::TensorFlow::Binding::kSequence: {
       return absl::UnimplementedError(
           "Only Struct and Tensor Binding support added");
     }
@@ -238,8 +238,8 @@ absl::Status PopulateBindingNames(
 
 absl::StatusOr<tensorflow::FunctionDef> ConvertToFunctionDef(
     std::string init_op, const tensorflow::GraphDef& graphdef_pb,
-    const v0::TensorFlow::Binding& input_binding,
-    const v0::TensorFlow::Binding& output_binding) {
+    const federated_language::TensorFlow::Binding& input_binding,
+    const federated_language::TensorFlow::Binding& output_binding) {
   tensorflow::FunctionDef func_def;
   std::vector<bool> visited(graphdef_pb.node_size());
   std::deque<const tensorflow::Node*> queue;
@@ -329,7 +329,7 @@ void UpdateVarHandleOpNodesAsAnonymous(tensorflow::FunctionDef& func_def) {
 }  // namespace
 
 absl::StatusOr<EagerComputation> EagerComputation::FromProto(
-    const v0::TensorFlow& comp_pb) {
+    const federated_language::TensorFlow& comp_pb) {
   if (!(comp_pb.graph_def().Is<tensorflow::GraphDef>())) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Unsupported type in Graph def proto: ", comp_pb.graph_def().type_url(),

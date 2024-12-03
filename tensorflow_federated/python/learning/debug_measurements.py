@@ -17,13 +17,12 @@ import collections
 from collections.abc import Callable
 from typing import Any, TypeVar
 
+import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import measurements
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import placements
 
 
 _AggregationFactory = TypeVar(
@@ -133,23 +132,27 @@ def _calculate_unbiased_std_dev(
 
 def _calculate_client_update_statistics_with_norm(client_norms, client_weights):
   """Calculate client updates with client norms."""
-  client_norms_squared = intrinsics.federated_map(_square_value, client_norms)
+  client_norms_squared = federated_language.federated_map(
+      _square_value, client_norms
+  )
 
-  average_client_norm = intrinsics.federated_mean(client_norms, client_weights)
-  average_client_norm_squared = intrinsics.federated_mean(
+  average_client_norm = federated_language.federated_mean(
+      client_norms, client_weights
+  )
+  average_client_norm_squared = federated_language.federated_mean(
       client_norms_squared, client_weights
   )
 
   # TODO: b/197972289 - Add SecAgg compatibility to these measurements
-  sum_of_client_weights = intrinsics.federated_sum(client_weights)
-  client_weights_squared = intrinsics.federated_map(
+  sum_of_client_weights = federated_language.federated_sum(client_weights)
+  client_weights_squared = federated_language.federated_map(
       _square_value, client_weights
   )
-  sum_of_client_weights_squared = intrinsics.federated_sum(
+  sum_of_client_weights_squared = federated_language.federated_sum(
       client_weights_squared
   )
 
-  unbiased_std_dev = intrinsics.federated_map(
+  unbiased_std_dev = federated_language.federated_map(
       _calculate_unbiased_std_dev,
       (
           average_client_norm,
@@ -159,7 +162,7 @@ def _calculate_client_update_statistics_with_norm(client_norms, client_weights):
       ),
   )
 
-  return intrinsics.federated_zip(
+  return federated_language.federated_zip(
       collections.OrderedDict(
           average_client_norm=average_client_norm,
           std_dev_client_norm=unbiased_std_dev,
@@ -169,7 +172,7 @@ def _calculate_client_update_statistics_with_norm(client_norms, client_weights):
 
 def _calculate_client_update_statistics(client_updates, client_weights):
   """Calculate the average and standard deviation of client updates."""
-  client_norms = intrinsics.federated_map(
+  client_norms = federated_language.federated_map(
       _calculate_global_norm, client_updates
   )
   return _calculate_client_update_statistics_with_norm(
@@ -181,7 +184,7 @@ def _calculate_client_update_statistics_mixed_dtype(
     client_updates, client_weights
 ):
   """Calculate client update statistics of mixed data types."""
-  client_norms = intrinsics.federated_map(
+  client_norms = federated_language.federated_map(
       _calculate_global_norm_mixed_dtype, client_updates
   )
   return _calculate_client_update_statistics_with_norm(
@@ -235,11 +238,15 @@ def _build_aggregator_measurement_fns(
   else:
 
     def federated_client_measurement_fn(value):
-      client_weights = intrinsics.federated_value(1.0, placements.CLIENTS)
+      client_weights = federated_language.federated_value(
+          1.0, federated_language.CLIENTS
+      )
       return client_measurement_fn(value, client_weights)
 
   def federated_server_measurement_fn(value):
-    server_measurements = intrinsics.federated_map(server_measurement_fn, value)
+    server_measurements = federated_language.federated_map(
+        server_measurement_fn, value
+    )
     return server_measurements
 
   return federated_client_measurement_fn, federated_server_measurement_fn

@@ -17,35 +17,32 @@
 from collections.abc import Callable, Sequence
 from typing import Optional, Union
 
+import federated_language
+from federated_language.proto import computation_pb2 as pb
 import jax
 import numpy as np
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.jax_frontend import jax_computation_context
 from tensorflow_federated.python.core.environments.xla_backend import xla_serialization
-from tensorflow_federated.python.core.impl.computation import function_utils
-from tensorflow_federated.python.core.impl.context_stack import context_stack_base
-from tensorflow_federated.python.core.impl.types import array_shape
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
-from tensorflow_federated.python.core.impl.types import typed_object
 
 
-class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
+class _XlaSerializerTensorArg(
+    jax.ShapeDtypeStruct, federated_language.TypedObject
+):
   """Represents tensor type info understood by both TFF and JAX serializer."""
 
   def __init__(
-      self, tensor_type: computation_types.TensorType, tensor_index: int
+      self, tensor_type: federated_language.TensorType, tensor_index: int
   ):
-    py_typecheck.check_type(tensor_type, computation_types.TensorType)
+    py_typecheck.check_type(tensor_type, federated_language.TensorType)
     jax.ShapeDtypeStruct.__init__(self, tensor_type.shape, tensor_type.dtype)
     self._type_signature = tensor_type
     self._tensor_index = tensor_index
 
   @property
-  def type_signature(self) -> computation_types.TensorType:
+  def type_signature(self) -> federated_language.TensorType:
     return self._type_signature
 
   @property
@@ -54,20 +51,20 @@ class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
 
 
 @jax.tree_util.register_pytree_node_class
-class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
+class _XlaSerializerStructArg(structure.Struct, federated_language.TypedObject):
   """Represents struct type info understood by both TFF and JAX serializer."""
 
   def __init__(
       self,
-      type_spec: computation_types.StructType,
+      type_spec: federated_language.StructType,
       elements: Sequence[tuple[Optional[str], object]],
   ):
-    py_typecheck.check_type(type_spec, computation_types.StructType)
+    py_typecheck.check_type(type_spec, federated_language.StructType)
     structure.Struct.__init__(self, elements)
     self._type_signature = type_spec
 
   @property
-  def type_signature(self) -> computation_types.StructType:
+  def type_signature(self) -> federated_language.StructType:
     return self._type_signature
 
   def __str__(self) -> str:
@@ -77,14 +74,14 @@ class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
       self,
   ) -> tuple[
       tuple[Union[_XlaSerializerTensorArg, '_XlaSerializerStructArg'], ...],
-      computation_types.StructType,
+      federated_language.StructType,
   ]:
     return tuple(self), self._type_signature
 
   @classmethod
   def tree_unflatten(
       cls,
-      aux_data: computation_types.StructType,
+      aux_data: federated_language.StructType,
       children: tuple[
           Union[_XlaSerializerTensorArg, '_XlaSerializerStructArg'], ...
       ],
@@ -96,25 +93,27 @@ class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
 
 
 def _tff_type_to_xla_serializer_arg(
-    type_spec: computation_types.Type,
+    type_spec: federated_language.Type,
 ) -> Union[_XlaSerializerStructArg, _XlaSerializerTensorArg]:
   """Converts TFF type into an argument for the JAX-to-XLA serializer.
 
   Args:
-    type_spec: An instance of `computation_types.Type` containing only structure
-      and tensor elements.
+    type_spec: An instance of `federated_language.Type` containing only
+      structure and tensor elements.
 
   Returns:
     An object that carries both TFF and JAX type info, to be fed into the JAX
     serializer.
   """
 
-  def _undefined_shape_predicate(type_element: computation_types.Type) -> bool:
-    if not isinstance(type_element, computation_types.TensorType):
+  def _undefined_shape_predicate(type_element: federated_language.Type) -> bool:
+    if not isinstance(type_element, federated_language.TensorType):
       return False
-    return not array_shape.is_shape_fully_defined(type_element.shape)
+    return not federated_language.array_shape_is_fully_defined(
+        type_element.shape
+    )
 
-  has_undefined_shapes = type_analysis.contains(
+  has_undefined_shapes = federated_language.framework.type_contains(
       type_spec, _undefined_shape_predicate
   )
   if has_undefined_shapes:
@@ -127,13 +126,13 @@ def _tff_type_to_xla_serializer_arg(
     )
 
   def _make(
-      type_spec: computation_types.Type, next_unused_tensor_index: int
+      type_spec: federated_language.Type, next_unused_tensor_index: int
   ) -> tuple[Union[_XlaSerializerStructArg, _XlaSerializerTensorArg], int]:
-    if isinstance(type_spec, computation_types.TensorType):
+    if isinstance(type_spec, federated_language.TensorType):
       obj = _XlaSerializerTensorArg(type_spec, next_unused_tensor_index)
       next_unused_tensor_index = next_unused_tensor_index + 1
       return obj, next_unused_tensor_index
-    elif isinstance(type_spec, computation_types.StructType):
+    elif isinstance(type_spec, federated_language.StructType):
       elements = []
       for k, v in structure.to_elements(type_spec):
         obj, next_unused_tensor_index = _make(v, next_unused_tensor_index)
@@ -153,55 +152,59 @@ def _tff_type_to_xla_serializer_arg(
 
 def _jax_shape_dtype_struct_to_tff_tensor(
     val: jax.ShapeDtypeStruct,
-) -> computation_types.TensorType:
-  """Converts `jax.ShapeDtypeStruct` to `computation_types.TensorType`.
+) -> federated_language.TensorType:
+  """Converts `jax.ShapeDtypeStruct` to `federated_language.TensorType`.
 
   Args:
     val: An instance of `jax.ShapeDtypeStruct`.
 
   Returns:
-    A corresponding instance of `computation_types.TensorType`.
+    A corresponding instance of `federated_language.TensorType`.
 
   Raises:
     TypeError: if arg type mismatches.
   """
-  return computation_types.TensorType(val.dtype, val.shape)
+  return federated_language.TensorType(val.dtype, val.shape)
 
 
 def serialize_jax_computation(
     fn: Callable[..., object],
     parameter_type: Union[
-        computation_types.StructType, computation_types.TensorType
+        federated_language.StructType, federated_language.TensorType
     ],
-    context_stack: context_stack_base.ContextStack,
-) -> tuple[pb.Computation, computation_types.FunctionType]:
+    context_stack: federated_language.framework.ContextStack,
+) -> tuple[pb.Computation, federated_language.FunctionType]:
   """Serializes a Python function containing JAX code as a TFF computation.
 
   Args:
     fn: The Python function containing JAX code to be traced by JAX and
       serialized as a TFF computation containing XLA code.
-    parameter_type: An instance of `computation_types.Type` that represents the
+    parameter_type: An instance of `federated_language.Type` that represents the
       TFF type of the computation parameter, or `None` if the function does not
       take any parameters.
     context_stack: The context stack to use during serialization.
 
   Returns:
     A 2-tuple of `pb.Computation` with the constructed computation and a
-    `computation_types.FunctionType` containing the full type including
+    `federated_language.FunctionType` containing the full type including
     Python container annotations.
 
   Raises:
     TypeError: if the arguments are of the wrong types.
   """
-  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+  py_typecheck.check_type(
+      context_stack, federated_language.framework.ContextStack
+  )
 
   if parameter_type is not None:
-    parameter_type = computation_types.to_type(parameter_type)
+    parameter_type = federated_language.to_type(parameter_type)
     packed_arg = _tff_type_to_xla_serializer_arg(parameter_type)
   else:
     packed_arg = None
 
-  args, kwargs = function_utils.unpack_arg(fn, parameter_type, packed_arg)
+  args, kwargs = federated_language.framework.unpack_arg(
+      fn, parameter_type, packed_arg
+  )
 
   # While the fake parameters are fed via args/kwargs during serialization,
   # it is possible for them to get reordered in the actual generated XLA code.
@@ -229,7 +232,7 @@ def serialize_jax_computation(
           )
       )
     else:
-      returned_type_spec = computation_types.to_type(
+      returned_type_spec = federated_language.to_type(
           jax.tree_util.tree_map(
               _jax_shape_dtype_struct_to_tff_tensor, lowered.out_info
           )
@@ -242,13 +245,13 @@ def serialize_jax_computation(
     if isinstance(returned_shape, jax.ShapeDtypeStruct):
       returned_type_spec = _jax_shape_dtype_struct_to_tff_tensor(returned_shape)
     else:
-      returned_type_spec = computation_types.to_type(
+      returned_type_spec = federated_language.to_type(
           jax.tree_util.tree_map(
               _jax_shape_dtype_struct_to_tff_tensor, returned_shape
           )
       )
 
-  computation_type = computation_types.FunctionType(
+  computation_type = federated_language.FunctionType(
       parameter_type, returned_type_spec
   )
   return (

@@ -1,0 +1,687 @@
+diff --git federated_language/common_libs/BUILD federated_language/common_libs/BUILD
+index 10806a0..730c71e 100644
+--- federated_language/common_libs/BUILD
++++ federated_language/common_libs/BUILD
+@@ -23,7 +23,6 @@ py_library(
+     name = "golden",
+     testonly = True,
+     srcs = ["golden.py"],
+-    deps = ["@pypi//absl_py"],
+ )
+ 
+ py_test(
+@@ -43,29 +42,19 @@ py_test(
+         "golden_test_goldens/test_check_string_succeeds.expected",
+         "golden_test_goldens/test_check_string_updates.expected",
+     ],
+-    deps = [
+-        ":golden",
+-        "@pypi//absl_py",
+-    ],
++    deps = [":golden"],
+ )
+ 
+ py_library(
+     name = "py_typecheck",
+     srcs = ["py_typecheck.py"],
+-    deps = [
+-        "@pypi//attrs",
+-        "@pypi//typing_extensions",
+-    ],
+ )
+ 
+ py_test(
+     name = "py_typecheck_test",
+     size = "small",
+     srcs = ["py_typecheck_test.py"],
+-    deps = [
+-        ":py_typecheck",
+-        "@pypi//absl_py",
+-    ],
++    deps = [":py_typecheck"],
+ )
+ 
+ py_library(
+@@ -80,10 +69,7 @@ py_test(
+     name = "retrying_test",
+     size = "small",
+     srcs = ["retrying_test.py"],
+-    deps = [
+-        ":retrying",
+-        "@pypi//absl_py",
+-    ],
++    deps = [":retrying"],
+ )
+ 
+ py_library(
+@@ -94,39 +80,25 @@ py_library(
+ py_library(
+     name = "structure",
+     srcs = ["structure.py"],
+-    deps = [
+-        ":py_typecheck",
+-        "@pypi//attrs",
+-        "@pypi//dm_tree",
+-    ],
++    deps = [":py_typecheck"],
+ )
+ 
+ py_test(
+     name = "structure_test",
+     size = "small",
+     srcs = ["structure_test.py"],
+-    deps = [
+-        ":structure",
+-        "@pypi//absl_py",
+-        "@pypi//attrs",
+-    ],
++    deps = [":structure"],
+ )
+ 
+ py_library(
+     name = "tracing",
+     srcs = ["tracing.py"],
+-    deps = [
+-        ":py_typecheck",
+-        "@pypi//absl_py",
+-    ],
++    deps = [":py_typecheck"],
+ )
+ 
+ py_test(
+     name = "tracing_test",
+     size = "small",
+     srcs = ["tracing_test.py"],
+-    deps = [
+-        ":tracing",
+-        "@pypi//absl_py",
+-    ],
++    deps = [":tracing"],
+ )
+diff --git federated_language/compiler/BUILD federated_language/compiler/BUILD
+index b5b594a..a8a07eb 100644
+--- federated_language/compiler/BUILD
++++ federated_language/compiler/BUILD
+@@ -29,8 +29,6 @@ py_library(
+         "//federated_language/proto:array_py_pb2",
+         "//federated_language/types:array_shape",
+         "//federated_language/types:dtype_utils",
+-        "@pypi//ml_dtypes",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -41,9 +39,6 @@ py_test(
+         ":array",
+         "//federated_language/proto:array_py_pb2",
+         "//federated_language/proto:data_type_py_pb2",
+-        "@pypi//absl_py",
+-        "@pypi//ml_dtypes",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -123,8 +118,6 @@ py_test(
+         "//federated_language/types:placements",
+         "//federated_language/types:type_analysis",
+         "//federated_language/types:type_test_utils",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -139,7 +132,6 @@ py_library(
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+         "@protobuf//:protobuf_python",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -158,7 +150,6 @@ py_library(
+         "//federated_language/types:type_serialization",
+         "//federated_language/types:typed_object",
+         "@protobuf//:protobuf_python",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -180,10 +171,6 @@ py_test(
+         "//federated_language/types:placements",
+         "//federated_language/types:type_serialization",
+         "@protobuf//:protobuf_python",
+-        "@pypi//absl_py",
+-        "@pypi//dm_tree",
+-        "@pypi//ml_dtypes",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -207,8 +194,6 @@ py_test(
+         "//federated_language/types:computation_types",
+         "//federated_language/types:type_factory",
+         "//federated_language/types:type_serialization",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -220,7 +205,6 @@ py_library(
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+         "//federated_language/types:type_factory",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -228,10 +212,7 @@ py_test(
+     name = "intrinsic_defs_test",
+     size = "small",
+     srcs = ["intrinsic_defs_test.py"],
+-    deps = [
+-        ":intrinsic_defs",
+-        "@pypi//absl_py",
+-    ],
++    deps = [":intrinsic_defs"],
+ )
+ 
+ py_library(
+@@ -257,8 +238,6 @@ py_test(
+         "//federated_language/proto:computation_py_pb2",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -288,7 +267,5 @@ py_test(
+         ":tree_analysis",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+diff --git federated_language/computation/BUILD federated_language/computation/BUILD
+index 0c6151f..58f930f 100644
+--- federated_language/computation/BUILD
++++ federated_language/computation/BUILD
+@@ -58,8 +58,6 @@ py_test(
+         "//federated_language/types:computation_types",
+         "//federated_language/types:type_serialization",
+         "//federated_language/types:type_test_utils",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -86,8 +84,6 @@ py_test(
+         "//federated_language/compiler:computation_factory",
+         "//federated_language/context_stack:context_stack_impl",
+         "//federated_language/types:computation_types",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -117,8 +113,6 @@ py_test(
+         "//federated_language/proto:computation_py_pb2",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:type_serialization",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -143,8 +137,6 @@ py_test(
+         ":function_utils",
+         "//federated_language/common_libs:structure",
+         "//federated_language/types:computation_types",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -170,7 +162,5 @@ py_test(
+         "//federated_language/types:computation_types",
+         "//federated_language/types:type_conversions",
+         "//federated_language/types:type_serialization",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+diff --git federated_language/context_stack/BUILD federated_language/context_stack/BUILD
+index 7bf1405..1b8a63e 100644
+--- federated_language/context_stack/BUILD
++++ federated_language/context_stack/BUILD
+@@ -49,7 +49,6 @@ py_test(
+     deps = [
+         ":context_stack_impl",
+         ":context_stack_test_utils",
+-        "@pypi//absl_py",
+     ],
+ )
+ 
+@@ -59,7 +58,6 @@ py_library(
+     deps = [
+         ":context_base",
+         ":context_stack_impl",
+-        "@pypi//absl_py",
+     ],
+ )
+ 
+@@ -69,7 +67,6 @@ py_test(
+     deps = [
+         ":context_stack_impl",
+         ":context_stack_test_utils",
+-        "@pypi//absl_py",
+     ],
+ )
+ 
+@@ -86,7 +83,6 @@ py_test(
+     deps = [
+         ":context_stack_impl",
+         ":get_context_stack",
+-        "@pypi//absl_py",
+     ],
+ )
+ 
+@@ -113,7 +109,6 @@ py_test(
+         ":context_stack_impl",
+         ":context_stack_test_utils",
+         ":set_default_context",
+-        "@pypi//absl_py",
+     ],
+ )
+ 
+diff --git federated_language/execution_contexts/BUILD federated_language/execution_contexts/BUILD
+index 9b5916d..0a90a09 100644
+--- federated_language/execution_contexts/BUILD
++++ federated_language/execution_contexts/BUILD
+@@ -37,7 +37,6 @@ py_library(
+         "//federated_language/types:computation_types",
+         "//federated_language/types:type_conversions",
+         "//federated_language/types:typed_object",
+-        "@pypi//dm_tree",
+     ],
+ )
+ 
+@@ -48,7 +47,6 @@ py_test(
+     deps = [
+         ":async_execution_context",
+         "//federated_language/executors:executors_errors",
+-        "@pypi//absl_py",
+     ],
+ )
+ 
+@@ -68,7 +66,6 @@ py_test(
+     deps = [
+         ":compiler_pipeline",
+         "//federated_language/computation:computation_base",
+-        "@pypi//absl_py",
+     ],
+ )
+ 
+diff --git federated_language/executors/BUILD federated_language/executors/BUILD
+index 65fea33..2dcaa45 100644
+--- federated_language/executors/BUILD
++++ federated_language/executors/BUILD
+@@ -37,8 +37,6 @@ py_test(
+         "//federated_language/common_libs:structure",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+diff --git federated_language/federated_context/BUILD federated_language/federated_context/BUILD
+index ace1073..f6c1975 100644
+--- federated_language/federated_context/BUILD
++++ federated_language/federated_context/BUILD
+@@ -44,8 +44,6 @@ py_test(
+         "//federated_language/context_stack:get_context_stack",
+         "//federated_language/context_stack:runtime_error_context",
+         "//federated_language/types:computation_types",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -77,8 +75,6 @@ py_test(
+         "//federated_language/context_stack:context_stack_impl",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -107,8 +103,6 @@ py_test(
+         "//federated_language/computation:function_utils",
+         "//federated_language/context_stack:context_stack_impl",
+         "//federated_language/types:computation_types",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -131,7 +125,6 @@ py_library(
+         "//federated_language/types:placements",
+         "//federated_language/types:type_analysis",
+         "//federated_language/types:type_factory",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -148,8 +141,6 @@ py_test(
+         "//federated_language/context_stack:context_stack_test_utils",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -172,7 +163,6 @@ py_library(
+         "//federated_language/types:placements",
+         "//federated_language/types:type_conversions",
+         "//federated_language/types:typed_object",
+-        "@pypi//attrs",
+     ],
+ )
+ 
+@@ -190,9 +180,6 @@ py_test(
+         "//federated_language/context_stack:context_stack_impl",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+-        "@pypi//absl_py",
+-        "@pypi//attrs",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -222,7 +209,5 @@ py_test(
+         "//federated_language/context_stack:context_stack_impl",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+diff --git federated_language/program/BUILD federated_language/program/BUILD
+index 6e0df6d..f7a54a0 100644
+--- federated_language/program/BUILD
++++ federated_language/program/BUILD
+@@ -58,8 +58,6 @@ py_test(
+         "//federated_language/context_stack:context_stack_impl",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:placements",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -69,7 +67,6 @@ py_library(
+     deps = [
+         ":release_manager",
+         ":value_reference",
+-        "@pypi//absl_py",
+     ],
+ )
+ 
+@@ -79,9 +76,6 @@ py_test(
+     deps = [
+         ":logging_release_manager",
+         ":program_test_utils",
+-        "@pypi//absl_py",
+-        "@pypi//dm_tree",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -100,9 +94,6 @@ py_test(
+     deps = [
+         ":memory_release_manager",
+         ":program_test_utils",
+-        "@pypi//absl_py",
+-        "@pypi//dm_tree",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -119,10 +110,7 @@ py_library(
+ py_test(
+     name = "program_state_manager_test",
+     srcs = ["program_state_manager_test.py"],
+-    deps = [
+-        ":program_state_manager",
+-        "@pypi//absl_py",
+-    ],
++    deps = [":program_state_manager"],
+ )
+ 
+ py_library(
+@@ -134,9 +122,6 @@ py_library(
+         "//federated_language/common_libs:py_typecheck",
+         "//federated_language/common_libs:serializable",
+         "//federated_language/types:computation_types",
+-        "@pypi//attrs",
+-        "@pypi//dm_tree",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -147,8 +132,6 @@ py_library(
+         ":structure_utils",
+         ":value_reference",
+         "//federated_language/common_libs:py_typecheck",
+-        "@pypi//attrs",
+-        "@pypi//dm_tree",
+     ],
+ )
+ 
+@@ -158,9 +141,6 @@ py_test(
+     deps = [
+         ":program_test_utils",
+         ":release_manager",
+-        "@pypi//absl_py",
+-        "@pypi//dm_tree",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -182,19 +162,13 @@ py_test(
+         ":program_test_utils",
+         ":serialization_utils",
+         "//federated_language/types:computation_types",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+ py_library(
+     name = "structure_utils",
+     srcs = ["structure_utils.py"],
+-    deps = [
+-        "//federated_language/common_libs:py_typecheck",
+-        "@pypi//attrs",
+-        "@pypi//dm_tree",
+-    ],
++    deps = ["//federated_language/common_libs:py_typecheck"],
+ )
+ 
+ py_test(
+@@ -203,9 +177,6 @@ py_test(
+     deps = [
+         ":program_test_utils",
+         ":structure_utils",
+-        "@pypi//absl_py",
+-        "@pypi//dm_tree",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -216,7 +187,6 @@ py_library(
+         ":structure_utils",
+         "//federated_language/types:computation_types",
+         "//federated_language/types:typed_object",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -226,8 +196,5 @@ py_test(
+     deps = [
+         ":program_test_utils",
+         ":value_reference",
+-        "@pypi//absl_py",
+-        "@pypi//dm_tree",
+-        "@pypi//numpy",
+     ],
+ )
+diff --git federated_language/test/BUILD federated_language/test/BUILD
+index ab52bca..39593e0 100644
+--- federated_language/test/BUILD
++++ federated_language/test/BUILD
+@@ -33,6 +33,5 @@ py_test(
+         "//federated_language/federated_context:federated_computation",
+         "//federated_language/federated_context:intrinsics",
+         "//federated_language/types:placements",
+-        "@pypi//absl_py",
+     ],
+ )
+diff --git federated_language/types/BUILD federated_language/types/BUILD
+index e209fb2..e102338 100644
+--- federated_language/types/BUILD
++++ federated_language/types/BUILD
+@@ -39,7 +39,6 @@ py_test(
+     deps = [
+         ":array_shape",
+         "//federated_language/proto:array_py_pb2",
+-        "@pypi//absl_py",
+     ],
+ )
+ 
+@@ -52,9 +51,6 @@ py_library(
+         ":placements",
+         "//federated_language/common_libs:py_typecheck",
+         "//federated_language/common_libs:structure",
+-        "@pypi//attrs",
+-        "@pypi//numpy",
+-        "@pypi//typing_extensions",
+     ],
+ )
+ 
+@@ -80,31 +76,19 @@ py_test(
+         ":placements",
+         "//federated_language/common_libs:golden",
+         "//federated_language/common_libs:structure",
+-        "@pypi//absl_py",
+-        "@pypi//attrs",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+ py_library(
+     name = "dtype_utils",
+     srcs = ["dtype_utils.py"],
+-    deps = [
+-        "//federated_language/proto:data_type_py_pb2",
+-        "@pypi//ml_dtypes",
+-        "@pypi//numpy",
+-    ],
++    deps = ["//federated_language/proto:data_type_py_pb2"],
+ )
+ 
+ py_test(
+     name = "dtype_utils_test",
+     srcs = ["dtype_utils_test.py"],
+-    deps = [
+-        ":dtype_utils",
+-        "@pypi//absl_py",
+-        "@pypi//ml_dtypes",
+-        "@pypi//numpy",
+-    ],
++    deps = [":dtype_utils"],
+ )
+ 
+ py_library(
+@@ -116,10 +100,7 @@ py_test(
+     name = "placements_test",
+     size = "small",
+     srcs = ["placements_test.py"],
+-    deps = [
+-        ":placements",
+-        "@pypi//absl_py",
+-    ],
++    deps = [":placements"],
+ )
+ 
+ py_library(
+@@ -133,8 +114,6 @@ py_library(
+         ":type_transformations",
+         "//federated_language/common_libs:py_typecheck",
+         "//federated_language/common_libs:structure",
+-        "@pypi//ml_dtypes",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -147,9 +126,6 @@ py_test(
+         ":placements",
+         ":type_analysis",
+         "//federated_language/common_libs:structure",
+-        "@pypi//absl_py",
+-        "@pypi//ml_dtypes",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -162,9 +138,6 @@ py_library(
+         ":typed_object",
+         "//federated_language/common_libs:py_typecheck",
+         "//federated_language/common_libs:structure",
+-        "@pypi//attrs",
+-        "@pypi//dm_tree",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -178,9 +151,6 @@ py_test(
+         ":type_conversions",
+         ":typed_object",
+         "//federated_language/common_libs:structure",
+-        "@pypi//absl_py",
+-        "@pypi//attrs",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -197,8 +167,6 @@ py_test(
+     deps = [
+         ":computation_types",
+         ":type_factory",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -227,8 +195,6 @@ py_test(
+         ":type_serialization",
+         "//federated_language/proto:computation_py_pb2",
+         "//federated_language/proto:data_type_py_pb2",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 
+@@ -255,8 +221,6 @@ py_test(
+         ":computation_types",
+         ":placements",
+         ":type_transformations",
+-        "@pypi//absl_py",
+-        "@pypi//numpy",
+     ],
+ )
+ 

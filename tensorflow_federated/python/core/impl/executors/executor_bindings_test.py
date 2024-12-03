@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
 import portpicker
 
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_test_utils_bindings
-from tensorflow_federated.python.core.impl.types import placements
 
 
 class ReferenceResolvingExecutorBindingsTest(absltest.TestCase):
@@ -38,7 +38,7 @@ class ComposingExecutorBindingsTest(absltest.TestCase):
     children = [
         executor_bindings.create_composing_child(
             mock_child_executor,
-            {placements.CLIENTS: 0},
+            {federated_language.CLIENTS: 0},
         )
     ]
     try:
@@ -64,7 +64,7 @@ class FederatingExecutorBindingsTest(absltest.TestCase):
   def test_construction(self):
     mock_server_executor = executor_test_utils_bindings.create_mock_executor()
     mock_client_executor = executor_test_utils_bindings.create_mock_executor()
-    cardinalities = {placements.CLIENTS: 0}
+    cardinalities = {federated_language.CLIENTS: 0}
 
     try:
       executor_bindings.create_federating_executor(
@@ -83,7 +83,7 @@ class RemoteExecutorBindingsTest(absltest.TestCase):
     try:
       executor_bindings.create_remote_executor(
           channel,
-          cardinalities={placements.CLIENTS: 10},
+          cardinalities={federated_language.CLIENTS: 10},
       )
     except Exception:  # pylint: disable=broad-except
       self.fail('Raised `Exception` unexpectedly.')

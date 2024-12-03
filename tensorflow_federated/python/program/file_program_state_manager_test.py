@@ -21,12 +21,12 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tree
 
 from tensorflow_federated.python.program import file_program_state_manager
 from tensorflow_federated.python.program import file_utils
-from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import program_test_utils
 
 
@@ -414,7 +414,9 @@ class FileProgramStateManagerLoadTest(
     version = 0
     structure = 'state'
 
-    with self.assertRaises(program_state_manager.ProgramStateNotFoundError):
+    with self.assertRaises(
+        federated_language.program.ProgramStateNotFoundError
+    ):
       await program_state_mngr.load(version, structure)
 
   async def test_raises_program_state_not_found_error_with_unknown_version(
@@ -430,7 +432,9 @@ class FileProgramStateManagerLoadTest(
     unknown_version = 0
     structure = 'state'
 
-    with self.assertRaises(program_state_manager.ProgramStateNotFoundError):
+    with self.assertRaises(
+        federated_language.program.ProgramStateNotFoundError
+    ):
       await program_state_mngr.load(unknown_version, structure)
 
 
@@ -878,7 +882,7 @@ class FileProgramStateManagerSaveTest(
 
     await program_state_mngr.save(program_state, version)
 
-    with self.assertRaises(program_state_manager.ProgramStateExistsError):
+    with self.assertRaises(federated_language.program.ProgramStateExistsError):
       await program_state_mngr.save(program_state, version)
 
 

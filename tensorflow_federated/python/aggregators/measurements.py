@@ -18,13 +18,11 @@ import inspect
 import typing
 from typing import Any, Optional
 
+import federated_language
+
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -112,22 +110,26 @@ def add_measurements(
         inner_agg_process = inner_agg_factory.create(value_type, weight_type)
         init_fn = inner_agg_process.initialize
 
-        @federated_computation.federated_computation(
+        @federated_language.federated_computation(
             init_fn.type_signature.result,
-            computation_types.FederatedType(value_type, placements.CLIENTS),
-            computation_types.FederatedType(weight_type, placements.CLIENTS),
+            federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
+            ),
+            federated_language.FederatedType(
+                weight_type, federated_language.CLIENTS
+            ),
         )
         def next_fn(state, value, weight):
           inner_agg_output = inner_agg_process.next(state, value, weight)
           measurements = inner_agg_output.measurements
           if client_measurement_fn:
             client_measurements = client_measurement_fn(value, weight)
-            measurements = intrinsics.federated_map(
+            measurements = federated_language.federated_map(
                 dict_update, (measurements, client_measurements)
             )
           if server_measurement_fn:
             server_measurements = server_measurement_fn(inner_agg_output.result)
-            measurements = intrinsics.federated_map(
+            measurements = federated_language.federated_map(
                 dict_update, (measurements, server_measurements)
             )
           return measured_process.MeasuredProcessOutput(
@@ -153,21 +155,23 @@ def add_measurements(
         inner_agg_process = inner_agg_factory.create(value_type)
         init_fn = inner_agg_process.initialize
 
-        @federated_computation.federated_computation(
+        @federated_language.federated_computation(
             init_fn.type_signature.result,
-            computation_types.FederatedType(value_type, placements.CLIENTS),
+            federated_language.FederatedType(
+                value_type, federated_language.CLIENTS
+            ),
         )
         def next_fn(state, value):
           inner_agg_output = inner_agg_process.next(state, value)
           measurements = inner_agg_output.measurements
           if client_measurement_fn:
             client_measurements = client_measurement_fn(value)
-            measurements = intrinsics.federated_map(
+            measurements = federated_language.federated_map(
                 dict_update, (measurements, client_measurements)
             )
           if server_measurement_fn:
             server_measurements = server_measurement_fn(inner_agg_output.result)
-            measurements = intrinsics.federated_map(
+            measurements = federated_language.federated_map(
                 dict_update, (measurements, server_measurements)
             )
           return measured_process.MeasuredProcessOutput(

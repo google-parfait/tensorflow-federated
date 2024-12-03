@@ -19,7 +19,6 @@ package_group(
         "//tensorflow_federated/python/core/environments:environments_packages",
         "//tensorflow_federated/python/core/framework:framework_packages",
         "//tensorflow_federated/python/core/templates:templates_packages",
-        "//tensorflow_federated/python/core/test:test_packages",
         "//tensorflow_federated/python/learning:learning_packages",
         "//tensorflow_federated/python/program:program_packages",
         "//tensorflow_federated/python/simulation:simulation_packages",
