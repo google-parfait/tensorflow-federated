@@ -42,5 +42,5 @@ message DPQuantileAggregatorState {
 
 message DPTensorAggregatorBundleState {
   uint64 num_inputs = 1;
-  repeated string nested_serialized_states = 2;
+  repeated bytes nested_serialized_states = 2;
 }

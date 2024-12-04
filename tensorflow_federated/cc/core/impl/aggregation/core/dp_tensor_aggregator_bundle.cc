@@ -125,6 +125,31 @@ Status DPTensorAggregatorBundle::MergeWith(TensorAggregator&& other) {
   return TFF_STATUS(OK);
 }
 
+StatusOr<std::string> DPTensorAggregatorBundle::Serialize() && {
+  DPTensorAggregatorBundleState state;
+  state.set_num_inputs(num_inputs_);
+  auto* nested_serialized_states = state.mutable_nested_serialized_states();
+  for (auto& aggregator : aggregators_) {
+    TFF_ASSIGN_OR_RETURN(auto nested_serialized_state,
+                         std::move(*aggregator).Serialize());
+    nested_serialized_states->Add(std::move(nested_serialized_state));
+  }
+
+  return state.SerializeAsString();
+}
+
+StatusOr<std::unique_ptr<TensorAggregator>>
+DPTensorAggregatorBundleFactory::Deserialize(
+    const Intrinsic& intrinsic, std::string serialized_state) const {
+  DPTensorAggregatorBundleState aggregator_state;
+  if (!aggregator_state.ParseFromString(serialized_state)) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPTensorAggregatorBundleFactory::Deserialize: Failed to parse "
+           << "serialized aggregator.";
+  }
+  return CreateInternal(intrinsic, &aggregator_state);
+}
+
 StatusOr<std::unique_ptr<TensorAggregator>>
 DPTensorAggregatorBundleFactory::CreateInternal(
     const Intrinsic& intrinsic,

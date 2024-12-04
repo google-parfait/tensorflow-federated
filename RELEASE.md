@@ -50,6 +50,9 @@ and this project adheres to
 *   `DPTensorAggregatorBundle::MergeWith` checks compatibility before delegating
     merging to inner aggregators. The compatibility check is done by
     `DPTensorAggregatorBundle::IsCompatible`.
+*   `DPTensorAggregatorBundle::Serialize` and
+    `DPTensorAggregatorBundleFactory::Deserialize` enable storage and retrieval
+    of the state of a `DPTensorAggregatorBundle`.
 
 ### Changed
 

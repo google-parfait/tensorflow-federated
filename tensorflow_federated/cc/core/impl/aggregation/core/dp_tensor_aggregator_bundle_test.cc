@@ -443,6 +443,46 @@ TEST(DPTensorAggregatorBundleTest, SuccessfulMerge) {
   EXPECT_EQ(aggregator2.GetNumInputs(), 10);
 }
 
+// The fourth batch of tests concerns serialization and deserialization.
+
+// If a string is not a valid serialization of a bundle, the bundle should not
+// be created.
+TEST(DPTensorAggregatorBundleTest, InvalidSerialization) {
+  std::string invalid_serialization = "invalid";
+  const auto* factory =
+      GetAggregatorFactory(kDPTensorAggregatorBundleUri).value();
+  auto status =
+      factory->Deserialize(CreateBundleOfTwo(), invalid_serialization);
+  EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(status.status().message(),
+              HasSubstr("Failed to parse serialized aggregator"));
+}
+
+// If a string is a valid serialization of a bundle, the bundle should be
+// created with the right number of inputs.
+TEST(DPTensorAggregatorBundleTest, ValidSerialization) {
+  auto status1 = CreateTensorAggregator(CreateBundleOfTwo());
+  TFF_EXPECT_OK(status1);
+  auto aggregator_ptr1 = std::move(status1.value());
+  auto& aggregator1 =
+      dynamic_cast<DPTensorAggregatorBundle&>(*aggregator_ptr1.get());
+  for (int i = 0; i < 4; i++) {
+    Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+    Tensor t2 =
+        Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1})).value();
+    auto accumulate_status = aggregator1.Accumulate(InputTensorList{&t1, &t2});
+    TFF_EXPECT_OK(accumulate_status);
+  }
+  auto serialize_status = std::move(aggregator1).Serialize();
+  TFF_EXPECT_OK(serialize_status);
+  std::string serialized_string = serialize_status.value();
+  const auto* factory =
+      GetAggregatorFactory(kDPTensorAggregatorBundleUri).value();
+  auto status2 = factory->Deserialize(CreateBundleOfTwo(), serialized_string);
+  TFF_EXPECT_OK(status2);
+  EXPECT_EQ(status2.value()->GetNumInputs(), 4);
+}
+
 }  // namespace
 
 }  // namespace aggregation

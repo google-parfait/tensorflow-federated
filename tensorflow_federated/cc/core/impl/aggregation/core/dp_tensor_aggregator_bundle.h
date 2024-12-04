@@ -46,9 +46,7 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
   int GetNumInputs() const override { return num_inputs_; };
 
   // Serialize the internal state of the TensorAggregator as a string.
-  StatusOr<std::string> Serialize() && override {
-    return TFF_STATUS(UNIMPLEMENTED) << "Not implemented yet.";
-  }
+  StatusOr<std::string> Serialize() && override;
 
   inline double GetEpsilonPerAgg() const { return epsilon_per_agg_; }
   inline double GetDeltaPerAgg() const { return delta_per_agg_; }
@@ -106,9 +104,7 @@ class DPTensorAggregatorBundleFactory : public TensorAggregatorFactory {
       const DPTensorAggregatorBundleFactory&) = delete;
 
   StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
-      const Intrinsic& intrinsic, std::string serialized_state) const override {
-    return TFF_STATUS(UNIMPLEMENTED) << "Not implemented yet.";
-  }
+      const Intrinsic& intrinsic, std::string serialized_state) const override;
 
   StatusOr<std::unique_ptr<TensorAggregator>> Create(
       const Intrinsic& intrinsic) const override {
