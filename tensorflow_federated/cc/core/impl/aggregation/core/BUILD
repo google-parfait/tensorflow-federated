@@ -653,6 +653,7 @@ cc_test(
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
         ":intrinsic",
+        ":mutable_string_data",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",

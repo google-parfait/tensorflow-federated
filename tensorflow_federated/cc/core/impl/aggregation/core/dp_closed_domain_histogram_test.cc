@@ -32,6 +32,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
@@ -102,15 +103,12 @@ std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
 
   // First tensor contains the names of keys
   int64_t num_keys = key_types.size();
-  MutableVectorData<std::string> key_names;
+  auto key_names = std::make_unique<MutableStringData>(num_keys);
   for (int i = 0; i < num_keys; i++) {
-    key_names.push_back(absl::StrCat("key", i));
+    key_names->Add(absl::StrCat("key", i));
   }
   parameters.push_back(
-      Tensor::Create(DT_STRING, {num_keys},
-                     std::make_unique<MutableVectorData<std::string>>(
-                         std::move(key_names)))
-          .value());
+      Tensor::Create(DT_STRING, {num_keys}, std::move(key_names)).value());
 
   // The ith tensor contains the domain of values that the ith key can take.
   for (auto& dtype : key_types) {
