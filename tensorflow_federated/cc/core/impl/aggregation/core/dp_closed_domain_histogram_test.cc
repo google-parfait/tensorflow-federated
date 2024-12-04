@@ -102,13 +102,13 @@ std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
 
   // First tensor contains the names of keys
   int64_t num_keys = key_types.size();
-  MutableVectorData<string_view> key_names;
+  MutableVectorData<std::string> key_names;
   for (int i = 0; i < num_keys; i++) {
     key_names.push_back(absl::StrCat("key", i));
   }
   parameters.push_back(
       Tensor::Create(DT_STRING, {num_keys},
-                     std::make_unique<MutableVectorData<string_view>>(
+                     std::make_unique<MutableVectorData<std::string>>(
                          std::move(key_names)))
           .value());
 
