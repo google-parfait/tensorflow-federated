@@ -53,6 +53,8 @@ and this project adheres to
 *   `DPTensorAggregatorBundle::Serialize` and
     `DPTensorAggregatorBundleFactory::Deserialize` enable storage and retrieval
     of the state of a `DPTensorAggregatorBundle`.
+*   `DPTensorAggregatorBundle::TakeOutputs` calls the inner aggregator's
+    `ReportWithEpsilonAndDelta` methods and stitches the outputs together.
 
 ### Changed
 

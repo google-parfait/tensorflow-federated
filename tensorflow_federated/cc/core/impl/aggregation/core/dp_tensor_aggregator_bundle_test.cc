@@ -45,7 +45,7 @@ TensorSpec CreateTensorSpec(std::string name, DataType dtype) {
 }
 
 double kDefaultEpsilon = 1.0;
-double kDefaultDelta = 1e-7;
+double kDefaultDelta = 1e-5;
 
 // The first batch of tests concerns creation (via the factory)
 
@@ -256,9 +256,12 @@ TEST(DPTensorAggregatorBundleTest, CreateSucceedsWithSplitEpsilonAndDelta) {
 }
 
 // The second batch of tests concerns aggregation.
-Intrinsic CreateBundleOfTwo() {
-  Intrinsic intrinsic = Intrinsic{
-      kDPTensorAggregatorBundleUri, {}, {}, CreateBundleParameters(), {}};
+Intrinsic CreateBundleOfTwo(double epsilon = kDefaultEpsilon) {
+  Intrinsic intrinsic = Intrinsic{kDPTensorAggregatorBundleUri,
+                                  {},
+                                  {},
+                                  CreateBundleParameters(epsilon),
+                                  {}};
   intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<int>());
   intrinsic.nested_intrinsics.push_back(CreateDPQuantileIntrinsic<float>());
   return intrinsic;
@@ -481,6 +484,63 @@ TEST(DPTensorAggregatorBundleTest, ValidSerialization) {
   auto status2 = factory->Deserialize(CreateBundleOfTwo(), serialized_string);
   TFF_EXPECT_OK(status2);
   EXPECT_EQ(status2.value()->GetNumInputs(), 4);
+}
+
+// The fifth batch of tests concerns the Report method (calling TakeOutputs).
+
+// For epsilon >= kEpsilonThreshold, the outputs should be the exact medians of
+// each value.
+TEST(DPTensorAggregatorBundleTest, TakeOutputs_NonPrivate) {
+  auto status1 = CreateTensorAggregator(CreateBundleOfTwo(kEpsilonThreshold));
+  TFF_EXPECT_OK(status1);
+  auto aggregator = std::move(status1.value());
+  for (int i = 0; i < 100; i++) {
+    Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({i})).value();
+    float f = static_cast<float>(i);
+    Tensor t2 =
+        Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({f})).value();
+    auto accumulate_status = aggregator->Accumulate(InputTensorList{&t1, &t2});
+    TFF_EXPECT_OK(accumulate_status);
+  }
+
+  auto status2 = std::move(*aggregator).Report();
+  TFF_EXPECT_OK(status2);
+  auto& output_list = status2.value();
+  ASSERT_EQ(output_list.size(), 2);
+  EXPECT_THAT(output_list[0].AsScalar<double>(), testing::DoubleEq(50.0));
+  EXPECT_THAT(output_list[1].AsScalar<double>(), testing::DoubleEq(50.0));
+}
+
+// For small epsilon, the outputs should be noisy versions of the medians; if we
+// repeat the experiment many times, we do not expect all outputs to match the
+// median.
+// (dp_quantile_aggregator_test.cc assesses the quality of the estimates)
+TEST(DPTensorAggregatorBundleTest, TakeOutputs_Private) {
+  bool any_mismatch = false;
+  for (int r = 0; r < 10; r++) {
+    auto status1 = CreateTensorAggregator(CreateBundleOfTwo(2.0));
+    TFF_EXPECT_OK(status1);
+    auto aggregator = std::move(status1.value());
+    for (int i = 0; i < 100; i++) {
+      Tensor t1 =
+          Tensor::Create(DT_INT32, {}, CreateTestData<int>({i})).value();
+      float f = static_cast<float>(i);
+      Tensor t2 =
+          Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({f})).value();
+      auto accumulate_status =
+          aggregator->Accumulate(InputTensorList{&t1, &t2});
+      TFF_EXPECT_OK(accumulate_status);
+    }
+
+    auto status2 = std::move(*aggregator).Report();
+    TFF_EXPECT_OK(status2);
+    auto& output_list = status2.value();
+    ASSERT_EQ(output_list.size(), 2);
+    any_mismatch = any_mismatch ||
+                   (output_list[0].AsScalar<double>() != 50.0) ||
+                   (output_list[1].AsScalar<double>() != 50.0);
+  }
+  EXPECT_TRUE(any_mismatch);
 }
 
 }  // namespace

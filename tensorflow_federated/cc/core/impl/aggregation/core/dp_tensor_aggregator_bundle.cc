@@ -125,6 +125,22 @@ Status DPTensorAggregatorBundle::MergeWith(TensorAggregator&& other) {
   return TFF_STATUS(OK);
 }
 
+OutputTensorList DPTensorAggregatorBundle::TakeOutputs() && {
+  output_consumed_ = true;
+  OutputTensorList outputs;
+  for (int i = 0; i < aggregators_.size(); ++i) {
+    auto value_output =
+        std::move(*aggregators_[i])
+            .ReportWithEpsilonAndDelta(epsilon_per_agg_, delta_per_agg_);
+    TFF_CHECK(value_output.ok()) << value_output.status().message();
+    for (Tensor& output_tensor : value_output.value()) {
+      outputs.push_back(std::move(output_tensor));
+    }
+  }
+
+  return outputs;
+}
+
 StatusOr<std::string> DPTensorAggregatorBundle::Serialize() && {
   DPTensorAggregatorBundleState state;
   state.set_num_inputs(num_inputs_);
