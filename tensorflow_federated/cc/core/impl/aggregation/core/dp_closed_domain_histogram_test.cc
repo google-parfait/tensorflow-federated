@@ -47,6 +47,7 @@ namespace tensorflow_federated {
 namespace aggregation {
 namespace {
 
+using ::testing::Eq;
 using ::testing::HasSubstr;
 using testing::TestWithParam;
 
@@ -570,11 +571,11 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
   EXPECT_THAT(report[1], IsTensor<int64_t>({9}, {3, 0, 0, 0, 0, 1, 5, 0, 0}));
 }
 
-// Third: Check that noise is added. the noised sum should not be the same as
-// the unnoised sum. The chance of a false negative shrinks with epsilon.
+// Third: Check that noise is added. A noised sum should not be the same as
+// the unnoised sum; as epsilon decreases, the scale of noise will increase.
 TEST(DPClosedDomainHistogramTest, NoiseAddedForSmallEpsilons) {
   Intrinsic intrinsic =
-      CreateIntrinsic<int32_t, int64_t>(/*epsilon=*/0.05,
+      CreateIntrinsic<int32_t, int64_t>(/*epsilon=*/0.01,
                                         /*delta=*/1e-8,
                                         /*l0_bound=*/2,
                                         /*linfinity_bound=*/1);
@@ -595,6 +596,9 @@ TEST(DPClosedDomainHistogramTest, NoiseAddedForSmallEpsilons) {
   auto report = std::move(*aggregator).Report();
   EXPECT_THAT(report, IsOk());
 
+  // The report should encode the following noisy histogram
+  // {a: num_inputs + noise, b: num_inputs + noise, c: 0 + noise}
+
   // There must be 2 columns, one for keys and one for aggregated values.
   ASSERT_EQ(report->size(), 2);
 
@@ -603,11 +607,11 @@ TEST(DPClosedDomainHistogramTest, NoiseAddedForSmallEpsilons) {
   // There must be 3 rows, one per key (a, b, c)
   ASSERT_EQ(values.size(), 3);
 
-  // We expect that there is some perturbation in the output.
-  // The values for a and b should be num_inputs +/- noise, while the value for
-  // c should be 0 +/- noise.
-  EXPECT_TRUE(values[0] != num_inputs && values[1] != num_inputs &&
-              values[2] != 0);
+  // We expect that there is some perturbation in at least one output.
+  // Specifically, (num_inputs + noise, num_inputs + noise, noise) should not
+  // match (num_inputs, num_inputs, 0)
+  EXPECT_THAT(values, testing::Not(testing::ElementsAre(
+                          Eq(num_inputs), Eq(num_inputs), Eq(0))));
 }
 
 }  // namespace
