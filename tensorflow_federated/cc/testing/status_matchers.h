@@ -22,7 +22,6 @@ limitations under the License
 #include <optional>
 #include <ostream>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -30,6 +29,7 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "include/grpcpp/support/status.h"
 
 namespace tensorflow_federated {
@@ -290,7 +290,7 @@ class IsOkMatcher {
   }
 };
 
-void AddFatalFailure(std::string_view expression, const char* file,
+void AddFatalFailure(absl::string_view expression, const char* file,
                      uint32_t line, absl::Status status);
 
 inline absl::Status GetStatus(absl::Status&& status) { return status; }
