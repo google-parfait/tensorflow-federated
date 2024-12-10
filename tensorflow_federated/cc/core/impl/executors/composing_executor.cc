@@ -22,7 +22,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <thread>  // NOLINT
 #include <tuple>
 #include <utility>
@@ -35,6 +34,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
@@ -241,7 +241,7 @@ class ExecutorValue {
     return std::get<TypedFederatedIntrinsic>(value_);
   }
 
-  absl::Status CheckLenForUseAsArgument(std::string_view function_name,
+  absl::Status CheckLenForUseAsArgument(absl::string_view function_name,
                                         size_t len) const {
     if (type() != ExecutorValue::ValueType::STRUCTURE) {
       return absl::InvalidArgumentError(absl::StrCat(
@@ -259,7 +259,7 @@ class ExecutorValue {
   // Fetches an unplaced functional value as a proto, ensuring that no
   // underlying `Materialize` call occurs.
   absl::StatusOr<std::shared_ptr<v0::Value>> GetUnplacedFunctionProto(
-      std::string_view name) const {
+      absl::string_view name) const {
     if (type() != ExecutorValue::ValueType::UNPLACED) {
       return absl::InvalidArgumentError(
           absl::StrCat("`", name, "` must be an unplaced functional value, ",
@@ -383,8 +383,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
  protected:
-  std::string_view ExecutorName() final {
-    static constexpr std::string_view kExecutorName = "ComposingExecutor";
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName = "ComposingExecutor";
     return kExecutorName;
   }
 

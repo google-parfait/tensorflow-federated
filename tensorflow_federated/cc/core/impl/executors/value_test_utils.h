@@ -23,7 +23,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -33,6 +32,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
@@ -53,7 +53,7 @@ namespace tensorflow_federated {
 namespace testing {
 
 inline v0::Value IntrinsicV(
-    std::string_view uri,
+    absl::string_view uri,
     std::optional<federated_language::FunctionType> type_spec = std::nullopt) {
   v0::Value value_proto;
   federated_language::Computation* computation_pb =
@@ -278,7 +278,7 @@ inline federated_language::Computation StructComputation(
 }
 
 inline federated_language::Computation LambdaComputation(
-    std::optional<std::string_view> parameter_name,
+    std::optional<absl::string_view> parameter_name,
     federated_language::Computation result_computation_value) {
   federated_language::Computation computation_pb;
   federated_language::Lambda* lambda_pb = computation_pb.mutable_lambda();
@@ -306,7 +306,7 @@ inline federated_language::Computation BlockComputation(
 }
 
 inline federated_language::Computation ReferenceComputation(
-    std::string_view reference_name) {
+    absl::string_view reference_name) {
   federated_language::Computation computation_pb;
   computation_pb.mutable_reference()->mutable_name()->assign(
       reference_name.data(), reference_name.size());
@@ -314,21 +314,21 @@ inline federated_language::Computation ReferenceComputation(
 }
 
 inline federated_language::Computation IntrinsicComputation(
-    std::string_view uri) {
+    absl::string_view uri) {
   federated_language::Computation computation_pb;
   computation_pb.mutable_intrinsic()->mutable_uri()->assign(uri.data(),
                                                             uri.size());
   return computation_pb;
 }
 
-inline federated_language::Computation DataComputation(std::string_view uri) {
+inline federated_language::Computation DataComputation(absl::string_view uri) {
   federated_language::Computation computation_pb;
   computation_pb.mutable_data()->mutable_uri()->assign(uri.data(), uri.size());
   return computation_pb;
 }
 
 inline federated_language::Computation PlacementComputation(
-    std::string_view uri) {
+    absl::string_view uri) {
   federated_language::Computation computation_pb;
   computation_pb.mutable_placement()->mutable_uri()->assign(uri.data(),
                                                             uri.size());

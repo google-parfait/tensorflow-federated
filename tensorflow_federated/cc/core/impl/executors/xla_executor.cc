@@ -19,7 +19,6 @@ limitations under the License
 #include <future>  // NOLINT
 #include <memory>
 #include <optional>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -30,6 +29,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
 #include "tensorflow/compiler/tf2xla/literal_util.h"
@@ -374,7 +374,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
  public:
   explicit XLAExecutor(xla::Client* xla_client) : xla_client_(xla_client) {}
 
-  std::string_view ExecutorName() final { return "XLAExecutor"; }
+  absl::string_view ExecutorName() final { return "XLAExecutor"; }
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
     return ThreadRun([value_pb, this_shared = shared_from_this()]() {
@@ -706,7 +706,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   }
 };
 
-absl::StatusOr<xla::Client*> GetXLAClient(std::string_view platform_name) {
+absl::StatusOr<xla::Client*> GetXLAClient(absl::string_view platform_name) {
   absl::StatusOr<xla::se::Platform*> platform =
       xla::se::PlatformManager::PlatformWithName(platform_name);
   if (!platform.ok()) {
@@ -731,7 +731,7 @@ absl::StatusOr<xla::Client*> GetXLAClient(std::string_view platform_name) {
 }  // namespace
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateXLAExecutor(
-    std::string_view platform_name) {
+    absl::string_view platform_name) {
   LOG(INFO) << "Creating XLAExecutor for platform: " << platform_name;
   xla::Client* client = TFF_TRY(GetXLAClient(platform_name));
   return std::make_shared<XLAExecutor>(client);

@@ -23,7 +23,6 @@ limitations under the License
 #include <future>  // NOLINT
 #include <memory>
 #include <string>
-#include <string_view>
 #include <thread>  // NOLINT
 #include <type_traits>
 #include <utility>
@@ -32,6 +31,7 @@ limitations under the License
 #include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "absl/utility/utility.h"
@@ -48,7 +48,7 @@ namespace tensorflow_federated {
 // in such cases.
 class ThreadPool {
  public:
-  ThreadPool(int32_t num_threads, std::string_view name);
+  ThreadPool(int32_t num_threads, absl::string_view name);
   ~ThreadPool();
 
   // Restrict copying and moving.

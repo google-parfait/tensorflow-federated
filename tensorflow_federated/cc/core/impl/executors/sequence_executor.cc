@@ -21,7 +21,6 @@ limitations under the License
 #include <future>  // NOLINT
 #include <memory>
 #include <optional>
-#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -31,6 +30,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
@@ -322,7 +322,7 @@ class SequenceExecutorValue {
     }
   }
   absl::Status CheckTypeForArgument(ValueType expected_type,
-                                    std::string_view fn_name,
+                                    absl::string_view fn_name,
                                     std::optional<int32_t> position_in_struct) {
     if (type() != expected_type) {
       if (position_in_struct.has_value()) {
@@ -361,7 +361,7 @@ class SequenceExecutorValue {
 };
 
 absl::Status CheckLenForUseAsArgument(const SequenceExecutorValue& value,
-                                      std::string_view function_name,
+                                      absl::string_view function_name,
                                       size_t len) {
   if (value.type() != SequenceExecutorValue::ValueType::STRUCT) {
     return absl::InvalidArgumentError(
@@ -387,7 +387,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
       : target_executor_(target_executor) {}
   ~SequenceExecutor() override = default;
 
-  std::string_view ExecutorName() final { return "SequenceExecutor"; }
+  absl::string_view ExecutorName() final { return "SequenceExecutor"; }
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
@@ -402,7 +402,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
       }
       case v0::Value::kComputation: {
         if (value_pb.computation().has_intrinsic()) {
-          std::string_view intrinsic_uri =
+          absl::string_view intrinsic_uri =
               value_pb.computation().intrinsic().uri();
           absl::StatusOr<SequenceIntrinsic> intrinsic_or_status =
               SequenceIntrinsicFromUri(intrinsic_uri);

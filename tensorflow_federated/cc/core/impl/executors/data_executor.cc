@@ -19,12 +19,12 @@ limitations under the License
 #include <future>  // NOLINT
 #include <memory>
 #include <optional>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/executors/data_backend.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -44,8 +44,8 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
       : child_(std::move(child)), data_backend_(std::move(data_backend)) {}
 
  protected:
-  std::string_view ExecutorName() final {
-    static constexpr std::string_view kExecutorName = "DataExecutor";
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName = "DataExecutor";
     return kExecutorName;
   }
 

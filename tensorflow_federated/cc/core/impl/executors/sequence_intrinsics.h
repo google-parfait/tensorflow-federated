@@ -16,13 +16,12 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_SEQUENCE_INTRINSICS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_SEQUENCE_INTRINSICS_H_
 
-#include <string_view>
-
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {
-const std::string_view kSequenceReduceUri = "sequence_reduce";
-const std::string_view kSequenceMapUri = "sequence_map";
+const absl::string_view kSequenceReduceUri = "sequence_reduce";
+const absl::string_view kSequenceMapUri = "sequence_map";
 
 enum class SequenceIntrinsic {
   MAP,
@@ -30,9 +29,9 @@ enum class SequenceIntrinsic {
 };
 
 absl::StatusOr<SequenceIntrinsic> SequenceIntrinsicFromUri(
-    const std::string_view uri);
+    const absl::string_view uri);
 
-std::string_view SequenceIntrinsicToUri(const SequenceIntrinsic& intrinsic);
+absl::string_view SequenceIntrinsicToUri(const SequenceIntrinsic& intrinsic);
 
 }  // namespace tensorflow_federated
 

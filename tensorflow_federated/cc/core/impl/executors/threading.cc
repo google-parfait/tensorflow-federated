@@ -17,18 +17,18 @@ limitations under the License
 
 #include <cstdint>
 #include <functional>
-#include <string_view>
 #include <thread>  // NOLINT
 #include <utility>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 
 namespace tensorflow_federated {
 
-ThreadPool::ThreadPool(int32_t num_threads, std::string_view name)
+ThreadPool::ThreadPool(int32_t num_threads, absl::string_view name)
     : pool_name_(name) {
   if (num_threads < 1) {
     LOG(QFATAL) << "num_threads must be positive";

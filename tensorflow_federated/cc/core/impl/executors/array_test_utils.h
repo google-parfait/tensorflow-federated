@@ -20,11 +20,11 @@ limitations under the License
 #include <cstdint>
 #include <initializer_list>
 #include <string>
-#include <string_view>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "third_party/eigen3/Eigen/Core"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/data_type.pb.h"
@@ -199,7 +199,7 @@ inline absl::StatusOr<federated_language::Array> CreateArray(
 
 inline absl::StatusOr<federated_language::Array> CreateArrayContent(
     federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
-    std::string_view content) {
+    absl::string_view content) {
   federated_language::Array array_pb;
   array_pb.set_dtype(dtype);
   array_pb.mutable_shape()->Swap(&shape_pb);

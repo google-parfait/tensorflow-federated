@@ -20,7 +20,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -34,6 +33,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
@@ -120,10 +120,10 @@ v0::CreateValueRequest CreateValueRequestForValue(
 }
 
 v0::CreateStructRequest CreateStructRequestForValues(
-    const std::vector<std::string_view>& ref_names) {
+    const std::vector<absl::string_view>& ref_names) {
   v0::CreateStructRequest create_struct_request;
   create_struct_request.mutable_executor()->set_id(kExecutorId);
-  for (std::string_view ref_name : ref_names) {
+  for (absl::string_view ref_name : ref_names) {
     create_struct_request.add_element()->mutable_value_ref()->set_id(
         std::string(ref_name));
   }
@@ -873,7 +873,7 @@ struct FederatedStructTestCase {
   std::function<v0::Value(std::vector<v0::Value>)> FederatedV;
   std::function<v0::Value(federated_language::FunctionType)>
       FederatedZipIntrinsicV;
-  std::string_view placement_uri;
+  absl::string_view placement_uri;
   bool all_equal;
 };
 
@@ -981,7 +981,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
     // Add expectations for the sequence of calls that result from a
     // Materialize.
     {
-      std::string_view intrinsic_name =
+      absl::string_view intrinsic_name =
           (test_case.placement_uri == kServerUri ? kFederatedMapAtServerUri
                                                  : kFederatedMapAtClientsUri);
       v0::CreateValueRequest create_map_comp_request;
@@ -1183,7 +1183,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
     // Add expectations for the sequence of calls that result from a
     // CreateValue.
     {
-      absl::flat_hash_map<std::string_view, std::string_view>
+      absl::flat_hash_map<absl::string_view, absl::string_view>
           struct_ref_by_struct_elem_ref = {
               {"inner_federated_struct", "federated_elem"},
               {"outer_federated_struct", "zipped_inner_federated_struct"},
@@ -1199,8 +1199,8 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
       // We expect two create struct, and two zip calls, as the executor
       // traverse the nested structure.
       for (const auto& item : struct_ref_by_struct_elem_ref) {
-        std::string_view struct_ref = item.first;
-        std::string_view elem_ref = item.second;
+        absl::string_view struct_ref = item.first;
+        absl::string_view elem_ref = item.second;
         EXPECT_CALL(
             *mock_executor_service_,
             CreateStruct(
@@ -1270,7 +1270,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
     // Add expectations for the sequence of calls that result from a
     // Materialize.
     {
-      std::string_view intrinsic_name =
+      absl::string_view intrinsic_name =
           (test_case.placement_uri == kServerUri ? kFederatedMapAtServerUri
                                                  : kFederatedMapAtClientsUri);
       v0::CreateValueRequest create_map_comp_request;

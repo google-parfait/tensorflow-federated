@@ -21,7 +21,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -33,6 +32,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "absl/utility/utility.h"
@@ -271,7 +271,7 @@ class ExecutorBase : public Executor,
       return std::nullopt;
     }
     std::string path = absl::StrCat(ExecutorName(), "::", method_name);
-    std::string_view path_view(path);
+    absl::string_view path_view(path);
     VLOG(1) << path_view;
     // Safe to pass in a view here: `TraceMe` internally copies to an owned
     // `std::string`.
@@ -288,7 +288,7 @@ class ExecutorBase : public Executor,
   }
 
   // Returns the string name of the current executor.
-  virtual std::string_view ExecutorName() = 0;
+  virtual absl::string_view ExecutorName() = 0;
   virtual absl::StatusOr<ExecutorValue> CreateExecutorValue(
       const v0::Value& value_pb) = 0;
   virtual absl::StatusOr<ExecutorValue> CreateCall(

@@ -21,7 +21,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <thread>  // NOLINT
 #include <utility>
 #include <variant>
@@ -36,6 +35,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "tensorflow/core/data/standalone.h"
@@ -79,9 +79,9 @@ constexpr char kDatasetToGraphOp[] = "DatasetToGraphV2";
 constexpr char kDatasetFromGraphOp[] = "DatasetFromGraph";
 constexpr char kArgsIntoSequenceUri[] = "args_into_sequence";
 
-std::string GetNodeName(std::string_view tensor_name) {
-  std::string_view::size_type pos = tensor_name.find(':');
-  if (pos == std::string_view::npos) {
+std::string GetNodeName(absl::string_view tensor_name) {
+  absl::string_view::size_type pos = tensor_name.find(':');
+  if (pos == absl::string_view::npos) {
     return std::string(tensor_name);
   } else {
     return std::string(tensor_name.substr(0, pos));
@@ -102,8 +102,8 @@ struct NamesForBindingRewrite {
 // Computes the names for the nodes and tensors we will add to the graph when
 // wrapping sequence bindings in dataset serialization ops.
 NamesForBindingRewrite GetVariantTensorNodeNameAndReplacement(
-    std::string_view variant_tensor_name, std::string_view replace_node_suffix,
-    std::string_view node_prefix) {
+    absl::string_view variant_tensor_name,
+    absl::string_view replace_node_suffix, absl::string_view node_prefix) {
   NamesForBindingRewrite names;
   names.variant_node_name = GetNodeName(variant_tensor_name);
   names.graph_def_node_name = absl::StrCat(
@@ -172,7 +172,7 @@ void AddDatasetToGraphOp(tensorflow::GraphDef& graphdef_pb,
 absl::Status AddDeserializationOpsForParameters(
     tensorflow::GraphDef& graphdef_pb,
     federated_language::TensorFlow::Binding& binding,
-    std::string_view prefix = "root") {
+    absl::string_view prefix = "root") {
   switch (binding.binding_case()) {
     case federated_language::TensorFlow::Binding::kSequence: {
       // Get a copy of the name of the placeholder we're operating on. We're
@@ -269,7 +269,7 @@ absl::Status AddDeserializationOpsForParameters(
 absl::Status AddSerializationOpsForResults(
     tensorflow::GraphDef& graphdef_pb,
     federated_language::TensorFlow::Binding& binding,
-    std::string_view prefix = "root") {
+    absl::string_view prefix = "root") {
   switch (binding.binding_case()) {
     case federated_language::TensorFlow::Binding::kSequence: {
       if (binding.sequence().binding_case() ==
@@ -422,7 +422,7 @@ class SequenceTensor {
 
 enum class Intrinsic { kArgsIntoSequence };
 
-absl::StatusOr<Intrinsic> IntrinsicFromUri(std::string_view uri) {
+absl::StatusOr<Intrinsic> IntrinsicFromUri(absl::string_view uri) {
   if (uri == kArgsIntoSequenceUri) {
     return Intrinsic::kArgsIntoSequence;
   } else {
@@ -431,7 +431,7 @@ absl::StatusOr<Intrinsic> IntrinsicFromUri(std::string_view uri) {
   }
 }
 
-std::string_view IntrinsicToUri(Intrinsic intrinsic) {
+absl::string_view IntrinsicToUri(Intrinsic intrinsic) {
   switch (intrinsic) {
     case Intrinsic::kArgsIntoSequence: {
       return kArgsIntoSequenceUri;
@@ -664,7 +664,7 @@ class ExecutorValue {
       value_;
 
   static absl::Status BindKindMismatch(
-      const std::string_view value_kind,
+      const absl::string_view value_kind,
       const federated_language::TensorFlow::Binding& shape) {
     return absl::InvalidArgumentError(
         absl::StrCat("Attempted to bind ", value_kind,
@@ -956,8 +956,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   }
 
  protected:
-  std::string_view ExecutorName() final {
-    static constexpr std::string_view kExecutorName = "TensorFlowExecutor";
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName = "TensorFlowExecutor";
     return kExecutorName;
   }
 

@@ -18,13 +18,13 @@ limitations under the License
 #include <complex>
 #include <cstdint>
 #include <string>
-#include <string_view>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "third_party/eigen3/Eigen/Core"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
@@ -453,7 +453,7 @@ TEST_P(ArrayContentFromTensorTest, TestReturnsTensor) {
               testing::EqualsProto(test_case.expected_array_pb));
 }
 
-#define CONTENT(s) std::string_view(s, sizeof(s) - 1)
+#define CONTENT(s) absl::string_view(s, sizeof(s) - 1)
 
 INSTANTIATE_TEST_SUITE_P(
     ArrayContentFromTensorTestSuiteInstantiation, ArrayContentFromTensorTest,
@@ -617,7 +617,7 @@ TEST_P(TensorFromArrayContentTest, TestReturnsTensor) {
   tensorflow::test::ExpectEqual(actual_tensor, test_case.expected_tensor);
 }
 
-#define CONTENT(s) std::string_view(s, sizeof(s) - 1)
+#define CONTENT(s) absl::string_view(s, sizeof(s) - 1)
 
 INSTANTIATE_TEST_SUITE_P(
     TensorFromArrayContentTestSuiteInstantiation, TensorFromArrayContentTest,

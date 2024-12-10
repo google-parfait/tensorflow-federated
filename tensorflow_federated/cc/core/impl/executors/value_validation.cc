@@ -16,11 +16,11 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
 
 #include <cstdint>
-#include <string_view>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -29,7 +29,8 @@ namespace tensorflow_federated {
 
 absl::StatusOr<FederatedKind> ValidateFederated(
     uint32_t num_clients, const v0::Value_Federated& federated) {
-  const std::string_view placement = federated.type().placement().value().uri();
+  const absl::string_view placement =
+      federated.type().placement().value().uri();
   bool all_equal = federated.type().all_equal();
   if (all_equal) {
     if (federated.value_size() != 1) {

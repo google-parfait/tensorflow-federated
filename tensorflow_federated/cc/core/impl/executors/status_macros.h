@@ -31,7 +31,7 @@ inline absl::Status __get_status(absl::Status&& status) {
 // Internal-only helper for TFF_TRY
 // Appends `suffix` to the message of the original status.
 inline absl::Status __get_status(absl::Status&& status,
-                                 const std::string_view& suffix) {
+                                 const absl::string_view& suffix) {
   return absl::Status(status.code(),
                       absl::StrCat(status.message(), " ", suffix));
 }
@@ -58,7 +58,7 @@ inline T __void_or_result(absl::StatusOr<T>&& res) {
 // an expression of type `T` (in the case of `absl::StatusOr<T>`) or `void`
 // (in the case of `absl::Status`).
 //
-// The macro accepts an optional last argument for a `const std::string_view&`
+// The macro accepts an optional last argument for a `const absl::string_view&`
 // to append to the error message.
 #define TFF_TRY(expr, ...)                                                     \
   ({                                                                           \

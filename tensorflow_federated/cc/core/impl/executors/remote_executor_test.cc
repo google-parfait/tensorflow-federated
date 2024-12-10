@@ -19,7 +19,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -29,6 +28,7 @@ limitations under the License
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
 #include "include/grpcpp/channel.h"
@@ -87,10 +87,10 @@ v0::CreateValueRequest CreateValueRequestForValue(
 }
 
 v0::CreateStructRequest CreateStructRequestForValues(
-    const std::vector<std::string_view>& ref_names) {
+    const std::vector<absl::string_view>& ref_names) {
   v0::CreateStructRequest create_struct_request;
   create_struct_request.mutable_executor()->set_id(kExecutorId);
-  for (std::string_view ref_name : ref_names) {
+  for (absl::string_view ref_name : ref_names) {
     create_struct_request.add_element()->mutable_value_ref()->set_id(
         std::string(ref_name));
   }

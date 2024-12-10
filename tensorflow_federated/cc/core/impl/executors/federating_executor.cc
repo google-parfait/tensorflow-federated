@@ -19,7 +19,6 @@ limitations under the License
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -30,6 +29,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
@@ -229,7 +229,7 @@ class ExecutorValue {
   inline ValueType type() const { return type_; }
 
   absl::Status CheckArgumentType(ValueType expected_type,
-                                 std::string_view argument_identifier) const {
+                                 absl::string_view argument_identifier) const {
     if (type() == expected_type) {
       return absl::OkStatus();
     } else {
@@ -250,7 +250,7 @@ class ExecutorValue {
 };
 
 absl::Status CheckLenForUseAsArgument(const ExecutorValue& value,
-                                      std::string_view function_name,
+                                      absl::string_view function_name,
                                       size_t len) {
   TFF_TRY(value.CheckArgumentType(ExecutorValue::ValueType::STRUCTURE,
                                   function_name));
@@ -281,8 +281,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   std::shared_ptr<Executor> client_child_;
   uint32_t num_clients_;
 
-  std::string_view ExecutorName() final {
-    static constexpr std::string_view kExecutorName = "FederatingExecutor";
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName = "FederatingExecutor";
     return kExecutorName;
   }
 

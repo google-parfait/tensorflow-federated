@@ -19,7 +19,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -30,6 +29,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/string_view.h"
 #include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -97,7 +97,7 @@ class Scope {
   // Otherwise, returns a `NotFound` error if the `name` is not present in any
   // ancestor scope.
   absl::StatusOr<std::shared_ptr<ExecutorValue>> Resolve(
-      std::string_view name) const;
+      absl::string_view name) const;
 
   // Returns a human readable string for debugging the current scope.
   //
@@ -202,8 +202,8 @@ class ReferenceResolvingExecutor
       const std::shared_ptr<Scope>& scope) const;
 
  protected:
-  std::string_view ExecutorName() final {
-    static constexpr std::string_view kExecutorName =
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName =
         "ReferenceResolvingExecutor";
     return kExecutorName;
   }
@@ -313,7 +313,7 @@ absl::StatusOr<std::shared_ptr<ExecutorValue>> ScopedLambda::Call(
 }
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>> Scope::Resolve(
-    std::string_view name) const {
+    absl::string_view name) const {
   if (binding_.has_value()) {
     if (std::get<0>(*binding_) == name) {
       return std::get<1>(*binding_);

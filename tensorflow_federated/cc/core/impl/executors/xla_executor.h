@@ -17,9 +17,9 @@ limitations under the License
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_XLA_EXECUTOR_H_
 
 #include <memory>
-#include <string_view>
 
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 
 namespace tensorflow_federated {
@@ -31,7 +31,7 @@ namespace tensorflow_federated {
 // e.g. by including appropriate build dependencies. This string is
 // case-insensitive. The default value of "Host" is guaranteed to be valid.
 absl::StatusOr<std::shared_ptr<Executor>> CreateXLAExecutor(
-    std::string_view platform_name = "Host");
+    absl::string_view platform_name = "Host");
 
 }  // namespace tensorflow_federated
 

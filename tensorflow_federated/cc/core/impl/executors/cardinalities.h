@@ -17,10 +17,10 @@ limitations under the License
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_CARDINALITIES_H_
 
 #include <string>
-#include <string_view>
 
 #include "absl/container/btree_map.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {
 
@@ -31,8 +31,8 @@ namespace tensorflow_federated {
 // ordering. the `ExecutorService` uses this as an optimization to provide
 // per-cardinality `ExecutorId`s.
 using CardinalityMap = absl::btree_map<std::string, int>;
-const std::string_view kClientsUri = "clients";
-const std::string_view kServerUri = "server";
+const absl::string_view kClientsUri = "clients";
+const absl::string_view kServerUri = "server";
 
 // Returns the number of clients specified by the provided `cardinalities`.
 absl::StatusOr<int> NumClientsFromCardinalities(

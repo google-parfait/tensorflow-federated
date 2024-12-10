@@ -22,7 +22,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -343,8 +342,9 @@ class StreamingRemoteExecutor : public ExecutorBase<ValueFuture> {
 
   ~StreamingRemoteExecutor() override = default;
 
-  std::string_view ExecutorName() final {
-    static constexpr std::string_view kExecutorName = "StreamingRemoteExecutor";
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName =
+        "StreamingRemoteExecutor";
     return kExecutorName;
   }
 

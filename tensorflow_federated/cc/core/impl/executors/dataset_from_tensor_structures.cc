@@ -18,13 +18,13 @@ limitations under the License
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "tensorflow/cc/framework/ops.h"
 #include "tensorflow/cc/framework/scope.h"
@@ -53,7 +53,7 @@ std::string InputTensorName(size_t i, size_t element_index) {
 }
 
 template <typename T>
-std::string MismatchedElementsMessage(std::string_view property,
+std::string MismatchedElementsMessage(absl::string_view property,
                                       size_t element_index,
                                       const T& first_value,
                                       const T& second_value,
@@ -188,7 +188,7 @@ absl::StatusOr<GraphWithOutput> DatasetFromTensorStructuresGraph(
   tf::Node* ds_from_slice;
   scope.UpdateStatus(
       ds_from_slice_builder.Finalize(scope.graph(), &ds_from_slice));
-  static constexpr std::string_view output_tensor_name = "serialized_dataset";
+  static constexpr absl::string_view output_tensor_name = "serialized_dataset";
   tf::NodeBuilder ds_to_graph_builder(output_tensor_name, "DatasetToGraphV2");
   ds_to_graph_builder.Input(ds_from_slice, 0)
       .Attr("external_state_policy", 0)

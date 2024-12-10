@@ -18,7 +18,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -28,6 +27,7 @@ limitations under the License
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "include/grpcpp/server_context.h"
 #include "include/grpcpp/support/status.h"
@@ -208,7 +208,7 @@ grpc::Status ExecutorService::GetExecutor(grpc::ServerContext* context,
 }
 
 grpc::Status ExecutorService::RequireExecutor(
-    std::string_view method_name, const v0::ExecutorId& executor,
+    absl::string_view method_name, const v0::ExecutorId& executor,
     std::shared_ptr<Executor>& executor_out) {
   absl::StatusOr<ExecutorEntry> ex =
       executor_resolver_.ExecutorForId({executor.id()});

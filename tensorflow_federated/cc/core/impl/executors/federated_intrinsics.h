@@ -16,19 +16,19 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_FEDERATING_INTRINSICS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_FEDERATING_INTRINSICS_H_
 
-#include <string_view>
-
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {
 
-const std::string_view kFederatedMapAtClientsUri = "federated_map";
-const std::string_view kFederatedMapAtServerUri = "federated_apply";
-const std::string_view kFederatedEvalAtClientsUri = "federated_eval_at_clients";
-const std::string_view kFederatedZipAtClientsUri = "federated_zip_at_clients";
-const std::string_view kFederatedZipAtServerUri = "federated_zip_at_server";
-const std::string_view kFederatedAggregateUri = "federated_aggregate";
-const std::string_view kFederatedSelectUri = "federated_select";
+const absl::string_view kFederatedMapAtClientsUri = "federated_map";
+const absl::string_view kFederatedMapAtServerUri = "federated_apply";
+const absl::string_view kFederatedEvalAtClientsUri =
+    "federated_eval_at_clients";
+const absl::string_view kFederatedZipAtClientsUri = "federated_zip_at_clients";
+const absl::string_view kFederatedZipAtServerUri = "federated_zip_at_server";
+const absl::string_view kFederatedAggregateUri = "federated_aggregate";
+const absl::string_view kFederatedSelectUri = "federated_select";
 
 enum class FederatedIntrinsic {
   MAP,
@@ -44,7 +44,7 @@ enum class FederatedIntrinsic {
 };
 
 absl::StatusOr<FederatedIntrinsic> FederatedIntrinsicFromUri(
-    const std::string_view uri);
+    const absl::string_view uri);
 
 }  // namespace tensorflow_federated
 

@@ -15,16 +15,15 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
 
-#include <string_view>
-
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {
 
 absl::StatusOr<SequenceIntrinsic> SequenceIntrinsicFromUri(
-    const std::string_view uri) {
+    const absl::string_view uri) {
   if (uri == kSequenceMapUri) {
     return SequenceIntrinsic::MAP;
   } else if (uri == kSequenceReduceUri) {
@@ -34,7 +33,7 @@ absl::StatusOr<SequenceIntrinsic> SequenceIntrinsicFromUri(
         absl::StrCat("Unsupported sequence intrinsic URI: ", uri));
   }
 }
-std::string_view SequenceIntrinsicToUri(const SequenceIntrinsic& intrinsic) {
+absl::string_view SequenceIntrinsicToUri(const SequenceIntrinsic& intrinsic) {
   switch (intrinsic) {
     case SequenceIntrinsic::MAP:
       return kSequenceMapUri;
