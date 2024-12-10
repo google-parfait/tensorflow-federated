@@ -39,9 +39,10 @@
 #include <memory>
 #include <ostream>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <vector>
+
+#include "absl/strings/string_view.h"
 
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -253,7 +254,7 @@ class ProtoMatcher : public ProtoMatcherBase {
 // as a (text format) string.
 class ProtoStringMatcher : public ProtoMatcherBase {
  public:
-  explicit ProtoStringMatcher(std::string_view expected)
+  explicit ProtoStringMatcher(absl::string_view expected)
       : expected_(expected) {}
 
  private:
@@ -318,7 +319,7 @@ inline ::testing::PolymorphicMatcher<internal_proto::ProtoMatcher> EqualsProto(
   return ::testing::MakePolymorphicMatcher(internal_proto::ProtoMatcher(x));
 }
 inline ::testing::PolymorphicMatcher<internal_proto::ProtoStringMatcher>
-EqualsProto(std::string_view x) {
+EqualsProto(absl::string_view x) {
   return ::testing::MakePolymorphicMatcher(
       internal_proto::ProtoStringMatcher(x));
 }
