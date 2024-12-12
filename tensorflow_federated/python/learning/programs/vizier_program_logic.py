@@ -174,17 +174,17 @@ async def train_model_with_vizier(
       evaluating the model.
     train_process_factory: A factory for creating
       `tff.learning.templates.LearningProcess` to run for training.
-    train_data_source: A `tff.program.FederatedDataSource` which returns client
-      data used during training.
+    train_data_source: A `federated_language.program.FederatedDataSource` which
+      returns client data used during training.
     total_rounds: The number of rounds of training.
     num_clients: The number of clients per round of training.
     program_state_manager_factory: A factory for creating
-      `tff.program.ProgramStateManager`s for each trail.
+      `federated_language.program.ProgramStateManager`s for each trail.
     model_output_manager_factory: A factory for creating
-      `tff.program.ReleaseManager`s used to release the model.
+      `federated_language.program.ReleaseManager`s used to release the model.
     train_metrics_manager_factory: A factory for creating
-      `tff.program.ReleaseManager`s used to release training metrics for each
-      trail.
+      `federated_language.program.ReleaseManager`s used to release training
+      metrics for each trail.
     evaluation_manager_factory: A factory for creating
       `tff.learning.programs.EvaluationManager`s for each trail.
     evaluation_periodicity: Either a integer number of rounds or

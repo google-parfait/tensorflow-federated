@@ -32,6 +32,7 @@ from typing import Optional
 from absl import app
 from absl import flags
 from absl import logging
+import federated_language
 import tensorflow_federated as tff
 from vizier import pyvizier
 from vizier.client import client_abc
@@ -125,19 +126,23 @@ def main(argv: Sequence[str]) -> None:
 
   def _model_output_manager_factory(
       trial: client_abc.TrialInterface,
-  ) -> tff.program.ReleaseManager[tff.program.ReleasableStructure, str]:
+  ) -> federated_language.program.ReleaseManager[
+      federated_language.program.ReleasableStructure, str
+  ]:
     del trial  # Unused.
-    return tff.program.LoggingReleaseManager()
+    return federated_language.program.LoggingReleaseManager()
 
   def _metrics_manager_factory(
       trial: client_abc.TrialInterface,
-  ) -> tff.program.ReleaseManager[tff.program.ReleasableStructure, int]:
+  ) -> federated_language.program.ReleaseManager[
+      federated_language.program.ReleasableStructure, int
+  ]:
     del trial  # Unused.
-    return tff.program.LoggingReleaseManager()
+    return federated_language.program.LoggingReleaseManager()
 
   def _program_state_manager_factory(
       trial: client_abc.TrialInterface,
-  ) -> tff.program.ProgramStateManager:
+  ) -> federated_language.program.ProgramStateManager:
     trial_name = f'trial_{trial.id}'
     root_dir = os.path.join(_OUTPUT_DIR.value, experiment_name, trial_name)
     return tff.program.FileProgramStateManager(root_dir)
@@ -145,7 +150,9 @@ def main(argv: Sequence[str]) -> None:
   def _evaluation_manager_factory(
       trial: client_abc.TrialInterface,
   ) -> tff.learning.programs.EvaluationManager:
-    aggregated_metrics_manager = tff.program.LoggingReleaseManager()
+    aggregated_metrics_manager = (
+        federated_language.program.LoggingReleaseManager()
+    )
 
     def _create_state_manager_fn(
         name: str,
@@ -164,11 +171,13 @@ def main(argv: Sequence[str]) -> None:
     ) -> tuple[
         tff.learning.templates.LearningProcess,
         Optional[
-            tff.program.ReleaseManager[tff.program.ReleasableStructure, int]
+            federated_language.program.ReleaseManager[
+                federated_language.program.ReleasableStructure, int
+            ]
         ],
     ]:
       del name  # Unused.
-      release_manager = tff.program.LoggingReleaseManager()
+      release_manager = federated_language.program.LoggingReleaseManager()
       return (evaluation_process, release_manager)
 
     return tff.learning.programs.EvaluationManager(

@@ -85,8 +85,8 @@ def main() -> None:
 
   # Construct the platform-agnostic components.
   summary_dir = os.path.join(FLAGS.output_dir, 'summary')
-  metrics_manager = tff.program.GroupingReleaseManager([
-      tff.program.LoggingReleaseManager(),
+  metrics_manager = federated_language.program.GroupingReleaseManager([
+      federated_language.program.LoggingReleaseManager(),
       tff.program.TensorBoardReleaseManager(summary_dir),
   ])
   program_state_dir = os.path.join(..., 'program_state')
@@ -177,11 +177,11 @@ For example:
 async def program_logic(
     initialize: tff.Computation,
     train: tff.Computation,
-    data_source: tff.program.FederatedDataSource,
+    data_source: federated_language.program.FederatedDataSource,
     total_rounds: int,
     num_clients: int,
-    metrics_manager: tff.program.ReleaseManager[
-        tff.program.ReleasableStructure, int
+    metrics_manager: federated_language.program.ReleaseManager[
+        federated_language.program.ReleasableStructure, int
     ],
 ) -> None:
   state = initialize()

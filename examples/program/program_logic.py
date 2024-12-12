@@ -28,6 +28,7 @@ import asyncio
 import typing
 from typing import NamedTuple, Optional
 
+import federated_language
 import tensorflow_federated as tff
 
 
@@ -39,9 +40,9 @@ def _check_expected_type_signatures(
     *,
     initialize: tff.Computation,
     train: tff.Computation,
-    train_data_source: tff.program.FederatedDataSource,
+    train_data_source: federated_language.program.FederatedDataSource,
     evaluation: tff.Computation,
-    evaluation_data_source: tff.program.FederatedDataSource,
+    evaluation_data_source: federated_language.program.FederatedDataSource,
 ) -> None:
   """Checks the computations and data sources for the expected type signatures.
 
@@ -57,12 +58,12 @@ def _check_expected_type_signatures(
   Args:
     initialize: A `tff.Computation` to invoke before training.
     train: A `tff.Computation` to invoke during training.
-    train_data_source: A `tff.program.FederatedDataSource` which returns client
-      data used during training.
+    train_data_source: A `federated_language.program.FederatedDataSource` which
+      returns client data used during training.
     evaluation: A `tff.Computation` to invoke to evaluate the model produced
       after training.
-    evaluation_data_source: A `tff.program.FederatedDataSource` which returns
-      client data used during evaluation.
+    evaluation_data_source: A `federated_language.program.FederatedDataSource`
+      which returns client data used during evaluation.
 
   Raises:
     UnexpectedTypeSignatureError: If the computations or data sources have an
@@ -328,36 +329,43 @@ class _ProgramState(NamedTuple):
   Attributes:
     state: The server state produced at `round_num`.
     round_num: The training round.
-    iterator: The training `tff.program.FederatedDataSourceIterator`.
+    iterator: The training
+      `federated_language.program.FederatedDataSourceIterator`.
   """
 
   state: object
   round_num: int
-  iterator: tff.program.FederatedDataSourceIterator
+  iterator: federated_language.program.FederatedDataSourceIterator
 
 
 async def train_federated_model(
     *,
     initialize: tff.Computation,
     train: tff.Computation,
-    train_data_source: tff.program.FederatedDataSource,
+    train_data_source: federated_language.program.FederatedDataSource,
     evaluation: tff.Computation,
-    evaluation_data_source: tff.program.FederatedDataSource,
+    evaluation_data_source: federated_language.program.FederatedDataSource,
     total_rounds: int,
     num_clients: int,
     train_metrics_manager: Optional[
-        tff.program.ReleaseManager[tff.program.ReleasableStructure, int]
+        federated_language.program.ReleaseManager[
+            federated_language.program.ReleasableStructure, int
+        ]
     ] = None,
     evaluation_metrics_manager: Optional[
-        tff.program.ReleaseManager[tff.program.ReleasableStructure, int]
+        federated_language.program.ReleaseManager[
+            federated_language.program.ReleasableStructure, int
+        ]
     ] = None,
     model_output_manager: Optional[
-        tff.program.ReleaseManager[
-            tff.program.ReleasableStructure, Optional[object]
+        federated_language.program.ReleaseManager[
+            federated_language.program.ReleasableStructure, Optional[object]
         ]
     ] = None,
     program_state_manager: Optional[
-        tff.program.ProgramStateManager[tff.program.ProgramStateStructure]
+        federated_language.program.ProgramStateManager[
+            federated_language.program.ProgramStateStructure
+        ]
     ] = None,
 ) -> None:
   """Trains a federated model for some number of rounds.
@@ -403,25 +411,29 @@ async def train_federated_model(
   Args:
     initialize: A `tff.Computation` to invoke before training.
     train: A `tff.Computation` to invoke during training.
-    train_data_source: A `tff.program.FederatedDataSource` which returns client
-      data used during training.
+    train_data_source: A `federated_language.program.FederatedDataSource` which
+      returns client data used during training.
     evaluation: A `tff.Computation` to invoke to evaluate the model produced
       after training.
-    evaluation_data_source: A `tff.program.FederatedDataSource` which returns
-      client data used during evaluation.
+    evaluation_data_source: A `federated_language.program.FederatedDataSource`
+      which returns client data used during evaluation.
     total_rounds: The number of training rounds to run.
     num_clients: The number of clients for each round of training and for
       evaluation.
-    train_metrics_manager: An optional `tff.program.ReleaseManager` used to
-      release training metrics.
-    evaluation_metrics_manager: An optional `tff.program.ReleaseManager` used to
-      release evaluation metrics.
-    model_output_manager: An optional `tff.program.ReleaseManager` used to
-      release training output.
-    program_state_manager: An optional `tff.program.ProgramStateManager` used to
-      save program state for fault tolerance.
+    train_metrics_manager: An optional
+      `federated_language.program.ReleaseManager` used to release training
+      metrics.
+    evaluation_metrics_manager: An optional
+      `federated_language.program.ReleaseManager` used to release evaluation
+      metrics.
+    model_output_manager: An optional
+      `federated_language.program.ReleaseManager` used to release training
+      output.
+    program_state_manager: An optional
+      `federated_language.program.ProgramStateManager` used to save program
+      state for fault tolerance.
   """
-  tff.program.check_in_federated_context()
+  federated_language.program.check_in_federated_context()
   _check_expected_type_signatures(
       initialize=initialize,
       train=train,
@@ -432,13 +444,14 @@ async def train_federated_model(
 
   # Cast the `program_state_manager` to a more specific type: a manager that
   # loads and saves `_ProgramState`s instead of a manager that loads and saves
-  # `tff.program.ProgramStateStructure`s. This allows the program logic to:
+  # `federated_language.program.ProgramStateStructure`s. This allows the program
+  # logic to:
   # *   Keep `_ProgramState` private.
   # *   Have static typing within the program logic.
   # *   Require callers to provide a `program_state_manager` capable of handling
-  #     any `tff.program.ProgramStateStructure`.
+  #     any `federated_language.program.ProgramStateStructure`.
   program_state_manager = typing.cast(
-      Optional[tff.program.ProgramStateManager[_ProgramState]],
+      Optional[federated_language.program.ProgramStateManager[_ProgramState]],
       program_state_manager,
   )
 
@@ -451,7 +464,7 @@ async def train_federated_model(
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
   if program_state_manager is not None:
-    state = await tff.program.materialize_value(state)
+    state = await federated_language.program.materialize_value(state)
     structure = _ProgramState(
         state=state,
         round_num=0,

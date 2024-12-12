@@ -38,7 +38,7 @@ class FileProgramStateManager(
         federated_language.program.ProgramStateStructure
     ]
 ):
-  """A `tff.program.ProgramStateManager` that is backed by a file system.
+  """A `federated_language.program.ProgramStateManager` that is backed by a file system.
 
   A `tff.program.FileProgramStateManager` is a utility for saving and loading
   program state to a file system in a federated program and is used to implement
@@ -47,7 +47,8 @@ class FileProgramStateManager(
 
   Program state is saved to the file system using the SavedModel (see
   `tf.saved_model`) format. When the program state is saved, each
-  `tff.program.MaterializableValueReference` is materialized and each
+  `federated_language.program.MaterializableValueReference` is materialized and
+  each
   `tff.Serializable` is serialized. The structure of the program state is
   discarded, but is required to load the program state.
 
@@ -67,7 +68,7 @@ class FileProgramStateManager(
       keep_first: bool = True,
       keep_every_k: int = 1,
   ):
-    """Returns an initialized `tff.program.ProgramStateManager`.
+    """Returns an initialized `federated_language.program.ProgramStateManager`.
 
     Args:
       root_dir: A path on the file system to save program state. If this path
@@ -261,7 +262,8 @@ class FileProgramStateManager(
     """Saves `program_state` for the given `version`.
 
     Args:
-      program_state: A `tff.program.ProgramStateStructure` to save.
+      program_state: A `federated_language.program.ProgramStateStructure` to
+        save.
       version: A strictly increasing integer representing the version of a saved
         `program_state`.
 

@@ -140,7 +140,8 @@ class AutoVersionAdvanceingStateManager:
     """Saves `program_state` and automatically advances the version number.
 
     Args:
-      program_state: A `tff.program.ProgramStateStructure` to save.
+      program_state: A `federated_language.program.ProgramStateStructure` to
+        save.
     """
     async with self._lock:
       await self._state_manager.save(program_state, version=self._next_version)
@@ -161,7 +162,9 @@ class EvaluationManager:
   3.  If the program has restarted, load the most recent state of in-progress
       evaluations and restart each of the evaluations.
 
-  This class uses N + 1 `tff.program.ProgramStateManagers` to enable resumable
+  This class uses N + 1 `federated_language.program.ProgramStateManagers` to
+  enable
+  resumable
   evaluations.
 
   *   The first state managers is for this class itself, and manages the list of
@@ -204,18 +207,19 @@ class EvaluationManager:
     """Creates an EvaluationManager.
 
     Args:
-      data_source: A `tff.program.FederatedDataSource` that the manager will use
-        to create iterators for evaluation loops.
-      aggregated_metrics_manager: A `tff.program.ReleaseManager` for releasing
-        the total aggregated metrics at the end of the evaluation loop.
+      data_source: A `federated_language.program.FederatedDataSource` that the
+        manager will use to create iterators for evaluation loops.
+      aggregated_metrics_manager: A `federated_language.program.ReleaseManager`
+        for releasing the total aggregated metrics at the end of the evaluation
+        loop.
       create_state_manager_fn: A callable that returns a
         `tff.program.FileProgramStateManager` that will be used to create the
         overall evaluation manager's state manager, and each per evaluation loop
         state manager that will enable resuming and checkpointing.
       create_process_fn: A callable that returns a 2-tuple of
         `tff.learning.templates.LearningProcess` and
-        `tff.program.ReleaseManager` for the per-evaluation round metrics
-        releasing that will used be to start each evaluation loop.
+        `federated_language.program.ReleaseManager` for the per-evaluation round
+        metrics releasing that will used be to start each evaluation loop.
       cohort_size: An integer denoting the size of each evaluation round to
         select from the iterator created from `data_source`.
       duration: The `datetime.timedelta` duration to run each evaluation loop.
@@ -587,22 +591,22 @@ async def _run_evaluation(
       evaluate the model produced after training. This process must have been
       created using `tff.learning.algorithms.build_fed_eval`.
     evaluation_name: A str name of the evaluation computation.
-    evaluation_data_source: A `tff.program.FederatedDataSource` which returns
-      client data used during evaluation.
+    evaluation_data_source: A `federated_language.program.FederatedDataSource`
+      which returns client data used during evaluation.
     evaluation_per_round_clients_number: Number of clients to evaluate in each
       round.
     evaluation_end_time: Expected end time for running the evaluation. Multiple
       evaluation rounds will be run until the `evaluation_end_time` has reached.
       If the `evaluation_end_time` has passed, only one round will be run.
-    per_round_metrics_manager: A `tff.program.ReleaseManager` that releases the
-      per-round evaluation metrics from platform to user storage. Use a
+    per_round_metrics_manager: A `federated_language.program.ReleaseManager`
+      that releases the per-round evaluation metrics from platform to user
+      storage. Use a `tff.programs.GroupingReleaseManager` to utilize multiple
+      release managers. If `None`, per-round metrics are not released.
+    aggregated_metrics_manager: A `federated_language.program.ReleaseManager`
+      that releases the evaluation metrics aggregated across the entire
+      evaluation loop from platform to user storage. Use a
       `tff.programs.GroupingReleaseManager` to utilize multiple release
-      managers. If `None`, per-round metrics are not released.
-    aggregated_metrics_manager: A `tff.program.ReleaseManager` that releases the
-      evaluation metrics aggregated across the entire evaluation loop from
-      platform to user storage. Use a `tff.programs.GroupingReleaseManager` to
-      utilize multiple release managers. If `None`, aggregated evaluation
-      metrics are not released.
+      managers. If `None`, aggregated evaluation metrics are not released.
 
   Raises:
     TypeError: If result of `evaluation_process` is not a value of

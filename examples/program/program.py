@@ -52,6 +52,7 @@ from typing import Union
 
 from absl import app
 from absl import flags
+import federated_language
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -97,9 +98,11 @@ def main(argv: Sequence[str]) -> None:
   # Configure the platform-agnostic components.
 
   # Create release managers with access to customer storage.
-  train_metrics_managers = [tff.program.LoggingReleaseManager()]
-  evaluation_metrics_managers = [tff.program.LoggingReleaseManager()]
-  model_output_manager = tff.program.LoggingReleaseManager()
+  train_metrics_managers = [federated_language.program.LoggingReleaseManager()]
+  evaluation_metrics_managers = [
+      federated_language.program.LoggingReleaseManager()
+  ]
+  model_output_manager = federated_language.program.LoggingReleaseManager()
 
   if _OUTPUT_DIR.value is not None:
     summary_dir = os.path.join(_OUTPUT_DIR.value, 'summary')
@@ -113,20 +116,24 @@ def main(argv: Sequence[str]) -> None:
   # Group the metrics release managers; program logic may accept a single
   # release manager to make the implementation of the program logic simpler and
   # easier to maintain, the program can use a
-  # `tff.program.GroupingReleaseManager` to release values to multiple
-  # destinations.
+  # `federated_language.program.GroupingReleaseManager` to release values to
+  # multiple destinations.
   #
   # Filter the metrics before they are released; the program can use a
-  # `tff.program.FilteringReleaseManager` to limit the values that are
-  # released by the program logic. If a formal privacy guarantee is not
+  # `federated_language.program.FilteringReleaseManager` to limit the values
+  # that are released by the program logic. If a formal privacy guarantee is not
   # required, it may be ok to release all the metrics.
-  train_metrics_manager = tff.program.FilteringReleaseManager(
-      tff.program.GroupingReleaseManager(train_metrics_managers),
+  train_metrics_manager = federated_language.program.FilteringReleaseManager(
+      federated_language.program.GroupingReleaseManager(train_metrics_managers),
       _filter_metrics,
   )
-  evaluation_metrics_manager = tff.program.FilteringReleaseManager(
-      tff.program.GroupingReleaseManager(evaluation_metrics_managers),
-      _filter_metrics,
+  evaluation_metrics_manager = (
+      federated_language.program.FilteringReleaseManager(
+          federated_language.program.GroupingReleaseManager(
+              evaluation_metrics_managers
+          ),
+          _filter_metrics,
+      )
   )
 
   # Create a program state manager with access to platform storage.

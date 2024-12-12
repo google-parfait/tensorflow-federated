@@ -27,9 +27,10 @@ from tensorflow_federated.python.program import serialization_utils
 class DatasetDataSourceIterator(
     federated_language.program.FederatedDataSourceIterator
 ):
-  """A `tff.program.FederatedDataSourceIterator` backed by `tf.data.Dataset`s.
+  """A `federated_language.program.FederatedDataSourceIterator` backed by `tf.data.Dataset`s.
 
-  A `tff.program.FederatedDataSourceIterator` backed by a sequence of
+  A `federated_language.program.FederatedDataSourceIterator` backed by a
+  sequence of
   `tf.data.Dataset's, one `tf.data.Dataset' per client. It selects datasources
   uniformly at random, with replacement over successive calls of `select()` but
   without replacement within a single call of `select()`.
@@ -135,9 +136,9 @@ class DatasetDataSourceIterator(
 
 
 class DatasetDataSource(federated_language.program.FederatedDataSource):
-  """A `tff.program.FederatedDataSource` backed by `tf.data.Dataset`s.
+  """A `federated_language.program.FederatedDataSource` backed by `tf.data.Dataset`s.
 
-  A `tff.program.FederatedDataSource` backed by a sequence of
+  A `federated_language.program.FederatedDataSource` backed by a sequence of
   `tf.data.Dataset's, one `tf.data.Dataset' per client, and selects data
   uniformly random with replacement.
   """

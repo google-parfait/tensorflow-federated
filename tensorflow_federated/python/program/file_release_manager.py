@@ -65,7 +65,7 @@ class CSVFileReleaseManager(
         federated_language.program.ReleasableStructure, int
     ]
 ):
-  """A `tff.program.ReleaseManager` that releases values to a CSV file.
+  """A `federated_language.program.ReleaseManager` that releases values to a CSV file.
 
   A `tff.program.CSVFileReleaseManager` is a utility for releasing values
   from a federated program to a CSV file and is used to release values from
@@ -73,7 +73,9 @@ class CSVFileReleaseManager(
 
   Values are released to the file system as a CSV file and are quoted as
   strings. When the value is released, each
-  `tff.program.MaterializableValueReference` is materialized. The value is then
+  `federated_language.program.MaterializableValueReference` is materialized. The
+  value
+  is then
   flattened, converted to a `numpy.ndarray`, and then converted to a nested list
   of Python scalars, and released as a CSV file. For example, `1` will be
   written as `'1'` and `tf.constant([[1, 1], [1, 1]])` will be written as
@@ -261,7 +263,7 @@ class CSVFileReleaseManager(
     writing `value`.
 
     Args:
-      value: A `tff.program.ReleasableStructure` to release.
+      value: A `federated_language.program.ReleasableStructure` to release.
       key: An integer used to reference the released `value`; `key` represents a
         step in a federated program.
     """
@@ -295,7 +297,7 @@ class SavedModelFileReleaseManager(
         federated_language.program.Key,
     ]
 ):
-  """A `tff.program.ReleaseManager` that releases values to a file system.
+  """A `federated_language.program.ReleaseManager` that releases values to a file system.
 
   A `tff.program.SavedModelFileReleaseManager` is a utility for releasing values
   from a federated program to a file system and is used to release values from
@@ -303,7 +305,8 @@ class SavedModelFileReleaseManager(
 
   Values are released to the file system using the SavedModel (see
   `tf.saved_model`) format. When the value is released, each
-  `tff.program.MaterializableValueReference` is materialized. The structure of
+  `federated_language.program.MaterializableValueReference` is materialized. The
+  structure of
   the value is discarded.
 
   Note: The SavedModel format can only contain values that can be converted to a
@@ -355,7 +358,7 @@ class SavedModelFileReleaseManager(
     """Releases `value` from a federated program.
 
     Args:
-      value: A `tff.program.ReleasableStructure` to release.
+      value: A `federated_language.program.ReleasableStructure` to release.
       key: Used to reference (in the file system) the released `value`.
     """
     path = self._get_path_for_key(key)

@@ -28,7 +28,6 @@ py_library(
         ":file_release_manager",
         ":native_platform",
         ":tensorboard_release_manager",
-        "@federated_language//federated_language",
     ],
 )
 

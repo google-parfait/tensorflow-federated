@@ -27,7 +27,7 @@ program logic that has a type signature.
 ```python {.good}
 async def program_logic(
     train: tff.Computation,
-    data_source: tff.program.FederatedDataSource,
+    data_source: federated_language.program.FederatedDataSource,
     ...
 ) -> None:
   """Trains a federated model for some number of rounds.
@@ -53,14 +53,14 @@ the program logic that has a type signature.
 ```python {.good}
 def _check_program_logic_type_signatures(
     train: tff.Computation,
-    data_source: tff.program.FederatedDataSource,
+    data_source: federated_language.program.FederatedDataSource,
     ...
 ) -> None:
   ...
 
 async def program_logic(
     train: tff.Computation,
-    data_source: tff.program.FederatedDataSource,
+    data_source: federated_language.program.FederatedDataSource,
     ...
 ) -> None:
   _check_program_logic_type_signatures(
@@ -73,13 +73,13 @@ async def program_logic(
 ### Type Annotations
 
 **Do** provide a well defined Python type for each
-[`tff.program.ReleaseManager`](https://www.tensorflow.org/federated/api_docs/python/tff/program/ReleaseManager)
+[`federated_language.program.ReleaseManager`](https://www.tensorflow.org/federated/api_docs/python/tff/program/ReleaseManager)
 parameter supplied to the program logic.
 
 ```python {.good}
 async def program_logic(
     metrics_manager: Optional[
-        tff.program.ReleaseManager[tff.program.ReleasableStructure, int]
+        federated_language.program.ReleaseManager[federated_language.program.ReleasableStructure, int]
     ] = None,
     ...
 ) -> None:
@@ -98,7 +98,7 @@ async def program_logic(
 
 ```python {.bad}
 async def program_logic(
-    metrics_manager: Optional[tff.program.ReleaseManager] = None,
+    metrics_manager: Optional[federated_language.program.ReleaseManager] = None,
     ...
 ) -> None:
   ...
@@ -148,7 +148,7 @@ async def program_loic(...) -> None:
 
 ```python {.good}
 async def program_logic(
-    metrics_manager: Optional[tff.program.ReleaseManager] = None,
+    metrics_manager: Optional[federated_language.program.ReleaseManager] = None,
     ...
 ) -> None:
   """Trains a federated model for some number of rounds.

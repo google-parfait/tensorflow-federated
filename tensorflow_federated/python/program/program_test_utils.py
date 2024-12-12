@@ -36,7 +36,7 @@ T = TypeVar('T')
 class TestMaterializableValueReference(
     federated_language.program.MaterializableValueReference
 ):
-  """A test implementation of `tff.program.MaterializableValueReference`."""
+  """A test implementation of `federated_language.program.MaterializableValueReference`."""
 
   def __init__(self, value: federated_language.program.MaterializedValue):
     self._value = value

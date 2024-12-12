@@ -3,7 +3,10 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 py_library(
     name = "data_sources",
     srcs = ["data_sources.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_library(
@@ -23,6 +26,7 @@ py_binary(
         ":learning_process",
         ":vizier_service",
         "//tensorflow_federated",
+        "@federated_language//federated_language",
     ],
 )
 

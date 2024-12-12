@@ -8,12 +8,6 @@ and this project adheres to
 
 ## Unreleased
 
-*   Updated `MeasuredProcessOutput` to be a `NamedTuple`.
-*   Added number of round retries to training metrics in
-    `tff.learning.programs.train_model`.
-*   Fix buffer overrun in `AggVectorIterator` when passing in an empty
-    `TensorData`.
-
 ### Added
 
 *   `tff.StructType.items()`, this API makes it easier to iterate over
@@ -55,6 +49,12 @@ and this project adheres to
     of the state of a `DPTensorAggregatorBundle`.
 *   `DPTensorAggregatorBundle::TakeOutputs` calls the inner aggregator's
     `ReportWithEpsilonAndDelta` methods and stitches the outputs together.
+*   Number of round retries to training metrics in
+    `tff.learning.programs.train_model`.
+
+### Fixed
+
+*   Buffer overrun in `AggVectorIterator` when passing in an empty `TensorData`.
 
 ### Changed
 
@@ -68,10 +68,40 @@ and this project adheres to
     check that the input is valid before passing to the aggregators it contains.
 *   Moved the tests of compatibility from `DPQuantileAggregator::MergeWith` to
     `DPQuantileAggregator::IsCompatible`.
+*   Updated `MeasuredProcessOutput` to be a `NamedTuple`.
 
 ### Removed
 
 *   `tff.types.tensorflow_to_type`, this function is no longer used.
+*   `tff.program.X`, use `federated_language.program` instead, for each:
+    *   `FederatedDataSource`
+    *   `FederatedDataSourceIterator`
+    *   `check_in_federated_context`
+    *   `ComputationArg`
+    *   `contains_only_server_placed_data`
+    *   `FederatedContext`
+    *   `LoggingReleaseManager`
+    *   `MemoryReleaseManager`
+    *   `ProgramStateExistsError`
+    *   `ProgramStateManager`
+    *   `ProgramStateNotFoundError`
+    *   `ProgramStateStructure`
+    *   `ProgramStateValue`
+    *   `DelayedReleaseManager`
+    *   `FilteringReleaseManager`
+    *   `GroupingReleaseManager`
+    *   `NotFilterableError`
+    *   `PeriodicReleaseManager`
+    *   `ReleasableStructure`
+    *   `ReleasableValue`
+    *   `ReleaseManager`
+    *   `MaterializableStructure`
+    *   `MaterializableTypeSignature`
+    *   `MaterializableValue`
+    *   `MaterializableValueReference`
+    *   `materialize_value`
+    *   `MaterializedStructure`
+    *   `MaterializedValue`
 
 ## Release 0.88.0
 

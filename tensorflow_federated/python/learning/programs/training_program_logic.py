@@ -48,8 +48,8 @@ class ProgramState(NamedTuple):
     round_number: The current round number.
     next_evaluation_timestamp_seconds: The timestamp of the next evaluation in
       seconds.
-    data_iterator: The `tff.program.FederatedDataSourceIterator` used for
-      training.
+    data_iterator: The `federated_language.program.FederatedDataSourceIterator`
+      used for training.
   """
 
   state: composers.LearningAlgorithmState
@@ -164,8 +164,8 @@ async def train_model(
       the train process. Its type signature should match the `type_signature` of
       the result of `train_process.initialize`. If not specified, use the
       retsult of `train_process.initialize`.
-    train_data_source: A `tff.program.FederatedDataSource` which returns client
-      data used during training.
+    train_data_source: A `federated_language.program.FederatedDataSource` which
+      returns client data used during training.
     train_per_round_clients: The number of clients per round of training.
     train_total_rounds: Total number of rounds of training.
     should_retry_round: A Callable that takes the
@@ -173,13 +173,14 @@ async def train_model(
       `training_process.next` and returns whether the round should be retried.
       If a round should be retried, the program will roll back to the state of
       the previous round and retry this round.
-    program_state_manager: A `tff.program.ProgramStateManager` used to save
-      program state for fault tolerance.
-    model_output_manager: A `tff.program.ReleaseManager` to release the model,
-      the results can be used for building inference models after training, or
-      warm-starting future training loops.
-    train_metrics_manager: A `tff.program.ReleaseManager` to release metrics of
-      training. Use `tff.program.GroupingReleaseManager` to supply multiple
+    program_state_manager: A `federated_language.program.ProgramStateManager`
+      used to save program state for fault tolerance.
+    model_output_manager: A `federated_language.program.ReleaseManager` to
+      release the model, the results can be used for building inference models
+      after training, or warm-starting future training loops.
+    train_metrics_manager: A `federated_language.program.ReleaseManager` to
+      release metrics of training. Use
+      `federated_language.program.GroupingReleaseManager` to supply multiple
       release managers.
     evaluation_manager: An `EvaluationManager` used to create a state manager
       for each evaluation loop that is forked off from the training loop.

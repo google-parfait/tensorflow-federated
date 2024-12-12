@@ -28,7 +28,7 @@ class TensorBoardReleaseManager(
         federated_language.program.ReleasableStructure, int
     ]
 ):
-  """A `tff.program.ReleaseManager` that releases values to TensorBoard.
+  """A `federated_language.program.ReleaseManager` that releases values to TensorBoard.
 
   A `tff.program.TensorBoardReleaseManager` is a utility for releasing values
   from a federated program to TensorBoard and is used to release values from
@@ -73,7 +73,7 @@ class TensorBoardReleaseManager(
     """Releases `value` from a federated program.
 
     Args:
-      value: A `tff.program.ReleasableStructure` to release.
+      value: A `federated_language.program.ReleasableStructure` to release.
       key: A integer used to reference the released `value`; `key` represents a
         step in a federated program.
     """

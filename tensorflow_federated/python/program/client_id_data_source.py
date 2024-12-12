@@ -26,9 +26,11 @@ from tensorflow_federated.python.program import serialization_utils
 class ClientIdDataSourceIterator(
     federated_language.program.FederatedDataSourceIterator
 ):
-  """A `tff.program.FederatedDataSourceIterator` backed by client ids.
+  """A `federated_language.program.FederatedDataSourceIterator` backed by client ids.
 
-  A `tff.program.FederatedDataSourceIterator` backed by sequence of client ids,
+  A `federated_language.program.FederatedDataSourceIterator` backed by sequence
+  of
+  client ids,
   one client id per client. It selects client ids uniformly at random, with
   replacement over successive calls of `select()` but without replacement within
   a single call of `select()`.
@@ -101,7 +103,7 @@ class ClientIdDataSourceIterator(
 
 
 class ClientIdDataSource(federated_language.program.FederatedDataSource):
-  """A `tff.program.FederatedDataSource` backed by client ids."""
+  """A `federated_language.program.FederatedDataSource` backed by client ids."""
 
   def __init__(self, client_ids: Sequence[str]):
     """Returns an initialized `tff.program.ClientIdDataSource`.

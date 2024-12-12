@@ -27,7 +27,7 @@ from tensorflow_federated.python.program import structure_utils
 class NativeValueReference(
     federated_language.program.MaterializableValueReference
 ):
-  """A `tff.program.MaterializableValueReference` backed by a task."""
+  """A `federated_language.program.MaterializableValueReference` backed by a task."""
 
   def __init__(
       self,
@@ -136,7 +136,7 @@ def _create_structure_of_references(
 
 
 class NativeFederatedContext(federated_language.program.FederatedContext):
-  """A `tff.program.FederatedContext` backed by an execution context."""
+  """A `federated_language.program.FederatedContext` backed by an execution context."""
 
   def __init__(
       self, context: federated_language.framework.AsyncExecutionContext
@@ -158,13 +158,13 @@ class NativeFederatedContext(federated_language.program.FederatedContext):
     Args:
       comp: The `tff.Computation` being invoked.
       arg: The optional argument of `comp`; server-placed values must be
-        represented by `tff.program.MaterializableStructure`, and client-placed
-        values must be represented by structures of values returned by a
-        `tff.program.FederatedDataSourceIterator`.
+        represented by `federated_language.program.MaterializableStructure`, and
+        client-placed values must be represented by structures of values
+        returned by a `federated_language.program.FederatedDataSourceIterator`.
 
     Returns:
       The result of invocation; a structure of
-      `tff.program.MaterializableValueReference`.
+      `federated_language.program.MaterializableValueReference`.
 
     Raises:
       ValueError: If the result type of the invoked computation does not contain

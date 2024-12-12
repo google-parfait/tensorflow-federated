@@ -11,20 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The `tff.program.FederatedDataSource`s for this federated program."""
+"""The `federated_language.program.FederatedDataSource`s for this federated program."""
 
+import federated_language
 import tensorflow as tf
 import tensorflow_federated as tff
 
 
-def create_data_sources() -> (
-    tuple[
-        tff.program.FederatedDataSource,
-        tff.program.FederatedDataSource,
-        tf.TensorSpec,
-    ]
-):
-  """Creates the `tff.program.FederatedDataSource`s for this program.
+def create_data_sources() -> tuple[
+    federated_language.program.FederatedDataSource,
+    federated_language.program.FederatedDataSource,
+    tf.TensorSpec,
+]:
+  """Creates the `federated_language.program.FederatedDataSource`s for this program.
 
   Returns:
     A `tuple` containing the train data source, evaluation data source, and the

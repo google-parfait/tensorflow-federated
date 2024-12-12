@@ -20,6 +20,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -45,7 +46,9 @@ def _create_mock_data_source_iterator(
     data: Optional[object] = None,
 ) -> mock.Mock:
   mock_data_source_iterator = mock.create_autospec(
-      tff.program.FederatedDataSourceIterator, spec_set=True, instance=True
+      federated_language.program.FederatedDataSourceIterator,
+      spec_set=True,
+      instance=True,
   )
   type(mock_data_source_iterator).federated_type = mock.PropertyMock(
       spec=tff.FederatedType, return_value=federated_type, spec_set=True
@@ -57,13 +60,17 @@ def _create_mock_data_source_iterator(
 def _create_mock_data_source(
     *,
     federated_type: tff.FederatedType,
-    iterator: Optional[tff.program.FederatedDataSourceIterator] = None,
+    iterator: Optional[
+        federated_language.program.FederatedDataSourceIterator
+    ] = None,
 ) -> mock.Mock:
   if iterator is None:
     iterator = _create_mock_data_source_iterator(federated_type=federated_type)
 
   mock_data_source = mock.create_autospec(
-      tff.program.FederatedDataSource, spec_set=True, instance=True
+      federated_language.program.FederatedDataSource,
+      spec_set=True,
+      instance=True,
   )
   type(mock_data_source).federated_type = mock.PropertyMock(
       spec=tff.Type, return_value=federated_type, spec_set=True
@@ -131,7 +138,9 @@ def _create_mock_program_state_manager(
     version: int = 0,
 ) -> mock.Mock:
   mock_program_state_manager = mock.create_autospec(
-      tff.program.ProgramStateManager, spec_set=True, instance=True
+      federated_language.program.ProgramStateManager,
+      spec_set=True,
+      instance=True,
   )
   mock_program_state_manager.load_latest.return_value = (program_state, version)
   return mock_program_state_manager
@@ -309,13 +318,13 @@ class TrainFederatedModelTest(
         iterator=mock_evaluation_data_source_iterator,
     )
     mock_train_metrics_manager = mock.create_autospec(
-        tff.program.ReleaseManager, spec_set=True, instance=True
+        federated_language.program.ReleaseManager, spec_set=True, instance=True
     )
     mock_evaluation_metrics_manager = mock.create_autospec(
-        tff.program.ReleaseManager, spec_set=True, instance=True
+        federated_language.program.ReleaseManager, spec_set=True, instance=True
     )
     mock_model_output_manager = mock.create_autospec(
-        tff.program.ReleaseManager, spec_set=True, instance=True
+        federated_language.program.ReleaseManager, spec_set=True, instance=True
     )
     if mock_program_state_manager_factory is not None:
       if round_num != 0:
@@ -458,13 +467,13 @@ class TrainFederatedModelIntegrationTest(
     evaluation_data_source = tff.program.DatasetDataSource(datasets)
     num_clients = 3
     mock_train_metrics_manager = mock.create_autospec(
-        tff.program.ReleaseManager, spec_set=True, instance=True
+        federated_language.program.ReleaseManager, spec_set=True, instance=True
     )
     mock_evaluation_metrics_manager = mock.create_autospec(
-        tff.program.ReleaseManager, spec_set=True, instance=True
+        federated_language.program.ReleaseManager, spec_set=True, instance=True
     )
     mock_model_output_manager = mock.create_autospec(
-        tff.program.ReleaseManager, spec_set=True, instance=True
+        federated_language.program.ReleaseManager, spec_set=True, instance=True
     )
     program_state_dir = self.create_tempdir()
     program_state_manager = tff.program.FileProgramStateManager(

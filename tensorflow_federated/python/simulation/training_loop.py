@@ -126,12 +126,13 @@ def run_training_process(
       round.
     rounds_per_evaluation: The number of training rounds to run between each
       invocation of `evaluation_fn`.
-    program_state_manager: An optional `tff.program.ProgramStateManager` to use
-      to save program state for fault tolerance.
+    program_state_manager: An optional
+      `federated_language.program.ProgramStateManager` to use to save program
+      state for fault tolerance.
     rounds_per_saving_program_state: The number of training rounds to run
       between saving program state.
-    metrics_managers: An optional list of `tff.program.ReleaseManagers`s to use
-      to save metrics.
+    metrics_managers: An optional list of
+      `federated_language.program.ReleaseManagers`s to use to save metrics.
 
   Returns:
     The `state` of the training process after training.
