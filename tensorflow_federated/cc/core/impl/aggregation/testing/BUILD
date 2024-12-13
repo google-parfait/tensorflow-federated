@@ -81,5 +81,9 @@ cc_library(
     testonly = True,
     hdrs = ["test_data.h"],
     visibility = ["//visibility:public"],
-    deps = ["//tensorflow_federated/cc/core/impl/aggregation/core:tensor"],
+    deps = [
+        "//tensorflow_federated/cc/core/impl/aggregation/core:mutable_string_data",
+        "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
+        "@com_google_absl//absl/strings:string_view",
+    ],
 )
