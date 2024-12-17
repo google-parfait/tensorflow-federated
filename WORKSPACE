@@ -112,9 +112,9 @@ http_archive(
         "//third_party/tensorflow:python_toolchain.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
-    sha256 = "ce357fd0728f0d1b0831d1653f475591662ec5bca736a94ff789e6b1944df19f",
-    strip_prefix = "tensorflow-2.14.0",
-    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.14.0.tar.gz",
+    sha256 = "d7876f4bb0235cac60eb6316392a7c48676729860da1ab659fb440379ad5186d",
+    strip_prefix = "tensorflow-2.18.0",
+    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.18.0.tar.gz",
 )
 
 # This commit is determined by
@@ -182,11 +182,35 @@ http_archive(
 # Transitive dependencies, grouped by direct dependency.
 #
 
+# Copied from `@org_tensorflow//:WORKSPACE`.
+load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
+
+tf_workspace3()
+
+# Initialize hermetic Python
+load("@local_tsl//third_party/py:python_init_rules.bzl", "python_init_rules")
+
+python_init_rules()
+
+load("@local_tsl//third_party/py:python_init_repositories.bzl", "python_init_repositories")
+
+python_init_repositories(
+    default_python_version = "system",
+    requirements = {
+        "3.9": "@org_tensorflow//:requirements_lock_3_9.txt",
+        "3.10": "@org_tensorflow//:requirements_lock_3_10.txt",
+        "3.11": "@org_tensorflow//:requirements_lock_3_11.txt",
+        "3.12": "@org_tensorflow//:requirements_lock_3_12.txt",
+    },
+)
+
+load("@local_tsl//third_party/py:python_init_toolchains.bzl", "python_init_toolchains")
+
+python_init_toolchains()
+
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
 py_repositories()
-
-load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 
 tf_workspace3()
 
@@ -211,3 +235,10 @@ protobuf_deps()
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
+
+load(
+    "@local_tsl//third_party/gpus/cuda/hermetic:cuda_configure.bzl",
+    "cuda_configure",
+)
+
+cuda_configure(name = "local_config_cuda")
