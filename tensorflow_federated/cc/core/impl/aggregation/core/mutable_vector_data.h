@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"
@@ -30,7 +31,7 @@ namespace aggregation {
 // MutableVectorData implements TensorData by wrapping std::vector and using it
 // as a backing storage. MutableVectorData can be mutated using std::vector
 // methods.
-template <typename T>
+template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
 class MutableVectorData : public std::vector<T>, public TensorData {
  public:
   // Derive constructors from the base vector class.
