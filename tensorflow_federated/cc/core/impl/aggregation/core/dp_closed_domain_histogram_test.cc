@@ -15,6 +15,7 @@
  */
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_closed_domain_histogram.h"
 
+#include <cmath>
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
@@ -612,6 +613,45 @@ TEST(DPClosedDomainHistogramTest, NoiseAddedForSmallEpsilons) {
   // match (num_inputs, num_inputs, 0)
   EXPECT_THAT(values, testing::Not(testing::ElementsAre(
                           Eq(num_inputs), Eq(num_inputs), Eq(0))));
+}
+
+// Ensure that we have floating point output when we request it.
+TEST(DPClosedDomainHistogramTest, FloatTest) {
+  Intrinsic intrinsic = CreateIntrinsic<float, float>(/*epsilon=*/0.01,
+                                                      /*delta=*/1e-8,
+                                                      /*l0_bound=*/2,
+                                                      /*linfinity_bound=*/1);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  int num_inputs = 4000;
+  for (int i = 0; i < num_inputs; i++) {
+    Tensor keys =
+        Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
+            .value();
+    Tensor values =
+        Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({1, 0})).value();
+    auto acc_status = aggregator->Accumulate({&keys, &values});
+    EXPECT_THAT(acc_status, IsOk());
+  }
+  EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
+  EXPECT_TRUE(aggregator->CanReport());
+
+  auto report = std::move(*aggregator).Report();
+  EXPECT_THAT(report, IsOk());
+
+  // There must be 2 columns, one for keys and one for aggregated values.
+  ASSERT_EQ(report->size(), 2);
+
+  // The type of the noisy values should be float.
+  ASSERT_EQ(report.value()[1].dtype(), DT_FLOAT);
+
+  // Because the output spec calls for floats and our noise-generating code
+  // should sample according to the output spec, we expect that the fractional
+  // part of each noisy value is non-zero.
+  auto noisy_values = report.value()[1].AsSpan<float>();
+  for (float noisy_value : noisy_values) {
+    noisy_value = std::abs(noisy_value);
+    EXPECT_THAT(noisy_value - std::floor(noisy_value), testing::Ne(0.0));
+  }
 }
 
 }  // namespace

@@ -55,13 +55,17 @@ template <typename T>
 void CopyAggregateFromColumn(const Tensor& column_of_aggregates,
                              int64_t ordinal, MutableVectorData<T>& container,
                              NumericalMechanism* mechanism) {
-  T value = (mechanism == nullptr) ? 0 : mechanism->AddNoise(/*result=*/0);
-  if (ordinal != kNoOrdinal) {
-    value += column_of_aggregates.AsSpan<T>()[ordinal];
-  }
+  T zero = static_cast<T>(0);
+  T noise_to_add =
+      (mechanism == nullptr) ? zero : mechanism->AddNoise(/*result=*/zero);
 
-  // Add (possibly noisy) value to the container.
-  container.push_back(value);
+  T value_to_push_back =
+      (ordinal == kNoOrdinal)
+          ? noise_to_add
+          : noise_to_add + column_of_aggregates.AsSpan<T>()[ordinal];
+
+  // Add noisy value to the container.
+  container.push_back(value_to_push_back);
 }
 
 }  // namespace
