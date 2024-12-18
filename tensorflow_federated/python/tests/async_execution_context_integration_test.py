@@ -15,6 +15,7 @@
 import unittest
 
 from absl.testing import absltest
+import federated_language
 import numpy as np
 import tensorflow_federated as tff
 
@@ -27,7 +28,7 @@ class AsyncContextInstallationTest(
     factory = tff.framework.local_cpp_executor_factory()
     context = tff.framework.AsyncExecutionContext(factory)
 
-    @tff.federated_computation(np.int32)
+    @federated_language.federated_computation(np.int32)
     def identity(x):
       return x
 
@@ -41,7 +42,9 @@ class AsyncContextInstallationTest(
     factory = tff.framework.local_cpp_executor_factory()
     context = tff.framework.AsyncExecutionContext(factory)
 
-    @tff.federated_computation(tff.FederatedType(np.int32, tff.CLIENTS))
+    @federated_language.federated_computation(
+        tff.FederatedType(np.int32, tff.CLIENTS)
+    )
     def repackage_arg(x):
       return [x, x]
 
@@ -57,7 +60,7 @@ class AsyncContextInstallationTest(
         factory, cardinality_inference_fn=(lambda x, y: {})
     )
 
-    @tff.federated_computation(np.int32)
+    @federated_language.federated_computation(np.int32)
     def identity(x):
       return x
 
@@ -80,7 +83,7 @@ class AsyncContextInstallationTest(
 
     arg_type = tff.FederatedType(np.int32, tff.CLIENTS)
 
-    @tff.federated_computation(arg_type)
+    @federated_language.federated_computation(arg_type)
     def identity(x):
       return x
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import federated_language
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -36,7 +37,7 @@ class AstGenerationTest(absltest.TestCase):
     def five():
       return 5
 
-    @tff.federated_computation
+    @federated_language.federated_computation
     def federated_five():
       return five()
 
@@ -56,7 +57,7 @@ class AstGenerationTest(absltest.TestCase):
     def rand():
       return tf.random.normal([])
 
-    @tff.federated_computation
+    @federated_language.federated_computation
     def same_rand_tuple():
       single_random_number = rand()
       return (single_random_number, single_random_number)

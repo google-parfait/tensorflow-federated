@@ -18,6 +18,7 @@ These computations compute the sum of the integer data accross all clients.
 
 import collections
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -25,7 +26,7 @@ import tensorflow_federated as tff
 METRICS_TOTAL_SUM = 'total_sum'
 
 
-@tff.federated_computation()
+@federated_language.federated_computation()
 def initialize():
   """Returns the initial state."""
   return tff.federated_value(0, tff.SERVER)
@@ -43,7 +44,7 @@ def _sum_integers(x: int, y: int) -> int:
   return x + y
 
 
-@tff.federated_computation(
+@federated_language.federated_computation(
     tff.FederatedType(np.int32, tff.SERVER),
     tff.FederatedType(tff.SequenceType(np.int32), tff.CLIENTS),
 )
@@ -75,7 +76,7 @@ def train(server_state: int, client_data: tf.data.Dataset):
   return updated_state, metrics
 
 
-@tff.federated_computation(
+@federated_language.federated_computation(
     tff.FederatedType(np.int32, tff.SERVER),
     tff.FederatedType(tff.SequenceType(np.int32), tff.CLIENTS),
 )

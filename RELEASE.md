@@ -474,8 +474,8 @@ and this project adheres to
 
 ### Breaking Changes
 
-*   Remove the ability to return `SequenceType` from `tff.federated_computation`
-    decorated callables.
+*   Remove the ability to return `SequenceType` from
+    `federated_language.federated_computation` decorated callables.
 
 ### Bug Fixes
 
