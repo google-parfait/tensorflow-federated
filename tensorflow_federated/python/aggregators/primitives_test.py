@@ -1254,7 +1254,8 @@ def _build_test_sum_fn_py_bounds(value_type, lower_bound, upper_bound):
     upper_bound: A Python numeric constant or a numpy array.
 
   Returns:
-    A `tff.federated_computation` with type signature `(value_type@CLIENTS ->
+    A `federated_language.federated_computation` with type signature
+    `(value_type@CLIENTS ->
     value_type@SERVER)`.
   """
 
@@ -1285,7 +1286,8 @@ def _build_test_sum_fn_tff_bounds(
     upper_bound_type: A `tff.Type` of upper_bound to be used.
 
   Returns:
-    A `tff.federated_computation` with type signature `((value_type@CLIENTS,
+    A `federated_language.federated_computation` with type signature
+    `((value_type@CLIENTS,
     lower_bound_type@SERVER, upper_bound_type@SERVER) -> value_type@SERVER)`.
   """
 

@@ -10,7 +10,10 @@ licenses(["notice"])
 py_library(
     name = "computations",
     srcs = ["computations.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_library(

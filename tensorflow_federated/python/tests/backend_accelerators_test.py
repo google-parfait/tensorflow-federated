@@ -14,6 +14,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -33,7 +34,9 @@ def _create_tff_parallel_clients_with_dataset_reduce():
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)
 
-  @tff.federated_computation(tff.at_clients(tff.SequenceType(np.int64)))
+  @federated_language.federated_computation(
+      tff.at_clients(tff.SequenceType(np.int64))
+  )
   def parallel_client_run(client_datasets):
     return tff.federated_map(dataset_reduce_fn_wrapper, client_datasets)
 
@@ -56,7 +59,9 @@ def _create_tff_parallel_clients_with_iter_dataset():
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)
 
-  @tff.federated_computation(tff.at_clients(tff.SequenceType(np.int64)))
+  @federated_language.federated_computation(
+      tff.at_clients(tff.SequenceType(np.int64))
+  )
   def parallel_client_run(client_datasets):
     return tff.federated_map(dataset_reduce_fn_wrapper, client_datasets)
 

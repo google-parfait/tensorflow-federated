@@ -26,6 +26,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
+import federated_language
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -95,7 +96,7 @@ def _build_client_update_fn(
       model = model_fn()
       return init_client_ouput(model, server_message)
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         server_message_type, tff.SequenceType(batch_type)
     )
     def client_update_weights_fn(server_message, batches):
@@ -169,7 +170,7 @@ def build_federated_averaging_process(
   federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
   federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       federated_server_state_type, federated_dataset_type
   )
   def run_one_round(server_state, federated_dataset):
@@ -215,7 +216,7 @@ def build_federated_averaging_process(
     )
     return server_state, aggregated_outputs
 
-  @tff.federated_computation
+  @federated_language.federated_computation
   def server_init_tff():
     """Orchestration logic for server model initialization."""
     return tff.federated_eval(server_init_tf, tff.SERVER)

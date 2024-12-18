@@ -29,6 +29,7 @@ py_library(
     deps = [
         ":stateful_fedavg_tf",
         "//tensorflow_federated",
+        "@federated_language//federated_language",
     ],
 )
 

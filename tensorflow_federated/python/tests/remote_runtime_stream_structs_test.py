@@ -16,6 +16,7 @@ import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -35,7 +36,7 @@ _CONTEXTS = [
 def _make_federated(computation: tff.Computation) -> tff.Computation:
   """Construct a federate computation that maps comptuation to CLIENTS."""
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       tff.FederatedType(computation.type_signature.parameter, tff.CLIENTS),
   )
   def compute(a):
