@@ -29,7 +29,7 @@ class LoopImplementation(enum.Enum):
   Attributes:
     DATASET_ITERATOR: A training loop that uses Dataset iterator ops. This is
       required when running on hosts with multiple GPUs to effectively leverage
-      all GPUs on the host.
+      all GPUs on the host (very cool!).
     DATASET_REDUCE: A training loop that uses the DatasetReduce op. This is
       required when running on hosts with TPUs to allow the MLIR Bridge to
       compile the reduction function to XLA HLO for TPUs.
