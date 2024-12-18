@@ -70,7 +70,7 @@ class MergeableCompForm:
   without changing the results of the computation, a computation of the form:
 
   ```
-  @tff.federated_computation(...)
+  @federated_language.federated_computation(...)
   def single_aggregation(arg):
     result_at_clients = work(arg)
     agg_result = tff.federated_aggregate(
@@ -80,19 +80,19 @@ class MergeableCompForm:
 
   can be represented as the `MergeableCompForm` triplet:
   ```
-  @tff.federated_computation(federated_language.AbstractType('T'))
+  @federated_language.federated_computation(federated_language.AbstractType('T'))
   def up_to_merge(arg):
     result_at_clients = work(arg)
     agg_result = tff.federated_aggregate(
         result_at_clients, accumulate_zero, accumulate, merge, identity_report)
     return agg_result
 
-  @tff.federated_computation([up_to_merge.type_signature.result.member,
+  @federated_language.federated_computation([up_to_merge.type_signature.result.member,
                               up_to_merge.type_signature.result.member])
   def merge(arg):
     return merge(arg[0], arg[1])
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       federated_language.AbstractType('T'),
       federated_language.FederatedType(merge.type_signature.result,
       federated_language.SERVER),

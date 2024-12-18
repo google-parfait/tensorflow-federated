@@ -34,7 +34,7 @@ def _create_tff_parallel_clients_with_dataset_reduce():
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       tff.at_clients(federated_language.SequenceType(np.int64))
   )
   def parallel_client_run(client_datasets):
@@ -59,7 +59,7 @@ def _create_tff_parallel_clients_with_iter_dataset():
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       tff.at_clients(federated_language.SequenceType(np.int64))
   )
   def parallel_client_run(client_datasets):

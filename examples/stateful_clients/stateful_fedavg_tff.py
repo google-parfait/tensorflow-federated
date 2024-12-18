@@ -137,7 +137,7 @@ def build_federated_averaging_process(
       client_state_type, federated_language.CLIENTS
   )
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       federated_server_state_type,
       federated_dataset_type,
       federated_client_state_type,
@@ -178,7 +178,7 @@ def build_federated_averaging_process(
 
     return server_state, round_loss_metric, client_outputs.client_state
 
-  @tff.federated_computation
+  @federated_language.federated_computation
   def server_init_tff():
     """Orchestration logic for server model initialization."""
     return tff.federated_value(server_init_tf(), federated_language.SERVER)
