@@ -89,7 +89,8 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
 
     Given a `value_type` in the `create` method, this classmethod configures the
     `EncodedSumFactory` to apply uniform quantization to all instances of
-    `tff.TensorType` in the `value_type` which have more than `threshold`
+    `federated_language.TensorType` in the `value_type` which have more than
+    `threshold`
     elements.
 
     Precisely, for each tensor `t`, this operation corresponds to
@@ -176,8 +177,10 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
   * Update the state placed at server (`update_state_fn`).
 
   Args:
-    server_state_type: A `tff.Type` of the expected state placed at server.
-    value_type: An unplaced `tff.Type` of the value to be aggregated.
+    server_state_type: A `federated_language.Type` of the expected state placed
+      at server.
+    value_type: An unplaced `federated_language.Type` of the value to be
+      aggregated.
     encoders: A collection of `GatherEncoder` objects.
 
   Returns:

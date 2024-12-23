@@ -65,8 +65,8 @@ def build_reservoir_type(
   a `tff.federated_aggregate` (an input to `accumulate`, `merge` and `report`).
 
   Args:
-    sample_value_type: The `tff.Type` of the values that will be aggregated from
-      clients.
+    sample_value_type: The `federated_language.Type` of the values that will be
+      aggregated from clients.
 
   Returns:
     A `collection.OrderedDict` with three keys:
@@ -150,14 +150,14 @@ def build_initial_sample_reservoir(
       reservoir.
 
       Args:
-        t: A `tff.TensorType` to build a sampling zero value for.
+        t: A `federated_language.TensorType` to build a sampling zero value for.
 
       Returns:
         A tensor whose rank is one larger than before, and whose first dimension
         is zero.
 
       Raises:
-        `TypeError` if `t` is not a `tff.TensorType`.
+        `TypeError` if `t` is not a `federated_language.TensorType`.
         ValueError: If `t.shape` is `None`'
       """
       if not isinstance(t, federated_language.TensorType):
@@ -352,7 +352,8 @@ def _build_check_non_finite_leaves_computation(
 
   Args:
     value_type: The `tff.typs.Type` of the client value. Must only contain
-      `tff.types.TensorType`s or `tff.types.StructWithPythonType`s.
+      `federated_language.TensorType`s or
+      `federated_language.StructWithPythonType`s.
 
   Returns:
     A TFF computation (constructed by the `tff.tensorflow.computation`
@@ -362,8 +363,9 @@ def _build_check_non_finite_leaves_computation(
     tensor in the input client value has any non-finite (`NaN` or `Inf`) value.
 
   Raises:
-    TypeError: if `value_type` contains types other than `tff.types.TensorType`
-      or `tff.types.StructWithPythonType`.
+    TypeError: if `value_type` contains types other than
+    `federated_language.TensorType`
+      or `federated_language.StructWithPythonType`.
   """
   if not _is_tensor_or_structure_of_tensors(value_type):
     raise TypeError(

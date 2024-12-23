@@ -47,8 +47,8 @@ class KerasModelWrapper:
     Args:
       keras_model: A `tf.keras.Model` to be trained.
       input_spec: Metadata of dataset that desribes the input tensors, which
-        will be converted to `tff.Type` specifying the expected type of input
-        and output of the model.
+        will be converted to `federated_language.Type` specifying the expected
+        type of input and output of the model.
       loss: A `tf.keras.losses.Loss` instance to be used for training.
     """
     self.keras_model = keras_model

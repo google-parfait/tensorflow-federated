@@ -130,7 +130,7 @@ class AggregationProcess(measured_process.MeasuredProcess):
       offending_types_str = '\n- '.join(str(t) for t in non_federated_types)
       raise AggregationNotFederatedError(
           'Provided `next_fn` must both be a *federated* computations, that '
-          'is, operate on `tff.FederatedType`s, but found\n'
+          'is, operate on `federated_language.FederatedType`s, but found\n'
           f'next_fn with type signature:\n{next_fn.type_signature}\n'
           f'The non-federated types are:\n {offending_types_str}.'
       )

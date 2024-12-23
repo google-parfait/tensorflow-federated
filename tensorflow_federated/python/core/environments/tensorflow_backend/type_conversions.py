@@ -27,23 +27,23 @@ from tensorflow_federated.python.core.environments.tensorflow_frontend import te
 
 
 def _tensor_to_type(tensor: tf.Tensor) -> federated_language.Type:
-  """Returns a `tff.Type` for the `tensor`."""
+  """Returns a `federated_language.Type` for the `tensor`."""
   return tensorflow_types.to_type((tensor.dtype, tensor.shape))
 
 
 def _variable_to_type(variable: tf.Variable) -> federated_language.Type:
-  """Returns a `tff.Type` for the `variable`."""
+  """Returns a `federated_language.Type` for the `variable`."""
   return tensorflow_types.to_type((variable.dtype, variable.shape))
 
 
 def _dataset_to_type(dataset: tf.data.Dataset) -> federated_language.Type:
-  """Returns a `tff.Type` for the `dataset`."""
+  """Returns a `federated_language.Type` for the `dataset`."""
   dataset_spec = tf.data.DatasetSpec.from_value(dataset)
   return tensorflow_types.to_type(dataset_spec)
 
 
 def tensorflow_infer_type(obj: object) -> Optional[federated_language.Type]:
-  """Returns a `tff.Type` for an `obj` containing TensorFlow values.
+  """Returns a `federated_language.Type` for an `obj` containing TensorFlow values.
 
   This function extends `type_conversions.infer_type` to handle TensorFlow
   values and Python structures containing TensorFlow values:
@@ -56,20 +56,21 @@ def tensorflow_infer_type(obj: object) -> Optional[federated_language.Type]:
 
   >>> tensor = tf.ones(shape=[2, 3], dtype=tf.int32)
   >>> tensorflow_infer_type(tensor)
-  tff.TensorType(np.int32, (2, 3))
+  federated_language.TensorType(np.int32, (2, 3))
 
   >>> tensor = tf.ones(shape=[2, 3], dtype=tf.int32)
   >>> variable = tf.Variable(tensor)
   >>> tensorflow_infer_type(variable)
-  tff.TensorType(np.int32, (2, 3))
+  federated_language.TensorType(np.int32, (2, 3))
 
   >>> tensor = tf.ones(shape=[2, 3], dtype=tf.int32)
   >>> dataset = tf.data.Dataset.from_tensors(tensor)
   >>> tensorflow_infer_type(dataset)
-  tff.SequenceType(tff.TensorType(np.int32, (2, 3)))
+  federated_language.SequenceType(federated_language.TensorType(np.int32, (2,
+  3)))
 
   Args:
-    obj: An object to infer a `tff.Type`.
+    obj: An object to infer a `federated_language.Type`.
   """
 
   class _Placeholder(federated_language.TypedObject):
@@ -91,8 +92,9 @@ def tensorflow_infer_type(obj: object) -> Optional[federated_language.Type]:
     else:
       type_spec = None
 
-    # Return a `TypedObject` instead of the `tff.Type` because `infer_type` does
-    # not know how to infer the type of a `tff.Type`.
+    # Return a `TypedObject` instead of the `federated_language.Type` because
+    # `infer_type` does not know how to infer the type of a
+    # `federated_language.Type`.
     if type_spec is not None:
       return _Placeholder(type_spec)
     else:
@@ -290,19 +292,22 @@ def _structure_from_tensor_type_tree_inner(
 def structure_from_tensor_type_tree(
     fn: Callable[[federated_language.TensorType], object], type_spec
 ) -> object:
-  """Constructs a structure from a `type_spec` tree of `tff.TensorType`s.
+  """Constructs a structure from a `type_spec` tree of `federated_language.TensorType`s.
 
   Args:
     fn: A callable used to generate the elements with which to fill the
       resulting structure. `fn` will be called exactly once per leaf
-      `tff.TensorType` in the order they appear in the `type_spec` structure.
+      `federated_language.TensorType` in the order they appear in the
+      `type_spec` structure.
     type_spec: A TFF type or value convertible to TFF type. Once converted,
-      `type_spec` must be a `tff.TensorType` or `tff.StructType` containing only
-      other `tff.TensorType`s and `tff.StructType`s.
+      `type_spec` must be a `federated_language.TensorType` or
+      `federated_language.StructType` containing only other
+      `federated_language.TensorType`s and `federated_language.StructType`s.
 
   Returns:
     A structure with the same shape and Python containers as `type_spec` but
-    with the `tff.TensorType` elements replaced with the results of `fn`.
+    with the `federated_language.TensorType` elements replaced with the results
+    of `fn`.
 
   Raises:
     ValueError: if the provided `type_spec` is not a structural or tensor type.

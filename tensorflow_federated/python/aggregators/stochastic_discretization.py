@@ -48,8 +48,10 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
   The structure of the input is kept, and all values of the component tensors
   are scaled, rounded, and cast to `tf.int32`.
 
-  This aggregator only accepts `value_type` of either `tff.TensorType` or
-  `tff.StructWithPythonType` and expects the dtype of component tensors to be
+  This aggregator only accepts `value_type` of either
+  `federated_language.TensorType` or
+  `federated_language.StructWithPythonType` and expects the dtype of component
+  tensors to be
   all real floats, and it will otherwise raise an error.
 
   The process returns `state` from the inner aggregation process, the descaled

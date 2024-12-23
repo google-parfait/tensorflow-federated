@@ -162,7 +162,7 @@ class SamplingAggregationFactoryTest(tf.test.TestCase, parameterized.TestCase):
   ):
     unused_metric_finalizers = _create_metric_finalizers()
     with self.assertRaisesRegex(
-        TypeError, 'Expected .*`tff.types.StructWithPythonType`'
+        TypeError, 'Expected .*`federated_language.StructWithPythonType`'
     ):
       sampling_aggregation_factory.FinalizeThenSampleFactory(
           sample_size=10

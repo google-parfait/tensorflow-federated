@@ -651,13 +651,14 @@ class _KerasReconstructionModel(ReconstructionModel):
 def global_weights_type_from_model(
     model: ReconstructionModel,
 ) -> federated_language.StructType:
-  """Creates a `tff.Type` from a `tff.learning.models.ReconstructionModel`.
+  """Creates a `federated_language.Type` from a `tff.learning.models.ReconstructionModel`.
 
   Args:
     model: A `tff.learning.models.ReconstructionModel`
 
   Returns:
-    A `tff.StructType` representing the TFF type of the model's global
+    A `federated_language.StructType` representing the TFF type of the model's
+    global
     variables.
   """
   global_model_weights = ReconstructionModel.get_global_variables(model)

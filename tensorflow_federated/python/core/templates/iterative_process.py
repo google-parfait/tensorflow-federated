@@ -130,9 +130,9 @@ class IterativeProcess:
         of the iterative process. Let the type of this state be called `S`.
       next_fn: A `tff.Computation` that represents the iterated function. The
         first or only argument must be a type that is assignable from the state
-        type `S` (`tff.types.Type.is_assignable_from` must return `True`). The
-        first or only return value must also be assignable to the first or only
-        argument, the same requirement as the `S` type.
+        type `S` (`federated_language.Type.is_assignable_from` must return
+        `True`). The first or only return value must also be assignable to the
+        first or only argument, the same requirement as the `S` type.
       next_is_multi_arg: An optional boolean indicating that `next_fn` will
         receive more than just the state argument (if `True`) or only the state
         argument (if `False`). This parameter is primarily used to provide
@@ -206,7 +206,7 @@ class IterativeProcess:
 
   @property
   def state_type(self) -> federated_language.Type:
-    """The `tff.Type` of the state of the process."""
+    """The `federated_language.Type` of the state of the process."""
     return self._state_type  # pytype: disable=bad-return-type
 
 
@@ -215,7 +215,8 @@ def is_stateful(process: IterativeProcess) -> bool:
 
   A process that has a non-empty state is called "stateful"; it follows that
   process with an empty state is called "stateless". In TensorFlow Federated
-  "empty" means a type structure that contains only `tff.types.StructType`; no
+  "empty" means a type structure that contains only
+  `federated_language.StructType`; no
   tensors or other values. These structures are "empty" in the sense no values
   need be communicated and flattening the structure would result in an empty
   list.
@@ -225,7 +226,8 @@ def is_stateful(process: IterativeProcess) -> bool:
 
   Returns:
     `True` iff the process is stateful and has a state type structure that
-    contains types other than `tff.types.StructType`, `False` otherwise.
+    contains types other than `federated_language.StructType`, `False`
+    otherwise.
   """
   state_type = process.state_type
   if isinstance(state_type, federated_language.FederatedType):

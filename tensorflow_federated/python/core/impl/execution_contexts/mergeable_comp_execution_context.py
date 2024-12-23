@@ -78,7 +78,7 @@ class MergeableCompForm:
 
   can be represented as the `MergeableCompForm` triplet:
   ```
-  @tff.federated_computation(tff.AbstractType('T'))
+  @tff.federated_computation(federated_language.AbstractType('T'))
   def up_to_merge(arg):
     result_at_clients = work(arg)
     agg_result = tff.federated_aggregate(
@@ -91,8 +91,8 @@ class MergeableCompForm:
     return merge(arg[0], arg[1])
 
   @tff.federated_computation(
-      tff.AbstractType('T'),
-      tff.FederatedType(merge.type_signature.result, tff.SERVER),
+      federated_language.AbstractType('T'),
+      federated_language.FederatedType(merge.type_signature.result, tff.SERVER),
   )
   def after_merge(original_arg, merged_result):
     return postprocess(original_arg, merged_result)

@@ -35,7 +35,7 @@ def _tensorflow_dtype_to_numpy_dtype(
 def _tensor_shape_to_array_shape(
     tensor_shape: tf.TensorShape,
 ) -> federated_language.ArrayShape:
-  """Returns a `tff.types.ArrayShape` for the `tensor_shape`."""
+  """Returns a `federated_language.types.ArrayShape` for the `tensor_shape`."""
   if tensor_shape.rank is not None:
     shape = tensor_shape.as_list()
   else:
@@ -44,7 +44,7 @@ def _tensor_shape_to_array_shape(
 
 
 def _tensor_spec_to_type(tensor_spec: tf.TensorSpec) -> federated_language.Type:
-  """Returns a `tff.Type` for the `tensor_spec`."""
+  """Returns a `federated_language.Type` for the `tensor_spec`."""
   dtype = _tensorflow_dtype_to_numpy_dtype(tensor_spec.dtype)
   shape = _tensor_shape_to_array_shape(tensor_spec.shape)
   return federated_language.TensorType(dtype, shape)
@@ -53,15 +53,16 @@ def _tensor_spec_to_type(tensor_spec: tf.TensorSpec) -> federated_language.Type:
 def _dataset_spec_to_type(
     dataset_spec: tf.data.DatasetSpec,
 ) -> federated_language.Type:
-  """Returns a `tff.Type` for the `dataset_spec`."""
+  """Returns a `federated_language.Type` for the `dataset_spec`."""
   element_type = to_type(dataset_spec.element_spec)
   return federated_language.SequenceType(element_type)
 
 
 def to_type(obj: object) -> federated_language.Type:
-  """Returns a `tff.Type` for an `obj` containing TensorFlow type specs.
+  """Returns a `federated_language.Type` for an `obj` containing TensorFlow type specs.
 
-  This function extends `tff.types.to_type` to handle TensorFlow type specs and
+  This function extends `federated_language.to_type` to handle TensorFlow type
+  specs and
   Python structures containing TensorFlow type specs:
 
   *   `tf.dtypes.DType`
@@ -72,21 +73,23 @@ def to_type(obj: object) -> federated_language.Type:
   For example:
 
   >>> to_type(tf.int32)
-  tff.TensorType(np.int32)
+  federated_language.TensorType(np.int32)
 
   >>> to_type((tf.int32, tf.TensorShape([2, 3])))
-  tff.TensorType(np.int32, (2, 3))
+  federated_language.TensorType(np.int32, (2, 3))
 
   >>> spec = tf.TensorSpec(shape=[2, 3], dtype=tf.int32)
   >>> to_type(spec)
-  tff.TensorType(np.int32, (2, 3))
+  federated_language.TensorType(np.int32, (2, 3))
 
   >>> spec = tf.data.DatasetSpec(tf.TensorSpec([2, 3], dtype=tf.int32))
   >>> to_type(spec)
-  tff.SequenceType(tff.TensorType(np.int32, (2, 3)))
+  federated_language.SequenceType(federated_language.TensorType(np.int32, (2,
+  3)))
 
   Args:
-    obj: A `tff.Type` or an argument convertible to a `tff.Type`.
+    obj: A `federated_language.Type` or an argument convertible to a
+      `federated_language.Type`.
   """
 
   def _to_type(obj):

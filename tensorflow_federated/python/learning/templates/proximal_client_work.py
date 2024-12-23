@@ -307,8 +307,8 @@ def build_model_delta_client_work(
       far from the server model during local training.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
@@ -401,8 +401,8 @@ def build_functional_model_delta_client_work(
       far from the server model during local training.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.

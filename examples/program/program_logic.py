@@ -71,10 +71,10 @@ def _check_expected_type_signatures(
   """
 
   # Check initialize type.
-  if not isinstance(initialize.type_signature, tff.FunctionType):
+  if not isinstance(initialize.type_signature, federated_language.FunctionType):
     raise UnexpectedTypeSignatureError(
-        'Expected `initialize` to be a `tff.FunctionType`, found '
-        f'{initialize.type_signature}.'
+        'Expected `initialize` to be a `federated_language.FunctionType`,'
+        f' found {initialize.type_signature}.'
     )
 
   # Check initialize parameter type.
@@ -86,12 +86,14 @@ def _check_expected_type_signatures(
 
   # Check initialize result type.
   if (
-      not isinstance(initialize.type_signature.result, tff.FederatedType)
+      not isinstance(
+          initialize.type_signature.result, federated_language.FederatedType
+      )
       or initialize.type_signature.result.placement is not tff.SERVER
   ):
     raise UnexpectedTypeSignatureError(
-        'Expected `initialize` to return a `tff.FederatedType` placed at '
-        f'`tff.SERVER, found {initialize.type_signature.result}.'
+        'Expected `initialize` to return a `federated_language.FederatedType`'
+        f' placed at `tff.SERVER, found {initialize.type_signature.result}.'
     )
 
   # Check train data source type.
@@ -102,15 +104,15 @@ def _check_expected_type_signatures(
     )
 
   # Check train type.
-  if not isinstance(train.type_signature, tff.FunctionType):
+  if not isinstance(train.type_signature, federated_language.FunctionType):
     raise UnexpectedTypeSignatureError(
-        'Expected `train` to be a `tff.FunctionType`, found '
+        'Expected `train` to be a `federated_language.FunctionType`, found '
         f'{train.type_signature}.'
     )
 
   # Check train result type.
   if (
-      not isinstance(train.type_signature.result, tff.StructType)
+      not isinstance(train.type_signature.result, federated_language.StructType)
       or len(train.type_signature.result) != 2
   ):
     raise UnexpectedTypeSignatureError(
@@ -123,27 +125,33 @@ def _check_expected_type_signatures(
 
   # Check train result state type.
   if (
-      not isinstance(train_result_state_type, tff.FederatedType)
+      not isinstance(train_result_state_type, federated_language.FederatedType)
       or train_result_state_type.placement is not tff.SERVER
   ):
     raise UnexpectedTypeSignatureError(
-        'Expected the first result of `train` to be a `tff.FederatedType` '
-        f'placed at `tff.SERVER, found {train_result_state_type}.'
+        'Expected the first result of `train` to be a'
+        ' `federated_language.FederatedType` placed at `tff.SERVER, found'
+        f' {train_result_state_type}.'
     )
 
   # Check train result metrics type.
   if (
-      not isinstance(train_result_metrics_type, tff.FederatedType)
+      not isinstance(
+          train_result_metrics_type, federated_language.FederatedType
+      )
       or train_result_metrics_type.placement is not tff.SERVER
   ):
     raise UnexpectedTypeSignatureError(
-        'Expected the second result of `train` to be a `tff.FederatedType` '
-        f'placed at `tff.SERVER, found {train_result_metrics_type}.'
+        'Expected the second result of `train` to be a'
+        ' `federated_language.FederatedType` placed at `tff.SERVER, found'
+        f' {train_result_metrics_type}.'
     )
 
   # Check train parameter type.
   if (
-      not isinstance(train.type_signature.parameter, tff.StructType)
+      not isinstance(
+          train.type_signature.parameter, federated_language.StructType
+      )
       or len(train.type_signature.parameter) != 2
   ):
     raise UnexpectedTypeSignatureError(
@@ -156,12 +164,15 @@ def _check_expected_type_signatures(
 
   # Check train parameter state type.
   if (
-      not isinstance(train_parameter_state_type, tff.FederatedType)
+      not isinstance(
+          train_parameter_state_type, federated_language.FederatedType
+      )
       or train_parameter_state_type.placement is not tff.SERVER
   ):
     raise UnexpectedTypeSignatureError(
-        'Expected the first parameter of `train` to be a `tff.FederatedType` '
-        f'placed at `tff.SERVER, found {train_parameter_state_type}.'
+        'Expected the first parameter of `train` to be a'
+        ' `federated_language.FederatedType` placed at `tff.SERVER, found'
+        f' {train_parameter_state_type}.'
     )
   if not train_parameter_state_type.is_assignable_from(
       initialize.type_signature.result
@@ -182,12 +193,15 @@ def _check_expected_type_signatures(
 
   # Check train parameter client data type.
   if (
-      not isinstance(train_parameter_client_data_type, tff.FederatedType)
+      not isinstance(
+          train_parameter_client_data_type, federated_language.FederatedType
+      )
       or train_parameter_client_data_type.placement is not tff.CLIENTS
   ):
     raise UnexpectedTypeSignatureError(
-        'Expected the second parameter of `train` to be a `tff.FederatedType` '
-        f'placed at `tff.CLIENTS, found {train_parameter_client_data_type}.'
+        'Expected the second parameter of `train` to be a'
+        ' `federated_language.FederatedType` placed at `tff.CLIENTS, found'
+        f' {train_parameter_client_data_type}.'
     )
   if not train_parameter_client_data_type.is_assignable_from(
       train_data_source.federated_type
@@ -209,15 +223,17 @@ def _check_expected_type_signatures(
     )
 
   # Check evaluation type.
-  if not isinstance(evaluation.type_signature, tff.FunctionType):
+  if not isinstance(evaluation.type_signature, federated_language.FunctionType):
     raise UnexpectedTypeSignatureError(
-        'Expected `evaluation` to be a `tff.FunctionType`, found '
-        f'{evaluation.type_signature}.'
+        'Expected `evaluation` to be a `federated_language.FunctionType`,'
+        f' found {evaluation.type_signature}.'
     )
 
   # Check evaluation parameter type.
   if (
-      not isinstance(evaluation.type_signature.parameter, tff.StructType)
+      not isinstance(
+          evaluation.type_signature.parameter, federated_language.StructType
+      )
       or len(evaluation.type_signature.parameter) != 2
   ):
     raise UnexpectedTypeSignatureError(
@@ -230,12 +246,14 @@ def _check_expected_type_signatures(
 
   # Check evaluation parameter state type.
   if (
-      not isinstance(evaluation_parameter_state_type, tff.FederatedType)
+      not isinstance(
+          evaluation_parameter_state_type, federated_language.FederatedType
+      )
       or evaluation_parameter_state_type.placement is not tff.SERVER
   ):
     raise UnexpectedTypeSignatureError(
         'Expected the first parameter of `evaluation` to be a '
-        '`tff.FederatedType` placed at `tff.SERVER, found '
+        '`federated_language.FederatedType` placed at `tff.SERVER, found '
         f'{evaluation_parameter_state_type}.'
     )
   if not evaluation_parameter_state_type.is_assignable_from(
@@ -251,12 +269,15 @@ def _check_expected_type_signatures(
 
   # Check evaluation parameter client data type.
   if (
-      not isinstance(evaluation_parameter_client_data_type, tff.FederatedType)
+      not isinstance(
+          evaluation_parameter_client_data_type,
+          federated_language.FederatedType,
+      )
       or evaluation_parameter_client_data_type.placement is not tff.CLIENTS
   ):
     raise UnexpectedTypeSignatureError(
         'Expected the second parameter of `evaluation` to be a '
-        '`tff.FederatedType` placed at `tff.CLIENTS, found '
+        '`federated_language.FederatedType` placed at `tff.CLIENTS, found '
         f'{evaluation_parameter_client_data_type}.'
     )
   if not evaluation_parameter_client_data_type.is_assignable_from(
@@ -273,12 +294,15 @@ def _check_expected_type_signatures(
 
   # Check evaluation result type.
   if (
-      not isinstance(evaluation.type_signature.result, tff.FederatedType)
+      not isinstance(
+          evaluation.type_signature.result, federated_language.FederatedType
+      )
       or evaluation.type_signature.result.placement is not tff.SERVER
   ):
     raise UnexpectedTypeSignatureError(
-        'Expected the result of `train` to be a `tff.FederatedType` placed at '
-        f'`tff.SERVER, found {evaluation.type_signature.result}.'
+        'Expected the result of `train` to be a'
+        ' `federated_language.FederatedType` placed at `tff.SERVER, found'
+        f' {evaluation.type_signature.result}.'
     )
 
 

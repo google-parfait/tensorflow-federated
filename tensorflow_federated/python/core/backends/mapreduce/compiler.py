@@ -255,7 +255,8 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
   )
   if not isinstance(comp.type_signature, federated_language.FunctionType):
     raise ValueError(
-        f'Expected a `tff.FunctionType`, found {comp.type_signature}.'
+        'Expected a `federated_language.FunctionType`, found'
+        f' {comp.type_signature}.'
     )
   # Replace any GENERIC_* intrinsic calls with TF function calls.
   comp, _ = tensorflow_tree_transformations.replace_intrinsics_with_bodies(comp)

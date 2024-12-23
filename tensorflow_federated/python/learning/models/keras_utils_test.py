@@ -258,8 +258,8 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
               collections.OrderedDict,
           ),
           (
-              'Expected a `tff.Type` with all the leaf nodes being'
-              ' `tff.TensorType`s'
+              'Expected a `federated_language.Type` with all the leaf nodes'
+              ' being `federated_language.TensorType`s'
           ),
       ),
   )

@@ -55,8 +55,10 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
   procedure, which, on top of the discretization procedure carried out by this
   aggregator, involves value clipping and (possibly) value shifting.
 
-  This factory only accepts `value_type` of either `tff.TensorType` or
-  `tff.StructWithPythonType` and expects the dtype of component tensors to be
+  This factory only accepts `value_type` of either
+  `federated_language.TensorType` or
+  `federated_language.StructWithPythonType` and expects the dtype of component
+  tensors to be
   all real floats, and it will otherwise raise an error.
   """
 

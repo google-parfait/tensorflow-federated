@@ -16,6 +16,7 @@ import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -36,7 +37,9 @@ def _make_federated(computation: tff.Computation) -> tff.Computation:
   """Construct a federate computation that maps comptuation to CLIENTS."""
 
   @tff.federated_computation(
-      tff.FederatedType(computation.type_signature.parameter, tff.CLIENTS),
+      federated_language.FederatedType(
+          computation.type_signature.parameter, tff.CLIENTS
+      ),
   )
   def compute(a):
     return tff.federated_map(computation, a)
@@ -56,8 +59,12 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     )
 
     @tff.tensorflow.computation(
-        tff.StructType(
-            [(None, tff.TensorType(np.float32, small_tensor_shape))] * 6
+        federated_language.StructType(
+            [(
+                None,
+                federated_language.TensorType(np.float32, small_tensor_shape),
+            )]
+            * 6
         )
     )
     def identity(s):
@@ -81,30 +88,30 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     ])
 
     @tff.tensorflow.computation(
-        tff.StructType([
+        federated_language.StructType([
             (
                 'a',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'b',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'c',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'd',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'e',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'f',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
         ])
     )
@@ -140,35 +147,39 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     ])
 
     @tff.tensorflow.computation(
-        tff.StructType([
+        federated_language.StructType([
             (
                 'a',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'b',
-                tff.StructType([
+                federated_language.StructType([
                     (
                         'b0',
-                        tff.TensorType(np.float32, small_tensor_shape),
+                        federated_language.TensorType(
+                            np.float32, small_tensor_shape
+                        ),
                     ),
                     (
                         'b1',
-                        tff.TensorType(np.float32, small_tensor_shape),
+                        federated_language.TensorType(
+                            np.float32, small_tensor_shape
+                        ),
                     ),
                 ]),
             ),
             (
                 'c',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'd',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'e',
-                tff.TensorType(np.float32, small_tensor_shape),
+                federated_language.TensorType(np.float32, small_tensor_shape),
             ),
         ])
     )

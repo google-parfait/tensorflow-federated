@@ -16,6 +16,7 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -28,7 +29,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_null_aggregate(self):
-    unit_type = tff.StructWithPythonType([], tuple)
+    unit_type = federated_language.StructWithPythonType([], tuple)
 
     @tff.tensorflow.computation(unit_type, unit_type)
     def accumulate(a, b):
@@ -52,7 +53,9 @@ class NoClientAggregationsTest(parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_empty_sum(self):
 
-    @tff.federated_computation(tff.FederatedType(np.int32, tff.CLIENTS))
+    @tff.federated_computation(
+        federated_language.FederatedType(np.int32, tff.CLIENTS)
+    )
     def fed_sum(x):
       return tff.federated_sum(x)
 
@@ -65,7 +68,9 @@ class NoClientAggregationsTest(parameterized.TestCase):
     # TODO: b/200970992 - Standardize handling of this case. We currently have a
     # ZeroDivisionError, a RuntimeError, and a context that returns nan.
 
-    @tff.federated_computation(tff.FederatedType(np.float32, tff.CLIENTS))
+    @tff.federated_computation(
+        federated_language.FederatedType(np.float32, tff.CLIENTS)
+    )
     def fed_mean(x):
       return tff.federated_mean(x)
 
@@ -78,7 +83,7 @@ class DatasetManipulationTest(parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_passthru_dataset(self):
 
-    @tff.tensorflow.computation(tff.SequenceType(np.int64))
+    @tff.tensorflow.computation(federated_language.SequenceType(np.int64))
     def passthru_dataset(ds):
       return ds
 
@@ -88,7 +93,7 @@ class DatasetManipulationTest(parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_dataset_concat_aggregation(self):
-    element_type = tff.TensorType(np.float32, [2])
+    element_type = federated_language.TensorType(np.float32, [2])
 
     @tff.tensorflow.computation
     def create_dataset():
@@ -103,7 +108,9 @@ class DatasetManipulationTest(parameterized.TestCase):
       return ds
 
     @tff.federated_computation(
-        tff.FederatedType(tff.SequenceType(element_type), tff.CLIENTS)
+        federated_language.FederatedType(
+            federated_language.SequenceType(element_type), tff.CLIENTS
+        )
     )
     def do_a_federated_aggregate(client_ds):
       return tff.federated_aggregate(
@@ -183,7 +190,9 @@ class FederatedComputationTest(parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_federated_zip(self):
 
-    @tff.federated_computation([tff.FederatedType(np.int32, tff.CLIENTS)] * 2)
+    @tff.federated_computation(
+        [federated_language.FederatedType(np.int32, tff.CLIENTS)] * 2
+    )
     def foo(x):
       return tff.federated_zip(x)
 
@@ -198,7 +207,7 @@ class FederatedComputationTest(parameterized.TestCase):
     num_clients = 2
 
     @tff.federated_computation(
-        [tff.FederatedType(np.int32, tff.CLIENTS)] * num_element
+        [federated_language.FederatedType(np.int32, tff.CLIENTS)] * num_element
     )
     def foo(x):
       return tff.federated_zip(x)
@@ -214,7 +223,9 @@ class FederatedComputationTest(parameterized.TestCase):
     def add_one(x):
       return x + 1
 
-    @tff.federated_computation(tff.FederatedType(np.int32, tff.CLIENTS))
+    @tff.federated_computation(
+        federated_language.FederatedType(np.int32, tff.CLIENTS)
+    )
     def map_add_one(federated_arg):
       return tff.federated_map(add_one, federated_arg)
 
@@ -231,7 +242,9 @@ class FederatedComputationTest(parameterized.TestCase):
     def add_one(x):
       return x + 1
 
-    @tff.federated_computation(tff.FederatedType(np.int32, tff.CLIENTS))
+    @tff.federated_computation(
+        federated_language.FederatedType(np.int32, tff.CLIENTS)
+    )
     def map_add_one(federated_arg):
       return tff.federated_map(add_one, federated_arg)
 
@@ -264,7 +277,7 @@ class FederatedComputationTest(parameterized.TestCase):
       return x
 
     @tff.federated_computation(
-        tff.FederatedType(
+        federated_language.FederatedType(
             collections.OrderedDict(x=np.int32, y=np.int32), tff.SERVER
         )
     )
@@ -283,7 +296,7 @@ class FederatedComputationTest(parameterized.TestCase):
       return x
 
     @tff.federated_computation(
-        tff.FederatedType(
+        federated_language.FederatedType(
             collections.OrderedDict(x=np.int32, y=np.int32), tff.CLIENTS
         )
     )
@@ -295,7 +308,7 @@ class FederatedComputationTest(parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_bad_type_coercion_raises(self):
-    tensor_type = tff.TensorType(np.float32, [None])
+    tensor_type = federated_language.TensorType(np.float32, [None])
 
     @tff.tensorflow.computation(tensor_type)
     def foo(x):
@@ -303,11 +316,15 @@ class FederatedComputationTest(parameterized.TestCase):
       # reshape.
       return tf.reshape(x, [])
 
-    @tff.federated_computation(tff.FederatedType(tensor_type, tff.CLIENTS))
+    @tff.federated_computation(
+        federated_language.FederatedType(tensor_type, tff.CLIENTS)
+    )
     def map_foo_at_clients(x):
       return tff.federated_map(foo, x)
 
-    @tff.federated_computation(tff.FederatedType(tensor_type, tff.SERVER))
+    @tff.federated_computation(
+        federated_language.FederatedType(tensor_type, tff.SERVER)
+    )
     def map_foo_at_server(x):
       return tff.federated_map(foo, x)
 
@@ -331,16 +348,17 @@ class FederatedComputationTest(parameterized.TestCase):
   def test_runs_federated_select(self):
     keys_per_client = 3
     max_key = 5
-    selectee_type = tff.TensorType(np.str_, [None])
+    selectee_type = federated_language.TensorType(np.str_, [None])
 
     @tff.tensorflow.computation(selectee_type, np.int32)
     def gather(selectee, key):
       return tf.gather(selectee, key)
 
     @tff.federated_computation(
-        tff.FederatedType(selectee_type, tff.SERVER),
-        tff.FederatedType(
-            tff.TensorType(np.int32, [keys_per_client]), tff.CLIENTS
+        federated_language.FederatedType(selectee_type, tff.SERVER),
+        federated_language.FederatedType(
+            federated_language.TensorType(np.int32, [keys_per_client]),
+            tff.CLIENTS,
         ),
     )
     def select(server_val, client_keys):
@@ -369,7 +387,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
   def test_create_call_take_two_from_stateful_dataset(self):
     vocab = ['a', 'b', 'c', 'd', 'e', 'f']
 
-    @tff.tensorflow.computation(tff.SequenceType(np.str_))
+    @tff.tensorflow.computation(federated_language.SequenceType(np.str_))
     def take_two(ds):
       table = tf.lookup.StaticVocabularyTable(
           tf.lookup.KeyValueTensorInitializer(
@@ -409,8 +427,8 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
   def test_dynamic_lookup_table(self):
 
     @tff.tensorflow.computation(
-        tff.TensorType(np.str_, [None]),
-        tff.TensorType(np.str_, [None]),
+        federated_language.TensorType(np.str_, [None]),
+        federated_language.TensorType(np.str_, [None]),
     )
     def comp(table_args, to_lookup):
       values = tf.range(tf.shape(table_args)[0])
@@ -425,8 +443,8 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
   def test_reinitialize_dynamic_lookup_table(self):
 
     @tff.tensorflow.computation(
-        tff.TensorType(np.str_, [None]),
-        tff.TensorType(np.str_, []),
+        federated_language.TensorType(np.str_, [None]),
+        federated_language.TensorType(np.str_, []),
     )
     def comp(table_args, to_lookup):
       values = tf.range(tf.shape(table_args)[0])

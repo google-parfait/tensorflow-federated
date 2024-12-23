@@ -234,9 +234,11 @@ def normalize_types(comp, normalize_all_equal_bit: bool = True):
   which produces a value with its `all_equal` bit set to `False`. Therefore
   any client processing cannot rely on processing values with `True`
   `all_equal` bits. Notice that `normalize_all_equal_bit` relies on the "normal"
-  all_equal bit being inserted in the construction of a new `tff.FederatedType`;
+  all_equal bit being inserted in the construction of a new
+  `federated_language.FederatedType`;
   the constructor by default sets this bit to match the pattern above, so we
-  simply ask it to create a new `tff.FederatedType` for us. We also replace any
+  simply ask it to create a new `federated_language.FederatedType` for us. We
+  also replace any
   uses of the FEDERATED_MAP_ALL_EQUAL intrinsic with the FEDERATED_MAP
   intrinsic.
 

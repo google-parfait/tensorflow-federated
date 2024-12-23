@@ -585,9 +585,9 @@ def _make_empty_list_structure_for_element_type_spec(type_spec):
   set for ingestion by `tf.data.Dataset.from_tensor_slices`.
 
   Args:
-    type_spec: An instance of `tff.Type` or something convertible to it that
-      consists of only tensor and named tuple types, and in which rach of the
-      named tuples either have all or none of their elements named.
+    type_spec: An instance of `federated_language.Type` or something convertible
+      to it that consists of only tensor and named tuple types, and in which
+      rach of the named tuples either have all or none of their elements named.
 
   Returns:
     The nested structure, as described above.
@@ -637,7 +637,7 @@ def _make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
   matches `type_spec`.
 
   Args:
-    type_spec: A `tff.Type`, or something convertible to it.
+    type_spec: A `federated_language.Type`, or something convertible to it.
     none_dim_replacement: `int` with which to replace any unspecified tensor
       dimensions.
 
@@ -703,8 +703,8 @@ def _append_to_list_structure_for_element_type_spec(nested, value, type_spec):
     value: A value (Python object) that a hierarchical structure of dictionary,
       list, and other containers holding tensor-like items that matches the
       hierarchy of `type_spec`.
-    type_spec: An instance of `tff.Type` or something convertible to it, as in
-      `_make_empty_list_structure_for_element_type_spec`.
+    type_spec: An instance of `federated_language.Type` or something convertible
+      to it, as in `_make_empty_list_structure_for_element_type_spec`.
 
   Raises:
     TypeError: If the `type_spec` is not of a form described above, or the value
@@ -794,8 +794,8 @@ def _replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
 
   Args:
     lists: Output of `_make_empty_list_structure_for_element_type_spec`.
-    type_spec: An instance of `tff.Type` or something convertible to it, as in
-      `_make_empty_list_structure_for_element_type_spec`.
+    type_spec: An instance of `federated_language.Type` or something convertible
+      to it, as in `_make_empty_list_structure_for_element_type_spec`.
 
   Returns:
     The transformed version of `structure`.
@@ -1022,8 +1022,9 @@ def coerce_dataset_elements_to_tff_type_spec(
 
   Args:
     dataset: a `tf.data.Dataset` instance.
-    element_type: a `tff.Type` specifying the type of the elements of `dataset`.
-      Must be a `tff.TensorType` or `tff.StructType`.
+    element_type: a `federated_language.Type` specifying the type of the
+      elements of `dataset`. Must be a `federated_language.TensorType` or
+      `federated_language.StructType`.
 
   Returns:
     A `tf.data.Dataset` whose output types are compatible with

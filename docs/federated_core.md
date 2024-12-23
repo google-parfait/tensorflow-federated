@@ -96,7 +96,7 @@ Here's just one example; more examples can be found in the
 [custom algorithms](tutorials/custom_federated_algorithms_1.ipynb) tutorials.
 
 ```python
-@tff.federated_computation(tff.FederatedType(np.float32, tff.CLIENTS))
+@tff.federated_computation(federated_language.FederatedType(np.float32, tff.CLIENTS))
 def get_average_temperature(sensor_readings):
   return tff.federated_mean(sensor_readings)
 ```
@@ -127,13 +127,14 @@ notation, as it's a handy way or describing types of computations and operators.
 First, here are the categories of types that are conceptually similar to those
 found in existing mainstream languages:
 
-*   **Tensor types** (`tff.TensorType`). Just as in TensorFlow, these have
-    `dtype` and `shape`. The only difference is that objects of this type are
-    not limited to `tf.Tensor` instances in Python that represent outputs of
-    TensorFlow ops in a TensorFlow graph, but may also include units of data
-    that can be produced, e.g., as an output of a distributed aggregation
-    protocol. Thus, the TFF tensor type is simply an abstract version of a
-    concrete physical representation of such type in Python or TensorFlow.
+*   **Tensor types** (`federated_language.TensorType`). Just as in TensorFlow,
+    these have `dtype` and `shape`. The only difference is that objects of this
+    type are not limited to `tf.Tensor` instances in Python that represent
+    outputs of TensorFlow ops in a TensorFlow graph, but may also include units
+    of data that can be produced, e.g., as an output of a distributed
+    aggregation protocol. Thus, the TFF tensor type is simply an abstract
+    version of a concrete physical representation of such type in Python or
+    TensorFlow.
 
     TFF's `TensorTypes` can be stricter in their (static) treatment of shapes
     than TensorFlow. For example, TFF's typesystem treats a tensor with unknown
@@ -147,16 +148,16 @@ found in existing mainstream languages:
     example, `int32` and `int32[10]` are the types of integers and int vectors,
     respectively.
 
-*   **Sequence types** (`tff.SequenceType`). These are TFF's abstract equivalent
-    of TensorFlow's concrete concept of `tf.data.Dataset`s. Elements of
-    sequences can be consumed in a sequential manner, and can include complex
-    types.
+*   **Sequence types** (`federated_language.SequenceType`). These are TFF's
+    abstract equivalent of TensorFlow's concrete concept of `tf.data.Dataset`s.
+    Elements of sequences can be consumed in a sequential manner, and can
+    include complex types.
 
     The compact representation of sequence types is `T*`, where `T` is the type
     of elements. For example `int32*` represents an integer sequence.
 
-*   **Named tuple types** (`tff.StructType`). These are TFF's way of
-    constructing tuples and dictionary-like structures that have a predefined
+*   **Named tuple types** (`federated_language.StructType`). These are TFF's way
+    of constructing tuples and dictionary-like structures that have a predefined
     number of *elements* with specific types, named or unnamed. Importantly,
     TFF's named tuple concept encompasses the abstract equivalent of Python's
     argument tuples, i.e., collections of elements of which some, but not all
@@ -170,8 +171,8 @@ found in existing mainstream languages:
     as mixed with other types, e.g., `<X=float32,Y=float32>*` would be a compact
     notation for a sequence of points.
 
-*   **Function types** (`tff.FunctionType`). TFF is a functional programming
-    framework, with functions treated as
+*   **Function types** (`federated_language.FunctionType`). TFF is a functional
+    programming framework, with functions treated as
     [first-class values](https://en.wikipedia.org/wiki/First-class_citizen).
     Functions have at most one argument, and exactly one result.
 
@@ -206,10 +207,10 @@ additional commentary and examples.
     The primary purpose of defining the notion of placements is as a basis for
     defining *federated types*.
 
-*   **Federated types** (`tff.FederatedType`). A value of a federated type is
-    one that is hosted by a group of system participants defined by a specific
-    placement (such as `tff.SERVER` or `tff.CLIENTS`). A federated type is
-    defined by the *placement* value (thus, it is a
+*   **Federated types** (`federated_language.FederatedType`). A value of a
+    federated type is one that is hosted by a group of system participants
+    defined by a specific placement (such as `tff.SERVER` or `tff.CLIENTS`). A
+    federated type is defined by the *placement* value (thus, it is a
     [dependent type](https://en.wikipedia.org/wiki/Dependent_type)), the type of
     *member constituents* (what kind of content each of the participants is
     locally hosting), and the additional bit `all_equal` that specifies whether
@@ -259,7 +260,7 @@ public API:
     `tf.data.Dataset.reduce` operator to compute a sum of integers:
 
     ```python
-    @tff.tensorflow.computation(tff.SequenceType(np.int32))
+    @tff.tensorflow.computation(federated_language.SequenceType(np.int32))
     def add_up_integers(x):
       return x.reduce(np.int32(0), lambda x, y: x + y)
     ```
@@ -291,7 +292,7 @@ public API:
     Here's an example of a lambda expression we've already mentioned earlier:
 
     ```python
-    @tff.federated_computation(tff.FederatedType(np.float32, tff.CLIENTS))
+    @tff.federated_computation(federated_language.FederatedType(np.float32, tff.CLIENTS))
     def get_average_temperature(sensor_readings):
       return tff.federated_mean(sensor_readings)
     ```

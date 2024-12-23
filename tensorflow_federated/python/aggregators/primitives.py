@@ -54,8 +54,8 @@ def _zeros_for_sample(member_type):
   """Create an empty nested structure for the sample aggregation.
 
   Args:
-    member_type: A `tff.Type` representing the member components of the
-      federated type.
+    member_type: A `federated_language.Type` representing the member components
+      of the federated type.
 
   Returns:
     A function of the result of zeros to first concatenate.
@@ -76,14 +76,15 @@ def _zeros_for_sample(member_type):
 
 
 def _get_accumulator_type(member_type):
-  """Constructs a `tff.Type` for the accumulator in sample aggregation.
+  """Constructs a `federated_language.Type` for the accumulator in sample aggregation.
 
   Args:
-    member_type: A `tff.Type` representing the member components of the
-      federated type.
+    member_type: A `federated_language.Type` representing the member components
+      of the federated type.
 
   Returns:
-    The `tff.StructType` associated with the accumulator. The tuple contains
+    The `federated_language.StructType` associated with the accumulator. The
+    tuple contains
     two parts, `accumulators` and `rands`, that are parallel lists (e.g. the
     i-th index in one corresponds to the i-th index in the other). These two
     lists are used to sample from the accumulators with equal probability.

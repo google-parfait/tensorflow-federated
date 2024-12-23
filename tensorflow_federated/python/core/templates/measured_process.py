@@ -72,10 +72,10 @@ class MeasuredProcess(iterative_process.IterativeProcess):
         of the measured process. Let the type of this state be called `S`.
       next_fn: A `tff.Computation` that represents the iterated function. The
         first or only argument must be assignable from (
-        `tff.types.Type.is_assignable_from` must return `True`) the state type
-        `S`. The return value must be a `MeasuredProcessOutput` whose `state`
-        member is assignable to the first argument (same requirement as the `S`
-        type).
+        `federated_language.Type.is_assignable_from` must return `True`) the
+        state type `S`. The return value must be a `MeasuredProcessOutput` whose
+        `state` member is assignable to the first argument (same requirement as
+        the `S` type).
       next_is_multi_arg: An optional boolean indicating that `next_fn` will
         receive more than just the state argument (if `True`) or only the state
         argument (if `False`). This parameter is primarily used to provide

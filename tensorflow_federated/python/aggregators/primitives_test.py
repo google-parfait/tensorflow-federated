@@ -1249,7 +1249,7 @@ def _build_test_sum_fn_py_bounds(value_type, lower_bound, upper_bound):
   operator.
 
   Args:
-    value_type: A `tff.Type` of value to be used.
+    value_type: A `federated_language.Type` of value to be used.
     lower_bound: A Python numeric constant or a numpy array.
     upper_bound: A Python numeric constant or a numpy array.
 
@@ -1276,13 +1276,14 @@ def _build_test_sum_fn_tff_bounds(
   """Example `federated_computation` using `secure_quantized_sum`.
 
   The provided `lower_bound_type` and `upper_bound_type` describes the
-  `tff.Type` of the federated value which will be passed to the returned
+  `federated_language.Type` of the federated value which will be passed to the
+  returned
   `federated_computation` and to the `secure_quantized_sum` operator.
 
   Args:
-    value_type: A `tff.Type` of value to be used.
-    lower_bound_type: A `tff.Type` of lower_bound to be used.
-    upper_bound_type: A `tff.Type` of upper_bound to be used.
+    value_type: A `federated_language.Type` of value to be used.
+    lower_bound_type: A `federated_language.Type` of lower_bound to be used.
+    upper_bound_type: A `federated_language.Type` of upper_bound to be used.
 
   Returns:
     A `tff.federated_computation` with type signature `((value_type@CLIENTS,

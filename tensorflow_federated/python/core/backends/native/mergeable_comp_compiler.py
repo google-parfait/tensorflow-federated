@@ -106,7 +106,8 @@ def _ensure_lambda(
       building_block.type_signature, federated_language.FunctionType
   ):
     raise ValueError(
-        f'Expected a `tff.FunctionType`, found {building_block.type_signature}.'
+        'Expected a `federated_language.FunctionType`, found'
+        f' {building_block.type_signature}.'
     )
   if not isinstance(building_block, federated_language.framework.Lambda):
     if building_block.type_signature.parameter is not None:  # pytype: disable=attribute-error

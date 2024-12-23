@@ -299,7 +299,8 @@ class LearningProcess(iterative_process.IterativeProcess):
 
     The first argument of this computation should always be the current state
     (originally produced by the `initialize` attribute), the second argument
-    must be a `tff.SequenceType` placed at `CLIENTS`. The return type must be
+    must be a `federated_language.SequenceType` placed at `CLIENTS`. The return
+    type must be
     a `LearningProcessOutput`, with each field placed at `SERVER`.
 
     Returns:

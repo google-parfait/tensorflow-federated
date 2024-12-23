@@ -47,8 +47,10 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
   constants within the value range of tf.int32, though we may extend them to
   `tff.templates.EstimationProcess` in the future for adaptive clipping range.
 
-  This factory only accepts `value_type` of either `tff.TensorType` or
-  `tff.StructType` and expects the dtype of component tensors to be all
+  This factory only accepts `value_type` of either
+  `federated_language.TensorType` or
+  `federated_language.StructType` and expects the dtype of component tensors to
+  be all
   integers,
   and it will otherwise raise an error.
 

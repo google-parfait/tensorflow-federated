@@ -161,10 +161,12 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     """Creates an AggregationProcess using IBLT to aggregate strings.
 
     Args:
-      value_type: A `tff.SequenceType` representing the type of the input
-        dataset, must be compatible with the following `tff.Type`:
-        tff.SequenceType(collections.OrderedDict([ (DATASET_KEY, np.str_),
-        (DATASET_VALUE, tff.TensorType(shape=[None], dtype=np.int64)), ]))
+      value_type: A `federated_language.SequenceType` representing the type of
+        the input dataset, must be compatible with the following
+        `federated_language.Type`:
+        federated_language.SequenceType(collections.OrderedDict([ (DATASET_KEY,
+        np.str_), (DATASET_VALUE, federated_language.TensorType(shape=[None],
+        dtype=np.int64)), ]))
 
     Raises:
       ValueError: If `value_type` is not as expected.

@@ -145,7 +145,8 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     """Creates a `tff.templates.AggregationProcess` for metrics aggregation.
 
     Args:
-      local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
+      local_unfinalized_metrics_type: A
+        `federated_language.StructWithPythonType` (with
         `collections.OrderedDict` as the Python container) of a client's local
         unfinalized metrics. For example, `local_unfinalized_metrics` could
         represent the output type of
@@ -341,20 +342,22 @@ def create_default_secure_sum_quantization_ranges(
   """Create a nested structure of quantization ranges for secure sum encoding.
 
   Args:
-    local_unfinalized_metrics_type: The `tff.Type` structure to generate default
-      secure sum quantization ranges form. Must be a `tff.Type` tree containing
-      only `tff.TensorType` and `tff.StructType`. Each `tff.TensorType` must be
-      of floating point or integer dtype.
+    local_unfinalized_metrics_type: The `federated_language.Type` structure to
+      generate default secure sum quantization ranges form. Must be a
+      `federated_language.Type` tree containing only
+      `federated_language.TensorType` and `federated_language.StructType`. Each
+      `federated_language.TensorType` must be of floating point or integer
+      dtype.
     lower_bound: An optional integer or floating point lower bound for the
       secure sum quantization range. Values smaller than this will be clipped to
-      this value. By default is `0`. If a `float`, any `tff.TensorType` in
-      `local_unfinalized_metrics_type` with an integer dtype will use
-      `math.ceil(lower_bound)` as a bound.
+      this value. By default is `0`. If a `float`, any
+      `federated_language.TensorType` in `local_unfinalized_metrics_type` with
+      an integer dtype will use `math.ceil(lower_bound)` as a bound.
     upper_bound: An optional integer or floating point upper bound for the
       secure sum quantization range. Values larger than this will be clipped to
       this value. By default is `2^20 - 1` (~1 million). If a `float`, any
-      `tff.TensorType` in `local_unfinalized_metrics_type` with an integer dtype
-      will use `math.floor(lower_bound)` as a bound.
+      `federated_language.TensorType` in `local_unfinalized_metrics_type` with
+      an integer dtype will use `math.floor(lower_bound)` as a bound.
     use_auto_tuned_bounds_for_float_values: An optional boolean for specifying
       whether to use auto-tuned bounds for float values. If True, a default
       `tff.templates.EstimationProcess` is used for `upper_bound`, and the
@@ -369,7 +372,7 @@ def create_default_secure_sum_quantization_ranges(
     floating dtypes, and (`int`, `int`) for integer dtypes.
 
   Raises:
-    UnquantizableDTypeError: If A `tff.TensorType` in
+    UnquantizableDTypeError: If A `federated_language.TensorType` in
       `local_unfinalized_metrics_type` has a non-float or non-integer dtype.
     ValueError: If an integer dtype in `local_unfinalized_metrics_type` will
       have a zero range (e.g. `math.ceil(lower_bound) - math.floor(upper_bound)
@@ -534,10 +537,11 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
     Example partial value range specification:
 
-    >>> metrics_type = tff.to_type(collections.OrderedDict(
-        a=tff.types.TensorType(np.int32),
-        b=tff.types.TensorType(np.float32),
-        c=[tff.types.TensorType(np.float32), tff.types.TensorType(np.float32)])
+    >>> metrics_type = federated_language.to_type(collections.OrderedDict(
+        a=federated_language.TensorType(np.int32),
+        b=federated_language.TensorType(np.float32),
+        c=[federated_language.TensorType(np.float32),
+        federated_language.TensorType(np.float32)])
     >>> value_ranges = collections.OrderedDict(
         b=(0.0, 1.0),
         c=[None, (0.0, 1.0)])
@@ -548,8 +552,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     Args:
       metric_value_ranges: An optional `collections.OrderedDict` that matches
         the structure of `local_unfinalized_metrics_type` (a value for each
-        `tff.types.TensorType` in the type tree). Each leaf in the tree should
-        have a 2-tuple that defines the range of expected values for that
+        `federated_language.TensorType` in the type tree). Each leaf in the tree
+        should have a 2-tuple that defines the range of expected values for that
         variable in the metric. If the entire structure is `None`, a default
         range of `[0.0, 2.0**20 - 1]` will be applied to integer variables and
         auto-tuned bounds will be applied to float variable. Each leaf may also
@@ -572,7 +576,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     """Creates an `AggregationProcess` for secure summation over metrics.
 
     Args:
-      local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
+      local_unfinalized_metrics_type: A
+        `federated_language.StructWithPythonType` (with
         `collections.OrderedDict` as the Python container) of a client's local
         unfinalized metrics. For example, `local_unfinalized_metrics` could
         represent the output type of
@@ -612,10 +617,11 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         )
         for value_range in set(tree.flatten(metric_value_ranges))
     }
-    # Construct a python container of `tff.TensorType` so we can traverse it in
-    # parallel with the value ranges during AggregationProcess construction.
-    # Otherwise we have a `tff.Type` but `metric_value_ranges` is a Python
-    # container which are difficult to traverse in parallel.
+    # Construct a python container of `federated_language.TensorType` so we can
+    # traverse it in parallel with the value ranges during AggregationProcess
+    # construction. Otherwise we have a `federated_language.Type` but
+    # `metric_value_ranges` is a Python container which are difficult to
+    # traverse in parallel.
     structure_of_tensor_types = (
         type_conversions.structure_from_tensor_type_tree(
             lambda t: t, local_unfinalized_metrics_type
@@ -673,8 +679,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
     # Create an aggregation process for each factory key.
     aggregation_process_by_factory_key = collections.OrderedDict()
-    # Construct a python container of `tff.TensorType` so we can traverse it and
-    # create aggregation processes from the factories.
+    # Construct a python container of `federated_language.TensorType` so we can
+    # traverse it and create aggregation processes from the factories.
     tensor_type_list_by_factory_key = (
         type_conversions.structure_from_tensor_type_tree(
             lambda t: t, group_value_by_factory_key.type_signature.result

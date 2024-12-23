@@ -107,14 +107,15 @@ class ModelWeights(NamedTuple):
 def weights_type_from_model(
     model: Union[variable.VariableModel, Callable[[], variable.VariableModel]],
 ) -> federated_language.StructType:
-  """Creates a `tff.Type` from a `tff.learning.models.VariableModel` or callable that constructs a model.
+  """Creates a `federated_language.Type` from a `tff.learning.models.VariableModel` or callable that constructs a model.
 
   Args:
     model: A `tff.learning.models.VariableModel` instance, or a no-arg callable
       that returns a model.
 
   Returns:
-    A `tff.StructType` representing the TFF type of the `ModelWeights`
+    A `federated_language.StructType` representing the TFF type of the
+    `ModelWeights`
     structure for `model`.
   """
   if callable(model):

@@ -32,8 +32,9 @@ class UnweightedAggregationFactory(abc.ABC):
   ) -> aggregation_process.AggregationProcess:
     """Creates a `tff.aggregators.AggregationProcess` without weights.
 
-    The provided `value_type` is a non-federated `tff.Type`, that is, not a
-    `tff.FederatedType`.
+    The provided `value_type` is a non-federated `federated_language.Type`, that
+    is, not a
+    `federated_language.FederatedType`.
 
     The returned `tff.aggregators.AggregationProcess` will be created for
     aggregation of values matching `value_type` placed at `tff.CLIENTS`.
@@ -42,7 +43,7 @@ class UnweightedAggregationFactory(abc.ABC):
     its `initialize` method.
 
     Args:
-      value_type: A non-federated `tff.Type`.
+      value_type: A non-federated `federated_language.Type`.
 
     Returns:
       A `tff.templates.AggregationProcess`.
@@ -59,8 +60,9 @@ class WeightedAggregationFactory(abc.ABC):
   ) -> aggregation_process.AggregationProcess:
     """Creates a `tff.aggregators.AggregationProcess` with weights.
 
-    The provided `value_type` and `weight_type` are non-federated `tff.Type`s.
-    That is, neither is a `tff.FederatedType`.
+    The provided `value_type` and `weight_type` are non-federated
+    `federated_language.Type`s.
+    That is, neither is a `federated_language.FederatedType`.
 
     The returned `tff.aggregators.AggregationProcess` will be created
     for aggregation of pairs of values matching `value_type` and `weight_type`
@@ -69,8 +71,8 @@ class WeightedAggregationFactory(abc.ABC):
     unplaced return type of its `initialize` method.
 
     Args:
-      value_type: A non-federated `tff.Type`.
-      weight_type: A non-federated `tff.Type`.
+      value_type: A non-federated `federated_language.Type`.
+      weight_type: A non-federated `federated_language.Type`.
 
     Returns:
       A `tff.templates.AggregationProcess`.

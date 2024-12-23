@@ -77,7 +77,7 @@ def compose_dataset_computation_with_computation(
 
   Args:
     dataset_computation: An instance of `tff.Computation` which accepts some
-      parameter and returns an element of `tff.SequenceType`.
+      parameter and returns an element of `federated_language.SequenceType`.
     computation_body: An instance of `tff.Computation` that accepts exactly one
       federated dataset, IE, element of type `{B*}@CLIENTS`, where `B` is
       equivalent to the return type of `dataset_computation`.
@@ -101,7 +101,7 @@ def compose_dataset_computation_with_computation(
   dataset_return_type = dataset_computation.type_signature.result
   if not isinstance(dataset_return_type, federated_language.SequenceType):
     raise TypeError(
-        'Expected a `tff.SequenceType` to be returned from '
+        'Expected a `federated_language.SequenceType` to be returned from '
         '`dataset_computation`; found {} instead.'.format(dataset_return_type)
     )
   # TODO: b/226637447 - This restriction seems unnecessary, and can be removed.
@@ -161,13 +161,15 @@ def compose_dataset_computation_with_computation(
       dataset_computation's result, and replacing it with the federated version.
 
       Args:
-        struct_param_type: An instance of `tff.StructType` with a field that
-          matches the type signature of dataset_computation's result.
-        index_path: An accumulator of indices through nested `tff.StructType`s
-          for the location of the matching type signature.
+        struct_param_type: An instance of `federated_language.StructType` with a
+          field that matches the type signature of dataset_computation's result.
+        index_path: An accumulator of indices through nested
+          `federated_language.StructType`s for the location of the matching type
+          signature.
 
       Returns:
-        A new `tff.StructType` satisfying the specification above.
+        A new `federated_language.StructType` satisfying the specification
+        above.
 
       Raises:
         MultipleMatchingSequenceTypesError: If more than one matching type
@@ -228,9 +230,10 @@ def compose_dataset_computation_with_computation(
       """Builds a new parameter by inserting a `federated_map` computation.
 
       Args:
-        param: An instance of `tff.StructType`.
-        index_path: A list of indices through nested `tff.StructType`s
-          specifying the location for the insert.
+        param: An instance of `federated_language.StructType`.
+        index_path: A list of indices through nested
+          `federated_language.StructType`s specifying the location for the
+          insert.
         depth: Tracks index of `index_path` while recursively traversing the
           nested structure of `param`.
         computation: Computation to insert.
@@ -316,7 +319,7 @@ def compose_dataset_computation_with_iterative_process(
 
   Args:
     dataset_computation: An instance of `tff.Computation` which accepts some
-      parameter and returns an element of `tff.SequenceType`.
+      parameter and returns an element of `federated_language.SequenceType`.
     process: An instance of `tff.templates.IterativeProcess` whose next function
       accepts exactly one federated dataset, IE, element of type `{B*}@CLIENTS`,
       where `B` is equivalent to the return type of `dataset_computation`.
@@ -336,7 +339,7 @@ def compose_dataset_computation_with_iterative_process(
   dataset_return_type = dataset_computation.type_signature.result
   if not isinstance(dataset_return_type, federated_language.SequenceType):
     raise TypeError(
-        'Expected a `tff.SequenceType` to be returned from '
+        'Expected a `federated_language.SequenceType` to be returned from '
         '`dataset_computation`; found {} instead.'.format(dataset_return_type)
     )
   # TODO: b/226637447 - This restriction seems unnecessary, and can be removed.
@@ -381,7 +384,7 @@ def compose_dataset_computation_with_learning_process(
 
   Args:
     dataset_computation: An instance of `tff.Computation` which accepts some
-      parameter and returns an element of `tff.SequenceType`.
+      parameter and returns an element of `federated_language.SequenceType`.
     process: An instance of `tff.learning.templates.LearningProcess` whose
       `next` function accepts exactly one federated dataset (ie. something of
       type `{B*}@CLIENTS`, where `B` is equivalent to the return type of

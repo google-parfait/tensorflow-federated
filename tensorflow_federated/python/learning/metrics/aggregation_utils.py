@@ -101,27 +101,29 @@ def check_local_unfinalized_metrics_type(
 
   Raises:
     TypeError: If `local_unfinalized_metrics_type` is not a
-      `tff.types.StructWithPythonType` or has a `.container` attribute that is
+      `federated_language.StructWithPythonType` or has a `.container` attribute
+      that is
       not the `collections.OrderedDict` type.
   """
   # Directly check the type (instead of using `py_typecheck`) here so that the
   # the error message has a better format (specifically, the expected type is
-  # shown as `tff.types.StructWithPythonType` in the error message).
+  # shown as `federated_language.StructWithPythonType` in the error message).
   if not isinstance(
       local_unfinalized_metrics_type, federated_language.StructWithPythonType
   ):
     raise TypeError(
         'Expected the input `local_unfinalized_metrics_type` to be a '
-        '`tff.types.StructWithPythonType`, found '
+        '`federated_language.StructWithPythonType`, found '
         f'{py_typecheck.type_string(type(local_unfinalized_metrics_type))}.'
     )
   local_metrics_container = local_unfinalized_metrics_type.python_container
   if local_metrics_container is not collections.OrderedDict:
     raise TypeError(
-        'Expected the input `local_unfinalized_metrics_type` to be a '
-        '`tff.types.StructWithPythonType` with `collections.OrderedDict` as '
-        'the Python container, found a `tff.types.StructWithPythonType` with '
-        f'Python container {py_typecheck.type_string(local_metrics_container)}.'
+        'Expected the input `local_unfinalized_metrics_type` to be a'
+        ' `federated_language.StructWithPythonType` with'
+        ' `collections.OrderedDict` as the Python container, found a'
+        ' `federated_language.StructWithPythonType` with Python container'
+        f' {py_typecheck.type_string(local_metrics_container)}.'
     )
 
 

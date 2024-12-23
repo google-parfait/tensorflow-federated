@@ -148,8 +148,8 @@ def _build_fed_sgd_client_work(
       pre-constructed model each call will result in an error.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
     loop_implementation: Changes the implementation of the training loop
@@ -321,8 +321,8 @@ def _build_functional_fed_sgd_client_work(
     model: A `tff.learning.models.FunctionalModel` to train.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
     loop_implementation: Changes the implementation of the training loop
@@ -449,8 +449,8 @@ def build_fed_sgd(
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
     loop_implementation: Changes the implementation of the training loop

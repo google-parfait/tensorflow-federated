@@ -536,12 +536,14 @@ def _construct_selection_from_federated_tuple(
       federated_tuple.type_signature, federated_language.FederatedType
   ):
     raise ValueError(
-        'Expected a `tff.FederatedType`, found'
+        'Expected a `federated_language.FederatedType`, found'
         f' {federated_tuple.type_signature}.'
     )
   member_type = federated_tuple.type_signature.member
   if not isinstance(member_type, federated_language.StructType):
-    raise ValueError(f'Expected a `tff.StructType`, found {member_type}.')
+    raise ValueError(
+        f'Expected a `federated_language.StructType`, found {member_type}.'
+    )
   param_name = next(name_generator)
   selecting_function = federated_language.framework.Lambda(
       param_name,

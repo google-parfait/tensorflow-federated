@@ -277,7 +277,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   as its inner aggregation factory.
 
   If the `value_type` passed to the `create` method is a structure, all its
-  constituent `tff.TensorType`s must have the same dtype (i.e. mixing
+  constituent `federated_language.TensorType`s must have the same dtype (i.e.
+  mixing
   `tf.float32` and `tf.float64` is not allowed).
 
   The created process will report measurements

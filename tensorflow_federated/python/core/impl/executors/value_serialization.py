@@ -52,7 +52,7 @@ def _serialize_tensor_value(
 
   Args:
     value: A Numpy array or Python value that can be coerced into an Array.
-    type_spec: A `tff.TensorType`.
+    type_spec: A `federated_language.TensorType`.
 
   Returns:
     A tuple `(value_proto, ret_type_spec)` in which `value_proto` is an instance
@@ -67,10 +67,11 @@ def _serialize_tensor_value(
   """
 
   # It is necessary to coerce Python `list` and `tuple` to a numpy value,
-  # because these types are not an `federated_language.Array`, but can be serialized as a
-  # single `tff.TensorType`. Additionally, it is safe to coerce these kinds of
-  # values to a numpy value of type `type_spec.dtype.type` if each element in
-  # the sequence is compatible with `type_spec.dtype.type`.
+  # because these types are not an `federated_language.Array`, but can be
+  # serialized as a single `federated_language.TensorType`. Additionally, it is
+  # safe to coerce these kinds of values to a numpy value of type
+  # `type_spec.dtype.type` if each element in the sequence is compatible with
+  # `type_spec.dtype.type`.
   if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
     if not all(
         federated_language.array_is_compatible_dtype(x, type_spec.dtype.type)
@@ -157,8 +158,9 @@ def _serialize_sequence_value(
   element_type = type_spec.element
   if not federated_language.framework.is_structure_of_tensors(element_type):
     raise ValueError(
-        'Expected `element_type` to contain only `tff.StructType` or'
-        f' `tff.TensorType`, found {element_type}.'
+        'Expected `element_type` to contain only'
+        ' `federated_language.StructType` or `federated_language.TensorType`,'
+        f' found {element_type}.'
     )
 
   def _flatten(value, type_spec):
@@ -262,10 +264,11 @@ def serialize_value(
 
   Args:
     value: A value to be serialized.
-    type_spec: An optional `tff.Type`.
+    type_spec: An optional `federated_language.Type`.
 
   Returns:
-    A 2-tuple of serialized value and `tff.Type` that represents the TFF type of
+    A 2-tuple of serialized value and `federated_language.Type` that represents
+    the TFF type of
     the serialized value.
 
   Raises:
@@ -329,11 +332,13 @@ def _deserialize_tensor_value(
 
   Args:
     array_proto: A `array_pb2.Array` to deserialize.
-    type_hint: An optional `tff.Type` to use when deserializing `array_proto`.
+    type_hint: An optional `federated_language.Type` to use when deserializing
+      `array_proto`.
 
   Returns:
     A tuple `(value, type_spec)`, where `value` is a Numpy array that represents
-    the deserialized value, and `type_spec` is an instance of `tff.TensorType`
+    the deserialized value, and `type_spec` is an instance of
+    `federated_language.TensorType`
     that represents its type.
   """
   if type_hint is not None:
@@ -371,7 +376,7 @@ def _deserialize_sequence_value(
       used instead.
 
   Returns:
-    A tuple of `([Array], tff.Type)`.
+    A tuple of `([Array], federated_language.Type)`.
   """
   if type_hint is not None:
     element_type = type_hint.element
@@ -405,8 +410,9 @@ def _deserialize_sequence_value(
       )
     else:
       raise ValueError(
-          'Expected `element_type` to be either a `tff.StructType` or a'
-          f' `tff.TensorType`, found {element_type}.'
+          'Expected `element_type` to be either a'
+          ' `federated_language.StructType` or a'
+          f' `federated_language.TensorType`, found {element_type}.'
       )
     elements.append(element)
 
@@ -524,14 +530,14 @@ def deserialize_value(
 
   Args:
     value_proto: An instance of `executor_pb2.Value`.
-    type_hint: A `tff.Type` that hints at what the value type should be for
-      executors that only return values.
+    type_hint: A `federated_language.Type` that hints at what the value type
+      should be for executors that only return values.
 
   Returns:
     A tuple `(value, type_spec)`, where `value` is a deserialized
     representation of the transmitted value (e.g., Numpy array, or a
     `pb.Computation` instance), and `type_spec` is an instance of
-    `tff.TensorType` that represents its type.
+    `federated_language.TensorType` that represents its type.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -547,7 +553,9 @@ def deserialize_value(
     if type_hint is not None and not isinstance(
         type_hint, federated_language.TensorType
     ):
-      raise ValueError(f'Expected a `tff.TensorType`, found {type_hint}.')
+      raise ValueError(
+          f'Expected a `federated_language.TensorType`, found {type_hint}.'
+      )
     return _deserialize_tensor_value(value_proto.array, type_hint)
   elif which_value == 'computation':
     return _deserialize_computation(value_proto)

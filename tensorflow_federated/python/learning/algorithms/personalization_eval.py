@@ -124,10 +124,10 @@ def build_personalization_eval_computation(
     model_weights_type = model_weights_lib.weights_type_from_model(model)
     batch_tff_type = tensorflow_types.to_type(model.input_spec)
 
-  # Define the `tff.Type` of each client's input. Since batching (as well as
-  # other preprocessing of datasets) is done within each personalization
-  # strategy (i.e., by functions in `personalize_fn_dict`), the client-side
-  # input should contain unbatched elements.
+  # Define the `federated_language.Type` of each client's input. Since batching
+  # (as well as other preprocessing of datasets) is done within each
+  # personalization strategy (i.e., by functions in `personalize_fn_dict`), the
+  # client-side input should contain unbatched elements.
   element_tff_type = _remove_batch_dim(batch_tff_type)
   client_input_type = collections.OrderedDict(
       train_data=federated_language.SequenceType(element_tff_type),
@@ -233,23 +233,26 @@ def _build_client_computation(
 def _remove_batch_dim(
     type_spec: federated_language.Type,
 ) -> federated_language.Type:
-  """Removes the batch dimension from the `tff.TensorType`s in `type_spec`.
+  """Removes the batch dimension from the `federated_language.TensorType`s in `type_spec`.
 
   Args:
-    type_spec: A `tff.Type` containing `tff.TensorType`s as leaves. The first
-      dimension in the leaf `tff.TensorType` is the batch dimension.
+    type_spec: A `federated_language.Type` containing
+      `federated_language.TensorType`s as leaves. The first dimension in the
+      leaf `federated_language.TensorType` is the batch dimension.
 
   Returns:
-    A `tff.Type` of the same structure as `type_spec`, with no batch dimensions
-    in all the leaf `tff.TensorType`s.
+    A `federated_language.Type` of the same structure as `type_spec`, with no
+    batch dimensions
+    in all the leaf `federated_language.TensorType`s.
 
   Raises:
     TypeError: If the argument has the wrong type.
-    ValueError: If the `tff.TensorType` does not have the first dimension.
+    ValueError: If the `federated_language.TensorType` does not have the first
+    dimension.
   """
 
   def _remove_first_dim_in_tensortype(tensor_type):
-    """Return a new `tff.TensorType` after removing the first dimension."""
+    """Return a new `federated_language.TensorType` after removing the first dimension."""
     py_typecheck.check_type(tensor_type, federated_language.TensorType)
     if (
         tensor_type.shape is not None

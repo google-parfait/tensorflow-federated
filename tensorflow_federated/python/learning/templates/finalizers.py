@@ -124,7 +124,7 @@ class FinalizerProcess(measured_process.MeasuredProcess):
       ])
       raise errors.TemplateNotFederatedError(
           'Provided `next_fn` must be a *federated* computation, that is, '
-          'operate on `tff.FederatedType`s, but found\n'
+          'operate on `federated_language.FederatedType`s, but found\n'
           f'next_fn with type signature:\n{next_fn.type_signature}\n'
           f'The non-federated types are:\n {offending_types}.'
       )

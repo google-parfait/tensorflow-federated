@@ -209,8 +209,8 @@ def _build_mime_lite_client_work(
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
@@ -499,8 +499,8 @@ def _build_mime_lite_functional_client_work(
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
@@ -652,8 +652,8 @@ def _build_scheduled_mime_lite_client_work(
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
@@ -843,8 +843,8 @@ def build_weighted_mime_lite(
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
@@ -1024,8 +1024,8 @@ def build_unweighted_mime_lite(
       `tff.aggregators.UnweightedMeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
@@ -1164,8 +1164,8 @@ def build_mime_lite_with_optimizer_schedule(
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.

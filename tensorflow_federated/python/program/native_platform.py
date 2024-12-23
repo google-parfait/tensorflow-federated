@@ -38,7 +38,7 @@ class NativeValueReference(
 
     Args:
       task: An `asyncio.Task` to run.
-      type_signature: The `tff.Type` of this object.
+      type_signature: The `federated_language.Type` of this object.
     """
     self._task = task
     self._type_signature = type_signature
@@ -47,7 +47,7 @@ class NativeValueReference(
   def type_signature(
       self,
   ) -> federated_language.program.MaterializableTypeSignature:
-    """The `tff.TensorType` of this object."""
+    """The `federated_language.TensorType` of this object."""
     return self._type_signature
 
   async def get_value(self) -> federated_language.program.MaterializedValue:
@@ -77,8 +77,8 @@ def _create_structure_of_references(
   Args:
     task: A task used to create the structure of
       `tff.program.NativeValueReference`s.
-    type_signature: The `tff.Type` of the value returned by `task`; must contain
-      only structures, server-placed values, or tensors.
+    type_signature: The `federated_language.Type` of the value returned by
+      `task`; must contain only structures, server-placed values, or tensors.
 
   Raises:
     NotImplementedError: If `type_signature` contains an unexpected type.

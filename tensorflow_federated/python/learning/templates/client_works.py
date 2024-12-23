@@ -96,7 +96,7 @@ def _check_next_fn_is_federated(
     ])
     raise errors.TemplateNotFederatedError(
         'Provided `next_fn` must be a *federated* computation, that is, '
-        'operate on `tff.FederatedType`s, but found\n'
+        'operate on `federated_language.FederatedType`s, but found\n'
         f'next_fn with type signature:\n{next_fn.type_signature}\n'
         f'The non-federated types are:\n {offending_types}.'
     )
@@ -205,7 +205,7 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
     ```
     with `A`, `B`, `C`, and `D` not dependent on other types here. `A`
     represents a parameter informing the client update (such as a client's
-    model weights). `D*` is a `tff.SequenceType` of client data.
+    model weights). `D*` is a `federated_language.SequenceType` of client data.
 
     Note that the output of `next_fn` must have a structure matching
     `tff.templates.MeasuredProcessOutput`. The `result` field of this output

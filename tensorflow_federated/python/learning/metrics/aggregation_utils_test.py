@@ -79,12 +79,12 @@ class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
       (
           'struct_type',
           federated_language.StructType([(None, np.int32)]),
-          '`tff.types.StructWithPythonType`',
+          '`federated_language.StructWithPythonType`',
       ),
       (
           'ordereddict',
           collections.OrderedDict(num_example=np.int32),
-          '`tff.types.StructWithPythonType`',
+          '`federated_language.StructWithPythonType`',
       ),
       (
           'list_container',

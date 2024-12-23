@@ -235,7 +235,7 @@ _TEST_ARGUMENTS_INVALID_INPUTS = [
             np.float32
         ),
         'error_type': TypeError,
-        'error_message': 'Expected .*`tff.types.StructWithPythonType`',
+        'error_message': 'Expected .*`federated_language.StructWithPythonType`',
     },
     {
         'testcase_name': 'unfinalized_metrics_not_ordereddict',

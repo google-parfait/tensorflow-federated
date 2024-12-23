@@ -218,7 +218,8 @@ def _get_secure_intrinsic_reductions() -> dict[
     )
     if not isinstance(arg.type_signature, federated_language.StructType):
       raise ValueError(
-          f'Expected a `tff.StructType`, found {arg.type_signature}.'
+          'Expected a `federated_language.StructType`, found'
+          f' {arg.type_signature}.'
       )
     if isinstance(arg.type_signature, federated_language.StructWithPythonType):
       container_type = arg.type_signature.python_container

@@ -140,8 +140,8 @@ def build_weighted_fed_avg(
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
@@ -338,8 +338,8 @@ def build_unweighted_fed_avg(
       `tff.aggregators.UnweightedMeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.

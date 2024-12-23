@@ -71,7 +71,7 @@ class DistributionProcess(measured_process.MeasuredProcess):
       ])
       raise errors.TemplateNotFederatedError(
           'Provided `next_fn` must be a *federated* computation, that is, '
-          'operate on `tff.FederatedType`s, but found\n'
+          'operate on `federated_language.FederatedType`s, but found\n'
           f'next_fn with type signature:\n{next_fn.type_signature}\n'
           f'The non-federated types are:\n {offending_types}.'
       )
@@ -126,21 +126,22 @@ def build_broadcast_process(value_type: federated_language.Type):
   The created process has empty state and reports no measurements.
 
   Args:
-    value_type: A non-federated `tff.Type` of value to be broadcasted.
+    value_type: A non-federated `federated_language.Type` of value to be
+      broadcasted.
 
   Returns:
     A `DistributionProcess` for broadcasting `value_type`.
 
   Raises:
-    TypeError: If `value_type` contains a `tff.types.FederatedType`.
+    TypeError: If `value_type` contains a `federated_language.FederatedType`.
   """
   py_typecheck.check_type(
       value_type, (federated_language.TensorType, federated_language.StructType)
   )
   if federated_language.framework.contains_federated_types(value_type):
     raise TypeError(
-        'Provided value_type must not contain any tff.types.FederatedType, '
-        f'but found: {value_type}'
+        'Provided value_type must not contain any'
+        f' federated_language.FederatedType, but found: {value_type}'
     )
 
   @federated_language.federated_computation()

@@ -361,8 +361,9 @@ class MapReduceForm(federated_language.TypedObject):
         and len(accumulate.type_signature.parameter) != 2
     ):
       raise ValueError(
-          'Expected the parameter to `accumulate` to be a `tff.StructType` of '
-          f'length 2, found {len(accumulate.type_signature.parameter)}.'
+          'Expected the parameter to `accumulate` to be a'
+          ' `federated_language.StructType` of length 2, found'
+          f' {len(accumulate.type_signature.parameter)}.'
       )
 
     accumulate.type_signature.parameter[0].check_assignable_from(
@@ -391,8 +392,9 @@ class MapReduceForm(federated_language.TypedObject):
         and len(merge.type_signature.parameter) != 2
     ):
       raise ValueError(
-          'Expected the parameter to `merge` to be a `tff.StructType` of '
-          f'length 2, found {len(merge.type_signature.parameter)}.'
+          'Expected the parameter to `merge` to be a'
+          ' `federated_language.StructType` of length 2, found'
+          f' {len(merge.type_signature.parameter)}.'
       )
 
     merge.type_signature.parameter[0].check_assignable_from(

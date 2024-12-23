@@ -80,8 +80,8 @@ class DatasetDataSourceIterator(
     )
     if not isinstance(federated_type, federated_language.FederatedType):
       raise TypeError(
-          'Expected `federated_type` to be a `tff.FederatedType`, found '
-          f'{type(federated_type)}.'
+          'Expected `federated_type` to be a'
+          f' `federated_language.FederatedType`, found {type(federated_type)}.'
       )
     return DatasetDataSourceIterator(
         datasets=datasets, federated_type=federated_type

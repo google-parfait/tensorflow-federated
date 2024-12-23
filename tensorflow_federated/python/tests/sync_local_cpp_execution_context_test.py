@@ -16,6 +16,7 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -67,7 +68,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   )
   def test_tf_computation_with_dataset_params_and_int_result(self):
 
-    @tff.tensorflow.computation(tff.SequenceType(np.int32))
+    @tff.tensorflow.computation(federated_language.SequenceType(np.int32))
     def comp(ds):
       return ds.reduce(np.int32(0), lambda x, y: x + y)
 
@@ -98,7 +99,9 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   )
   def test_changing_cardinalities_across_calls(self):
 
-    @tff.federated_computation(tff.FederatedType(np.int32, tff.CLIENTS))
+    @tff.federated_computation(
+        federated_language.FederatedType(np.int32, tff.CLIENTS)
+    )
     def comp(x):
       return x
 
@@ -117,8 +120,8 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   def test_conflicting_cardinalities_within_call(self):
 
     @tff.federated_computation([
-        tff.FederatedType(np.int32, tff.CLIENTS),
-        tff.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, tff.CLIENTS),
     ])
     def comp(x):
       return x

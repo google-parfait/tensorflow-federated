@@ -299,7 +299,7 @@ class SumThenFinalizeFactoryComputationTest(
         metric_finalizers
     )
     with self.assertRaisesRegex(
-        TypeError, 'Expected .*`tff.types.StructWithPythonType`'
+        TypeError, 'Expected .*`federated_language.StructWithPythonType`'
     ):
       aggregate_factory.create(bad_unfinalized_metrics_type)
 
@@ -779,7 +779,7 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
   ):
     secure_sum_factory = sum_aggregation_factory.SecureSumFactory()
     with self.assertRaisesRegex(
-        TypeError, 'Expected .*`tff.types.StructWithPythonType`'
+        TypeError, 'Expected .*`federated_language.StructWithPythonType`'
     ):
       secure_sum_factory.create(bad_unfinalized_metrics_type)
 

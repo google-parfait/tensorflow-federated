@@ -28,6 +28,7 @@ py_library(
     deps = [
         ":simple_fedavg_tf",
         "//tensorflow_federated",
+        "@federated_language//federated_language",
     ],
 )
 
@@ -41,5 +42,6 @@ py_test(
         ":simple_fedavg_tf",
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "@federated_language//federated_language",
     ],
 )

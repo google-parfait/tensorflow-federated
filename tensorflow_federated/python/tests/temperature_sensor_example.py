@@ -13,26 +13,31 @@
 # limitations under the License.
 """Simple temperature sensor example in TFF."""
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
 
-@tff.tensorflow.computation(tff.SequenceType(np.float32), np.float32)
+@tff.tensorflow.computation(
+    federated_language.SequenceType(np.float32), np.float32
+)
 def count_over(ds, t):
   return ds.reduce(
       np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32)
   )
 
 
-@tff.tensorflow.computation(tff.SequenceType(np.float32))
+@tff.tensorflow.computation(federated_language.SequenceType(np.float32))
 def count_total(ds):
   return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
 
 @tff.federated_computation(
-    tff.FederatedType(tff.SequenceType(np.float32), tff.CLIENTS),
-    tff.FederatedType(np.float32, tff.SERVER),
+    federated_language.FederatedType(
+        federated_language.SequenceType(np.float32), tff.CLIENTS
+    ),
+    federated_language.FederatedType(np.float32, tff.SERVER),
 )
 def mean_over_threshold(temperatures, threshold):
   client_data = tff.federated_broadcast(threshold)

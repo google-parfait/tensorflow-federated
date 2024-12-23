@@ -103,7 +103,8 @@ def build_apply_optimizer_finalizer(
 ):
   """Builds finalizer that applies a step of an optimizer.
 
-  The provided `model_weights_type` must be a non-federated `tff.Type` with the
+  The provided `model_weights_type` must be a non-federated
+  `federated_language.Type` with the
   `tff.learning.models.ModelWeights` container.
 
   The 2nd input argument of the created `FinalizerProcess.next` expects a value
@@ -117,8 +118,9 @@ def build_apply_optimizer_finalizer(
   Args:
     optimizer_fn: A `tff.learning.optimizers.Optimizer`. This optimizer is used
       to apply client updates to the server model.
-    model_weights_type: A non-federated `tff.Type` of the model weights to be
-      optimized, which must have a `tff.learning.models.ModelWeights` container.
+    model_weights_type: A non-federated `federated_language.Type` of the model
+      weights to be optimized, which must have a
+      `tff.learning.models.ModelWeights` container.
     should_reject_update: A callable that takes the optimizer state and the
       model weights update, and returns a boolean or a bool tensor indicating if
       the model weights update should be rejected and an OrderedDict of
@@ -134,7 +136,7 @@ def build_apply_optimizer_finalizer(
   Raises:
     TypeError: If `value_type` does not have a
     `tff.learning.model.sModelWeights`
-      Python container, or contains a `tff.types.FederatedType`.
+      Python container, or contains a `federated_language.FederatedType`.
   """
   if (
       not isinstance(
@@ -146,9 +148,10 @@ def build_apply_optimizer_finalizer(
       )
   ):
     raise TypeError(
-        'Provided value_type must be a tff.types.StructType with its python '
-        'container being tff.learning.models.ModelWeights, not containing a '
-        f'tff.types.FederatedType, but found: {model_weights_type}'
+        'Provided value_type must be a federated_language.StructType with its'
+        ' python container being tff.learning.models.ModelWeights, not'
+        ' containing a federated_language.FederatedType, but found:'
+        f' {model_weights_type}'
     )
 
   init_tf, next_tf = _build_tff_optimizer_initialize_and_next(

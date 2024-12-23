@@ -28,7 +28,7 @@ def check_is_client_placed_structure_of_sequences(
   """Checks that a type is a structure of sequences, placed at `tff.CLIENTS`.
 
   Args:
-    type_spec: A `tff.Type`.
+    type_spec: A `federated_language.Type`.
     error_message: An optional error message to display upon failure. If set to
       `None`, a default message is provided.
 

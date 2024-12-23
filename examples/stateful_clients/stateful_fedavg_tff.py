@@ -26,6 +26,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -86,7 +87,7 @@ def build_federated_averaging_process(
 
   model_weights_type = server_state_type.model_weights
 
-  client_state_type = tff.StructWithPythonType(
+  client_state_type = federated_language.StructWithPythonType(
       [
           ('client_index', np.int32),
           ('iters_count', np.int32),
@@ -113,7 +114,7 @@ def build_federated_averaging_process(
 
   server_message_type = server_message_fn.type_signature.result
   element_type = tff.tensorflow.to_type(whimsy_model.input_spec)
-  tf_dataset_type = tff.SequenceType(element_type)
+  tf_dataset_type = federated_language.SequenceType(element_type)
 
   @tff.tensorflow.computation(
       tf_dataset_type, client_state_type, server_message_type
@@ -125,10 +126,14 @@ def build_federated_averaging_process(
         model, tf_dataset, client_state, server_message, client_optimizer
     )
 
-  federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
-  federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
+  federated_server_state_type = federated_language.FederatedType(
+      server_state_type, tff.SERVER
+  )
+  federated_dataset_type = federated_language.FederatedType(
+      tf_dataset_type, tff.CLIENTS
+  )
 
-  federated_client_state_type = tff.FederatedType(
+  federated_client_state_type = federated_language.FederatedType(
       client_state_type, tff.CLIENTS
   )
 

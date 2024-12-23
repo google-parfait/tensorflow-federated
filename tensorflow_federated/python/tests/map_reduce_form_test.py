@@ -14,6 +14,7 @@
 
 import collections
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -149,7 +150,9 @@ class MapReduceFormTest(tf.test.TestCase):
     # against StructType.
     ip_1_result_type = ip_1.next.type_signature.result
     ip_2_result_type = ip_2.next.type_signature.result
-    tff.types.StructType(ip_1_result_type).check_equivalent_to(ip_2_result_type)
+    federated_language.StructType(ip_1_result_type).check_equivalent_to(
+        ip_2_result_type
+    )
 
     sample_batch = collections.OrderedDict(
         x=np.array([[1.0, 1.0]], dtype=np.float32),

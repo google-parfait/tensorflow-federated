@@ -26,7 +26,8 @@ def reconcile_value_with_type_spec(
   """Reconciles the type of `value` with the given `type_spec`.
 
   The currently implemented logic only performs reconciliation of `value` and
-  `type` for values that implement `tff.TypedObject`. Future extensions may
+  `type` for values that implement `federated_language.TypedObject`. Future
+  extensions may
   perform reconciliation for a greater range of values; the caller should not
   depend on the limited implementation. This method may fail in case of any
   incompatibility between `value` and `type_spec`. In any case, the method is
@@ -34,13 +35,16 @@ def reconcile_value_with_type_spec(
 
   Args:
     value: An object that represents a value.
-    type_spec: An instance of `tff.Type`.
+    type_spec: An instance of `federated_language.Type`.
 
   Returns:
-    An instance of `tff.Type`. If `value` is not a `tff.TypedObject`, this is
+    An instance of `federated_language.Type`. If `value` is not a
+    `federated_language.TypedObject`, this is
     the same as `type_spec`, which in this case must not be `None`. If `value`
-    is a `tff.TypedObject`, and `type_spec` is `None`, this is simply the type
-    signature of `value.` If the `value` is a `tff.TypedObject` and `type_spec`
+    is a `federated_language.TypedObject`, and `type_spec` is `None`, this is
+    simply the type
+    signature of `value.` If the `value` is a `federated_language.TypedObject`
+    and `type_spec`
     is not `None`, this is `type_spec` to the extent that it is eqiuvalent to
     the type signature of `value`, otherwise an exception is raised.
 
@@ -65,8 +69,8 @@ def reconcile_value_type_with_type_spec(
   """Reconciles a pair of types.
 
   Args:
-    value_type: An instance of `tff.Type`.
-    type_spec: An instance of `tff.Type`, or `None`.
+    value_type: An instance of `federated_language.Type`.
+    type_spec: An instance of `federated_language.Type`, or `None`.
 
   Returns:
     Either `value_type` if `type_spec` is `None`, or `type_spec` if `type_spec`

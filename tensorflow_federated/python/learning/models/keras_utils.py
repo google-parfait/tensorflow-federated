@@ -80,8 +80,8 @@ def from_keras_model(
       list, then each loss is expected to correspond to a model output; the
       model will attempt to minimize the sum of all individual losses
       (optionally weighted using the `loss_weights` argument).
-    input_spec: A structure of `tf.TensorSpec`s or `tff.Type` specifying the
-      type of arguments the model expects. If `input_spec` is a `tff.Type`, its
+    input_spec: A structure of `tf.TensorSpec`s or `federated_language.Type` specifying the
+      type of arguments the model expects. If `input_spec` is a `federated_language.Type`, its
       leaf nodes must be `TensorType`s. Note that `input_spec` must be a
       compound structure of two elements, specifying both the data fed into the
       model (x) to generate predictions as well as the expected type of the
@@ -104,8 +104,8 @@ def from_keras_model(
   Raises:
     TypeError: If `keras_model` is not an instance of `tf.keras.Model`, if
       `loss` is not an instance of `tf.keras.losses.Loss` nor a list of
-      instances of `tf.keras.losses.Loss`, if `input_spec` is a `tff.Type` but
-      the leaf nodes are not `tff.TensorType`s, if `loss_weight` is provided but
+      instances of `tf.keras.losses.Loss`, if `input_spec` is a `federated_language.Type` but
+      the leaf nodes are not `federated_language.TensorType`s, if `loss_weight` is provided but
       is not a list of floats, or if `metrics` is provided but is not a list of
       instances of `tf.keras.metrics.Metric`.
     ValueError: If `keras_model` was compiled, if `loss` is a list of unequal
@@ -162,8 +162,10 @@ def from_keras_model(
   if isinstance(input_spec, federated_language.Type):
     if not federated_language.framework.is_structure_of_tensors(input_spec):
       raise TypeError(
-          'Expected a `tff.Type` with all the leaf nodes being '
-          '`tff.TensorType`s, found an input spec {}.'.format(input_spec)
+          'Expected a `federated_language.Type` with all the leaf nodes being '
+          '`federated_language.TensorType`s, found an input spec {}.'.format(
+              input_spec
+          )
       )
     input_spec = type_conversions.structure_from_tensor_type_tree(
         lambda tensor_type: tf.TensorSpec(tensor_type.shape, tensor_type.dtype),

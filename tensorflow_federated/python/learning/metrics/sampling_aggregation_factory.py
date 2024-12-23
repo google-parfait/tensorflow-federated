@@ -123,7 +123,8 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
         the later, the callable must compute over the same keyspace of the
         result returned by
         `tff.learning.models.FunctionalModel.update_metrics_state`.
-      local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
+      local_unfinalized_metrics_type: A
+        `federated_language.StructWithPythonType` (with
         `collections.OrderedDict` as the Python container) of a client's local
         unfinalized metrics.
 

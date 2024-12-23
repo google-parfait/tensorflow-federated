@@ -187,7 +187,7 @@ def unpack_serializable_from(
 
 
 def pack_type_spec(type_spec: federated_language.Type) -> bytes:
-  """Packs a `tff.Type` as bytes."""
+  """Packs a `federated_language.Type` as bytes."""
   proto = federated_language.framework.serialize_type(type_spec)
   type_bytes = proto.SerializeToString()
   length_bytes = _pack_length(type_bytes)
@@ -197,14 +197,15 @@ def pack_type_spec(type_spec: federated_language.Type) -> bytes:
 def unpack_type_spec_from(
     buffer: bytes, offset: int = 0
 ) -> tuple[federated_language.Type, int]:
-  """Unpacks a `tff.Type` from bytes.
+  """Unpacks a `federated_language.Type` from bytes.
 
   Args:
     buffer: The `bytes` to unpack.
     offset: The position in `buffer` to start unpacking from.
 
   Returns:
-    A `tuple` containing the unpacked `tff.Type` and the packed bytes size.
+    A `tuple` containing the unpacked `federated_language.Type` and the packed
+    bytes size.
   """
   length, length_size = _unpack_length_from(buffer, offset=offset)
   offset += length_size

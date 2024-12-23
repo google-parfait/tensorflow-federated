@@ -23,7 +23,10 @@ py_test(
 py_test(
     name = "async_execution_context_integration_test",
     srcs = ["async_execution_context_integration_test.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_test(
@@ -34,20 +37,27 @@ py_test(
         ":temperature_sensor_example",
         ":test_contexts",
         "//tensorflow_federated",
+        "@federated_language//federated_language",
     ],
 )
 
 py_cpu_gpu_test(
     name = "backend_accelerators_test",
     srcs = ["backend_accelerators_test.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_test(
     name = "map_reduce_form_test",
     size = "medium",
     srcs = ["map_reduce_form_test.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_test(
@@ -55,7 +65,10 @@ py_test(
     size = "small",
     timeout = "long",
     srcs = ["mergeable_comp_execution_context_integration_test.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_test(
@@ -73,20 +86,29 @@ py_test(
     timeout = "moderate",
     srcs = ["remote_runtime_stream_structs_test.py"],
     tags = ["requires-mem:20g"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_test(
     name = "sync_local_cpp_execution_context_test",
     size = "small",
     srcs = ["sync_local_cpp_execution_context_test.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_library(
     name = "temperature_sensor_example",
     srcs = ["temperature_sensor_example.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_library(

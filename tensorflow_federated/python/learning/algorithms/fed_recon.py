@@ -130,9 +130,10 @@ def _build_reconstruction_client_work(
       average of model deltas.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.Model.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics.
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
+      `tff.learning.Model.report_local_unfinalized_metrics()`), and returns a
+      `tff.Computation` for aggregating the unfinalized metrics.
 
   Returns:
     A `tff.learning.templates.ClientWorkProcess` for the local client update.
@@ -457,10 +458,11 @@ def build_fed_recon(
       clients (weighted depending on `client_weighting`).
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.Model.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
+      `tff.learning.Model.report_local_unfinalized_metrics()`), and returns a
+      `tff.Computation` for aggregating the unfinalized metrics. If `None`, this
+      is set to `tff.learning.metrics.sum_then_finalize`.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.

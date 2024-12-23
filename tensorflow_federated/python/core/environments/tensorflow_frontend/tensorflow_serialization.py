@@ -51,9 +51,11 @@ def serialize_py_fn_as_tf_computation(
     context_stack: The context stack to use.
 
   Returns:
-    A tuple of (`pb.Computation`, `tff.Type`), where the computation contains
+    A tuple of (`pb.Computation`, `federated_language.Type`), where the
+    computation contains
     the instance with the `pb.TensorFlow` variant set, and the type is an
-    instance of `tff.Type`, potentially including Python container annotations,
+    instance of `federated_language.Type`, potentially including Python
+    container annotations,
     for use by TensorFlow computation wrappers.
 
   Raises:

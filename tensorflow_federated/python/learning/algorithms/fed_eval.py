@@ -66,8 +66,8 @@ def _build_local_evaluation(
   Args:
     model_fn: A no-arg function that returns a
       `tff.learning.models.VariableModel`.
-    model_weights_type: The `tff.Type` of the model parameters that will be used
-      to initialize the model during evaluation.
+    model_weights_type: The `federated_language.Type` of the model parameters
+      that will be used to initialize the model during evaluation.
     batch_type: The type of one entry in the dataset.
     loop_implementation: Changes the implementation of the training loop
       generated. See `tff.learning.LoopImplementation` for more details.
@@ -140,8 +140,8 @@ def _build_functional_local_evaluation(
 
   Args:
     model: A `tff.learning.models.FunctionalModel`.
-    model_weights_type: The `tff.Type` of the model parameters that will be used
-      in the forward pass.
+    model_weights_type: The `federated_language.Type` of the model parameters
+      that will be used in the forward pass.
     batch_type: The type of one entry in the dataset.
 
   Returns:

@@ -42,7 +42,7 @@ def _create_mock_context() -> mock.Mock:
 
 def _create_mock_data_source_iterator(
     *,
-    federated_type: tff.FederatedType,
+    federated_type: federated_language.FederatedType,
     data: Optional[object] = None,
 ) -> mock.Mock:
   mock_data_source_iterator = mock.create_autospec(
@@ -51,7 +51,9 @@ def _create_mock_data_source_iterator(
       instance=True,
   )
   type(mock_data_source_iterator).federated_type = mock.PropertyMock(
-      spec=tff.FederatedType, return_value=federated_type, spec_set=True
+      spec=federated_language.FederatedType,
+      return_value=federated_type,
+      spec_set=True,
   )
   mock_data_source_iterator.select.side_effect = data
   return mock_data_source_iterator
@@ -59,7 +61,7 @@ def _create_mock_data_source_iterator(
 
 def _create_mock_data_source(
     *,
-    federated_type: tff.FederatedType,
+    federated_type: federated_language.FederatedType,
     iterator: Optional[
         federated_language.program.FederatedDataSourceIterator
     ] = None,
@@ -73,7 +75,7 @@ def _create_mock_data_source(
       instance=True,
   )
   type(mock_data_source).federated_type = mock.PropertyMock(
-      spec=tff.Type, return_value=federated_type, spec_set=True
+      spec=federated_language.Type, return_value=federated_type, spec_set=True
   )
   mock_data_source.iterator.return_value = iterator
   return mock_data_source
@@ -81,54 +83,54 @@ def _create_mock_data_source(
 
 def _create_mock_initialize(
     *,
-    state_type: tff.FederatedType,
+    state_type: federated_language.FederatedType,
     side_effect: Optional[object] = None,
 ) -> mock.Mock:
   mock_initialize = mock.create_autospec(
       tff.Computation, spec_set=True, side_effect=side_effect
   )
-  type_signature = tff.FunctionType(None, state_type)
+  type_signature = federated_language.FunctionType(None, state_type)
   type(mock_initialize).type_signature = mock.PropertyMock(
-      spec=tff.Type, return_value=type_signature, spec_set=True
+      spec=federated_language.Type, return_value=type_signature, spec_set=True
   )
   return mock_initialize
 
 
 def _create_mock_train(
     *,
-    state_type: tff.FederatedType,
-    train_data_type: tff.FederatedType,
-    train_metrics_type: tff.FederatedType,
+    state_type: federated_language.FederatedType,
+    train_data_type: federated_language.FederatedType,
+    train_metrics_type: federated_language.FederatedType,
     side_effect: Optional[object] = None,
 ) -> mock.Mock:
   mock_train = mock.create_autospec(
       tff.Computation, spec_set=True, side_effect=side_effect
   )
-  type_signature = tff.FunctionType(
+  type_signature = federated_language.FunctionType(
       [state_type, train_data_type],
       [state_type, train_metrics_type],
   )
   type(mock_train).type_signature = mock.PropertyMock(
-      spec=tff.Type, return_value=type_signature, spec_set=True
+      spec=federated_language.Type, return_value=type_signature, spec_set=True
   )
   return mock_train
 
 
 def _create_mock_evaluation(
     *,
-    state_type: tff.FederatedType,
-    evaluation_data_type: tff.FederatedType,
-    evaluation_metrics_type: tff.FederatedType,
+    state_type: federated_language.FederatedType,
+    evaluation_data_type: federated_language.FederatedType,
+    evaluation_metrics_type: federated_language.FederatedType,
     side_effect: Optional[object] = None,
 ) -> mock.Mock:
   mock_evaluation = mock.create_autospec(
       tff.Computation, spec_set=True, side_effect=side_effect
   )
-  type_signature = tff.FunctionType(
+  type_signature = federated_language.FunctionType(
       [state_type, evaluation_data_type], evaluation_metrics_type
   )
   type(mock_evaluation).type_signature = mock.PropertyMock(
-      spec=tff.Type, return_value=type_signature, spec_set=True
+      spec=federated_language.Type, return_value=type_signature, spec_set=True
   )
   return mock_evaluation
 
@@ -149,13 +151,17 @@ def _create_mock_program_state_manager(
 class CheckExpectedTypeSignaturesTest(parameterized.TestCase):
 
   def test_does_not_raise_unexpected_type_singature_error(self):
-    state_type = tff.FederatedType(np.str_, tff.SERVER)
-    train_data_type = tff.FederatedType(tff.SequenceType(np.str_), tff.CLIENTS)
-    train_metrics_type = tff.FederatedType(np.str_, tff.SERVER)
-    evaluation_data_type = tff.FederatedType(
-        tff.SequenceType(np.int32), tff.CLIENTS
+    state_type = federated_language.FederatedType(np.str_, tff.SERVER)
+    train_data_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.str_), tff.CLIENTS
     )
-    evaluation_metrics_type = tff.FederatedType(np.str_, tff.SERVER)
+    train_metrics_type = federated_language.FederatedType(np.str_, tff.SERVER)
+    evaluation_data_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), tff.CLIENTS
+    )
+    evaluation_metrics_type = federated_language.FederatedType(
+        np.str_, tff.SERVER
+    )
 
     mock_initialize = _create_mock_initialize(state_type=state_type)
     mock_train = _create_mock_train(
@@ -189,26 +195,30 @@ class CheckExpectedTypeSignaturesTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'mismatch_initialize_train_state_type',
-          tff.FederatedType(np.int32, tff.SERVER),
-          tff.FederatedType(np.str_, tff.SERVER),
-          tff.FederatedType(np.str_, tff.SERVER),
+          federated_language.FederatedType(np.int32, tff.SERVER),
+          federated_language.FederatedType(np.str_, tff.SERVER),
+          federated_language.FederatedType(np.str_, tff.SERVER),
       ),
       (
           'mismatch_train_evaluation_type_signatures',
-          tff.FederatedType(np.str_, tff.SERVER),
-          tff.FederatedType(np.str_, tff.SERVER),
-          tff.FederatedType(np.int32, tff.SERVER),
+          federated_language.FederatedType(np.str_, tff.SERVER),
+          federated_language.FederatedType(np.str_, tff.SERVER),
+          federated_language.FederatedType(np.int32, tff.SERVER),
       ),
   )
   def test_raise_unexpected_type_singature_error(
       self, initialize_state_type, train_state_type, evaluation_state_type
   ):
-    train_data_type = tff.FederatedType(tff.SequenceType(np.str_), tff.CLIENTS)
-    train_metrics_type = tff.FederatedType(np.str_, tff.SERVER)
-    evaluation_data_type = tff.FederatedType(
-        tff.SequenceType(np.int32), tff.CLIENTS
+    train_data_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.str_), tff.CLIENTS
     )
-    evaluation_metrics_type = tff.FederatedType(np.str_, tff.SERVER)
+    train_metrics_type = federated_language.FederatedType(np.str_, tff.SERVER)
+    evaluation_data_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), tff.CLIENTS
+    )
+    evaluation_metrics_type = federated_language.FederatedType(
+        np.str_, tff.SERVER
+    )
 
     mock_initialize = _create_mock_initialize(state_type=initialize_state_type)
     mock_train = _create_mock_train(
@@ -268,21 +278,25 @@ class TrainFederatedModelTest(
     rounds = range(start_round, total_rounds + 1)
 
     states = [f'state_{x}' for x in rounds]
-    state_type = tff.FederatedType(np.str_, tff.SERVER)
+    state_type = federated_language.FederatedType(np.str_, tff.SERVER)
 
     train_data = [f'train_data_{x}' for x in rounds]
-    train_data_type = tff.FederatedType(tff.SequenceType(np.str_), tff.CLIENTS)
+    train_data_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.str_), tff.CLIENTS
+    )
 
     train_metrics = [f'train_metrics_{x}' for x in rounds]
-    train_metrics_type = tff.FederatedType(np.str_, tff.SERVER)
+    train_metrics_type = federated_language.FederatedType(np.str_, tff.SERVER)
 
     evaluation_data = 'evaluation_data_1'
-    evaluation_data_type = tff.FederatedType(
-        tff.SequenceType(np.int32), tff.CLIENTS
+    evaluation_data_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), tff.CLIENTS
     )
 
     evaluation_metrics = 'evaluation_metrics_1'
-    evaluation_metrics_type = tff.FederatedType(np.str_, tff.SERVER)
+    evaluation_metrics_type = federated_language.FederatedType(
+        np.str_, tff.SERVER
+    )
 
     mock_initialize = _create_mock_initialize(
         state_type=state_type, side_effect=[initial_state]

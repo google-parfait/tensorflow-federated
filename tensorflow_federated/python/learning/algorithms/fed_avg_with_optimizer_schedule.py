@@ -76,8 +76,8 @@ def build_scheduled_client_work(
       `tff.learning.optimizers.Optimizer`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
     loop_implementation: Changes the implementation of the training loop
@@ -276,8 +276,8 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
+      `federated_language.StructWithPythonType` of the unfinalized metrics
+      (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.

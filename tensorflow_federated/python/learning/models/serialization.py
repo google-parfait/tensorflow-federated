@@ -161,7 +161,8 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
     **kwargs: Keyword arguments to `tf.function.get_concrete_function`.
 
   Returns:
-    A 2-tuple of concrete `tf.function` instance and a `tff.Type` protocol
+    A 2-tuple of concrete `tf.function` instance and a `federated_language.Type`
+    protocol
     buffer message documenting the result structure returned by the concrete
     function.
   """
@@ -189,7 +190,7 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
 
 
 def _deserialize_type_spec(serialize_type_variable, python_container=None):
-  """Deserialize a `tff.Type` protocol buffer into a python class instance."""
+  """Deserialize a `federated_language.Type` protocol buffer into a python class instance."""
   type_spec = federated_language.framework.deserialize_type(
       computation_pb2.Type.FromString(
           serialize_type_variable.read_value().numpy()
@@ -211,8 +212,9 @@ def _unflatten_fn(fn, serialized_type_variable, python_container=None):
 
   Args:
     fn: A tf.function loaded from a TensorFlow SavedModel.
-    serialized_type_variable: A `tf.Variable` holding the serialized `tff.Type`
-      protocol buffer message specifying the structured output format of `fn`.
+    serialized_type_variable: A `tf.Variable` holding the serialized
+      `federated_language.Type` protocol buffer message specifying the
+      structured output format of `fn`.
     python_container: A Python class that which the resulting
       `tff.struct.Struct` will be converted to.
 
@@ -442,7 +444,8 @@ def save_functional_model(
         or evaluation loop.
 
     Returns:
-      A 2-tuple of concrete `tf.function` instance and a `tff.Type` protocol
+      A 2-tuple of concrete `tf.function` instance and a
+      `federated_language.Type` protocol
       buffer message documenting the result structure returned by the
       concrete function.
     """
@@ -509,7 +512,8 @@ def save_functional_model(
     """Create a concrete loss function that has flattened output.
 
     Returns:
-      A 2-tuple of concrete `tf.function` instance and a `tff.Type` protocol
+      A 2-tuple of concrete `tf.function` instance and a
+      `federated_language.Type` protocol
       buffer message documenting the result structure returned by the concrete
       function.
     """

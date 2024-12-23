@@ -84,10 +84,10 @@ def _initial_values(
   """Create a nested structure of initial values.
 
   Args:
-    initial_value_fn: A function that maps a tff.TensorType to a specific value
-      constant for initialization.
-    member_type: A `tff.Type` representing the member components of the
-      federated type.
+    initial_value_fn: A function that maps a federated_language.TensorType to a
+      specific value constant for initialization.
+    member_type: A `federated_language.Type` representing the member components
+      of the federated type.
 
   Returns:
     A federated_language.framework.ComputationBuildingBlock representing the

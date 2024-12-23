@@ -214,8 +214,10 @@ def concat_factory(inner_agg_factory: _T) -> _T:
   (`UnweightedAggregationFactory` vs. `WeightedAggregationFactory`) from the
   `inner_agg_factory`.
 
-  This factory only accepts `value_type` of either `tff.TensorType` or
-  `tff.StructWithPythonType` and expects the dtype of component tensors to be
+  This factory only accepts `value_type` of either
+  `federated_language.TensorType` or
+  `federated_language.StructWithPythonType` and expects the dtype of component
+  tensors to be
   either all real integers or all real floats.
 
   Args:
