@@ -13,6 +13,7 @@
 # limitations under the License.
 """Simple temperature sensor example in TFF."""
 
+import federated_language
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -30,7 +31,7 @@ def count_total(ds):
   return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
 
-@tff.federated_computation(
+@federated_language.federated_computation(
     tff.FederatedType(tff.SequenceType(np.float32), tff.CLIENTS),
     tff.FederatedType(np.float32, tff.SERVER),
 )

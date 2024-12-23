@@ -71,6 +71,8 @@ and this project adheres to
 *   Moved the tests of compatibility from `DPQuantileAggregator::MergeWith` to
     `DPQuantileAggregator::IsCompatible`.
 *   Updated `MeasuredProcessOutput` to be a `NamedTuple`.
+*   Migrate tff.federated_computation to
+    federated_language.federated_computation in Python locations.
 
 ### Removed
 
