@@ -74,36 +74,80 @@ and this project adheres to
 
 ### Removed
 
+*   `tff.program.check_in_federated_context`, use
+    `federated_language.program.check_in_federated_context` instead.
+*   `tff.program.ComputationArg`, use
+    `federated_language.program.ComputationArg` instead.
+*   `tff.program.contains_only_server_placed_data`, use
+    `federated_language.program.contains_only_server_placed_data` instead.
+*   `tff.program.DelayedReleaseManager`, use
+    `federated_language.program.DelayedReleaseManager` instead.
+*   `tff.program.FederatedContext`, use
+    `federated_language.program.FederatedContext` instead.
+*   `tff.program.FederatedDataSource`, use
+    `federated_language.program.FederatedDataSource` instead.
+*   `tff.program.FederatedDataSourceIterator`, use
+    `federated_language.program.FederatedDataSourceIterator` instead.
+*   `tff.program.FilteringReleaseManager`, use
+    `federated_language.program.FilteringReleaseManager` instead.
+*   `tff.program.GroupingReleaseManager`, use
+    `federated_language.program.GroupingReleaseManager` instead.
+*   `tff.program.LoggingReleaseManager`, use
+    `federated_language.program.LoggingReleaseManager` instead.
+*   `tff.program.MaterializableStructure`, use
+    `federated_language.program.MaterializableStructure` instead.
+*   `tff.program.MaterializableTypeSignature`, use
+    `federated_language.program.MaterializableTypeSignature` instead.
+*   `tff.program.MaterializableValue`, use
+    `federated_language.program.MaterializableValue` instead.
+*   `tff.program.MaterializableValueReference`, use
+    `federated_language.program.MaterializableValueReference` instead.
+*   `tff.program.materialize_value`, use
+    `federated_language.program.materialize_value` instead.
+*   `tff.program.MaterializedStructure`, use
+    `federated_language.program.MaterializedStructure` instead.
+*   `tff.program.MaterializedValue`, use
+    `federated_language.program.MaterializedValue` instead.
+*   `tff.program.MemoryReleaseManager`, use
+    `federated_language.program.MemoryReleaseManager` instead.
+*   `tff.program.NotFilterableError`, use
+    `federated_language.program.NotFilterableError` instead.
+*   `tff.program.PeriodicReleaseManager`, use
+    `federated_language.program.PeriodicReleaseManager` instead.
+*   `tff.program.ProgramStateExistsError`, use
+    `federated_language.program.ProgramStateExistsError` instead.
+*   `tff.program.ProgramStateManager`, use
+    `federated_language.program.ProgramStateManager` instead.
+*   `tff.program.ProgramStateNotFoundError`, use
+    `federated_language.program.ProgramStateNotFoundError` instead.
+*   `tff.program.ProgramStateStructure`, use
+    `federated_language.program.ProgramStateStructure` instead.
+*   `tff.program.ProgramStateValue`, use
+    `federated_language.program.ProgramStateValue` instead.
+*   `tff.program.ReleasableStructure`, use
+    `federated_language.program.ReleasableStructure` instead.
+*   `tff.program.ReleasableValue`, use
+    `federated_language.program.ReleasableValue` instead.
+*   `tff.program.ReleaseManager`, use
+    `federated_language.program.ReleaseManager` instead.
+*   `tff.types.AbstractType`, use `federated_language.AbstractType` instead.
+*   `tff.types.FederatedType`, use `federated_language.FederatedType` instead.
+*   `tff.types.FunctionType`, use `federated_language.FunctionType` instead.
+*   `tff.types.PlacementType`, use `federated_language.PlacementType` instead.
+*   `tff.types.SequenceType`, use `federated_language.SequenceType` instead.
+*   `tff.types.StructType`, use `federated_language.StructType` instead.
+*   `tff.types.StructWithPythonType`, use
+    `federated_language.StructWithPythonType` instead.
 *   `tff.types.tensorflow_to_type`, this function is no longer used.
-*   `tff.program.X`, use `federated_language.program` instead, for each:
-    *   `FederatedDataSource`
-    *   `FederatedDataSourceIterator`
-    *   `check_in_federated_context`
-    *   `ComputationArg`
-    *   `contains_only_server_placed_data`
-    *   `FederatedContext`
-    *   `LoggingReleaseManager`
-    *   `MemoryReleaseManager`
-    *   `ProgramStateExistsError`
-    *   `ProgramStateManager`
-    *   `ProgramStateNotFoundError`
-    *   `ProgramStateStructure`
-    *   `ProgramStateValue`
-    *   `DelayedReleaseManager`
-    *   `FilteringReleaseManager`
-    *   `GroupingReleaseManager`
-    *   `NotFilterableError`
-    *   `PeriodicReleaseManager`
-    *   `ReleasableStructure`
-    *   `ReleasableValue`
-    *   `ReleaseManager`
-    *   `MaterializableStructure`
-    *   `MaterializableTypeSignature`
-    *   `MaterializableValue`
-    *   `MaterializableValueReference`
-    *   `materialize_value`
-    *   `MaterializedStructure`
-    *   `MaterializedValue`
+*   `tff.types.TensorType`, use `federated_language.TensorType` instead.
+*   `tff.types.to_type`, use `federated_language.to_type` instead.
+*   `tff.types.Type`, use `federated_language.Type` instead.
+*   `tff.types.TypeNotAssignableError`, use
+    `federated_language.TypeNotAssignableError` instead.
+*   `tff.types.TypesNotIdenticalError`, use
+    `federated_language.TypesNotIdenticalError` instead.
+*   `tff.types.UnexpectedTypeError`, use
+    `federated_language.UnexpectedTypeError` instead.
 
 ## Release 0.88.0
 

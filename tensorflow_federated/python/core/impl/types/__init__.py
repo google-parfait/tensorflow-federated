@@ -12,30 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Libraries for interacting with the type of a computation."""
+
 import federated_language
 
 # pylint: disable=g-importing-member
 ArrayShape = federated_language.ArrayShape
 is_shape_fully_defined = federated_language.array_shape_is_fully_defined
 num_elements_in_shape = federated_language.num_elements_in_array_shape
-AbstractType = federated_language.AbstractType
-FederatedType = federated_language.FederatedType
-FunctionType = federated_language.FunctionType
-PlacementType = federated_language.PlacementType
-SequenceType = federated_language.SequenceType
-StructType = federated_language.StructType
-StructWithPythonType = federated_language.StructWithPythonType
-TensorType = federated_language.TensorType
-to_type = federated_language.to_type
-Type = federated_language.Type
 type_mismatch_error_message = (
     federated_language.framework.type_mismatch_error_message
 )
-TypeNotAssignableError = federated_language.framework.TypeNotAssignableError
 TypeRelation = federated_language.framework.TypeRelation
 TypesNotEquivalentError = federated_language.framework.TypesNotEquivalentError
-TypesNotIdenticalError = federated_language.framework.TypesNotIdenticalError
-UnexpectedTypeError = federated_language.framework.UnexpectedTypeError
 contains = federated_language.framework.type_contains
 contains_only = federated_language.framework.type_contains_only
 count = federated_language.framework.type_count
