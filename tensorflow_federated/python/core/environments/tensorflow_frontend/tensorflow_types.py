@@ -35,7 +35,7 @@ def _tensorflow_dtype_to_numpy_dtype(
 def _tensor_shape_to_array_shape(
     tensor_shape: tf.TensorShape,
 ) -> federated_language.ArrayShape:
-  """Returns a `federated_language.types.ArrayShape` for the `tensor_shape`."""
+  """Returns a `federated_language.ArrayShape` for the `tensor_shape`."""
   if tensor_shape.rank is not None:
     shape = tensor_shape.as_list()
   else:
