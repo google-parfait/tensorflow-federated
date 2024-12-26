@@ -60,6 +60,7 @@ and this project adheres to
 
 ### Changed
 
+*   Moved language-related documentation to Federated Language.
 *   `DPTensorAggregatorBundleFactory::CreateInternal` now checks validity of the
     epsilon and delta parameters of its given intrinsic.
 *   When `DPGroupByFactory::CreateInternal` receives an `epsilon` at or above
