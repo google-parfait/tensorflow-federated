@@ -127,14 +127,14 @@ def build_federated_averaging_process(
     )
 
   federated_server_state_type = federated_language.FederatedType(
-      server_state_type, tff.SERVER
+      server_state_type, federated_language.SERVER
   )
   federated_dataset_type = federated_language.FederatedType(
-      tf_dataset_type, tff.CLIENTS
+      tf_dataset_type, federated_language.CLIENTS
   )
 
   federated_client_state_type = federated_language.FederatedType(
-      client_state_type, tff.CLIENTS
+      client_state_type, federated_language.CLIENTS
   )
 
   @tff.federated_computation(
@@ -148,7 +148,7 @@ def build_federated_averaging_process(
     Args:
       server_state: A `stateful_fedavg_tf.ServerState`.
       federated_dataset: A federated `tf.data.Dataset` with placement
-        `tff.CLIENTS`.
+        `federated_language.CLIENTS`.
       client_states: A federated `stateful_fedavg_tf.ClientState`.
 
     Returns:
@@ -181,7 +181,7 @@ def build_federated_averaging_process(
   @tff.federated_computation
   def server_init_tff():
     """Orchestration logic for server model initialization."""
-    return tff.federated_value(server_init_tf(), tff.SERVER)
+    return tff.federated_value(server_init_tf(), federated_language.SERVER)
 
   return tff.templates.IterativeProcess(
       initialize_fn=server_init_tff, next_fn=run_one_round

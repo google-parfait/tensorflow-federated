@@ -25,7 +25,7 @@ class ClientSequenceTypeError(Exception):
 def check_is_client_placed_structure_of_sequences(
     type_spec: federated_language.Type, error_message: Optional[str] = None
 ) -> None:
-  """Checks that a type is a structure of sequences, placed at `tff.CLIENTS`.
+  """Checks that a type is a structure of sequences, placed at `federated_language.CLIENTS`.
 
   Args:
     type_spec: A `federated_language.Type`.
@@ -33,7 +33,8 @@ def check_is_client_placed_structure_of_sequences(
       `None`, a default message is provided.
 
   Raises:
-    ClientSequenceTypeError: If `type_spec` is not placed at `tff.CLIENTS`, or
+    ClientSequenceTypeError: If `type_spec` is not placed at
+    `federated_language.CLIENTS`, or
     if its member type is not a structure of TensorFlow-compatible sequences.
   """
 
@@ -52,9 +53,9 @@ def check_is_client_placed_structure_of_sequences(
 
   if error_message is None:
     error_message = (
-        'Expected a federated type with placement `tff.CLIENTS` and with member'
-        ' type that is a structure of TensorFlow-compatible sequences. Found '
-        f'{type_spec}.'
+        'Expected a federated type with placement `federated_language.CLIENTS`'
+        ' and with member type that is a structure of TensorFlow-compatible'
+        f' sequences. Found {type_spec}.'
     )
 
   if (

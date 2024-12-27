@@ -43,7 +43,7 @@ class AsyncContextInstallationTest(
     context = tff.framework.AsyncExecutionContext(factory)
 
     @tff.federated_computation(
-        federated_language.FederatedType(np.int32, tff.CLIENTS)
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def repackage_arg(x):
       return [x, x]
@@ -75,13 +75,15 @@ class AsyncContextInstallationTest(
 
     def _cardinality_fn(x, y):
       del x, y  # Unused
-      return {tff.CLIENTS: 1}
+      return {federated_language.CLIENTS: 1}
 
     context = tff.framework.AsyncExecutionContext(
         factory, cardinality_inference_fn=_cardinality_fn
     )
 
-    arg_type = federated_language.FederatedType(np.int32, tff.CLIENTS)
+    arg_type = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
+    )
 
     @tff.federated_computation(arg_type)
     def identity(x):

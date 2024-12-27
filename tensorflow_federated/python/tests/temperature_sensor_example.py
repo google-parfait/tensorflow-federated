@@ -35,9 +35,9 @@ def count_total(ds):
 
 @tff.federated_computation(
     federated_language.FederatedType(
-        federated_language.SequenceType(np.float32), tff.CLIENTS
+        federated_language.SequenceType(np.float32), federated_language.CLIENTS
     ),
-    federated_language.FederatedType(np.float32, tff.SERVER),
+    federated_language.FederatedType(np.float32, federated_language.SERVER),
 )
 def mean_over_threshold(temperatures, threshold):
   client_data = tff.federated_broadcast(threshold)

@@ -32,13 +32,15 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
 
   The created `tff.templates.AggregationProcess` finalizes each client's metrics
   locally, and then collects metrics from at most `sample_size` clients at the
-  `tff.SERVER`. If more than `sample_size` clients participating, then
+  `federated_language.SERVER`. If more than `sample_size` clients participating,
+  then
   `sample_size` clients are sampled (by reservoir sampling algorithm);
   otherwise, all clients' metrics are collected. Sampling is done in a
   "per-client" manner, i.e., a client, once sampled, will contribute all its
   metrics to the final result.
 
-  The collected metrics samples at `tff.SERVER` has the same structure (i.e.,
+  The collected metrics samples at `federated_language.SERVER` has the same
+  structure (i.e.,
   same keys in a dictionary) as the client's local metrics, except that each
   leaf node contains a list of scalar metric values, where each value comes from
   a sampled client, e.g.,
@@ -58,7 +60,8 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
   result is "total rounds samples").
 
   The `next` function of the created `tff.templates.AggregationProcess` takes
-  the `state` and local unfinalized metrics reported from `tff.CLIENTS`, and
+  the `state` and local unfinalized metrics reported from
+  `federated_language.CLIENTS`, and
   returns a `tff.templates.MeasuredProcessOutput` object with the following
   properties:
     - `state`: a dictionary of total rounds samples and the sampling metadata (

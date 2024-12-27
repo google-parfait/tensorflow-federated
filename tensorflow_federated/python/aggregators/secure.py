@@ -52,7 +52,7 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
 
   The created `tff.templates.AggregationProcess` uses the
   `tff.backends.mapreduce.federated_secure_modular_sum` operator for movement of
-  values from `tff.CLIENTS` to `tff.SERVER`.
+  values from `federated_language.CLIENTS` to `federated_language.SERVER`.
 
   The aggregator requires integer types, and values in range `[0, modulus-1]`
   (if `symmetric_range` is `False`) or in range `[-(modulus-1), +(modulus-1)]`
@@ -244,7 +244,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
   The created `tff.templates.AggregationProcess` uses the
   `tff.federated_secure_sum_bitwidth` operator for movement of all values from
-  `tff.CLIENTS` to `tff.SERVER`.
+  `federated_language.CLIENTS` to `federated_language.SERVER`.
 
   In order for values to be securely summed, their range needs to be known in
   advance and communicated to clients, so that clients can prepare the values in

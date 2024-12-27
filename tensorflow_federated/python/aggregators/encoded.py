@@ -205,7 +205,8 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
 
   # TODO: b/139844355 - Get rid of decode_before_sum_params.
   # We pass decode_before_sum_params to the encode method, because TFF currently
-  # does not have a mechanism to make a tff.SERVER placed value available inside
+  # does not have a mechanism to make a federated_language.SERVER placed value
+  # available inside
   # of intrinsics.federated_aggregate - in production, this could mean an
   # intermediary aggregator node. So currently, we send the params to clients,
   # and ask them to send them back as part of the encoded structure.

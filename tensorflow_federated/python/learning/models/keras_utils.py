@@ -234,14 +234,15 @@ def federated_aggregate_keras_metric(
       `tf.keras.metrics.Metric`. The order must match the order of variables in
       `federated_values`.
     federated_values: A single federated value, or a `Sequence` of federated
-      values. The values must all have `tff.CLIENTS` placement. If value is a
-      `Sequence` type, it must match the order of the sequence in `metrics.
+      values. The values must all have `federated_language.CLIENTS` placement.
+      If value is a `Sequence` type, it must match the order of the sequence in
+      `metrics.
 
   Returns:
     The result of performing a federated sum on federated_values, then assigning
     the aggregated values into the variables of the corresponding
     `tf.keras.metrics.Metric` and calling `tf.keras.metrics.Metric.result`. The
-    resulting structure has `tff.SERVER` placement.
+    resulting structure has `federated_language.SERVER` placement.
   """
   member_types = tf.nest.map_structure(
       lambda t: t.type_signature.member, federated_values

@@ -36,7 +36,7 @@ def build_sum_client_arg_computation(
 def build_noarg_count_clients_computation() -> tff.Computation:
   @tff.federated_computation()
   def up_to_merge():
-    return tff.federated_sum(tff.federated_value(1, tff.CLIENTS))
+    return tff.federated_sum(tff.federated_value(1, federated_language.CLIENTS))
 
   return up_to_merge
 
@@ -71,7 +71,9 @@ def build_whimsy_after_merge_computation(
 
     @tff.federated_computation(
         original_arg_type,
-        federated_language.FederatedType(merge_result_type, tff.SERVER),
+        federated_language.FederatedType(
+            merge_result_type, federated_language.SERVER
+        ),
     )
     def after_merge(original_arg, merge_result):
       del merge_result  # Unused
@@ -80,7 +82,9 @@ def build_whimsy_after_merge_computation(
   else:
 
     @tff.federated_computation(
-        federated_language.FederatedType(merge_result_type, tff.SERVER)
+        federated_language.FederatedType(
+            merge_result_type, federated_language.SERVER
+        )
     )
     def after_merge(merge_result):
       return merge_result
@@ -95,7 +99,9 @@ def build_return_merge_result_computation(
 
   @tff.federated_computation(
       original_arg_type,
-      federated_language.FederatedType(merge_result_type, tff.SERVER),
+      federated_language.FederatedType(
+          merge_result_type, federated_language.SERVER
+      ),
   )
   def after_merge(original_arg, merge_result):
     del original_arg  # Unused
@@ -109,7 +115,9 @@ def build_return_merge_result_with_no_first_arg_computation(
 ) -> tff.Computation:
 
   @tff.federated_computation(
-      federated_language.FederatedType(merge_result_type, tff.SERVER)
+      federated_language.FederatedType(
+          merge_result_type, federated_language.SERVER
+      )
   )
   def after_merge(merge_result):
     return merge_result
@@ -129,7 +137,9 @@ def build_sum_merge_with_first_arg_computation(
 
   @tff.federated_computation(
       original_arg_type,
-      federated_language.FederatedType(merge_result_type, tff.SERVER),
+      federated_language.FederatedType(
+          merge_result_type, federated_language.SERVER
+      ),
   )
   def after_merge(original_arg, merge_result):
     return tff.federated_map(add, (original_arg[0], merge_result))
@@ -141,8 +151,8 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_mismatched_up_to_merge_and_merge(self):
     up_to_merge = build_sum_client_arg_computation(
-        federated_language.FederatedType(np.int32, tff.SERVER),
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
 
     bad_merge = build_whimsy_merge_computation(np.float32)
@@ -150,7 +160,7 @@ class MergeableCompFormTest(absltest.TestCase):
     @tff.federated_computation(
         up_to_merge.type_signature.parameter,
         federated_language.FederatedType(
-            bad_merge.type_signature.result, tff.SERVER
+            bad_merge.type_signature.result, federated_language.SERVER
         ),
     )
     def after_merge(x, y):
@@ -163,8 +173,8 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_merge_computation_not_assignable_result(self):
     up_to_merge = build_sum_client_arg_computation(
-        federated_language.FederatedType(np.int32, tff.SERVER),
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
 
     @tff.federated_computation(np.int32, np.int32)
@@ -175,7 +185,7 @@ class MergeableCompFormTest(absltest.TestCase):
     @tff.federated_computation(
         up_to_merge.type_signature.parameter,
         federated_language.FederatedType(
-            bad_merge.type_signature.result, tff.SERVER
+            bad_merge.type_signature.result, federated_language.SERVER
         ),
     )
     def after_merge(x, y):
@@ -188,15 +198,15 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_no_top_level_argument_in_after_agg(self):
     up_to_merge = build_sum_client_arg_computation(
-        federated_language.FederatedType(np.int32, tff.SERVER),
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
 
     merge = build_whimsy_merge_computation(np.int32)
 
     @tff.federated_computation(
         federated_language.FederatedType(
-            merge.type_signature.result, tff.SERVER
+            merge.type_signature.result, federated_language.SERVER
         )
     )
     def bad_after_merge(x):
@@ -210,7 +220,7 @@ class MergeableCompFormTest(absltest.TestCase):
   def test_raises_up_to_merge_returns_non_server_placed_result(self):
 
     @tff.federated_computation(
-        federated_language.FederatedType(np.int32, tff.SERVER)
+        federated_language.FederatedType(np.int32, federated_language.SERVER)
     )
     def bad_up_to_merge(x):
       # Returns non SERVER-placed result.
@@ -229,8 +239,8 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_with_aggregation_in_after_agg(self):
     up_to_merge = build_sum_client_arg_computation(
-        federated_language.FederatedType(np.int32, tff.SERVER),
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
 
     merge = build_whimsy_merge_computation(np.int32)
@@ -238,7 +248,7 @@ class MergeableCompFormTest(absltest.TestCase):
     @tff.federated_computation(
         up_to_merge.type_signature.parameter,
         federated_language.FederatedType(
-            merge.type_signature.result, tff.SERVER
+            merge.type_signature.result, federated_language.SERVER
         ),
     )
     def after_merge_with_sum(original_arg, merged_arg):
@@ -253,8 +263,8 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_passes_with_correct_signatures(self):
     up_to_merge = build_sum_client_arg_computation(
-        federated_language.FederatedType(np.int32, tff.SERVER),
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     merge = build_whimsy_merge_computation(np.int32)
     after_merge = build_whimsy_after_merge_computation(
@@ -334,8 +344,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       self, arg, num_subrounds, num_contexts
   ):
     up_to_merge = build_sum_client_arg_computation(
-        federated_language.FederatedType(np.int32, tff.SERVER),
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     merge = build_whimsy_merge_computation(np.int32)
     after_merge = build_whimsy_after_merge_computation(
@@ -413,8 +423,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       self, arg, expected_sum, num_subrounds
   ):
     up_to_merge = build_sum_client_arg_computation(
-        federated_language.FederatedType(np.int32, tff.SERVER),
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     merge = build_sum_merge_computation(np.int32)
     after_merge = build_return_merge_result_computation(
@@ -469,8 +479,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
   )
   def test_computes_sum_of_all_values(self, arg, expected_sum, num_subrounds):
     up_to_merge = build_sum_client_arg_computation(
-        federated_language.FederatedType(np.int32, tff.SERVER),
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
     merge = build_sum_merge_computation(np.int32)
     after_merge = build_sum_merge_with_first_arg_computation(

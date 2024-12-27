@@ -38,7 +38,7 @@ def _make_federated(computation: tff.Computation) -> tff.Computation:
 
   @tff.federated_computation(
       federated_language.FederatedType(
-          computation.type_signature.parameter, tff.CLIENTS
+          computation.type_signature.parameter, federated_language.CLIENTS
       ),
   )
   def compute(a):

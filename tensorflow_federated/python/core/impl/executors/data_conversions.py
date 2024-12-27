@@ -32,7 +32,7 @@ def convert_cardinalities_dict_to_string_keyed(
     if not isinstance(placement, federated_language.framework.PlacementLiteral):
       raise TypeError(
           '`cardinalities` must be a `Mapping` with '
-          '`PlacementLiteral` (e.g. `tff.CLIENTS`) keys. '
+          '`PlacementLiteral` (e.g. `federated_language.CLIENTS`) keys. '
           f'Received a key of type: {type(placement)}.'
       )
     if not isinstance(cardinality, int):

@@ -255,7 +255,7 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
                     y=federated_language.TensorType(np.int32, [None]),
                 )
             ),
-            tff.CLIENTS,
+            federated_language.CLIENTS,
         ),
     )
 
@@ -445,7 +445,7 @@ class RNNTest(tf.test.TestCase):
                 optimizer_state=[np.int64],
                 round_num=np.int32,
             ),
-            tff.SERVER,
+            federated_language.SERVER,
         ),
     )
     tff.test.assert_types_identical(
@@ -457,7 +457,7 @@ class RNNTest(tf.test.TestCase):
                     y=federated_language.TensorType(np.int32, [None, 5]),
                 )
             ),
-            tff.CLIENTS,
+            federated_language.CLIENTS,
         ),
     )
 

@@ -151,16 +151,20 @@ def _create_mock_program_state_manager(
 class CheckExpectedTypeSignaturesTest(parameterized.TestCase):
 
   def test_does_not_raise_unexpected_type_singature_error(self):
-    state_type = federated_language.FederatedType(np.str_, tff.SERVER)
-    train_data_type = federated_language.FederatedType(
-        federated_language.SequenceType(np.str_), tff.CLIENTS
+    state_type = federated_language.FederatedType(
+        np.str_, federated_language.SERVER
     )
-    train_metrics_type = federated_language.FederatedType(np.str_, tff.SERVER)
+    train_data_type = federated_language.FederatedType(
+        federated_language.SequenceType(np.str_), federated_language.CLIENTS
+    )
+    train_metrics_type = federated_language.FederatedType(
+        np.str_, federated_language.SERVER
+    )
     evaluation_data_type = federated_language.FederatedType(
-        federated_language.SequenceType(np.int32), tff.CLIENTS
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     )
     evaluation_metrics_type = federated_language.FederatedType(
-        np.str_, tff.SERVER
+        np.str_, federated_language.SERVER
     )
 
     mock_initialize = _create_mock_initialize(state_type=state_type)
@@ -195,29 +199,31 @@ class CheckExpectedTypeSignaturesTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'mismatch_initialize_train_state_type',
-          federated_language.FederatedType(np.int32, tff.SERVER),
-          federated_language.FederatedType(np.str_, tff.SERVER),
-          federated_language.FederatedType(np.str_, tff.SERVER),
+          federated_language.FederatedType(np.int32, federated_language.SERVER),
+          federated_language.FederatedType(np.str_, federated_language.SERVER),
+          federated_language.FederatedType(np.str_, federated_language.SERVER),
       ),
       (
           'mismatch_train_evaluation_type_signatures',
-          federated_language.FederatedType(np.str_, tff.SERVER),
-          federated_language.FederatedType(np.str_, tff.SERVER),
-          federated_language.FederatedType(np.int32, tff.SERVER),
+          federated_language.FederatedType(np.str_, federated_language.SERVER),
+          federated_language.FederatedType(np.str_, federated_language.SERVER),
+          federated_language.FederatedType(np.int32, federated_language.SERVER),
       ),
   )
   def test_raise_unexpected_type_singature_error(
       self, initialize_state_type, train_state_type, evaluation_state_type
   ):
     train_data_type = federated_language.FederatedType(
-        federated_language.SequenceType(np.str_), tff.CLIENTS
+        federated_language.SequenceType(np.str_), federated_language.CLIENTS
     )
-    train_metrics_type = federated_language.FederatedType(np.str_, tff.SERVER)
+    train_metrics_type = federated_language.FederatedType(
+        np.str_, federated_language.SERVER
+    )
     evaluation_data_type = federated_language.FederatedType(
-        federated_language.SequenceType(np.int32), tff.CLIENTS
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     )
     evaluation_metrics_type = federated_language.FederatedType(
-        np.str_, tff.SERVER
+        np.str_, federated_language.SERVER
     )
 
     mock_initialize = _create_mock_initialize(state_type=initialize_state_type)
@@ -278,24 +284,28 @@ class TrainFederatedModelTest(
     rounds = range(start_round, total_rounds + 1)
 
     states = [f'state_{x}' for x in rounds]
-    state_type = federated_language.FederatedType(np.str_, tff.SERVER)
+    state_type = federated_language.FederatedType(
+        np.str_, federated_language.SERVER
+    )
 
     train_data = [f'train_data_{x}' for x in rounds]
     train_data_type = federated_language.FederatedType(
-        federated_language.SequenceType(np.str_), tff.CLIENTS
+        federated_language.SequenceType(np.str_), federated_language.CLIENTS
     )
 
     train_metrics = [f'train_metrics_{x}' for x in rounds]
-    train_metrics_type = federated_language.FederatedType(np.str_, tff.SERVER)
+    train_metrics_type = federated_language.FederatedType(
+        np.str_, federated_language.SERVER
+    )
 
     evaluation_data = 'evaluation_data_1'
     evaluation_data_type = federated_language.FederatedType(
-        federated_language.SequenceType(np.int32), tff.CLIENTS
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     )
 
     evaluation_metrics = 'evaluation_metrics_1'
     evaluation_metrics_type = federated_language.FederatedType(
-        np.str_, tff.SERVER
+        np.str_, federated_language.SERVER
     )
 
     mock_initialize = _create_mock_initialize(

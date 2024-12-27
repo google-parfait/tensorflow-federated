@@ -66,7 +66,8 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
 
   The created `tff.templates.AggregationProcess` uses the inner summation
   process created by the inner summation factory to sum unfinalized metrics
-  from `tff.CLIENTS` to `tff.SERVER`, accumulates the summed unfinalized metrics
+  from `federated_language.CLIENTS` to `federated_language.SERVER`, accumulates
+  the summed unfinalized metrics
   in the `state`, and then finalize the metrics for both current round and total
   rounds. If the inner summation factory is not specified,
   `tff.aggregators.SumFactory` is used by default. The inner summation factory
@@ -77,7 +78,8 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
   zero is used.
 
   The `next` function of the created `tff.templates.AggregationProcess` takes
-  the `state` and local unfinalized metrics reported from `tff.CLIENTS`, and
+  the `state` and local unfinalized metrics reported from
+  `federated_language.CLIENTS`, and
   returns a `tff.templates.MeasuredProcessOutput` object with the following
   properties:
     - `state`: a tuple of the `state` of the inner summation process and the
@@ -500,7 +502,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
   The created `tff.templates.AggregationProcess` uses the inner summation
   processes created by the `tff.aggregators.SecureSumFactory` to sum unfinalized
-  metrics from `tff.CLIENTS` to `tff.SERVER`.
+  metrics from `federated_language.CLIENTS` to `federated_language.SERVER`.
 
   Internally metrics are grouped by their value range and dtype, and only one
   secure aggregation process will be created for each group. This is an
@@ -509,7 +511,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
   The `initialize` function initializes the `state` for each inner secure
   aggregation progress. The `next` function takes the `state` and local
-  unfinalized metrics reported from `tff.CLIENTS`, and returns a
+  unfinalized metrics reported from `federated_language.CLIENTS`, and returns a
   `tff.templates.MeasuredProcessOutput` object with the following properties:
     - `state`: an `collections.OrderedDict` of the `state`s of the inner secure
       aggregation processes.

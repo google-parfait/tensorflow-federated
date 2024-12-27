@@ -185,7 +185,7 @@ def _bind_comp_as_reference(comp):
 
 
 def federated_secure_modular_sum(value, modulus):
-  """Computes a modular sum at `tff.SERVER` of a `value` from `tff.CLIENTS`.
+  """Computes a modular sum at `federated_language.SERVER` of a `value` from `federated_language.CLIENTS`.
 
   This function computes a sum such that it should not be possible for the
   server to learn any clients individual value. The specific algorithm and
@@ -205,11 +205,11 @@ def federated_secure_modular_sum(value, modulus):
   Example:
 
   ```python
-  value = tff.federated_value(5, tff.CLIENTS)
+  value = tff.federated_value(5, federated_language.CLIENTS)
   result = tff.backends.mapreduce.federated_secure_modular_sum(value, 3)
   # `result == (5 * num_clients % 3)@SERVER`
 
-  value = tff.federated_value((3, 9), tff.CLIENTS)
+  value = tff.federated_value((3, 9), federated_language.CLIENTS)
   result = tff.backends.mapreduce.federated_secure_modular_sum(
       value, (100, 200))
   # `result == (3 * num_clients % 100, 9 * num_clients % 100)@SERVER`
@@ -219,22 +219,23 @@ def federated_secure_modular_sum(value, modulus):
   weaker privacy properties, consider using `federated_sum`.
 
   Args:
-    value: An integer or nested structure of integers placed at `tff.CLIENTS`.
-      Values outside of the range [0, modulus-1] will be considered equivalent
-      to mod(value, modulus), i.e. they will be projected into the range [0,
-      modulus-1] as part of the modular summation.
+    value: An integer or nested structure of integers placed at
+      `federated_language.CLIENTS`. Values outside of the range [0, modulus-1]
+      will be considered equivalent to mod(value, modulus), i.e. they will be
+      projected into the range [0, modulus-1] as part of the modular summation.
     modulus: A Python integer or nested structure of integers matching the
       structure of `value`. If integer `modulus` is used with a nested `value`,
       the same integer is used for each tensor in `value`.
 
   Returns:
     A representation of the modular sum of the member constituents of `value`
-    placed on the `tff.SERVER`.  The resulting modular sum will be on the range
+    placed on the `federated_language.SERVER`.  The resulting modular sum will
+    be on the range
     [0, modulus-1].
 
   Raises:
     TypeError: If the argument is not a federated TFF value placed at
-      `tff.CLIENTS`.
+      `federated_language.CLIENTS`.
   """
   value = federated_language.to_value(value, type_spec=None)
   value = federated_language.framework.ensure_federated_value(

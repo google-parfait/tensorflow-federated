@@ -29,7 +29,7 @@ METRICS_TOTAL_SUM = 'total_sum'
 @tff.federated_computation()
 def initialize():
   """Returns the initial state."""
-  return tff.federated_value(0, tff.SERVER)
+  return tff.federated_value(0, federated_language.SERVER)
 
 
 @tff.tensorflow.computation(federated_language.SequenceType(np.int32))
@@ -45,9 +45,9 @@ def _sum_integers(x: int, y: int) -> int:
 
 
 @tff.federated_computation(
-    federated_language.FederatedType(np.int32, tff.SERVER),
+    federated_language.FederatedType(np.int32, federated_language.SERVER),
     federated_language.FederatedType(
-        federated_language.SequenceType(np.int32), tff.CLIENTS
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     ),
 )
 def train(server_state: int, client_data: tf.data.Dataset):
@@ -79,9 +79,9 @@ def train(server_state: int, client_data: tf.data.Dataset):
 
 
 @tff.federated_computation(
-    federated_language.FederatedType(np.int32, tff.SERVER),
+    federated_language.FederatedType(np.int32, federated_language.SERVER),
     federated_language.FederatedType(
-        federated_language.SequenceType(np.int32), tff.CLIENTS
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
     ),
 )
 def evaluation(server_state: int, client_data: tf.data.Dataset):

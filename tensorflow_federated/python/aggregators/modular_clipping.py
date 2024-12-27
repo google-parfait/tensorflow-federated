@@ -55,7 +55,8 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
   and it will otherwise raise an error.
 
   This factory may optionally surface an estimated standard deviation of the
-  aggregated and modular-clipped values on `tff.SERVER` as a measurement via the
+  aggregated and modular-clipped values on `federated_language.SERVER` as a
+  measurement via the
   `estimate_stddev` kwarg; the estimation procedure assumes that the elements
   in the aggregate structure/tensor are approximately normally distributed
   if the modular clipping was not performed. This metric can be useful for

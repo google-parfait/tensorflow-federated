@@ -128,7 +128,7 @@ def compose_learning_process(
   Raises:
     ClientSequenceTypeError: If the first arg of the `next` method of the
     resulting `LearningProcess` is not a structure of sequences placed at
-    `tff.CLIENTS`.
+    `federated_language.CLIENTS`.
   """
   # pyformat: enable
   _validate_args(initial_model_weights_fn, model_weights_distributor,

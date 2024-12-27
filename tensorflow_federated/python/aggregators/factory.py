@@ -37,7 +37,8 @@ class UnweightedAggregationFactory(abc.ABC):
     `federated_language.FederatedType`.
 
     The returned `tff.aggregators.AggregationProcess` will be created for
-    aggregation of values matching `value_type` placed at `tff.CLIENTS`.
+    aggregation of values matching `value_type` placed at
+    `federated_language.CLIENTS`.
     That is, its `next` method will expect type
     `<S@SERVER, {value_type}@CLIENTS>`, where `S` is the unplaced return type of
     its `initialize` method.
@@ -66,7 +67,8 @@ class WeightedAggregationFactory(abc.ABC):
 
     The returned `tff.aggregators.AggregationProcess` will be created
     for aggregation of pairs of values matching `value_type` and `weight_type`
-    placed at `tff.CLIENTS`. That is, its `next` method will expect type
+    placed at `federated_language.CLIENTS`. That is, its `next` method will
+    expect type
     `<S@SERVER, {value_type}@CLIENTS, {weight_type}@CLIENTS>`, where `S` is the
     unplaced return type of its `initialize` method.
 

@@ -96,7 +96,7 @@ Here's just one example; more examples can be found in the
 [custom algorithms](tutorials/custom_federated_algorithms_1.ipynb) tutorials.
 
 ```python
-@tff.federated_computation(federated_language.FederatedType(np.float32, tff.CLIENTS))
+@tff.federated_computation(federated_language.FederatedType(np.float32, federated_language.CLIENTS))
 def get_average_temperature(sensor_readings):
   return tff.federated_mean(sensor_readings)
 ```
@@ -189,10 +189,11 @@ As these concepts are somewhat unique to TFF, we encourage you to refer to the
 additional commentary and examples.
 
 *   **Placement type**. This type is not yet exposed in the public API other
-    than in the form of 2 literals `tff.SERVER` and `tff.CLIENTS` that you can
-    think of as constants of this type. It is used internally, however, and will
-    be introduced in the public API in future releases. The compact
-    representation of this type is `placement`.
+    than in the form of 2 literals `federated_language.SERVER` and
+    `federated_language.CLIENTS` that you can think of as constants of this
+    type. It is used internally, however, and will be introduced in the public
+    API in future releases. The compact representation of this type is
+    `placement`.
 
     A *placement* represents a collective of system participants that play a
     particular role. The initial release is targeting client-server
@@ -209,8 +210,9 @@ additional commentary and examples.
 
 *   **Federated types** (`federated_language.FederatedType`). A value of a
     federated type is one that is hosted by a group of system participants
-    defined by a specific placement (such as `tff.SERVER` or `tff.CLIENTS`). A
-    federated type is defined by the *placement* value (thus, it is a
+    defined by a specific placement (such as `federated_language.SERVER` or
+    `federated_language.CLIENTS`). A federated type is defined by the
+    *placement* value (thus, it is a
     [dependent type](https://en.wikipedia.org/wiki/Dependent_type)), the type of
     *member constituents* (what kind of content each of the participants is
     locally hosting), and the additional bit `all_equal` that specifies whether
@@ -292,13 +294,14 @@ public API:
     Here's an example of a lambda expression we've already mentioned earlier:
 
     ```python
-    @tff.federated_computation(federated_language.FederatedType(np.float32, tff.CLIENTS))
+    @tff.federated_computation(federated_language.FederatedType(np.float32, federated_language.CLIENTS))
     def get_average_temperature(sensor_readings):
       return tff.federated_mean(sensor_readings)
     ```
 
-*   **Placement literals**. For now, only `tff.SERVER` and `tff.CLIENTS` to
-    allow for defining simple client-server computations.
+*   **Placement literals**. For now, only `federated_language.SERVER` and
+    `federated_language.CLIENTS` to allow for defining simple client-server
+    computations.
 
 *   **Function invocations** (`__call__`). Anything that has a functional type
     can be invoked using the standard Python `__call__` syntax. The invocation

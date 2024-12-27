@@ -117,14 +117,15 @@ def federated_sample(value, max_num_samples=100):
   N is user provided `max_num_samples`.
 
   Args:
-    value: A `tff.Value` placed on the `tff.CLIENTS`.
+    value: A `tff.Value` placed on the `federated_language.CLIENTS`.
     max_num_samples: The maximum number of samples to collect from client
       values. If fewer clients than the defined max sample size participated in
       the round of computation, the actual number of samples will equal the
       number of clients in the round.
 
   Returns:
-    At most `max_num_samples` samples of the value from the `tff.CLIENTS`.
+    At most `max_num_samples` samples of the value from the
+    `federated_language.CLIENTS`.
   """
   _validate_value_on_clients(value)
   member_type = value.type_signature.member
@@ -216,7 +217,7 @@ class BoundsNotPlacedAtServerError(TypeError):
   def __init__(self, placement):
     message = (
         'Provided lower_bound and upper_bound must be placed at '
-        f'tff.SERVER. Placement found: {placement}'
+        f'federated_language.SERVER. Placement found: {placement}'
     )
     super().__init__(message)
 
@@ -278,20 +279,20 @@ def _normalize_secure_quantized_sum_args(
   of `secure_quantized_sum` method. The arguments provided are also returned,
   possibly normalized to meet those expectations. In particular, if
   `lower_bound` and `upper_bound` are Python constants, these are converted to
-  `tff.SERVER`-placed federated values.
+  `federated_language.SERVER`-placed federated values.
 
   Args:
-    client_value: A `tff.Value` placed at `tff.CLIENTS`.
+    client_value: A `tff.Value` placed at `federated_language.CLIENTS`.
     lower_bound: The smallest possible value for `client_value` (inclusive).
       Values smaller than this bound will be clipped. Must be either a scalar or
       a nested structure of scalars, matching the structure of `client_value`.
-      Must be either a Python constant or a `tff.Value` placed at `tff.SERVER`,
-      with dtype matching that of `client_value`.
+      Must be either a Python constant or a `tff.Value` placed at
+      `federated_language.SERVER`, with dtype matching that of `client_value`.
     upper_bound: The largest possible value for `client_value` (inclusive).
       Values greater than this bound will be clipped. Must be either a scalar or
       a nested structure of scalars, matching the structure of `client_value`.
-      Must be either a Python constant or a `tff.Value` placed at `tff.SERVER`,
-      with dtype matching that of `client_value`.
+      Must be either a Python constant or a `tff.Value` placed at
+      `federated_language.SERVER`, with dtype matching that of `client_value`.
 
   Returns:
     Normalized `(client_value, lower_bound, upper_bound)` tuple.
@@ -302,7 +303,8 @@ def _normalize_secure_quantized_sum_args(
     BoundsDifferentSignaturesError: If `lower_bound.type_signature` and
       `upper_bound.type_signature` are not equal.
     BoundsNotPlacedAtServerError: If `lower_bound.type_signature` and
-      `upper_bound.type_signature` are not placed at `tff.SERVER`.
+      `upper_bound.type_signature` are not placed at
+      `federated_language.SERVER`.
     StructuredBoundsTypeMismatchError: If `lower_bound` and `upper_bound` are
       structures and do not match the structure and dtypes of `client_value`.
     ScalarBoundStructValueDTypeError: If `lower_bound` and `upper_bound` are
@@ -373,7 +375,8 @@ def _normalize_secure_quantized_sum_args(
 def _client_tensor_shift_for_secure_sum(value, lower_bound, upper_bound):
   """Mapping to be applied to every tensor before secure sum.
 
-  This operation is performed on `tff.CLIENTS` to prepare values to format
+  This operation is performed on `federated_language.CLIENTS` to prepare values
+  to format
   compatible with `tff.federated_secure_sum_bitwidth` operator.
 
   This clips elements of `value` to `[lower_bound, upper_bound]`, shifts and
@@ -442,7 +445,8 @@ def _server_tensor_shift_for_secure_sum(
 ):
   """Mapping to be applied to every tensor after secure sum.
 
-  This operation is performed on `tff.SERVER` to dequantize outputs of the
+  This operation is performed on `federated_language.SERVER` to dequantize
+  outputs of the
   `tff.federated_secure_sum_bitwidth` operator.
 
   It is reverse of `_client_tensor_shift_for_secure_sum` taking into account
@@ -571,20 +575,21 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   element should be expected for `tf.float32` and up to `1e-5` for `tf.float64`.
 
   Args:
-    client_value: A `tff.Value` placed at `tff.CLIENTS`.
+    client_value: A `tff.Value` placed at `federated_language.CLIENTS`.
     lower_bound: The smallest possible value for `client_value` (inclusive).
       Values smaller than this bound will be clipped. Must be either a scalar or
       a nested structure of scalars, matching the structure of `client_value`.
-      Must be either a Python constant or a `tff.Value` placed at `tff.SERVER`,
-      with dtype matching that of `client_value`.
+      Must be either a Python constant or a `tff.Value` placed at
+      `federated_language.SERVER`, with dtype matching that of `client_value`.
     upper_bound: The largest possible value for `client_value` (inclusive).
       Values greater than this bound will be clipped. Must be either a scalar or
       a nested structure of scalars, matching the structure of `client_value`.
-      Must be either a Python constant or a `tff.Value` placed at `tff.SERVER`,
-      with dtype matching that of `client_value`.
+      Must be either a Python constant or a `tff.Value` placed at
+      `federated_language.SERVER`, with dtype matching that of `client_value`.
 
   Returns:
-    Summed `client_value` placed at `tff.SERVER`, of the same dtype as
+    Summed `client_value` placed at `federated_language.SERVER`, of the same
+    dtype as
     `client_value`.
 
   Raises:

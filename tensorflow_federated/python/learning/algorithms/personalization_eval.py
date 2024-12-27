@@ -52,8 +52,10 @@ def build_personalization_eval_computation(
 ) -> federated_language.framework.Computation:
   """Builds the TFF computation for evaluating personalization strategies.
 
-  The returned TFF computation broadcasts model weights from `tff.SERVER` to
-  `tff.CLIENTS`. Each client evaluates the personalization strategies given in
+  The returned TFF computation broadcasts model weights from
+  `federated_language.SERVER` to
+  `federated_language.CLIENTS`. Each client evaluates the personalization
+  strategies given in
   `personalize_fn_dict`. Evaluation metrics from at most `max_num_clients`
   participating clients are collected to the server.
 

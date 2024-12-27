@@ -100,7 +100,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   def test_changing_cardinalities_across_calls(self):
 
     @tff.federated_computation(
-        federated_language.FederatedType(np.int32, tff.CLIENTS)
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def comp(x):
       return x
@@ -120,8 +120,8 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   def test_conflicting_cardinalities_within_call(self):
 
     @tff.federated_computation([
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
-        federated_language.FederatedType(np.int32, tff.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     ])
     def comp(x):
       return x

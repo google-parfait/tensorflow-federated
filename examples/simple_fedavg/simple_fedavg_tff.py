@@ -168,10 +168,10 @@ def build_federated_averaging_process(
   tf_dataset_type = federated_language.SequenceType(element_type)
 
   federated_server_state_type = federated_language.FederatedType(
-      server_state_type, tff.SERVER
+      server_state_type, federated_language.SERVER
   )
   federated_dataset_type = federated_language.FederatedType(
-      tf_dataset_type, tff.CLIENTS
+      tf_dataset_type, federated_language.CLIENTS
   )
 
   @tff.federated_computation(
@@ -184,7 +184,8 @@ def build_federated_averaging_process(
       server_state: A `ServerState` containing the state of the training process
         up to the current round.
       federated_dataset: A federated `tf.data.Dataset` with placement
-        `tff.CLIENTS` containing data to train the current round on.
+        `federated_language.CLIENTS` containing data to train the current round
+        on.
 
     Returns:
       A tuple of updated `ServerState` and `tf.Tensor` of average loss.
@@ -223,7 +224,7 @@ def build_federated_averaging_process(
   @tff.federated_computation
   def server_init_tff():
     """Orchestration logic for server model initialization."""
-    return tff.federated_eval(server_init_tf, tff.SERVER)
+    return tff.federated_eval(server_init_tf, federated_language.SERVER)
 
   return tff.templates.IterativeProcess(
       initialize_fn=server_init_tff, next_fn=run_one_round

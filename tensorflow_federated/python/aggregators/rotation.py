@@ -46,7 +46,7 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
   See https://en.wikipedia.org/wiki/Fast_Walsh%E2%80%93Hadamard_transform.
 
   Specifically, for each tensor, the following operations are first performed at
-  `tff.CLIENTS`:
+  `federated_language.CLIENTS`:
     1. Flattens the tensor into a rank-1 tensor.
     2. Pads the tensor to `d_2` dimensions with zeros, where `d_2` is the
        smallest power of 2 larger than or equal to `d`.
@@ -177,7 +177,7 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
   See https://en.wikipedia.org/wiki/Discrete_Fourier_transform
 
   Specifically, for each tensor, the following operations are first performed at
-  `tff.CLIENTS`:
+  `federated_language.CLIENTS`:
     1. Flattens the tensor into a rank-1 tensor.
     2. Pads the tensor with zeros to an even number of elements (i.e. pad at
        most one zero).
@@ -435,7 +435,8 @@ def sample_cis(shape, seed, inverse=False):
   """Sample e^(i * theta) for theta in the range [0, 2pi] as tf.complex64."""
   # While it suffices to draw theta from [0, pi/2, pi, 3pi/2] (2 bits of
   # randomness) for each complex coordinate, sampling floating angles can avoid
-  # the uniform integer sampler which may not be available on `tff.CLIENTS`.
+  # the uniform integer sampler which may not be available on
+  # `federated_language.CLIENTS`.
   theta = tf.random.stateless_uniform(shape, seed, minval=0, maxval=2)
   theta *= math.pi
   theta *= tf.cond(tf.cast(inverse, tf.bool), lambda: -1.0, lambda: 1.0)

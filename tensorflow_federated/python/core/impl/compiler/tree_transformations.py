@@ -226,8 +226,10 @@ def normalize_types(comp, normalize_all_equal_bit: bool = True):
 
   Any `StructWithPythonType`s are normalized to `StructType`s.
 
-  When `normalize_all_equal_bit` is true, all `tff.CLIENTS`-placed values will
-  have `all_equal False`, and all `tff.SERVER`-placed values will have
+  When `normalize_all_equal_bit` is true, all
+  `federated_language.CLIENTS`-placed values will
+  have `all_equal False`, and all `federated_language.SERVER`-placed values will
+  have
   `all_equal True`. This normalization is needed for MapReduceForm since we rely
   on uniformity of the `all_equal` bit when compiling. For example, the values
   processed on the clients can only be accessed through a `federated_zip`,
