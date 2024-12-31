@@ -57,6 +57,7 @@ and this project adheres to
 *   Buffer overrun in `AggVectorIterator` when passing in an empty `TensorData`.
 *   Type of noise sampled in DPClosedDomainHistogram; now it is the intended
     type (e.g., float) instead of always int.
+*   Fixed incorrect MOCK_METHOD usage in various mocks.
 
 ### Changed
 
