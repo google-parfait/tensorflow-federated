@@ -68,7 +68,7 @@ def _tensorflow_comp(
     tensorflow_proto: computation_pb2.TensorFlow,
     type_signature: T,
 ) -> tuple[computation_pb2.Computation, T]:
-  serialized_type = federated_language.framework.serialize_type(type_signature)
+  serialized_type = type_signature.to_proto()
   comp = computation_pb2.Computation(
       type=serialized_type, tensorflow=tensorflow_proto
   )

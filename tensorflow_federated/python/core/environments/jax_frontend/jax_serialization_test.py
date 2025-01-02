@@ -63,7 +63,7 @@ class JaxSerializationTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     federated_language.framework.assert_types_equivalent(
         type_spec,
         federated_language.FunctionType(
@@ -94,7 +94,7 @@ class JaxSerializationTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     federated_language.framework.assert_types_equivalent(
         type_spec,
         federated_language.FunctionType(
@@ -124,7 +124,7 @@ class JaxSerializationTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     federated_language.framework.assert_types_equivalent(
         type_spec,
         federated_language.FunctionType(
@@ -158,7 +158,7 @@ class JaxSerializationTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     federated_language.framework.assert_types_equivalent(
         type_spec,
         federated_language.FunctionType(
@@ -213,7 +213,7 @@ class JaxSerializationTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     federated_language.framework.assert_types_equivalent(
         type_spec,
         federated_language.FunctionType(
@@ -262,7 +262,7 @@ class JaxSerializationTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     federated_language.framework.assert_types_equivalent(
         type_spec,
         federated_language.FunctionType(
@@ -288,7 +288,7 @@ class JaxSerializationTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     federated_language.framework.assert_types_equivalent(
         type_spec,
         federated_language.FunctionType(
@@ -318,7 +318,7 @@ class JaxSerializationTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     federated_language.framework.assert_types_equivalent(
         type_spec,
         federated_language.FunctionType(
@@ -343,7 +343,7 @@ class JaxSerializationTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     federated_language.framework.assert_types_equivalent(
         type_spec,
         federated_language.FunctionType(

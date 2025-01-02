@@ -338,13 +338,9 @@ class ValueSerializationTest(parameterized.TestCase):
     x = 10
     x_type = federated_language.TensorType(np.int32)
     member_proto, _ = value_serialization.serialize_value(x, x_type)
-    fully_specified_type_at_clients = (
-        federated_language.framework.serialize_type(
-            federated_language.FederatedType(
-                np.int32, federated_language.CLIENTS
-            )
-        )
-    )
+    fully_specified_type_at_clients = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
+    ).to_proto()
 
     unspecified_member_federated_type = computation_pb2.FederatedType(
         placement=fully_specified_type_at_clients.federated.placement,
@@ -374,13 +370,9 @@ class ValueSerializationTest(parameterized.TestCase):
     y = 10.0
     y_type = federated_language.TensorType(np.float32)
     float_member_proto, _ = value_serialization.serialize_value(y, y_type)
-    fully_specified_type_at_clients = (
-        federated_language.framework.serialize_type(
-            federated_language.FederatedType(
-                np.int32, federated_language.CLIENTS
-            )
-        )
-    )
+    fully_specified_type_at_clients = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
+    ).to_proto()
 
     unspecified_member_federated_type = computation_pb2.FederatedType(
         placement=fully_specified_type_at_clients.federated.placement,
@@ -436,9 +428,9 @@ class ValueSerializationTest(parameterized.TestCase):
     larger_type_member_proto, _ = value_serialization.serialize_value(
         x, larger_type
     )
-    type_at_clients = federated_language.framework.serialize_type(
-        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
-    )
+    type_at_clients = federated_language.FederatedType(
+        np.int32, federated_language.CLIENTS
+    ).to_proto()
 
     unspecified_member_federated_type = computation_pb2.FederatedType(
         placement=type_at_clients.federated.placement, all_equal=False

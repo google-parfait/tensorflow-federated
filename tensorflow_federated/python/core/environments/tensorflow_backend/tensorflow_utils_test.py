@@ -1325,9 +1325,7 @@ class TensorFlowDeserializationTest(tf.test.TestCase):
         parameter=parameter_binding,
         result=result_binding,
     )
-    serialized_type = federated_language.framework.serialize_type(
-        type_signature
-    )
+    serialized_type = type_signature.to_proto()
     computation_proto = pb.Computation(
         type=serialized_type, tensorflow=tensorflow_proto
     )
@@ -1375,9 +1373,7 @@ class TensorFlowDeserializationTest(tf.test.TestCase):
         parameter=parameter_binding,
         result=result_binding,
     )
-    serialized_type = federated_language.framework.serialize_type(
-        type_signature
-    )
+    serialized_type = type_signature.to_proto()
     computation_proto = pb.Computation(
         type=serialized_type, tensorflow=tensorflow_proto
     )
@@ -1413,9 +1409,7 @@ class TensorFlowDeserializationTest(tf.test.TestCase):
         session_token_tensor_name=session_token_placeholder.name,
         result=result_binding,
     )
-    serialized_type = federated_language.framework.serialize_type(
-        type_signature
-    )
+    serialized_type = type_signature.to_proto()
     computation_proto = pb.Computation(
         type=serialized_type, tensorflow=tensorflow_proto
     )

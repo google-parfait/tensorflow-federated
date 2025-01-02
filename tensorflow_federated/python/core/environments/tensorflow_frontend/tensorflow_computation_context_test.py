@@ -25,11 +25,7 @@ class TensorFlowComputationContextTest(absltest.TestCase):
 
   def test_invoke_raises_value_error_with_federated_computation(self):
     bogus_proto = pb.Computation(
-        type=federated_language.framework.serialize_type(
-            federated_language.to_type(
-                federated_language.FunctionType(np.int32, np.int32)
-            )
-        ),
+        type=federated_language.FunctionType(np.int32, np.int32).to_proto(),
         reference=pb.Reference(name='boogledy'),
     )
     non_tf_computation = federated_language.framework.ConcreteComputation(

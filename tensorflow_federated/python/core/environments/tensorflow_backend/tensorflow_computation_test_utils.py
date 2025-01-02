@@ -89,14 +89,12 @@ def run_tensorflow(
     The result of the computation.
   """
   with tf.Graph().as_default() as graph:
-    type_signature = federated_language.framework.deserialize_type(
+    type_signature = federated_language.FunctionType.from_proto(
         computation_proto.type
     )
-    if type_signature.parameter is not None:  # pytype: disable=attribute-error
+    if type_signature.parameter is not None:
       stamped_arg = _stamp_value_into_graph(
-          arg,
-          type_signature.parameter,  # pytype: disable=attribute-error
-          graph,
+          arg, type_signature.parameter, graph
       )
     else:
       stamped_arg = None

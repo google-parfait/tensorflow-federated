@@ -34,6 +34,4 @@ is_tensorflow_compatible_type = (
     federated_language.framework.is_tensorflow_compatible_type
 )
 type_to_py_container = federated_language.framework.type_to_py_container
-deserialize_type = federated_language.framework.deserialize_type
-serialize_type = federated_language.framework.serialize_type
 # pylint: disable=g-importing-member

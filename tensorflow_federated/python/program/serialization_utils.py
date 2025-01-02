@@ -188,7 +188,7 @@ def unpack_serializable_from(
 
 def pack_type_spec(type_spec: federated_language.Type) -> bytes:
   """Packs a `federated_language.Type` as bytes."""
-  proto = federated_language.framework.serialize_type(type_spec)
+  proto = type_spec.to_proto()
   type_bytes = proto.SerializeToString()
   length_bytes = _pack_length(type_bytes)
   return length_bytes + type_bytes
@@ -211,7 +211,7 @@ def unpack_type_spec_from(
   offset += length_size
   type_spec_bytes, *_ = struct.unpack_from(f'!{length}s', buffer, offset=offset)
   proto = computation_pb2.Type.FromString(type_spec_bytes)
-  type_spec = federated_language.framework.deserialize_type(proto)
+  type_spec = federated_language.Type.from_proto(proto)
   return type_spec, length_size + length
 
 

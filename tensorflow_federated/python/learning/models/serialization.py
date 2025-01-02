@@ -176,9 +176,7 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
       concrete_fn.output_dtypes,
       concrete_fn.output_shapes,
   )
-  result_type_spec = federated_language.framework.serialize_type(
-      federated_language.to_type(tensor_types)
-  )
+  result_type_spec = federated_language.to_type(tensor_types).to_proto()
 
   def flattened_output(*args, **kwargs):
     return tf.nest.flatten(fn(*args, **kwargs))
@@ -191,7 +189,7 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
 
 def _deserialize_type_spec(serialize_type_variable, python_container=None):
   """Deserialize a `federated_language.Type` protocol buffer into a python class instance."""
-  type_spec = federated_language.framework.deserialize_type(
+  type_spec = federated_language.Type.from_proto(
       computation_pb2.Type.FromString(
           serialize_type_variable.read_value().numpy()
       )
@@ -369,9 +367,9 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
   # Serialize the TFF values as string variables that contain the serialized
   # protos from the computation or the type.
   m.serialized_input_spec = tf.Variable(
-      federated_language.framework.serialize_type(
-          tensorflow_types.to_type(model.input_spec)
-      ).SerializeToString(deterministic=True),
+      tensorflow_types.to_type(model.input_spec)
+      .to_proto()
+      .SerializeToString(deterministic=True),
       trainable=False,
   )
 
@@ -465,9 +463,9 @@ def save_functional_model(
     output_tensor_spec_structure = tf.nest.map_structure(
         tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
     )
-    result_type_spec = federated_language.framework.serialize_type(
-        tensorflow_types.to_type(output_tensor_spec_structure)
-    )
+    result_type_spec = tensorflow_types.to_type(
+        output_tensor_spec_structure
+    ).to_proto()
 
     @tf.function
     def flat_predict_on_batch(model_weights, x, training):
@@ -528,9 +526,9 @@ def save_functional_model(
     output_tensor_spec_structure = tf.nest.map_structure(
         tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
     )
-    result_type_spec = federated_language.framework.serialize_type(
-        tensorflow_types.to_type(output_tensor_spec_structure)
-    )
+    result_type_spec = tensorflow_types.to_type(
+        output_tensor_spec_structure
+    ).to_proto()
 
     @tf.function
     def flat_loss(output, label, sample_weight=None):
@@ -557,9 +555,9 @@ def save_functional_model(
   # Serialize TFF values as string variables that contain the serialized
   # protos from the computation or the type.
   m.serialized_input_spec = tf.Variable(
-      federated_language.framework.serialize_type(
-          tensorflow_types.to_type(functional_model.input_spec)
-      ).SerializeToString(deterministic=True),
+      tensorflow_types.to_type(functional_model.input_spec)
+      .to_proto()
+      .SerializeToString(deterministic=True),
       trainable=False,
   )
 

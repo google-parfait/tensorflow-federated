@@ -39,7 +39,7 @@ def _serialize_computation(
 ) -> _SerializeReturnType:
   """Serializes a TFF computation."""
   type_spec = executor_utils.reconcile_value_type_with_type_spec(
-      federated_language.framework.deserialize_type(comp.type), type_spec
+      federated_language.Type.from_proto(comp.type), type_spec
   )
   return executor_pb2.Value(computation=comp), type_spec
 
@@ -193,7 +193,7 @@ def _serialize_sequence_value(
     )
     elements_proto.append(element_proto)
 
-  element_type_proto = federated_language.framework.serialize_type(element_type)
+  element_type_proto = element_type.to_proto()
   sequence_proto = executor_pb2.Value.Sequence(
       element_type=element_type_proto, element=elements_proto
   )
@@ -246,9 +246,7 @@ def _serialize_federated_value(
     federated_value_proto, it_type = serialize_value(v, type_spec.member)
     type_spec.member.check_assignable_from(it_type)
     value_proto.federated.value.append(federated_value_proto)
-  value_proto.federated.type.CopyFrom(
-      federated_language.framework.serialize_type(type_spec).federated
-  )
+  value_proto.federated.type.CopyFrom(type_spec.to_proto().federated)
   return value_proto, type_spec
 
 
@@ -317,9 +315,7 @@ def _deserialize_computation(
     )
   else:
     value = value_proto.computation
-  type_spec = federated_language.framework.deserialize_type(
-      value_proto.computation.type
-  )
+  type_spec = federated_language.Type.from_proto(value_proto.computation.type)
   return value, type_spec
 
 
@@ -381,7 +377,7 @@ def _deserialize_sequence_value(
   if type_hint is not None:
     element_type = type_hint.element
   else:
-    element_type = federated_language.framework.deserialize_type(
+    element_type = federated_language.Type.from_proto(
         sequence_proto.element_type
     )
 

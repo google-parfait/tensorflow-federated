@@ -563,7 +563,7 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
         federated_language.TensorType(np.int32),
     )
     empty_xla_computation_proto = computation_pb2.Computation(
-        type=federated_language.framework.serialize_type(function_type),
+        type=function_type.to_proto(),
         xla=computation_pb2.Xla(),
     )
 

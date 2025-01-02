@@ -73,7 +73,7 @@ class CreateConstantTest(parameterized.TestCase):
     )
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = federated_language.framework.deserialize_type(proto.type)
+    actual_type = federated_language.FunctionType.from_proto(proto.type)
     expected_type = federated_language.FunctionType(None, type_signature)
     expected_type.check_assignable_from(actual_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(proto)
@@ -186,7 +186,7 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
     )
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = federated_language.framework.deserialize_type(proto.type)
+    actual_type = federated_language.FunctionType.from_proto(proto.type)
     self.assertIsInstance(actual_type, federated_language.FunctionType)
     # Note: It is only useful to test the parameter type; the result type
     # depends on the `operator` used, not the implemenation
@@ -271,7 +271,7 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
     )
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = federated_language.framework.deserialize_type(proto.type)
+    actual_type = federated_language.FunctionType.from_proto(proto.type)
     self.assertIsInstance(actual_type, federated_language.FunctionType)
     # Note: It is only useful to test the parameter type; the result type
     # depends on the `operator` used, not the implemenation
@@ -405,7 +405,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
     )
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = federated_language.framework.deserialize_type(proto.type)
+    actual_type = federated_language.FunctionType.from_proto(proto.type)
     self.assertIsInstance(actual_type, federated_language.FunctionType)
     # Note: It is only useful to test the parameter type; the result type
     # depends on the `operator` used, not the implemenation
@@ -453,7 +453,7 @@ class CreateEmptyTupleTest(absltest.TestCase):
     proto, _ = tensorflow_computation_factory.create_empty_tuple()
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = federated_language.framework.deserialize_type(proto.type)
+    actual_type = federated_language.FunctionType.from_proto(proto.type)
     expected_type = federated_language.FunctionType(None, [])
     expected_type.check_assignable_from(actual_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(proto)
@@ -479,7 +479,7 @@ class CreateIdentityTest(parameterized.TestCase):
     proto, _ = tensorflow_computation_factory.create_identity(type_signature)
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_type = federated_language.framework.deserialize_type(proto.type)
+    actual_type = federated_language.FunctionType.from_proto(proto.type)
     expected_type = federated_language.FunctionType(
         type_signature, type_signature
     )

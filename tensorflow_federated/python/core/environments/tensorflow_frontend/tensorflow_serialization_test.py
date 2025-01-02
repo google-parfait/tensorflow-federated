@@ -35,7 +35,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         )
     )
     self.assertEqual(
-        federated_language.framework.deserialize_type(
+        federated_language.FunctionType.from_proto(
             comp.type
         ).compact_representation(),
         '( -> int32)',
@@ -69,7 +69,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         )
     )
     self.assertEqual(
-        federated_language.framework.deserialize_type(
+        federated_language.FunctionType.from_proto(
             comp.type
         ).compact_representation(),
         '(str[?] -> int64[?])',
@@ -104,7 +104,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         )
     )
     self.assertEqual(
-        federated_language.framework.deserialize_type(
+        federated_language.FunctionType.from_proto(
             comp.type
         ).compact_representation(),
         '(int32 -> int32)',
@@ -137,7 +137,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         )
     )
     self.assertEqual(
-        federated_language.framework.deserialize_type(
+        federated_language.FunctionType.from_proto(
             comp.type
         ).compact_representation(),
         '(<x=int32,y=float32[2]> -> <A=float32,B=float32[2]>)',
@@ -169,7 +169,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         )
     )
     self.assertEqual(
-        federated_language.framework.deserialize_type(
+        federated_language.FunctionType.from_proto(
             comp.type
         ).compact_representation(),
         '(int64* -> int64)',
@@ -206,7 +206,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         )
     )
     self.assertEqual(
-        federated_language.framework.deserialize_type(
+        federated_language.FunctionType.from_proto(
             comp.type
         ).compact_representation(),
         '(<int64>* -> int64)',
