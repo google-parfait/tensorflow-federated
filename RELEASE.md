@@ -10,6 +10,7 @@ and this project adheres to
 
 ### Added
 
+*   Dependency on `federated-language`.
 *   `tff.StructType.items()`, this API makes it easier to iterate over
     `tff.StrucType` without having to deal with hard to discover and use
     `tff.structure.*` APIs.
