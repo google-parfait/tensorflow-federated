@@ -16,10 +16,6 @@
 import federated_language
 
 # pylint: disable=g-importing-member
-type_mismatch_error_message = (
-    federated_language.framework.type_mismatch_error_message
-)
-TypeRelation = federated_language.framework.TypeRelation
 TypesNotEquivalentError = federated_language.framework.TypesNotEquivalentError
 contains = federated_language.framework.type_contains
 contains_only = federated_language.framework.type_contains_only

@@ -73,12 +73,9 @@ class TensorFlowComputationContext(federated_language.framework.SyncContext):
 
       if not comp.type_signature.parameter.is_assignable_from(inferred_type):
         raise TypeError(
-            federated_language.framework.type_mismatch_error_message(
-                inferred_type,
-                comp.type_signature.parameter,
-                federated_language.framework.TypeRelation.ASSIGNABLE,
-                second_is_expected=True,
-            )
+            f'{inferred_type.formatted_representation()}\n'  # pytype: disable=attribute-error
+            'is not assignable to\n'
+            f'{comp.type_signature.parameter.formatted_representation()}\n'
         )
 
     # We are invoking a `tff.tensorflow.computation` inside of another

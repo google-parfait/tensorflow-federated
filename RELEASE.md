@@ -163,6 +163,8 @@ and this project adheres to
 *   `tff.TypedObject`, use `federated_language.TypedObject` instead.
 *   `tff.CLIENTS`, use `federated_language.CLIENTS` instead.
 *   `tff.SERVER`, use `federated_language.SERVER` instead.
+*   `tff.types.type_mismatch_error_message`, this function is no longer used.
+*   `tff.types.TypeRelation`, this object is no longer used.
 
 ## Release 0.88.0
 
