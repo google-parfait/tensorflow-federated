@@ -150,6 +150,9 @@ and this project adheres to
     `federated_language.TypesNotIdenticalError` instead.
 *   `tff.types.UnexpectedTypeError`, use
     `federated_language.UnexpectedTypeError` instead.
+*   `tff.types.deserialize_type`, use `federated_language.Types.from_proto`
+    instead.
+*   `tff.types.serialize_type`, use `federated_language.Types.to_proto` instead.
 
 ## Release 0.88.0
 
