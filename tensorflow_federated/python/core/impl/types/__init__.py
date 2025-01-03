@@ -16,9 +16,6 @@
 import federated_language
 
 # pylint: disable=g-importing-member
-ArrayShape = federated_language.ArrayShape
-is_shape_fully_defined = federated_language.array_shape_is_fully_defined
-num_elements_in_shape = federated_language.num_elements_in_array_shape
 type_mismatch_error_message = (
     federated_language.framework.type_mismatch_error_message
 )

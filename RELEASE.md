@@ -153,6 +153,11 @@ and this project adheres to
 *   `tff.types.deserialize_type`, use `federated_language.Types.from_proto`
     instead.
 *   `tff.types.serialize_type`, use `federated_language.Types.to_proto` instead.
+*   `tff.types.ArrayShape`, use `federated_language.ArrayShape` instead
+*   `tff.types.is_shape_fully_defined`, use
+    `federated_language.array_shape_is_fully_defined` instead
+*   `tff.types.num_elements_in_shape`, use
+    `federated_language.num_elements_in_array_shape` instead
 *   `tff.types.is_tensorflow_compatible_type`, this function is no longer used
     externally.
 *   `tff.TypedObject`, use `federated_language.TypedObject` instead.
