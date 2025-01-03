@@ -153,6 +153,8 @@ and this project adheres to
 *   `tff.types.deserialize_type`, use `federated_language.Types.from_proto`
     instead.
 *   `tff.types.serialize_type`, use `federated_language.Types.to_proto` instead.
+*   `tff.types.is_tensorflow_compatible_type`, this function is no longer used
+    externally.
 
 ## Release 0.88.0
 

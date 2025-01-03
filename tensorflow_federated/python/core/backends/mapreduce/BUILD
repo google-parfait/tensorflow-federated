@@ -42,6 +42,7 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:compiled_computation_transformations",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "@federated_language//federated_language",

@@ -18,6 +18,7 @@ from typing import Any, NamedTuple, Optional
 import federated_language
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.templates import hparams_base
@@ -46,9 +47,7 @@ class ClientResultTypeError(TypeError):
 def _is_allowed_client_data_type(type_spec: federated_language.Type) -> bool:
   """Determines whether a given type is a (possibly nested) sequence type."""
   if isinstance(type_spec, federated_language.SequenceType):
-    return federated_language.framework.is_tensorflow_compatible_type(
-        type_spec.element
-    )
+    return tensorflow_types.is_tensorflow_compatible_type(type_spec.element)
   elif isinstance(type_spec, federated_language.StructType):
     return all(
         _is_allowed_client_data_type(element_type)

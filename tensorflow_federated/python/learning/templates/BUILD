@@ -68,6 +68,7 @@ py_library(
     deps = [
         ":hparams_base",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
@@ -331,7 +332,10 @@ py_test(
 py_library(
     name = "type_checks",
     srcs = ["type_checks.py"],
-    deps = ["@federated_language//federated_language"],
+    deps = [
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_test(
