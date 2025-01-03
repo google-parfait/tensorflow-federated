@@ -165,6 +165,8 @@ and this project adheres to
 *   `tff.SERVER`, use `federated_language.SERVER` instead.
 *   `tff.types.type_mismatch_error_message`, this function is no longer used.
 *   `tff.types.TypeRelation`, this object is no longer used.
+*   `tff.types.TypesNotEquivalentError`, use
+    `federated_language.framework.TypesNotEquivalentError` instead.
 
 ## Release 0.88.0
 

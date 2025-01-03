@@ -16,7 +16,6 @@
 import federated_language
 
 # pylint: disable=g-importing-member
-TypesNotEquivalentError = federated_language.framework.TypesNotEquivalentError
 contains = federated_language.framework.type_contains
 contains_only = federated_language.framework.type_contains_only
 count = federated_language.framework.type_count
