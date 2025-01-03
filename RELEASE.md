@@ -165,8 +165,6 @@ and this project adheres to
 *   `tff.SERVER`, use `federated_language.SERVER` instead.
 *   `tff.types.type_mismatch_error_message`, this function is no longer used.
 *   `tff.types.TypeRelation`, this object is no longer used.
-*   `tff.types.TypesNotEquivalentError`, use
-    `federated_language.framework.TypesNotEquivalentError` instead.
 *   `tff.framework.deserialize_computation`, use
     `federated_language.framework.ConcreteComputation.from_proto` instead.
 *   `tff.framework.serialize_computation`, use
