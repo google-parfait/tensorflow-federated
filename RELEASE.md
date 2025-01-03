@@ -155,6 +155,7 @@ and this project adheres to
 *   `tff.types.serialize_type`, use `federated_language.Types.to_proto` instead.
 *   `tff.types.is_tensorflow_compatible_type`, this function is no longer used
     externally.
+*   `tff.TypedObject`, use `federated_language.TypedObject` instead.
 *   `tff.CLIENTS`, use `federated_language.CLIENTS` instead.
 *   `tff.SERVER`, use `federated_language.SERVER` instead.
 
