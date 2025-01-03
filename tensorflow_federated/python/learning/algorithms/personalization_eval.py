@@ -95,7 +95,8 @@ def build_personalization_eval_computation(
       clients will be collected.
 
   Returns:
-    A federated `tff.Computation` with the functional type signature
+    A federated `federated_language.Computation` with the functional type
+    signature
     `(<model_weights@SERVER, input@CLIENTS> -> personalization_metrics@SERVER)`:
 
     *   `model_weights` is a `tff.learning.models.ModelWeights`.
@@ -195,7 +196,7 @@ def _build_client_computation(
         [variable.VariableModel, tf.data.Dataset], _MetricsType
     ],
 ):
-  """Return an unplaced tff.Computation representing the client computation."""
+  """Return an unplaced federated_language.Computation representing the client computation."""
 
   py_typecheck.check_type(personalize_fn_dict, collections.OrderedDict)
   if 'baseline_metrics' in personalize_fn_dict:

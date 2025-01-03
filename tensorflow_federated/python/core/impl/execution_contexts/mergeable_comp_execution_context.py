@@ -709,7 +709,7 @@ class MergeableCompExecutionContext(
         raise ValueError(
             'Without a compiler, mergeable comp execution context '
             'can only invoke instances of MergeableCompForm. '
-            'Encountered a `tff.Computation`.'
+            'Encountered a `federated_language.Computation`.'
         )
       comp = self._compiler_pipeline.compile(comp)
       if not isinstance(comp, MergeableCompForm):

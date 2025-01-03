@@ -33,7 +33,9 @@ _CONTEXTS = [
 ]
 
 
-def _make_federated(computation: tff.Computation) -> tff.Computation:
+def _make_federated(
+    computation: federated_language.Computation,
+) -> federated_language.Computation:
   """Construct a federate computation that maps comptuation to CLIENTS."""
 
   @tff.federated_computation(

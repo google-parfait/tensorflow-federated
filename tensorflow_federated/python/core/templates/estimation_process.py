@@ -51,13 +51,15 @@ class EstimationProcess(iterative_process.IterativeProcess):
     """Creates a `tff.templates.EstimationProcess`.
 
     Args:
-      initialize_fn: A no-arg `tff.Computation` that returns the initial state
-        of the estimation process. Let the type of this state be called `S`.
-      next_fn: A `tff.Computation` that represents the iterated function. The
-        first or only argument must match the state type `S`. The first or only
-        return value must also match state type `S`.
-      report_fn: A `tff.Computation` that represents the estimation based on
-        state. Its input argument must match the state type `S`.
+      initialize_fn: A no-arg `federated_language.Computation` that returns the
+        initial state of the estimation process. Let the type of this state be
+        called `S`.
+      next_fn: A `federated_language.Computation` that represents the iterated
+        function. The first or only argument must match the state type `S`. The
+        first or only return value must also match state type `S`.
+      report_fn: A `federated_language.Computation` that represents the
+        estimation based on state. Its input argument must match the state type
+        `S`.
       next_is_multi_arg: An optional boolean indicating that `next_fn` will
         receive more than just the state argument (if `True`) or only the state
         argument (if `False`). This parameter is primarily used to provide
@@ -65,7 +67,7 @@ class EstimationProcess(iterative_process.IterativeProcess):
 
     Raises:
       TypeError: If `initialize_fn`, `next_fn` and `report_fn` are not
-        instances of `tff.Computation`.
+        instances of `federated_language.Computation`.
       TemplateInitFnParamNotEmptyError: If `initialize_fn` has any input
         arguments.
       TemplateStateNotAssignableError: If the `state` returned by either
@@ -93,13 +95,13 @@ class EstimationProcess(iterative_process.IterativeProcess):
 
   @property
   def report(self) -> federated_language.framework.Computation:
-    """A `tff.Computation` that computes the current estimate from `state`.
+    """A `federated_language.Computation` that computes the current estimate from `state`.
 
     Given a `state` controlled by this process, computes and returns the most
     recent estimate of the estimated value.
 
     Returns:
-      A `tff.Computation`.
+      A `federated_language.Computation`.
     """
     return self._report_fn
 
@@ -111,8 +113,9 @@ class EstimationProcess(iterative_process.IterativeProcess):
     `map_fn(report(state))`.
 
     Args:
-      map_fn: A `tff.Computation` to apply to the result of the `report`
-        function of the process. Must accept the return type of `report`.
+      map_fn: A `federated_language.Computation` to apply to the result of the
+        `report` function of the process. Must accept the return type of
+        `report`.
 
     Returns:
       An `EstimationProcess`.

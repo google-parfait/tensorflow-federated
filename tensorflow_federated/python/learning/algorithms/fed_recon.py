@@ -98,7 +98,7 @@ def _build_reconstruction_client_work(
     ],
 ) -> client_works.ClientWorkProcess:
   # pylint: enable=g-bare-generic
-  """Builds a `tff.Computation` for local reconstruction and update.
+  """Builds a `federated_language.Computation` for local reconstruction and update.
 
   Args:
     model_fn: A no-arg function that returns a
@@ -133,7 +133,7 @@ def _build_reconstruction_client_work(
       `federated_language.StructWithPythonType` of the unfinalized metrics
       (i.e., the TFF type of
       `tff.learning.Model.report_local_unfinalized_metrics()`), and returns a
-      `tff.Computation` for aggregating the unfinalized metrics.
+      `federated_language.Computation` for aggregating the unfinalized metrics.
 
   Returns:
     A `tff.learning.templates.ClientWorkProcess` for the local client update.
@@ -461,8 +461,8 @@ def build_fed_recon(
       `federated_language.StructWithPythonType` of the unfinalized metrics
       (i.e., the TFF type of
       `tff.learning.Model.report_local_unfinalized_metrics()`), and returns a
-      `tff.Computation` for aggregating the unfinalized metrics. If `None`, this
-      is set to `tff.learning.metrics.sum_then_finalize`.
+      `federated_language.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.

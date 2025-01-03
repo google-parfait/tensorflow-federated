@@ -374,7 +374,8 @@ def _build_next_global_seed_fn(stride):
     stride: An integer increment to the counter in the seed.
 
   Returns:
-    A `tff.Computation` that takes and returns `tf.int64` tensor with shape [2].
+    A `federated_language.Computation` that takes and returns `tf.int64` tensor
+    with shape [2].
   """
 
   @tensorflow_computation.tf_computation(SEED_TFF_TYPE)

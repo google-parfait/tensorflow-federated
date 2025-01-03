@@ -30,10 +30,11 @@ class IncompatiblePreprocessFnError(TypeError):
 
   def __init__(self):
     message = (
-        'The preprocess_fn must not be a tff.Computation. Please use a python'
-        ' callable or tf.function instead. This restriction is because '
-        '`tf.data.Dataset.map` wraps preprocessing functions with a '
-        '`tf.function` decorator, which cannot call to a `tff.Computation`.'
+        'The preprocess_fn must not be a federated_language.Computation. Please'
+        ' use a python callable or tf.function instead. This restriction is'
+        ' because `tf.data.Dataset.map` wraps preprocessing functions with a'
+        ' `tf.function` decorator, which cannot call to a'
+        ' `federated_language.Computation`.'
     )
     super().__init__(message)
 
@@ -151,7 +152,7 @@ class ClientData(metaclass=abc.ABCMeta):
 
   @property
   def dataset_computation(self):
-    """A `tff.Computation` accepting a client ID, returning a dataset.
+    """A `federated_language.Computation` accepting a client ID, returning a dataset.
 
     Note: the `dataset_computation` property is intended as a TFF-specific
     performance optimization for distributed execution.
@@ -251,7 +252,8 @@ class ClientData(metaclass=abc.ABCMeta):
       A `tff.simulation.datasets.ClientData`.
 
     Raises:
-      IncompatiblePreprocessFnError: If `preprocess_fn` is a `tff.Computation`.
+      IncompatiblePreprocessFnError: If `preprocess_fn` is a
+      `federated_language.Computation`.
     """
     if isinstance(preprocess_fn, federated_language.framework.Computation):
       raise IncompatiblePreprocessFnError()
@@ -266,7 +268,8 @@ class ClientData(metaclass=abc.ABCMeta):
     """Constructs a `ClientData` based on the given function.
 
     Warning: Because this function must be serializable within a `tf.function`
-    and a `tff.Computation`, it cannot be a `tff.Computation`.
+    and a `federated_language.Computation`, it cannot be a
+    `federated_language.Computation`.
 
     Args:
       client_ids: A non-empty list of strings to use as input to
@@ -274,10 +277,11 @@ class ClientData(metaclass=abc.ABCMeta):
       serializable_dataset_fn: A function that takes a client_id from the above
         list, and returns a `tf.data.Dataset`. This function must be
         serializable and usable within the context of a `tf.function` and
-        `tff.Computation`.
+        `federated_language.Computation`.
 
     Raises:
-      TypeError: If `serializable_dataset_fn` is a `tff.Computation`.
+      TypeError: If `serializable_dataset_fn` is a
+      `federated_language.Computation`.
 
     Returns:
       A `ClientData` object.
@@ -286,8 +290,9 @@ class ClientData(metaclass=abc.ABCMeta):
         serializable_dataset_fn, federated_language.framework.Computation
     ):
       raise TypeError(
-          'The input serializable_dataset_fn cannot be a tff.Computation, as it'
-          ' must be serializable within the context of a tf.function.'
+          'The input serializable_dataset_fn cannot be a'
+          ' federated_language.Computation, as it must be serializable within'
+          ' the context of a tf.function.'
       )
 
     return ConcreteClientData(client_ids, serializable_dataset_fn)
@@ -450,8 +455,8 @@ class ConcreteClientData(ClientData):
         each client.
       serializable_dataset_fn: A function that takes as input a `string`, and
         returns a `tf.data.Dataset`. This must be traceable by TF and TFF. That
-        is, it must be compatible with both `tf.function` and `tff.Computation`
-        wrappers.
+        is, it must be compatible with both `tf.function` and
+        `federated_language.Computation` wrappers.
     """
     py_typecheck.check_type(client_ids, Iterable)
     super().__init__()

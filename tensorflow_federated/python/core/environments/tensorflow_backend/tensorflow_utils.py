@@ -257,7 +257,8 @@ def capture_result_from_graph(
     else:
       # Otherwise we insert an identity. TensorFlow does not allow the same
       # tensor to appear in both feeds and fetches, which can occur if the
-      # tff.Computation is only performing a selection from a structure.
+      # federated_language.Computation is only performing a selection from a
+      # structure.
       with graph.as_default():
         result = tf.identity(result)
     # `tf.is_tensor` returns true for some things that are not actually single

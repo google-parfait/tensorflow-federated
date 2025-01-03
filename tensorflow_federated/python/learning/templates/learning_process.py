@@ -126,37 +126,39 @@ class LearningProcess(iterative_process.IterativeProcess):
     represents the hyperparameter type.
 
     Args:
-      initialize_fn: A no-arg `tff.Computation` that creates the initial state
-        of the learning process.
-      next_fn: A `tff.Computation` that defines an iterated function. Given that
-        `initialize_fn` returns a type `S@SERVER`, the `next_fn` must return a
-        `LearningProcessOutput` where the `state` attribute is assignable from
-        values with type `S@SERVER`, and accepts two arguments with types
-        assignable from values with type `S@SERVER` and `{D*}@CLIENTS`.
-      get_model_weights: A `tff.Computation` that accepts an input `S` whose
-        type is assignable from the result of `init_fn`. This computation is
-        used to create a representation of the state that can be used for
-        downstream tasks without requiring access to the entire server state.
-        For example, `get_model_weights` could be used to extract model weights
-        suitable for computing evaluation metrics on held-out data.
-      set_model_weights: A `tff.Computation` that accepts two inputs `S` and `M`
-        where the type of `S` is assignable from values with the type returned
-        by `init_fn` and `M` is a representation of the model weights stored in
-        `S`. This updates the model weights representation within the state with
-        the incoming value and returns a new value of type `S`.
-      get_hparams_fn: An optional `tff.Computation` accepting the state `S` and
-        returning the hyperparameters `H`. If not provided, this defaults to a
-        computation that returns an empty ordered dictionary, regardless of the
-        contents of the state.
-      set_hparams_fn: An optional `tff.Computation` accepting the state `S` and
-        hyperparameters `H` (matching the output of `get_hparams_fn`) and
-        returning an updated state `S`. If not provided, this defaults to a
-        pass-through computation that returns the input state regardless of the
-        hparams passed in.
+      initialize_fn: A no-arg `federated_language.Computation` that creates the
+        initial state of the learning process.
+      next_fn: A `federated_language.Computation` that defines an iterated
+        function. Given that `initialize_fn` returns a type `S@SERVER`, the
+        `next_fn` must return a `LearningProcessOutput` where the `state`
+        attribute is assignable from values with type `S@SERVER`, and accepts
+        two arguments with types assignable from values with type `S@SERVER` and
+        `{D*}@CLIENTS`.
+      get_model_weights: A `federated_language.Computation` that accepts an
+        input `S` whose type is assignable from the result of `init_fn`. This
+        computation is used to create a representation of the state that can be
+        used for downstream tasks without requiring access to the entire server
+        state. For example, `get_model_weights` could be used to extract model
+        weights suitable for computing evaluation metrics on held-out data.
+      set_model_weights: A `federated_language.Computation` that accepts two
+        inputs `S` and `M` where the type of `S` is assignable from values with
+        the type returned by `init_fn` and `M` is a representation of the model
+        weights stored in `S`. This updates the model weights representation
+        within the state with the incoming value and returns a new value of type
+        `S`.
+      get_hparams_fn: An optional `federated_language.Computation` accepting the
+        state `S` and returning the hyperparameters `H`. If not provided, this
+        defaults to a computation that returns an empty ordered dictionary,
+        regardless of the contents of the state.
+      set_hparams_fn: An optional `federated_language.Computation` accepting the
+        state `S` and hyperparameters `H` (matching the output of
+        `get_hparams_fn`) and returning an updated state `S`. If not provided,
+        this defaults to a pass-through computation that returns the input state
+        regardless of the hparams passed in.
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
-        `tff.Computation`.
+        `federated_language.Computation`.
       TemplateInitFnParamNotEmptyError: If `initialize_fn` has any input
         arguments.
       TemplateStateNotAssignableError: If the `state` returned by either
@@ -283,19 +285,19 @@ class LearningProcess(iterative_process.IterativeProcess):
 
   @property
   def initialize(self) -> federated_language.framework.Computation:
-    """A `tff.Computation` that initializes the process.
+    """A `federated_language.Computation` that initializes the process.
 
     This computation must have no input arguments, and its output must be the
     initial state of the learning process, placed at `SERVER`.
 
     Returns:
-      A `tff.Computation`.
+      A `federated_language.Computation`.
     """
     return super().initialize
 
   @property
   def next(self) -> federated_language.framework.Computation:
-    """A `tff.Computation` that runs one iteration of the process.
+    """A `federated_language.Computation` that runs one iteration of the process.
 
     The first argument of this computation should always be the current state
     (originally produced by the `initialize` attribute), the second argument
@@ -304,13 +306,13 @@ class LearningProcess(iterative_process.IterativeProcess):
     a `LearningProcessOutput`, with each field placed at `SERVER`.
 
     Returns:
-      A `tff.Computation`.
+      A `federated_language.Computation`.
     """
     return super().next
 
   @property
   def get_model_weights(self) -> federated_language.framework.Computation:
-    """A `tff.Computation` returning the model weights of a server state.
+    """A `federated_language.Computation` returning the model weights of a server state.
 
     This computation accepts an unplaced state of the process (originally
     produced by the `initialize` attribute), and returns an unplaced
@@ -320,13 +322,13 @@ class LearningProcess(iterative_process.IterativeProcess):
     `LearningProcess` in question.
 
     Returns:
-      A `tff.Computation`.
+      A `federated_language.Computation`.
     """
     return self._get_model_weights
 
   @property
   def set_model_weights(self) -> federated_language.framework.Computation:
-    """A `tff.Computation` that sets the model weights of a server state.
+    """A `federated_language.Computation` that sets the model weights of a server state.
 
     This computation accepts two arguments: an unplaced state of the process
     (originally produced by the `initialize` attribute) and a new structure of
@@ -337,26 +339,26 @@ class LearningProcess(iterative_process.IterativeProcess):
     the specific `LearningProcess` in question.
 
     Returns:
-      A `tff.Computation`.
+      A `federated_language.Computation`.
     """
     return self._set_model_weights
 
   @property
   def get_hparams(self) -> federated_language.framework.Computation:
-    """A `tff.Computation` returning the hyperparameters of a server state.
+    """A `federated_language.Computation` returning the hyperparameters of a server state.
 
     This computation accepts an unplaced state of the process (originally
     produced by the `initialize` attribute), and returns an unplaced ordered
     dictionary representing the hyperparameters of the state.
 
     Returns:
-      A `tff.Computation`.
+      A `federated_language.Computation`.
     """
     return self._get_hparams_fn
 
   @property
   def set_hparams(self) -> federated_language.framework.Computation:
-    """A `tff.Computation` that sets the hyperparamters of a server state.
+    """A `federated_language.Computation` that sets the hyperparamters of a server state.
 
     This computation accepts two arguments: an unplaced state of the process
     (originally produced by the `initialize` attribute) and an ordered
@@ -365,6 +367,6 @@ class LearningProcess(iterative_process.IterativeProcess):
     hyperparameters.
 
     Returns:
-      A `tff.Computation`.
+      A `federated_language.Computation`.
     """
     return self._set_hparams_fn

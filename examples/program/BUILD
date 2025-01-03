@@ -19,10 +19,7 @@ py_library(
 py_library(
     name = "program_logic",
     srcs = ["program_logic.py"],
-    deps = [
-        "//tensorflow_federated",
-        "@federated_language//federated_language",
-    ],
+    deps = ["@federated_language//federated_language"],
 )
 
 py_binary(

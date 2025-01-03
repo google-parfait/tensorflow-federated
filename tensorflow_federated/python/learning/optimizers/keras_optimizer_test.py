@@ -36,13 +36,15 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   def test_disjoint_init_and_next_true(self, momentum):
     """Tests behavior expected as 'TFF server optimizer'.
 
-    This test creates two `tff.Computation`s, which would correspond to parts of
+    This test creates two `federated_language.Computation`s, which would
+    correspond to parts of
     the two arguments for creation of a `tff.templates.IterativeProcess`.
 
     The `KerasOptimizers` is instantiated in both of these computations, and
     only one of its `initialize` and `next` methods is invoked in each of them.
     The state which optimizers need is exposed by the `KerasOptimizer` and needs
-    to be carried between the invocations of the created `tff.Computation`s.
+    to be carried between the invocations of the created
+    `federated_language.Computation`s.
 
     Note that even though it is expected that `variables` passed to the
     `single_step` method are expected to be `tf.Variable` instances, the code

@@ -87,7 +87,7 @@ def _create_mock_initialize(
     side_effect: Optional[object] = None,
 ) -> mock.Mock:
   mock_initialize = mock.create_autospec(
-      tff.Computation, spec_set=True, side_effect=side_effect
+      federated_language.Computation, spec_set=True, side_effect=side_effect
   )
   type_signature = federated_language.FunctionType(None, state_type)
   type(mock_initialize).type_signature = mock.PropertyMock(
@@ -104,7 +104,7 @@ def _create_mock_train(
     side_effect: Optional[object] = None,
 ) -> mock.Mock:
   mock_train = mock.create_autospec(
-      tff.Computation, spec_set=True, side_effect=side_effect
+      federated_language.Computation, spec_set=True, side_effect=side_effect
   )
   type_signature = federated_language.FunctionType(
       [state_type, train_data_type],
@@ -124,7 +124,7 @@ def _create_mock_evaluation(
     side_effect: Optional[object] = None,
 ) -> mock.Mock:
   mock_evaluation = mock.create_autospec(
-      tff.Computation, spec_set=True, side_effect=side_effect
+      federated_language.Computation, spec_set=True, side_effect=side_effect
   )
   type_signature = federated_language.FunctionType(
       [state_type, evaluation_data_type], evaluation_metrics_type

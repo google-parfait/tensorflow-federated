@@ -73,7 +73,7 @@ def build_iblt_computation(
     batch_size: int = 1,
     repetitions: int = 3,
 ) -> federated_language.framework.Computation:
-  """Builds the `tff.Computation` for heavy-hitters discovery with IBLT.
+  """Builds the `federated_language.Computation` for heavy-hitters discovery with IBLT.
 
   Args:
     string_max_bytes: The maximum length in bytes of a string in the IBLT.
@@ -137,7 +137,8 @@ def build_iblt_computation(
       override the default. Defaults to `3`. Must be at least `3`.
 
   Returns:
-    A `tff.Computation` that performs federated heavy hitter discovery.
+    A `federated_language.Computation` that performs federated heavy hitter
+    discovery.
 
   Raises:
     ValueError: if parameters don't meet expectations.

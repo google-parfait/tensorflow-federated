@@ -68,10 +68,11 @@ class MeasuredProcess(iterative_process.IterativeProcess):
     """Creates a `tff.templates.MeasuredProcess`.
 
     Args:
-      initialize_fn: A no-arg `tff.Computation` that returns the initial state
-        of the measured process. Let the type of this state be called `S`.
-      next_fn: A `tff.Computation` that represents the iterated function. The
-        first or only argument must be assignable from (
+      initialize_fn: A no-arg `federated_language.Computation` that returns the
+        initial state of the measured process. Let the type of this state be
+        called `S`.
+      next_fn: A `federated_language.Computation` that represents the iterated
+        function. The first or only argument must be assignable from (
         `federated_language.Type.is_assignable_from` must return `True`) the
         state type `S`. The return value must be a `MeasuredProcessOutput` whose
         `state` member is assignable to the first argument (same requirement as
@@ -83,7 +84,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
-        `tff.Computation`.
+        `federated_language.Computation`.
       TemplateInitFnParamNotEmptyError: If `initialize_fn` has any input
         arguments.
       TemplateStateNotAssignableError: If the `state` returned by either

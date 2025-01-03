@@ -270,18 +270,22 @@ def build_fed_kmeans(
   The learning process has the following methods inherited from
   `tff.learning.templates.LearningProcess`:
 
-  *   `initialize`: A `tff.Computation` with the functional type signature
+  *   `initialize`: A `federated_language.Computation` with the functional type
+  signature
       `( -> S@SERVER)`, where `S` is a `LearningAlgorithmState` representing the
       initial state of the server.
-  *   `next`: A `tff.Computation` with the functional type signature
+  *   `next`: A `federated_language.Computation` with the functional type
+  signature
       `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
       `LearningAlgorithmState` whose type matches the output of `initialize`
       and `{B*}@CLIENTS` represents the client datasets. The output `L` is a
       `tff.learning.templates.LearningProcessOutput` containing the state `S`
       and metrics computed during training.
-  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> W)`,
+  *   `get_model_weights`: A `federated_language.Computation` with type
+  signature `(S -> W)`,
       where `W` represents the current k-means centroids.
-  *   `set_model_weights`: A `tff.Computation` with type signature
+  *   `set_model_weights`: A `federated_language.Computation` with type
+  signature
       `(<S, M> -> S)`, where `S` is a
       `tff.learning.templates.LearningAlgorithmState` whose type matches the
       output of `initialize` and `M` a new set of k-means centroids.

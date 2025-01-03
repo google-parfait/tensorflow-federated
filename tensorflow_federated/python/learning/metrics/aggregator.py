@@ -51,7 +51,8 @@ def sum_then_finalize(
 
   Note: invoking this computation outside of a federated context (a method
   decorated with `tff.federated_computation`) will require first wrapping it in
-  a concrete, non-polymorphic `tff.Computation` with appropriate federated
+  a concrete, non-polymorphic `federated_language.Computation` with appropriate
+  federated
   types.
 
   Args:
@@ -148,7 +149,8 @@ def secure_sum_then_finalize(
 
   Note: invoking this computation outside of a federated context (a method
   decorated with `tff.federated_computation`) will require first wrapping it in
-  a concrete, non-polymorphic `tff.Computation` with appropriate federated
+  a concrete, non-polymorphic `federated_language.Computation` with appropriate
+  federated
   types.
 
   The computation is intended to be invoked on the output of
@@ -318,7 +320,8 @@ def finalize_then_sample(
 
   Note: invoking this computation outside of a federated context (a method
   decoratedc with `tff.federated_computation`) will require first wrapping it in
-  a concrete, non-polymorphic `tff.Computation` with appropriate federated
+  a concrete, non-polymorphic `federated_language.Computation` with appropriate
+  federated
   types.
 
   The returned computation is intended to be invoked on the output of

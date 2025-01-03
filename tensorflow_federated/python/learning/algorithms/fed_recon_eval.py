@@ -70,7 +70,7 @@ def build_fed_recon_eval(
         aggregation_process.AggregationProcess
     ] = None,
 ) -> learning_process_lib.LearningProcess:
-  """Builds a `tff.Computation` for evaluating a reconstruction `Model`.
+  """Builds a `federated_language.Computation` for evaluating a reconstruction `Model`.
 
   The returned computation proceeds in two stages: (1) reconstruction and (2)
   evaluation. During the reconstruction stage, local variables are reconstructed

@@ -87,7 +87,7 @@ def run_training_process(
 ):
   """Runs a federated `training_process`.
 
-  The following `tff.Computation` types signaures are required:
+  The following `federated_language.Computation` types signaures are required:
 
   *   `training_process.initialize`: `( -> state)`.
   *   `training_process.next`: `<state, client_data> -> <state, metrics>`

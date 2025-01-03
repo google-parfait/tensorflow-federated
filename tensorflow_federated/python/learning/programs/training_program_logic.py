@@ -111,7 +111,7 @@ def _add_program_metrics(
 
 
 # TODO: b/284509457 - Revisit this API when `initialize` is changed to be a
-# value instead of `tff.Computation`.
+# value instead of `federated_language.Computation`.
 async def train_model(
     *,
     train_process: learning_process.LearningProcess,
@@ -377,7 +377,7 @@ async def train_model(
             '`train_model` requires the `train_process` argument to be a '
             '`tff.learning.templates.LearningProcess` whose `next` computation '
             'metrics result has a `train` field. Instead got a '
-            '`tff.Computation` whose result signature was: '
+            '`federated_language.Computation` whose result signature was: '
             f'{train_process.next.type_signature.result}'
         ) from e
       # TODO: b/371431768 - Clean up the timestamps in the metrics once min sep

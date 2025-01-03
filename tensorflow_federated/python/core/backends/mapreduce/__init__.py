@@ -151,7 +151,7 @@ components below correspond directly to the parameters of that operator).
   client population. In some systems, all accumulation may happen at the
   server, but for scalability reasons, it is often desirable to structure
   aggregation in multiple tiers. Its type signature is `A`, or when
-  represented as a `tff.Computation` in Python, `( -> A)`.
+  represented as a `federated_language.Computation` in Python, `( -> A)`.
 
 * `accumulate` is the TensorFlow computation that updates the state of an
   update accumulator (initialized with `zero` above) with a single client's

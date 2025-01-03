@@ -152,7 +152,8 @@ def _encoded_init_fn(encoders):
     encoders: A collection of `GatherEncoder` objects.
 
   Returns:
-    A no-arg `tff.Computation` returning initial state for `EncodedSumFactory`.
+    A no-arg `federated_language.Computation` returning initial state for
+    `EncodedSumFactory`.
   """
   init_fn_tf = tensorflow_computation.tf_computation(
       lambda: tf.nest.map_structure(lambda e: e.initial_state(), encoders)
@@ -184,7 +185,8 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
     encoders: A collection of `GatherEncoder` objects.
 
   Returns:
-    A `tff.Computation` for `EncodedSumFactory`, with the type signature of
+    A `federated_language.Computation` for `EncodedSumFactory`, with the type
+    signature of
     `(server_state_type, value_type@CLIENTS) ->
     MeasuredProcessOutput(server_state_type, value_type@SERVER, ()@SERVER)`
   """

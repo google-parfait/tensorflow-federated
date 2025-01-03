@@ -73,7 +73,8 @@ def _build_local_evaluation(
       generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
-    A federated computation (an instance of `tff.Computation`) that accepts
+    A federated computation (an instance of `federated_language.Computation`)
+    that accepts
     model parameters and sequential data, and returns the evaluation metrics.
   """
 
@@ -145,7 +146,8 @@ def _build_functional_local_evaluation(
     batch_type: The type of one entry in the dataset.
 
   Returns:
-    A federated computation (an instance of `tff.Computation`) that accepts
+    A federated computation (an instance of `federated_language.Computation`)
+    that accepts
     model parameters and sequential data, and returns the evaluation metrics.
   """
 
@@ -369,10 +371,11 @@ def build_fed_eval(
   federated evaluation on clients. The learning process has the following
   methods inherited from `tff.learning.templates.LearningProcess`:
 
-  *   `initialize`: A `tff.Computation` with type signature `( -> S@SERVER)`,
+  *   `initialize`: A `federated_language.Computation` with type signature `( ->
+  S@SERVER)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState`
       representing the initial state of the server.
-  *   `next`: A `tff.Computation` with type signature
+  *   `next`: A `federated_language.Computation` with type signature
       `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
       `LearningAlgorithmState` whose type matches that of the output
       of `initialize`, and `{B*}@CLIENTS` represents the client datasets, where
@@ -380,11 +383,13 @@ def build_fed_eval(
       server state, as well as aggregated metrics at the server, including
       client evaluation metrics and any other metrics from distribution and
       aggregation processes.
-  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
+  *   `get_model_weights`: A `federated_language.Computation` with type
+  signature `(S -> M)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
       matches the output of `initialize` and `next`, and `M` represents the type
       of the model weights used during evaluation.
-  *   `set_model_weights`: A `tff.Computation` with type signature
+  *   `set_model_weights`: A `federated_language.Computation` with type
+  signature
       `(<S, M> -> S)`, where `S` is a
       `tff.learning.templates.LearningAlgorithmState` whose type matches the
       output of `initialize` and `M` represents the type of the model weights

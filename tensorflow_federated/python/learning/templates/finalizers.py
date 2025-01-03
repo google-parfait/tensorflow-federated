@@ -77,14 +77,17 @@ class FinalizerProcess(measured_process.MeasuredProcess):
     represents the hyperparameter type.
 
     Args:
-      initialize_fn: A `tff.Computation` matching the criteria above.
-      next_fn: A `tff.Computation` matching the criteria above.
-      get_hparams_fn: An optional `tff.Computation` matching the criteria above.
-        If not provided, this defaults to a computation that returns an empty
-        ordred dictionary, regardless of the contents of the state.
-      set_hparams_fn: An optional `tff.Computation` matching the criteria above.
-        If not provided, this defaults to a pass-through computation, that
-        returns the input state regardless of the hparams passed in.
+      initialize_fn: A `federated_language.Computation` matching the criteria
+        above.
+      next_fn: A `federated_language.Computation` matching the criteria above.
+      get_hparams_fn: An optional `federated_language.Computation` matching the
+        criteria above. If not provided, this defaults to a computation that
+        returns an empty ordred dictionary, regardless of the contents of the
+        state.
+      set_hparams_fn: An optional `federated_language.Computation` matching the
+        criteria above. If not provided, this defaults to a pass-through
+        computation, that returns the input state regardless of the hparams
+        passed in.
 
     Raises:
       TemplateNotFederatedError: If any of the federated computations provided
