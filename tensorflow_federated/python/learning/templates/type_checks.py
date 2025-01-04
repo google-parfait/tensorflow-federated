@@ -17,6 +17,8 @@ from typing import Optional
 
 import federated_language
 
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
+
 
 class ClientSequenceTypeError(Exception):
   """Raises when a type is not a structure of sequences placed at `CLIENTS`."""
@@ -40,9 +42,7 @@ def check_is_client_placed_structure_of_sequences(
 
   def is_structure_of_sequences(member_spec: federated_language.Type) -> bool:
     if isinstance(member_spec, federated_language.SequenceType):
-      return federated_language.framework.is_tensorflow_compatible_type(
-          member_spec.element
-      )
+      return tensorflow_types.is_tensorflow_compatible_type(member_spec.element)
     elif isinstance(member_spec, federated_language.StructType):
       return all(
           is_structure_of_sequences(element_type)

@@ -71,7 +71,7 @@ class XlaUtilsTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     self.assertEqual(str(type_spec), '( -> int32)')
     xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
     self.assertIn(
@@ -121,7 +121,7 @@ class XlaUtilsTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.framework.deserialize_type(comp_pb.type)
+    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
     self.assertEqual(str(type_spec), '(int32[10] -> int32[10])')
 
   def test_create_xla_tff_computation_with_reordered_tensor_indexes(self):
@@ -144,7 +144,7 @@ class XlaUtilsTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb_1, pb.Computation)
     self.assertEqual(comp_pb_1.WhichOneof('computation'), 'xla')
-    type_spec_1 = federated_language.framework.deserialize_type(comp_pb_1.type)
+    type_spec_1 = federated_language.FunctionType.from_proto(comp_pb_1.type)
     self.assertEqual(
         str(type_spec_1), '(<int32[10,1],int32[1,20]> -> int32[10,20])'
     )
@@ -158,7 +158,7 @@ class XlaUtilsTest(absltest.TestCase):
     )
     self.assertIsInstance(comp_pb_2, pb.Computation)
     self.assertEqual(comp_pb_2.WhichOneof('computation'), 'xla')
-    type_spec_2 = federated_language.framework.deserialize_type(comp_pb_2.type)
+    type_spec_2 = federated_language.FunctionType.from_proto(comp_pb_2.type)
     self.assertEqual(
         str(type_spec_2), '(<int32[1,20],int32[10,1]> -> int32[10,20])'
     )

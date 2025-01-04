@@ -156,7 +156,7 @@ class NativeFederatedContext(federated_language.program.FederatedContext):
     """Invokes the `comp` with the argument `arg`.
 
     Args:
-      comp: The `tff.Computation` being invoked.
+      comp: The `federated_language.Computation` being invoked.
       arg: The optional argument of `comp`; server-placed values must be
         represented by `federated_language.program.MaterializableStructure`, and
         client-placed values must be represented by structures of values

@@ -52,13 +52,14 @@ def _log2(u: tf.Tensor) -> tf.Tensor:
 def build_client_hyperloglog_computation() -> (
     federated_language.framework.Computation
 ):
-  """Builds a `tff.Computation` for computing client hyperloglog sketches.
+  """Builds a `federated_language.Computation` for computing client hyperloglog sketches.
 
   Specifically, the returned computation consumes a dataset of integer hashes
   and returns the HyperLogLog sketch of size HLL_SKETCH_SIZE.
 
   Returns:
-    A `tff.Computation` for computing client hyperloglog sketches.
+    A `federated_language.Computation` for computing client hyperloglog
+    sketches.
   """
 
   @tensorflow_computation.tf_computation(
@@ -91,7 +92,7 @@ def build_client_hyperloglog_computation() -> (
 def build_federated_secure_max_computation() -> (
     federated_language.framework.Computation
 ):
-  """Builds a `tff.Computation` for computing max in a secure fashion.
+  """Builds a `federated_language.Computation` for computing max in a secure fashion.
 
     Specifically, the returned computation consumes sketches at @CLIENTS and
     returns the element-wise max of the inpt sketches @SERVER.
@@ -105,7 +106,7 @@ def build_federated_secure_max_computation() -> (
     (upper_bound - lower_bound).
 
   Returns:
-    A `tff.Computation` for computing max of client vectors.
+    A `federated_language.Computation` for computing max of client vectors.
   """
 
   @federated_language.federated_computation(
@@ -162,7 +163,7 @@ def build_federated_secure_max_computation() -> (
 def create_federated_hyperloglog_computation(
     *, use_secagg: bool = False
 ) -> federated_language.framework.Computation:
-  """Creates a `tff.Computation` to estimate the number of distinct strings.
+  """Creates a `federated_language.Computation` to estimate the number of distinct strings.
 
   The returned computation consumes data @CLIENTS and produces an estimate of
   the number of unique words across all clients @SERVER.
@@ -172,7 +173,7 @@ def create_federated_hyperloglog_computation(
       computing the hyperloglog sketch.
 
   Returns:
-    A `tff.Computation` for running the HyperLogLog algorithm.
+    A `federated_language.Computation` for running the HyperLogLog algorithm.
   """
 
   @tensorflow_computation.tf_computation

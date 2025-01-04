@@ -69,7 +69,8 @@ def create_preprocess_fn(
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for Stack Overflow tag prediction data.
 
-  This function creates a `tff.Computation` which takes a dataset, and returns
+  This function creates a `federated_language.Computation` which takes a
+  dataset, and returns
   a preprocessed dataset. This preprocessing shuffles the dataset, repeats it
   some number of times, takes a maximum number of examples, and then maps the
   elements to tuples of the form (tokens, tags), where tokens are bag-of-words

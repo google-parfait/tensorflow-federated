@@ -57,9 +57,9 @@ classes of users:
     [API documentation](https://www.tensorflow.org/federated/api_docs/python/tff).
     Typically, a user will wrap their ML model as a subclass of
     `tff.learning.models.VariableModel`, and then invoke one of the constructors
-    listed in the API to create one or more `tff.Computation`s that implement
-    predefined federated tasks (such as training or evaluation), and that can be
-    invoked to run on their data sets.
+    listed in the API to create one or more `federated_language.Computation`s
+    that implement predefined federated tasks (such as training or evaluation),
+    and that can be invoked to run on their data sets.
 
 *   **Federated Learning Researchers**. Users who will develop new federated
     learning algorithms, and may selectively reuse or extend a subset of the

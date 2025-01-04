@@ -452,9 +452,9 @@ def functional_model_from_keras(
   #
   # 1. This model _must_ be used inside a graph context (e.g. a
   #    `tff.tensorflow.computation` decorated callable, aka a
-  #    `tff.Computation`). Keras appears to create extra variables in the eager
-  #    context that are not part of the user specified model, and end up not
-  #    being compatible.
+  #    `federated_language.Computation`). Keras appears to create extra
+  #    variables in the eager context that are not part of the user specified
+  #    model, and end up not being compatible.
   #
   # 2. We have found that this trick does NOT work with non-trainable variables
   #    that are updated during training. Namely layers such as

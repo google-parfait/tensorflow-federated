@@ -310,8 +310,9 @@ def build_model_delta_client_work(
       `federated_language.StructWithPythonType` of the unfinalized metrics
       (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
-      and returns a `tff.Computation` for aggregating the unfinalized metrics.
-      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      and returns a `federated_language.Computation` for aggregating the
+      unfinalized metrics. If `None`, this is set to
+      `tff.learning.metrics.sum_then_finalize`.
     loop_implementation: Changes the implementation of the training loop
       generated. See `tff.learning.LoopImplementation` for more details.
 
@@ -404,8 +405,9 @@ def build_functional_model_delta_client_work(
       `federated_language.StructWithPythonType` of the unfinalized metrics
       (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
-      and returns a `tff.Computation` for aggregating the unfinalized metrics.
-      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      and returns a `federated_language.Computation` for aggregating the
+      unfinalized metrics. If `None`, this is set to
+      `tff.learning.metrics.sum_then_finalize`.
 
   Returns:
     A `ClientWorkProcess`.

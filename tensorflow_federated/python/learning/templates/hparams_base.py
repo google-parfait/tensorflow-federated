@@ -82,7 +82,7 @@ def type_check_set_hparams_fn(
 def build_basic_hparams_getter(
     state_type: federated_language.Type,
 ) -> federated_language.framework.Computation:
-  """Creates a `tff.Computation` that returns an empty ordered dictionary."""
+  """Creates a `federated_language.Computation` that returns an empty ordered dictionary."""
 
   @tensorflow_computation.tf_computation(state_type)
   def get_hparams_computation(state):
@@ -95,7 +95,7 @@ def build_basic_hparams_getter(
 def build_basic_hparams_setter(
     state_type: federated_language.Type, hparams_type: federated_language.Type
 ) -> federated_language.framework.Computation:
-  """Creates a `tff.Computation` that returns the state, unchanged."""
+  """Creates a `federated_language.Computation` that returns the state, unchanged."""
 
   @tensorflow_computation.tf_computation(state_type, hparams_type)
   def set_hparams_computation(state, hparams):

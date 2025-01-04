@@ -190,8 +190,9 @@ def main(argv):
       num_epochs_per_eval=1,
   )
 
-  # Build the `tff.Computation` for evaluating the personalization strategies.
-  # Here `p13n_eval` is a `tff.Computation` with the following type signature:
+  # Build the `federated_language.Computation` for evaluating the
+  # personalization strategies. Here `p13n_eval` is a
+  # `federated_language.Computation` with the following type signature:
   # <model_weights@SERVER, datasets@CLIENTS> -> personalization_metrics@SERVER.
   p13n_eval = tff.learning.algorithms.build_personalization_eval_computation(
       model_fn=model_fn,

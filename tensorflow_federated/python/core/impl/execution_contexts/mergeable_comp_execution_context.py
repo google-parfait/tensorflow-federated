@@ -144,13 +144,11 @@ class MergeableCompForm:
     ):  # pytype: disable=attribute-error
       raise MergeTypeNotAssignableError(
           'Type mismatch checking `merge` type signature.\n'
-          + federated_language.framework.type_mismatch_error_message(
-              merge.type_signature.parameter,
-              expected_merge_param_type,
-              federated_language.framework.TypeRelation.ASSIGNABLE,
-              second_is_expected=True,
-          )
+          f'{merge.type_signature.parameter.formatted_representation()}\n'  # pytype: disable=attribute-error
+          'is not assignable to\n'
+          f'{expected_merge_param_type.formatted_representation()}\n'
       )
+
     if not (
         merge.type_signature.parameter[0].is_assignable_from(
             merge.type_signature.result
@@ -709,7 +707,7 @@ class MergeableCompExecutionContext(
         raise ValueError(
             'Without a compiler, mergeable comp execution context '
             'can only invoke instances of MergeableCompForm. '
-            'Encountered a `tff.Computation`.'
+            'Encountered a `federated_language.Computation`.'
         )
       comp = self._compiler_pipeline.compile(comp)
       if not isinstance(comp, MergeableCompForm):

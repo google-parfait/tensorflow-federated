@@ -115,7 +115,7 @@ def compose_learning_process(
   the hyperparameters in their associated states.
 
   Args:
-    initial_model_weights_fn: A `tff.Computation` that returns (unplaced)
+    initial_model_weights_fn: A `federated_language.Computation` that returns (unplaced)
       initial model weights.
     model_weights_distributor: A `tff.learning.templates.DistributionProcess`.
     client_work: A `tff.learning.templates.ClientWorkProcess`.
@@ -248,13 +248,13 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
                           federated_language.framework.Computation)
   if initial_model_weights_fn.type_signature.parameter is not None:
     raise TypeError(
-        f'Provided initial_model_weights_fn must be a no-arg tff.Computation.\n'
+        f'Provided initial_model_weights_fn must be a no-arg federated_language.Computation.\n'
         f'Found input parameter: '
         f'{initial_model_weights_fn.type_signature.parameter}')
   global_model_weights_type = initial_model_weights_fn.type_signature.result
   if isinstance(global_model_weights_type, federated_language.FederatedType):
     raise TypeError(
-        f'Provided initial_model_weights_fn must be a tff.Computation with '
+        f'Provided initial_model_weights_fn must be a federated_language.Computation with '
         f'unplaced return type.\n'
         f'Return type found: {global_model_weights_type}')
   global_model_weights_type = federated_language.FederatedType(

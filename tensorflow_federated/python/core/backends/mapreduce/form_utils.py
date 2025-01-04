@@ -60,7 +60,7 @@ BuildingBlockFn = Callable[
 def get_computation_for_broadcast_form(
     bf: forms.BroadcastForm,
 ) -> federated_language.framework.Computation:
-  """Creates `tff.Computation` from a broadcast form."""
+  """Creates `federated_language.Computation` from a broadcast form."""
   py_typecheck.check_type(bf, forms.BroadcastForm)
   server_data_type = bf.compute_server_context.type_signature.parameter
   client_data_type = bf.client_processing.type_signature.parameter[1]
@@ -155,13 +155,13 @@ def get_state_initialization_computation(
 def get_computation_for_map_reduce_form(
     mrf: forms.MapReduceForm,
 ) -> federated_language.framework.Computation:
-  """Creates `tff.Computation` from a MapReduce form.
+  """Creates `federated_language.Computation` from a MapReduce form.
 
   Args:
     mrf: An instance of `tff.backends.mapreduce.MapReduceForm`.
 
   Returns:
-    An instance of `tff.Computation` that corresponds to `mrf`.
+    An instance of `federated_language.Computation` that corresponds to `mrf`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -219,13 +219,13 @@ def get_computation_for_map_reduce_form(
 def get_computation_for_distribute_aggregate_form(
     daf: forms.DistributeAggregateForm,
 ) -> federated_language.framework.Computation:
-  """Creates `tff.Computation` from a DistributeAggregate form.
+  """Creates `federated_language.Computation` from a DistributeAggregate form.
 
   Args:
     daf: An instance of `tff.backends.mapreduce.DistributeAggregateForm`.
 
   Returns:
-    An instance of `tff.Computation` that corresponds to `daf`.
+    An instance of `federated_language.Computation` that corresponds to `daf`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -1012,7 +1012,7 @@ def get_broadcast_form_for_computation(
 
   Returns:
     An instance of `tff.backends.mapreduce.BroadcastForm` equivalent to the
-    provided `tff.Computation`.
+    provided `federated_language.Computation`.
   """
   py_typecheck.check_type(
       comp, federated_language.framework.ConcreteComputation

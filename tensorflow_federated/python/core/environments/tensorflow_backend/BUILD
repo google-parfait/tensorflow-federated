@@ -139,6 +139,7 @@ py_library(
         ":type_conversions",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
     ],

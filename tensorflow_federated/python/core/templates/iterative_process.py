@@ -126,13 +126,15 @@ class IterativeProcess:
     """Creates a `tff.templates.IterativeProcess`.
 
     Args:
-      initialize_fn: A no-arg `tff.Computation` that returns the initial state
-        of the iterative process. Let the type of this state be called `S`.
-      next_fn: A `tff.Computation` that represents the iterated function. The
-        first or only argument must be a type that is assignable from the state
-        type `S` (`federated_language.Type.is_assignable_from` must return
-        `True`). The first or only return value must also be assignable to the
-        first or only argument, the same requirement as the `S` type.
+      initialize_fn: A no-arg `federated_language.Computation` that returns the
+        initial state of the iterative process. Let the type of this state be
+        called `S`.
+      next_fn: A `federated_language.Computation` that represents the iterated
+        function. The first or only argument must be a type that is assignable
+        from the state type `S` (`federated_language.Type.is_assignable_from`
+        must return `True`). The first or only return value must also be
+        assignable to the first or only argument, the same requirement as the
+        `S` type.
       next_is_multi_arg: An optional boolean indicating that `next_fn` will
         receive more than just the state argument (if `True`) or only the state
         argument (if `False`). This parameter is primarily used to provide
@@ -140,7 +142,7 @@ class IterativeProcess:
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
-        `tff.Computation`.
+        `federated_language.Computation`.
       TemplateInitFnParamNotEmptyError: If `initialize_fn` has any input
         arguments.
       TemplateStateNotAssignableError: If the `state` returned by either
@@ -188,19 +190,19 @@ class IterativeProcess:
 
   @property
   def initialize(self) -> federated_language.framework.Computation:
-    """A no-arg `tff.Computation` that returns the initial state."""
+    """A no-arg `federated_language.Computation` that returns the initial state."""
     return self._initialize_fn
 
   @property
   def next(self) -> federated_language.framework.Computation:
-    """A `tff.Computation` that produces the next state.
+    """A `federated_language.Computation` that produces the next state.
 
     Its first argument should always be the current state (originally produced
     by `tff.templates.IterativeProcess.initialize`), and the first (or only)
     returned value is the updated state.
 
     Returns:
-      A `tff.Computation`.
+      A `federated_language.Computation`.
     """
     return self._next_fn
 

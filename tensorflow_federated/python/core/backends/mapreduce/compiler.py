@@ -71,6 +71,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import compiled_computation_transformations
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 
@@ -423,8 +424,8 @@ def compile_local_computation_to_tensorflow(
     )
 
   parameter_type = comp.type_signature.parameter  # pytype: disable=attribute-error
-  federated_language.framework.check_tensorflow_compatible_type(parameter_type)
-  federated_language.framework.check_tensorflow_compatible_type(
+  tensorflow_types.check_tensorflow_compatible_type(parameter_type)
+  tensorflow_types.check_tensorflow_compatible_type(
       comp.type_signature.result  # pytype: disable=attribute-error
   )
 

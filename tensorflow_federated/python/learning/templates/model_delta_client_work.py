@@ -181,8 +181,8 @@ def build_model_delta_client_work(
     client_weighting:  A `tff.learning.ClientWeighting` value.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) returns a
-      `tff.Computation` for aggregating the unfinalized metrics.  If `None`,
-      this is set to `tff.learning.metrics.sum_then_finalize`.
+      `federated_language.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     loop_implementation: Changes the implementation of the training loop
       generated. See `tff.learning.LoopImplementation` for more details.
 
@@ -407,8 +407,8 @@ def build_functional_model_delta_client_work(
     client_weighting:  A `tff.learning.ClientWeighting` value.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and returns a
-      `tff.Computation` for aggregating the unfinalized metrics.  If `None`,
-      this is set to `tff.learning.metrics.sum_then_finalize`.
+      `federated_language.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     loop_implementation: Changes the implementation of the training loop
       generated. See `tff.learning.LoopImplementation` for more details.
 

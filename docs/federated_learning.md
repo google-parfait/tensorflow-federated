@@ -209,9 +209,9 @@ tutorials.
 
 ## Federated Computation Builders
 
-The `tff.learning` package provides several builders for `tff.Computation`s that
-perform learning-related tasks; we expect the set of such computations to expand
-in the future.
+The `tff.learning` package provides several builders for
+`federated_language.Computation`s that perform learning-related tasks; we expect
+the set of such computations to expand in the future.
 
 ### Architectural assumptions
 
@@ -250,8 +250,8 @@ The *federated computations* represented in this serialized form are expressed
 in a platform-independent internal language distinct from Python, but to use the
 Federated Learning API, you won't need to concern yourself with the details of
 this representation. The computations are represented in your Python code as
-objects of type `tff.Computation`, which for the most part you can treat as
-opaque Python `callable`s.
+objects of type `federated_language.Computation`, which for the most part you
+can treat as opaque Python `callable`s.
 
 In the tutorials, you will invoke those federated computations as if they were
 regular Python functions, to be executed locally. However, TFF is designed to

@@ -36,12 +36,16 @@ def compose_dataset_computation_with_computation(
     dataset_computation: federated_language.framework.Computation,
     computation_body: federated_language.framework.Computation,
 ) -> federated_language.framework.Computation:
-  """Builds a new `tff.Computation` which constructs datasets on clients.
+  """Builds a new `federated_language.Computation` which constructs datasets on clients.
 
-  Given a `tff.Computation` that returns a `tf.data.Dataset`, and a
-  `tff.Computation` where exactly one of the arguments is a dataset placed on
-  clients of the same type as returned by the `tff.Computation`, this function
-  will construct a new `tff.Computation` that accepts a federated set of values
+  Given a `federated_language.Computation` that returns a `tf.data.Dataset`, and
+  a
+  `federated_language.Computation` where exactly one of the arguments is a
+  dataset placed on
+  clients of the same type as returned by the `federated_language.Computation`,
+  this function
+  will construct a new `federated_language.Computation` that accepts a federated
+  set of values
   of the same type as the parameter of the `dataset_computation`, maps
   `dataset_computation` over these values, and proceeds with the body of
   `computation_body`.
@@ -76,14 +80,15 @@ def compose_dataset_computation_with_computation(
     datasets on the controller.
 
   Args:
-    dataset_computation: An instance of `tff.Computation` which accepts some
-      parameter and returns an element of `federated_language.SequenceType`.
-    computation_body: An instance of `tff.Computation` that accepts exactly one
-      federated dataset, IE, element of type `{B*}@CLIENTS`, where `B` is
-      equivalent to the return type of `dataset_computation`.
+    dataset_computation: An instance of `federated_language.Computation` which
+      accepts some parameter and returns an element of
+      `federated_language.SequenceType`.
+    computation_body: An instance of `federated_language.Computation` that
+      accepts exactly one federated dataset, IE, element of type `{B*}@CLIENTS`,
+      where `B` is equivalent to the return type of `dataset_computation`.
 
   Returns:
-    A new `tff.Computation` satisfying the specification above.
+    A new `federated_language.Computation` satisfying the specification above.
 
   Raises:
     TypeError: If the arguments are of the wrong types, their TFF type
@@ -279,10 +284,11 @@ def compose_dataset_computation_with_iterative_process(
 ) -> iterative_process.IterativeProcess:
   """Builds a new iterative process which constructs datasets on clients.
 
-  Given a `tff.Computation` that returns a `tf.data.Dataset`, and a
+  Given a `federated_language.Computation` that returns a `tf.data.Dataset`, and
+  a
   `tff.templates.IterativeProcess` where exactly one of the arguments is a
   dataset placed on clients of the same type as returned by the
-  `tff.Computation`, this function will construct a new
+  `federated_language.Computation`, this function will construct a new
   `tff.templates.IterativeProcess` whose `next` function accepts a federated set
   of values of the same type as the parameter of the `dataset_computation`, maps
   `dataset_computation` over these values, and proceeds with the body of
@@ -318,8 +324,9 @@ def compose_dataset_computation_with_iterative_process(
     datasets on the controller.
 
   Args:
-    dataset_computation: An instance of `tff.Computation` which accepts some
-      parameter and returns an element of `federated_language.SequenceType`.
+    dataset_computation: An instance of `federated_language.Computation` which
+      accepts some parameter and returns an element of
+      `federated_language.SequenceType`.
     process: An instance of `tff.templates.IterativeProcess` whose next function
       accepts exactly one federated dataset, IE, element of type `{B*}@CLIENTS`,
       where `B` is equivalent to the return type of `dataset_computation`.
@@ -383,8 +390,9 @@ def compose_dataset_computation_with_learning_process(
   are also preserved (eg. `LearningProcess.get_model_weights`).
 
   Args:
-    dataset_computation: An instance of `tff.Computation` which accepts some
-      parameter and returns an element of `federated_language.SequenceType`.
+    dataset_computation: An instance of `federated_language.Computation` which
+      accepts some parameter and returns an element of
+      `federated_language.SequenceType`.
     process: An instance of `tff.learning.templates.LearningProcess` whose
       `next` function accepts exactly one federated dataset (ie. something of
       type `{B*}@CLIENTS`, where `B` is equivalent to the return type of

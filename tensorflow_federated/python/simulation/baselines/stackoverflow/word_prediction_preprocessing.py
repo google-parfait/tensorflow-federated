@@ -122,7 +122,8 @@ def create_preprocess_fn(
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing functions for Stack Overflow next-word-prediction.
 
-  This function returns a `tff.Computation` which takes a dataset and returns a
+  This function returns a `federated_language.Computation` which takes a dataset
+  and returns a
   dataset, suitable for mapping over a set of unprocessed client datasets. This
   dataset is formed by mapping datasets of string sequences to token sequences.
 

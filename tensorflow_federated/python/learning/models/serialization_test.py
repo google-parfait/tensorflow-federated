@@ -142,7 +142,7 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(type(concrete_fn).__name__, 'ConcreteFunction')
     self.assertProtoEquals(
         type_spec,
-        federated_language.framework.serialize_type(expected_type_spec),
+        expected_type_spec.to_proto(),
     )
 
 
@@ -227,9 +227,7 @@ class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
       expected_python_container,
   ):
     type_spec_var = tf.Variable(
-        federated_language.framework.serialize_type(
-            result_type_spec
-        ).SerializeToString(deterministic=True)
+        result_type_spec.to_proto().SerializeToString(deterministic=True)
     )
 
     @tf.function

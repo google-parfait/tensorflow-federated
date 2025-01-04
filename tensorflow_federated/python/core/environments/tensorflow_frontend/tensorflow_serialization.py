@@ -156,7 +156,7 @@ def serialize_py_fn_as_tf_computation(
   )
   return (
       pb.Computation(
-          type=federated_language.framework.serialize_type(type_signature),
+          type=type_signature.to_proto(),
           tensorflow=tensorflow,
       ),
       type_signature,

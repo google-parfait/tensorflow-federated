@@ -168,8 +168,8 @@ async def train_model_with_vizier(
     total_trials: The number of Vizier trials.
     num_parallel_trials: The number of Vizier trials to be evaluated in
       parallel. Default is 1.
-    update_hparams: A `tff.Computation` to use to update the models hparams
-      using a trials parameters.
+    update_hparams: A `federated_language.Computation` to use to update the
+      models hparams using a trials parameters.
     train_model_program_logic: The program logic to use for training and
       evaluating the model.
     train_process_factory: A factory for creating

@@ -271,7 +271,8 @@ class MapReduceForm(federated_language.TypedObject):
   The individual TensorFlow computations that constitute a computation in this
   form are supplied as constructor arguments. Generally, this class will note be
   instantiated by a programmer directly but targeted by a sequence of
-  transformations that take a `tff.Computation` and produce the appropriate
+  transformations that take a `federated_language.Computation` and produce the
+  appropriate
   pieces of logic.
   """
 
@@ -292,13 +293,14 @@ class MapReduceForm(federated_language.TypedObject):
     """Constructs a representation of a MapReduce-like computation.
 
     Note: All the computations supplied here as arguments must be TensorFlow
-    computations, i.e., instances of `tff.Computation` constructed by the
+    computations, i.e., instances of `federated_language.Computation`
+    constructed by the
     `tff.tensorflow.computation` decorator/wrapper.
 
     Args:
-      type_signature: The type signature of the corresponding `tff.Computation`
-        that is equivalent to the pieces of logic encoded in this data
-        structure.
+      type_signature: The type signature of the corresponding
+        `federated_language.Computation` that is equivalent to the pieces of
+        logic encoded in this data structure.
       prepare: The computation that prepares the input for the clients.
       work: The client-side work computation.
       zero: The computation that produces the initial state for accumulators.
@@ -423,8 +425,9 @@ class MapReduceForm(federated_language.TypedObject):
     ])
     # The first part of the parameter should align with any initial state that
     # the Computation that the MapReduceForm is based upon should take in as
-    # input. Verifying it aligns with a tff.Computation that produces an initial
-    # state should be verified outside of the constructor of the MapReduceForm.
+    # input. Verifying it aligns with a federated_language.Computation that
+    # produces an initial state should be verified outside of the constructor of
+    # the MapReduceForm.
     if not _is_assignable_from_or_both_none(
         federated_language.to_type(update.type_signature.parameter),
         expected_update_parameter_type,
@@ -467,7 +470,7 @@ class MapReduceForm(federated_language.TypedObject):
 
   @property
   def type_signature(self) -> federated_language.FunctionType:
-    """Returns the TFF type of the equivalent `tff.Computation`."""
+    """Returns the TFF type of the equivalent `federated_language.Computation`."""
     return self._type_signature
 
   @property
@@ -595,7 +598,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
   convert these TFF Lambda Computations into TensorFlow code using TFF helper
   functions. Generally this class will not be instantiated by a programmer
   directly but instead targeted by a sequence of transformations that take a
-  `tff.Computation` and produce the appropriate pieces of logic.
+  `federated_language.Computation` and produce the appropriate pieces of logic.
   """
 
   def __init__(
@@ -613,9 +616,9 @@ class DistributeAggregateForm(federated_language.TypedObject):
     Computations (as defined in `computation.proto`).
 
     Args:
-      type_signature: The type signature of the corresponding `tff.Computation`
-        that is equivalent to the pieces of logic encoded in this data
-        structure.
+      type_signature: The type signature of the corresponding
+        `federated_language.Computation` that is equivalent to the pieces of
+        logic encoded in this data structure.
       server_prepare: The computation that prepares the input for the clients
         and computes intermediate server state that will be needed in later
         stages.
@@ -912,7 +915,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
 
   @property
   def type_signature(self) -> federated_language.FunctionType:
-    """Returns the TFF type of the equivalent `tff.Computation`."""
+    """Returns the TFF type of the equivalent `federated_language.Computation`."""
     return self._type_signature
 
   @property

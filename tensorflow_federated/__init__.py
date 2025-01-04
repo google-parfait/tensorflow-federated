@@ -58,9 +58,6 @@ from federated_language import StructWithPythonType
 from federated_language import TensorType
 from federated_language import to_type
 from federated_language import Type
-from federated_language import CLIENTS
-from federated_language import SERVER
-from federated_language import TypedObject
 from tensorflow_federated.version import __version__
 # pylint: enable=g-importing-member
 

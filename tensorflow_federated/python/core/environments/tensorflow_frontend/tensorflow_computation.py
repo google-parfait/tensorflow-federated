@@ -58,9 +58,7 @@ def _tf_wrapper_fn(
 ):
   """Wrapper function to plug Tensorflow logic into the TFF framework."""
   del name  # Unused.
-  if not federated_language.framework.is_tensorflow_compatible_type(
-      parameter_type
-  ):
+  if not tensorflow_types.is_tensorflow_compatible_type(parameter_type):
     raise TypeError(
         '`tff.tensorflow.computation`s can accept only parameter types with '
         'constituents `SequenceType`, `StructType` '

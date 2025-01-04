@@ -16,24 +16,11 @@
 import federated_language
 
 # pylint: disable=g-importing-member
-ArrayShape = federated_language.ArrayShape
-is_shape_fully_defined = federated_language.array_shape_is_fully_defined
-num_elements_in_shape = federated_language.num_elements_in_array_shape
-type_mismatch_error_message = (
-    federated_language.framework.type_mismatch_error_message
-)
-TypeRelation = federated_language.framework.TypeRelation
-TypesNotEquivalentError = federated_language.framework.TypesNotEquivalentError
 contains = federated_language.framework.type_contains
 contains_only = federated_language.framework.type_contains_only
 count = federated_language.framework.type_count
 is_structure_of_floats = federated_language.framework.is_structure_of_floats
 is_structure_of_integers = federated_language.framework.is_structure_of_integers
 is_structure_of_tensors = federated_language.framework.is_structure_of_tensors
-is_tensorflow_compatible_type = (
-    federated_language.framework.is_tensorflow_compatible_type
-)
 type_to_py_container = federated_language.framework.type_to_py_container
-deserialize_type = federated_language.framework.deserialize_type
-serialize_type = federated_language.framework.serialize_type
 # pylint: disable=g-importing-member

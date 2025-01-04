@@ -198,7 +198,7 @@ def create_xla_tff_computation(
         'TFF type {}.'.format(str(reconstructed_type), str(expected_type))
     )
   return pb.Computation(
-      type=federated_language.framework.serialize_type(type_spec),
+      type=type_spec.to_proto(),
       xla=pb.Xla(
           hlo_module=pack_xla_computation(xla_computation),
           parameter=parameter_binding,

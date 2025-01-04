@@ -27,6 +27,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import serialization_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 
 
 ComputationProtoAndType = tuple[
@@ -68,7 +69,7 @@ def _tensorflow_comp(
     tensorflow_proto: computation_pb2.TensorFlow,
     type_signature: T,
 ) -> tuple[computation_pb2.Computation, T]:
-  serialized_type = federated_language.framework.serialize_type(type_signature)
+  serialized_type = type_signature.to_proto()
   comp = computation_pb2.Computation(
       type=serialized_type, tensorflow=tensorflow_proto
   )
@@ -335,7 +336,7 @@ def create_binary_operator_with_upcast(
     Same as `create_binary_operator()`.
   """
   py_typecheck.check_type(type_signature, federated_language.StructType)
-  federated_language.framework.check_tensorflow_compatible_type(type_signature)
+  tensorflow_types.check_tensorflow_compatible_type(type_signature)
   if (
       not isinstance(type_signature, federated_language.StructType)
       or len(type_signature) != 2
@@ -467,7 +468,7 @@ def create_identity(
     TypeError: If `type_signature` contains any types which cannot appear in
       TensorFlow bindings.
   """
-  federated_language.framework.check_tensorflow_compatible_type(type_signature)
+  tensorflow_types.check_tensorflow_compatible_type(type_signature)
   parameter_type = type_signature
   if parameter_type is None:
     raise TypeError('TensorFlow identity cannot be created for NoneType.')

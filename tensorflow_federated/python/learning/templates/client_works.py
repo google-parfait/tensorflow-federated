@@ -18,6 +18,7 @@ from typing import Any, NamedTuple, Optional
 import federated_language
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.templates import hparams_base
@@ -46,9 +47,7 @@ class ClientResultTypeError(TypeError):
 def _is_allowed_client_data_type(type_spec: federated_language.Type) -> bool:
   """Determines whether a given type is a (possibly nested) sequence type."""
   if isinstance(type_spec, federated_language.SequenceType):
-    return federated_language.framework.is_tensorflow_compatible_type(
-        type_spec.element
-    )
+    return tensorflow_types.is_tensorflow_compatible_type(type_spec.element)
   elif isinstance(type_spec, federated_language.StructType):
     return all(
         _is_allowed_client_data_type(element_type)
@@ -223,14 +222,17 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
     represents the hyperparameter type.
 
     Args:
-      initialize_fn: A `tff.Computation` matching the criteria above.
-      next_fn: A `tff.Computation` matching the criteria above.
-      get_hparams_fn: An optional `tff.Computation` matching the criteria above.
-        If not provided, this defaults to a computation that returns an empty
-        ordred dictionary, regardless of the contents of the state.
-      set_hparams_fn: An optional `tff.Computation` matching the criteria above.
-        If not provided, this defaults to a pass-through computation, that
-        returns the input state regardless of the hparams passed in.
+      initialize_fn: A `federated_language.Computation` matching the criteria
+        above.
+      next_fn: A `federated_language.Computation` matching the criteria above.
+      get_hparams_fn: An optional `federated_language.Computation` matching the
+        criteria above. If not provided, this defaults to a computation that
+        returns an empty ordred dictionary, regardless of the contents of the
+        state.
+      set_hparams_fn: An optional `federated_language.Computation` matching the
+        criteria above. If not provided, this defaults to a pass-through
+        computation, that returns the input state regardless of the hparams
+        passed in.
 
     Raises:
       TemplateNotFederatedError: If any of the federated computations provided

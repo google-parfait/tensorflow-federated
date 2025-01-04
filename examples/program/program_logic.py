@@ -29,7 +29,6 @@ import typing
 from typing import NamedTuple, Optional
 
 import federated_language
-import tensorflow_federated as tff
 
 
 class UnexpectedTypeSignatureError(Exception):
@@ -38,10 +37,10 @@ class UnexpectedTypeSignatureError(Exception):
 
 def _check_expected_type_signatures(
     *,
-    initialize: tff.Computation,
-    train: tff.Computation,
+    initialize: federated_language.Computation,
+    train: federated_language.Computation,
     train_data_source: federated_language.program.FederatedDataSource,
-    evaluation: tff.Computation,
+    evaluation: federated_language.Computation,
     evaluation_data_source: federated_language.program.FederatedDataSource,
 ) -> None:
   """Checks the computations and data sources for the expected type signatures.
@@ -50,18 +49,18 @@ def _check_expected_type_signatures(
   example, if you are using a `tff.learning.templates.LearningProcess` as an
   input to the program logic, then these checks might not make sense because the
   the `tff.learning.templates.LearningProcess` has already validated that those
-  `tff.Computation` have the expected type signatures.
+  `federated_language.Computation` have the expected type signatures.
 
   See `train_federated_model` for more information on the expected type
   signatures of the computations and data sources.
 
   Args:
-    initialize: A `tff.Computation` to invoke before training.
-    train: A `tff.Computation` to invoke during training.
+    initialize: A `federated_language.Computation` to invoke before training.
+    train: A `federated_language.Computation` to invoke during training.
     train_data_source: A `federated_language.program.FederatedDataSource` which
       returns client data used during training.
-    evaluation: A `tff.Computation` to invoke to evaluate the model produced
-      after training.
+    evaluation: A `federated_language.Computation` to invoke to evaluate the
+      model produced after training.
     evaluation_data_source: A `federated_language.program.FederatedDataSource`
       which returns client data used during evaluation.
 
@@ -380,10 +379,10 @@ class _ProgramState(NamedTuple):
 
 async def train_federated_model(
     *,
-    initialize: tff.Computation,
-    train: tff.Computation,
+    initialize: federated_language.Computation,
+    train: federated_language.Computation,
     train_data_source: federated_language.program.FederatedDataSource,
-    evaluation: tff.Computation,
+    evaluation: federated_language.Computation,
     evaluation_data_source: federated_language.program.FederatedDataSource,
     total_rounds: int,
     num_clients: int,
@@ -449,12 +448,12 @@ async def train_federated_model(
   Finally, `state` is released to the `model_output_manager`.
 
   Args:
-    initialize: A `tff.Computation` to invoke before training.
-    train: A `tff.Computation` to invoke during training.
+    initialize: A `federated_language.Computation` to invoke before training.
+    train: A `federated_language.Computation` to invoke during training.
     train_data_source: A `federated_language.program.FederatedDataSource` which
       returns client data used during training.
-    evaluation: A `tff.Computation` to invoke to evaluate the model produced
-      after training.
+    evaluation: A `federated_language.Computation` to invoke to evaluate the
+      model produced after training.
     evaluation_data_source: A `federated_language.program.FederatedDataSource`
       which returns client data used during evaluation.
     total_rounds: The number of training rounds to run.

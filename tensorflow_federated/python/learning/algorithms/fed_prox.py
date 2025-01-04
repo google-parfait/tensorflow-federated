@@ -76,22 +76,26 @@ def build_weighted_fed_prox(
   The iterative process has the following methods inherited from
   `tff.learning.templates.LearningProcess`:
 
-  *   `initialize`: A `tff.Computation` with the functional type signature
+  *   `initialize`: A `federated_language.Computation` with the functional type
+  signature
       `( -> S@SERVER)`, where `S` is a
       `tff.learning.templates.LearningAlgorithmState` representing the initial
       state of the server.
-  *   `next`: A `tff.Computation` with the functional type signature
+  *   `next`: A `federated_language.Computation` with the functional type
+  signature
       `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
       `tff.learning.templates.LearningAlgorithmState` whose type matches the
       output of `initialize`and `{B*}@CLIENTS` represents the client datasets.
       The output `L` contains the updated server state, as well as aggregated
       metrics at the server, including client training metrics and any other
       metrics from distribution and aggregation processes.
-  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
+  *   `get_model_weights`: A `federated_language.Computation` with type
+  signature `(S -> M)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
       matches the output of `initialize` and `next`, and `M` represents the type
       of the model weights used during training.
-  *   `set_model_weights`: A `tff.Computation` with type signature
+  *   `set_model_weights`: A `federated_language.Computation` with type
+  signature
       `(<S, M> -> S)`, where `S` is a
       `tff.learning.templates.LearningAlgorithmState` whose type matches the
       output of `initialize` and `M` represents the type of the model weights
@@ -142,8 +146,9 @@ def build_weighted_fed_prox(
       `federated_language.StructWithPythonType` of the unfinalized metrics
       (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
-      and returns a `tff.Computation` for aggregating the unfinalized metrics.
-      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      and returns a `federated_language.Computation` for aggregating the
+      unfinalized metrics. If `None`, this is set to
+      `tff.learning.metrics.sum_then_finalize`.
     loop_implementation: Changes the implementation of the training loop
       generated. See `tff.learning.LoopImplementation` for more details.
 
@@ -274,22 +279,26 @@ def build_unweighted_fed_prox(
   The iterative process has the following methods inherited from
   `tff.learning.templates.LearningProcess`:
 
-  *   `initialize`: A `tff.Computation` with the functional type signature
+  *   `initialize`: A `federated_language.Computation` with the functional type
+  signature
       `( -> S@SERVER)`, where `S` is a
       `tff.learning.templates.LearningAlgorithmState` representing the initial
       state of the server.
-  *   `next`: A `tff.Computation` with the functional type signature
+  *   `next`: A `federated_language.Computation` with the functional type
+  signature
       `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
       `tff.learning.templates.LearningAlgorithmState` whose type matches the
       output of `initialize` and `{B*}@CLIENTS` represents the client datasets.
       The output `L` contains the updated server state, as well as aggregated
       metrics at the server, including client training metrics and any other
       metrics from distribution and aggregation processes.
-  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
+  *   `get_model_weights`: A `federated_language.Computation` with type
+  signature `(S -> M)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
       matches the output of `initialize` and `next`, and `M` represents the type
       of the model weights used during training.
-  *   `set_model_weights`: A `tff.Computation` with type signature
+  *   `set_model_weights`: A `federated_language.Computation` with type
+  signature
       `(<S, M> -> S)`, where `S` is a
       `tff.learning.templates.LearningAlgorithmState` whose type matches the
       output of `initialize` and `M` represents the type of the model weights
@@ -337,8 +346,9 @@ def build_unweighted_fed_prox(
       `federated_language.StructWithPythonType` of the unfinalized metrics
       (i.e., the TFF type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
-      and returns a `tff.Computation` for aggregating the unfinalized metrics.
-      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      and returns a `federated_language.Computation` for aggregating the
+      unfinalized metrics. If `None`, this is set to
+      `tff.learning.metrics.sum_then_finalize`.
     loop_implementation: Changes the implementation of the training loop
       generated. See `tff.learning.LoopImplementation` for more details.
 

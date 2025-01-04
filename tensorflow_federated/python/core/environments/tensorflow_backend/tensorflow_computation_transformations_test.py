@@ -94,9 +94,7 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
       )
 
     function_type = federated_language.FunctionType(None, result_type)
-    serialized_function_type = federated_language.framework.serialize_type(
-        function_type
-    )
+    serialized_function_type = function_type.to_proto()
     proto = computation_pb2.Computation(
         type=serialized_function_type,
         tensorflow=computation_pb2.TensorFlow(
@@ -125,9 +123,7 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
       )
 
     function_type = federated_language.FunctionType(None, result_type)
-    serialized_function_type = federated_language.framework.serialize_type(
-        function_type
-    )
+    serialized_function_type = function_type.to_proto()
     proto = computation_pb2.Computation(
         type=serialized_function_type,
         tensorflow=computation_pb2.TensorFlow(
@@ -157,9 +153,7 @@ class CheckAllowedOps(absltest.TestCase):
       )
 
     function_type = federated_language.FunctionType(None, result_type)
-    serialized_function_type = federated_language.framework.serialize_type(
-        function_type
-    )
+    serialized_function_type = function_type.to_proto()
     proto = computation_pb2.Computation(
         type=serialized_function_type,
         tensorflow=computation_pb2.TensorFlow(
@@ -185,9 +179,7 @@ class CheckAllowedOps(absltest.TestCase):
       )
 
     function_type = federated_language.FunctionType(None, result_type)
-    serialized_function_type = federated_language.framework.serialize_type(
-        function_type
-    )
+    serialized_function_type = function_type.to_proto()
     proto = computation_pb2.Computation(
         type=serialized_function_type,
         tensorflow=computation_pb2.TensorFlow(
@@ -219,9 +211,7 @@ class CheckNoDisallowedOps(absltest.TestCase):
       )
 
     function_type = federated_language.FunctionType(None, result_type)
-    serialized_function_type = federated_language.framework.serialize_type(
-        function_type
-    )
+    serialized_function_type = function_type.to_proto()
     proto = computation_pb2.Computation(
         type=serialized_function_type,
         tensorflow=computation_pb2.TensorFlow(
@@ -247,9 +237,7 @@ class CheckNoDisallowedOps(absltest.TestCase):
       )
 
     function_type = federated_language.FunctionType(None, result_type)
-    serialized_function_type = federated_language.framework.serialize_type(
-        function_type
-    )
+    serialized_function_type = function_type.to_proto()
     proto = computation_pb2.Computation(
         type=serialized_function_type,
         tensorflow=computation_pb2.TensorFlow(

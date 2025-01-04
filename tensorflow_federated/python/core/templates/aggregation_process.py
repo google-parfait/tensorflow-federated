@@ -56,7 +56,8 @@ class AggregationProcess(measured_process.MeasuredProcess):
   such as `tff.federated_sum`, or by delegation to (one or more) "inner"
   aggregation processes.
 
-  Both `initialize` and `next` must be `tff.Computation`s with the following
+  Both `initialize` and `next` must be `federated_language.Computation`s with
+  the following
   type signatures:
     - initialize: `( -> S@SERVER)`
     - next: `(<S@SERVER, V@CLIENTS, *> ->
@@ -77,19 +78,21 @@ class AggregationProcess(measured_process.MeasuredProcess):
     """Creates a `tff.templates.AggregationProcess`.
 
     Args:
-      initialize_fn: A no-arg `tff.Computation` that returns the initial state
-        of the aggregation process. The returned state must be a server-placed
-        federated value. Let the type of this state be called `S@SERVER`.
-      next_fn: A `tff.Computation` that represents the iterated function.
-        `next_fn` must accept at least two arguments, the first of which is of a
-        type assignable from the state type `S@SERVER` and the second of which
-        is client-placed data of type `V@CLIENTS`. `next_fn` must return a
-        `MeasuredProcessOutput` where the `state` attribute is assignable to the
-        first argument and the `result` is value placed at `SERVER`.
+      initialize_fn: A no-arg `federated_language.Computation` that returns the
+        initial state of the aggregation process. The returned state must be a
+        server-placed federated value. Let the type of this state be called
+        `S@SERVER`.
+      next_fn: A `federated_language.Computation` that represents the iterated
+        function. `next_fn` must accept at least two arguments, the first of
+        which is of a type assignable from the state type `S@SERVER` and the
+        second of which is client-placed data of type `V@CLIENTS`. `next_fn`
+        must return a `MeasuredProcessOutput` where the `state` attribute is
+        assignable to the first argument and the `result` is value placed at
+        `SERVER`.
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
-        `tff.Computation`.
+        `federated_language.Computation`.
       TemplateInitFnParamNotEmptyError: If `initialize_fn` has any input
         arguments.
       TemplateStateNotAssignableError: If the `state` returned by either
@@ -177,7 +180,7 @@ class AggregationProcess(measured_process.MeasuredProcess):
 
   @property
   def next(self) -> federated_language.framework.Computation:
-    """A `tff.Computation` that runs one iteration of the process.
+    """A `federated_language.Computation` that runs one iteration of the process.
 
     Its first argument should always be the current state (originally produced
     by the `initialize` attribute), the second argument must be the input placed
@@ -185,7 +188,7 @@ class AggregationProcess(measured_process.MeasuredProcess):
     `tff.templates.MeasuredProcessOutput` with each field placed at `SERVER`.
 
     Returns:
-      A `tff.Computation`.
+      A `federated_language.Computation`.
     """
     return super().next
 

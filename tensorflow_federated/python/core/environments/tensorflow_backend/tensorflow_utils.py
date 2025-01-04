@@ -257,7 +257,8 @@ def capture_result_from_graph(
     else:
       # Otherwise we insert an identity. TensorFlow does not allow the same
       # tensor to appear in both feeds and fetches, which can occur if the
-      # tff.Computation is only performing a selection from a structure.
+      # federated_language.Computation is only performing a selection from a
+      # structure.
       with graph.as_default():
         result = tf.identity(result)
     # `tf.is_tensor` returns true for some things that are not actually single
@@ -1183,10 +1184,10 @@ def deserialize_and_call_tf_computation(
     )
   py_typecheck.check_type(graph, tf.Graph)
   with graph.as_default():
-    type_spec = federated_language.framework.deserialize_type(
+    type_spec = federated_language.FunctionType.from_proto(
         computation_proto.type
     )
-    if type_spec.parameter is None:  # pytype: disable=attribute-error
+    if type_spec.parameter is None:
       if arg is None:
         input_map = {}
       else:
@@ -1198,16 +1199,16 @@ def deserialize_and_call_tf_computation(
       raise TypeError(
           'The computation declared a parameter of type {}, but the argument '
           'was not supplied.'.format(
-              type_spec.parameter,  # pytype: disable=attribute-error
+              type_spec.parameter,
           )
       )
     else:
       arg_type, arg_binding = capture_result_from_graph(arg, graph)
-      if not type_spec.parameter.is_assignable_from(arg_type):  # pytype: disable=attribute-error
+      if not type_spec.parameter.is_assignable_from(arg_type):
         raise TypeError(
             'The computation declared a parameter of type {}, but the argument '
             'is of a mismatching type {}.'.format(
-                type_spec.parameter,  # pytype: disable=attribute-error
+                type_spec.parameter,
                 arg_type,
             )
         )
@@ -1261,7 +1262,7 @@ def deserialize_and_call_tf_computation(
     return (
         new_init_op_name,
         _assemble_result_from_graph(
-            type_spec.result,  # pytype: disable=attribute-error
+            type_spec.result,
             computation_proto.tensorflow.result,
             output_map,
         ),

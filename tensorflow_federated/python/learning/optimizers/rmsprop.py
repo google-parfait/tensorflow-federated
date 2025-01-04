@@ -114,7 +114,7 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     # interferes with typing guarantees.
     # We use `tff.structure.update_struct` (rather than something like
     # `copy.deepcopy`) to ensure that this can be called within a
-    # `tff.Computation`.
+    # `federated_language.Computation`.
     return structure.update_struct(state, **hparams)
 
 
