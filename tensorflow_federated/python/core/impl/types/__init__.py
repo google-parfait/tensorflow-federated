@@ -22,5 +22,4 @@ count = federated_language.framework.type_count
 is_structure_of_floats = federated_language.framework.is_structure_of_floats
 is_structure_of_integers = federated_language.framework.is_structure_of_integers
 is_structure_of_tensors = federated_language.framework.is_structure_of_tensors
-type_to_py_container = federated_language.framework.type_to_py_container
 # pylint: disable=g-importing-member
