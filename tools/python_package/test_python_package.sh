@@ -73,7 +73,6 @@ main() {
   # Test the Python package.
   pip install --upgrade "${package}"
   pip freeze
-  python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"
   python -c "import tensorflow_federated as tff; print(tff.__version__)"
 }
 

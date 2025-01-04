@@ -38,7 +38,7 @@ def _make_federated(
 ) -> federated_language.Computation:
   """Construct a federate computation that maps comptuation to CLIENTS."""
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       federated_language.FederatedType(
           computation.type_signature.parameter, federated_language.CLIENTS
       ),
