@@ -80,7 +80,7 @@ syntactic shortcuts (such as implicit zipping) when showing how an instance of
 `MapReduceForm` maps to a single federated round.
 
 ```python
-@tff.federated_computation
+@federated_language.federated_computation
 def round_comp(server_state, client_data):
 
   # The server prepares an input to be broadcast to all clients that controls
@@ -208,7 +208,7 @@ pseudocode below shows how an instance of `DistributeAggregateForm` maps to a
 single federated round.
 
 ```python
-@tff.federated_computation
+@federated_language.federated_computation
 def round_comp(server_state, client_data):
   # The server prepares an input to be broadcast to all clients and generates
   # a temporary state that may be used by later parts of the computation.

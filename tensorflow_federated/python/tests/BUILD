@@ -17,7 +17,10 @@ py_test(
     name = "ast_generation_test",
     size = "small",
     srcs = ["ast_generation_test.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
 )
 
 py_test(

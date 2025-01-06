@@ -28,7 +28,7 @@ class AsyncContextInstallationTest(
     factory = tff.framework.local_cpp_executor_factory()
     context = tff.framework.AsyncExecutionContext(factory)
 
-    @tff.federated_computation(np.int32)
+    @federated_language.federated_computation(np.int32)
     def identity(x):
       return x
 
@@ -42,7 +42,7 @@ class AsyncContextInstallationTest(
     factory = tff.framework.local_cpp_executor_factory()
     context = tff.framework.AsyncExecutionContext(factory)
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def repackage_arg(x):
@@ -60,7 +60,7 @@ class AsyncContextInstallationTest(
         factory, cardinality_inference_fn=(lambda x, y: {})
     )
 
-    @tff.federated_computation(np.int32)
+    @federated_language.federated_computation(np.int32)
     def identity(x):
       return x
 
@@ -85,7 +85,7 @@ class AsyncContextInstallationTest(
         np.int32, federated_language.CLIENTS
     )
 
-    @tff.federated_computation(arg_type)
+    @federated_language.federated_computation(arg_type)
     def identity(x):
       return x
 

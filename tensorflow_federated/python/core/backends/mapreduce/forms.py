@@ -36,6 +36,7 @@ def _check_tensorflow_computation(label, comp):
 
 
 def _check_lambda_computation(label, comp):
+  """Validates a Lambda computation."""
   py_typecheck.check_type(
       comp, federated_language.framework.ConcreteComputation, label
   )
@@ -131,7 +132,7 @@ class BroadcastForm:
   ```
   server_data_type = self.compute_server_context.type_signature.parameter
   client_data_type = self.client_processing.type_signature.parameter[1]
-  @tff.federated_computation(server_data_type, client_data_type)
+  @federated_language.federated_computation(server_data_type, client_data_type)
   def _(server_data, client_data):
     # Select out the bit of server context to send to the clients.
     context_at_server = tff.federated_map(
