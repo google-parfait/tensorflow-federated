@@ -167,6 +167,14 @@ and this project adheres to
 *   `tff.types.TypeRelation`, this object is no longer used.
 *   `tff.types.TypesNotEquivalentError`, use
     `federated_language.framework.TypesNotEquivalentError` instead.
+*   `tff.framework.Executor`, use `federated_language.framework.Executor`
+    instead.
+*   `tff.framework.CardinalitiesType`, use
+    `federated_language.framework.CardinalitiesType` instead.
+*   `tff.framework.ExecutorFactory`, use
+    `federated_language.framework.ExecutorFactory` instead.
+*   `tff.framework.RetryableError`, use
+    `federated_language.framework.RetryableError` instead.
 *   `tff.framework.AsyncExecutionContext`, use
     `federated_language.framework.AsyncExecutionContext` instead.
 *   `tff.framework.SyncExecutionContext`, use

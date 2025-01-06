@@ -65,11 +65,6 @@ from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_exe
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompForm
 from tensorflow_federated.python.core.impl.executor_stacks.executor_factory import local_cpp_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import ResourceManagingExecutorFactory
-
-Executor = federated_language.framework.Executor
-CardinalitiesType = federated_language.framework.CardinalitiesType
-ExecutorFactory = federated_language.framework.ExecutorFactory
-RetryableError = federated_language.framework.RetryableError
 from tensorflow_federated.python.core.impl.executors.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.executors.remote_executor_grpc_stub import RemoteExecutorGrpcStub
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
