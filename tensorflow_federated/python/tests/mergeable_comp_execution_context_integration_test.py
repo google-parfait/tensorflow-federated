@@ -361,7 +361,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(num_contexts):
-      context = tff.framework.AsyncExecutionContext(
+      context = federated_language.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
               max_concurrent_computation_calls=1
           ),
@@ -439,7 +439,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(5):
-      context = tff.framework.AsyncExecutionContext(
+      context = federated_language.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
               max_concurrent_computation_calls=1
           ),
@@ -495,7 +495,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(1):
-      context = tff.framework.AsyncExecutionContext(
+      context = federated_language.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
               max_concurrent_computation_calls=1
           ),
@@ -532,7 +532,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(num_executors):
-      context = tff.framework.AsyncExecutionContext(
+      context = federated_language.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
               default_num_clients=int(num_clients / num_executors),
               max_concurrent_computation_calls=1,
@@ -557,7 +557,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       return 1
 
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(
+    context = federated_language.framework.AsyncExecutionContext(
         executor_fn=factory,
         transform_args=tff.tensorflow.transform_args,
         transform_result=tff.tensorflow.transform_result,
@@ -574,7 +574,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       return 1
 
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(
+    context = federated_language.framework.AsyncExecutionContext(
         executor_fn=factory,
         transform_args=tff.tensorflow.transform_args,
         transform_result=tff.tensorflow.transform_result,

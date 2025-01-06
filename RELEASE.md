@@ -167,6 +167,10 @@ and this project adheres to
 *   `tff.types.TypeRelation`, this object is no longer used.
 *   `tff.types.TypesNotEquivalentError`, use
     `federated_language.framework.TypesNotEquivalentError` instead.
+*   `tff.framework.AsyncExecutionContext`, use
+    `federated_language.framework.AsyncExecutionContext` instead.
+*   `tff.framework.SyncExecutionContext`, use
+    `federated_language.framework.SyncExecutionContext` instead.
 
 ## Release 0.88.0
 

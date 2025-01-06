@@ -144,7 +144,7 @@ class NativeFederatedContext(federated_language.program.FederatedContext):
     """Returns an initialized `tff.program.NativeFederatedContext`.
 
     Args:
-      context: An `tff.framework.AsyncExecutionContext`.
+      context: An `federated_language.framework.AsyncExecutionContext`.
     """
     self._context = context
 

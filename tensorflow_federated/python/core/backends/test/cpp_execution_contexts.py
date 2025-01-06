@@ -152,7 +152,8 @@ def create_sync_interprocess_cpp_execution_context(
     stream_structs: The flag to enable decomposing and streaming struct values.
 
   Returns:
-    An instance of `tff.framework.SyncExecutionContext` representing the TFF-C++
+    An instance of `federated_language.framework.SyncExecutionContext`
+    representing the TFF-C++
     runtime.
 
   Raises:

@@ -61,11 +61,8 @@ SyncContext = federated_language.framework.SyncContext
 ContextStack = federated_language.framework.ContextStack
 get_context_stack = federated_language.framework.get_context_stack
 set_default_context = federated_language.framework.set_default_context
-AsyncExecutionContext = federated_language.framework.AsyncExecutionContext
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompExecutionContext
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompForm
-
-SyncExecutionContext = federated_language.framework.SyncExecutionContext
 from tensorflow_federated.python.core.impl.executor_stacks.executor_factory import local_cpp_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import ResourceManagingExecutorFactory
 

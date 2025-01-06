@@ -26,7 +26,7 @@ class AsyncContextInstallationTest(
 
   async def test_install_and_execute_in_context(self):
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(factory)
+    context = federated_language.framework.AsyncExecutionContext(factory)
 
     @federated_language.federated_computation(np.int32)
     def identity(x):
@@ -40,7 +40,7 @@ class AsyncContextInstallationTest(
       self,
   ):
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(factory)
+    context = federated_language.framework.AsyncExecutionContext(factory)
 
     @federated_language.federated_computation(
         federated_language.FederatedType(np.int32, federated_language.CLIENTS)
@@ -56,7 +56,7 @@ class AsyncContextInstallationTest(
 
   async def test_runs_cardinality_free(self):
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(
+    context = federated_language.framework.AsyncExecutionContext(
         factory, cardinality_inference_fn=(lambda x, y: {})
     )
 
@@ -77,7 +77,7 @@ class AsyncContextInstallationTest(
       del x, y  # Unused
       return {federated_language.CLIENTS: 1}
 
-    context = tff.framework.AsyncExecutionContext(
+    context = federated_language.framework.AsyncExecutionContext(
         factory, cardinality_inference_fn=_cardinality_fn
     )
 
