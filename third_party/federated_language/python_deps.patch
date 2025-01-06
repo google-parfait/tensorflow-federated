@@ -552,7 +552,7 @@ index 709665c..17c84a6 100644
      ],
  )
 diff --git federated_language/types/BUILD federated_language/types/BUILD
-index 310c932..182f2b5 100644
+index a5bcb11..abe4c0b 100644
 --- federated_language/types/BUILD
 +++ federated_language/types/BUILD
 @@ -53,7 +53,6 @@ py_test(
@@ -667,16 +667,7 @@ index 310c932..182f2b5 100644
      ],
  )
  
-@@ -240,8 +208,6 @@ py_test(
-         ":type_serialization",
-         "//federated_language/proto:computation_py_pb2",
-         "//federated_language/proto:data_type_py_pb2",
--        "@pypi//absl_py",
--        "@pypi//numpy",
-     ],
- )
- 
-@@ -268,8 +234,6 @@ py_test(
+@@ -243,8 +211,6 @@ py_test(
          ":computation_types",
          ":placements",
          ":type_transformations",
