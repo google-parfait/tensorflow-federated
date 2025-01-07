@@ -661,12 +661,14 @@ class DistributeAggregateForm(federated_language.TypedObject):
     ) in server_to_client_broadcast.to_building_block().result.locals:  # pytype: disable=attribute-error
       if not isinstance(local_value, federated_language.framework.Call):
         raise ValueError(
-            f'Expected a `tff.framework.Call`, found {type(local_value)}.'
+            'Expected a `federated_language.framework.Call`, found'
+            f' {type(local_value)}.'
         )
       local_fn = local_value.function
       if not isinstance(local_fn, federated_language.framework.Intrinsic):
         raise ValueError(
-            f'Expected a `tff.framework.Intrinsic`, found {type(local_fn)}.'
+            'Expected a `federated_language.framework.Intrinsic`, found'
+            f' {type(local_fn)}.'
         )
       if not local_fn.intrinsic_def().broadcast_kind:
         raise ValueError(
@@ -684,7 +686,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
         federated_language.framework.Struct,
     ):
       raise ValueError(
-          'Expected a `tff.framework.Struct`, found'
+          'Expected a `federated_language.framework.Struct`, found'
           f' {type(server_to_client_broadcast.to_building_block().result.result)}.'  # pytype: disable=attribute-error
       )
     return_references = [
@@ -720,12 +722,14 @@ class DistributeAggregateForm(federated_language.TypedObject):
     ) in client_to_server_aggregation.to_building_block().result.locals:  # pytype: disable=attribute-error
       if not isinstance(local_value, federated_language.framework.Call):
         raise ValueError(
-            f'Expected a `tff.framework.Call`, found {type(local_value)}.'
+            'Expected a `federated_language.framework.Call`, found'
+            f' {type(local_value)}.'
         )
       local_fn = local_value.function
       if not isinstance(local_fn, federated_language.framework.Intrinsic):
         raise ValueError(
-            f'Expected a `tff.framework.Intrinsic`, found {type(local_fn)}.'
+            'Expected a `federated_language.framework.Intrinsic`, found'
+            f' {type(local_fn)}.'
         )
       if not local_fn.intrinsic_def().aggregation_kind:
         raise ValueError(
@@ -746,7 +750,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
         aggregation_result_result, federated_language.framework.Struct
     ):
       raise ValueError(
-          'Expected a `tff.framework.Struct`, found'
+          'Expected a `federated_language.framework.Struct`, found'
           f' {type(aggregation_result_result)}.'
       )
     return_references = [

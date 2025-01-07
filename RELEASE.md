@@ -179,6 +179,26 @@ and this project adheres to
     `federated_language.framework.AsyncExecutionContext` instead.
 *   `tff.framework.SyncExecutionContext`, use
     `federated_language.framework.SyncExecutionContext` instead.
+*   `tff.framework.Block`, use `federated_language.frameworkBlock` instead.
+*   `tff.framework.Call`, use `federated_language.frameworkCall` instead.
+*   `tff.framework.CompiledComputation`, use
+    `federated_language.frameworkCompiledComputation` instead.
+*   `tff.framework.ComputationBuildingBlock`, use
+    `federated_language.frameworkComputationBuildingBlock` instead.
+*   `tff.framework.Data`, use `federated_language.frameworkData` instead.
+*   `tff.framework.Intrinsic`, use `federated_language.frameworkIntrinsic`
+    instead.
+*   `tff.framework.Lambda`, use `federated_language.frameworkLambda` instead.
+*   `tff.framework.Literal`, use `federated_language.frameworkLiteral` instead.
+*   `tff.framework.Placement`, use `federated_language.frameworkPlacement`
+    instead.
+*   `tff.framework.Reference`, use `federated_language.frameworkReference`
+    instead.
+*   `tff.framework.Selection`, use `federated_language.frameworkSelection`
+    instead.
+*   `tff.framework.Struct`, use `federated_language.frameworkStruct` instead.
+*   `tff.framework.UnexpectedBlockError`, use
+    `federated_language.frameworkUnexpectedBlockError` instead.
 
 ## Release 0.88.0
 

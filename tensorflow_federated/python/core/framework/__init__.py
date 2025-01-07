@@ -16,19 +16,6 @@
 import federated_language
 # pylint: disable=g-importing-member
 unique_name_generator = federated_language.framework.unique_name_generator
-Block = federated_language.framework.Block
-Call = federated_language.framework.Call
-CompiledComputation = federated_language.framework.CompiledComputation
-ComputationBuildingBlock = federated_language.framework.ComputationBuildingBlock
-Data = federated_language.framework.Data
-Intrinsic = federated_language.framework.Intrinsic
-Lambda = federated_language.framework.Lambda
-Literal = federated_language.framework.Literal
-Placement = federated_language.framework.Placement
-Reference = federated_language.framework.Reference
-Selection = federated_language.framework.Selection
-Struct = federated_language.framework.Struct
-UnexpectedBlockError = federated_language.framework.UnexpectedBlockError
 FEDERATED_AGGREGATE = federated_language.framework.FEDERATED_AGGREGATE
 FEDERATED_APPLY = federated_language.framework.FEDERATED_APPLY
 FEDERATED_BROADCAST = federated_language.framework.FEDERATED_BROADCAST
