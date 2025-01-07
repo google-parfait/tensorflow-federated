@@ -166,6 +166,11 @@ and this project adheres to
     `federated_language.framework.is_structure_of_integers` instead.
 *   `tff.types.is_structure_of_tensors`, use
     `federated_language.framework.is_structure_of_tensors` instead.
+*   `tff.types.contains`, use `federated_language.framework.type_contains`
+    instead.
+*   `tff.types.contains_only`, use
+    `federated_language.framework.type_contains_only` instead.
+*   `tff.types.count`, use `federated_language.framework.type_count` instead.
 *   `tff.TypedObject`, use `federated_language.TypedObject` instead.
 *   `tff.CLIENTS`, use `federated_language.CLIENTS` instead.
 *   `tff.SERVER`, use `federated_language.SERVER` instead.

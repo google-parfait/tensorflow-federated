@@ -16,8 +16,5 @@
 import federated_language
 
 # pylint: disable=g-importing-member
-contains = federated_language.framework.type_contains
-contains_only = federated_language.framework.type_contains_only
-count = federated_language.framework.type_count
 type_to_py_container = federated_language.framework.type_to_py_container
 # pylint: disable=g-importing-member
