@@ -26,7 +26,7 @@ def _check_tensorflow_computation(label, comp):
   py_typecheck.check_type(
       comp, federated_language.framework.ConcreteComputation, label
   )
-  comp_proto = federated_language.framework.ConcreteComputation.get_proto(comp)
+  comp_proto = comp.to_proto()
   which_comp = comp_proto.WhichOneof('computation')
   if which_comp != 'tensorflow':
     raise TypeError(
@@ -40,7 +40,7 @@ def _check_lambda_computation(label, comp):
   py_typecheck.check_type(
       comp, federated_language.framework.ConcreteComputation, label
   )
-  comp_proto = federated_language.framework.ConcreteComputation.get_proto(comp)
+  comp_proto = comp.to_proto()
   which_comp = comp_proto.WhichOneof('computation')
   if which_comp != 'lambda':
     raise TypeError(

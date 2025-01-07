@@ -83,9 +83,7 @@ class TensorFlowComputationContext(federated_language.framework.SyncContext):
     py_typecheck.check_type(
         comp, federated_language.framework.ConcreteComputation
     )
-    computation_proto = (
-        federated_language.framework.ConcreteComputation.get_proto(comp)
-    )
+    computation_proto = comp.to_proto()
     computation_oneof = computation_proto.WhichOneof('computation')
     if computation_oneof != 'tensorflow':
       raise ValueError(

@@ -336,11 +336,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
     finalizer_computation = tensorflow_computation.tf_computation(
         finalizer, metric_type
     )
-    computation_proto = (
-        federated_language.framework.ConcreteComputation.get_proto(
-            finalizer_computation
-        )
-    )
+    computation_proto = finalizer_computation.to_proto()
     return tf.Variable(
         computation_proto.SerializeToString(deterministic=True),
         trainable=False,

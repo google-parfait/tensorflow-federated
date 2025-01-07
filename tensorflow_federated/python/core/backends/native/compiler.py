@@ -51,7 +51,7 @@ def transform_to_native_form(
     compiled
       version of `comp`.
   """
-  proto = federated_language.framework.ConcreteComputation.get_proto(comp)
+  proto = comp.to_proto()
   computation_building_block = (
       federated_language.framework.ComputationBuildingBlock.from_proto(proto)
   )

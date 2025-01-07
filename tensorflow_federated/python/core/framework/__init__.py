@@ -39,8 +39,6 @@ transform_preorder = federated_language.framework.transform_preorder
 from tensorflow_federated.python.core.impl.compiler.transformations import to_call_dominant
 
 ConcreteComputation = federated_language.framework.ConcreteComputation
-deserialize_computation = federated_language.framework.deserialize_computation
-serialize_computation = federated_language.framework.serialize_computation
 pack_args_into_struct = federated_language.framework.pack_args_into_struct
 unpack_args_from_struct = federated_language.framework.unpack_args_from_struct
 AsyncContext = federated_language.framework.AsyncContext

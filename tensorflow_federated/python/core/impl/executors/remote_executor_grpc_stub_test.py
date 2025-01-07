@@ -72,9 +72,7 @@ class GrpcConnectivityTest(absltest.TestCase):
 class RemoteExecutorGrpcStubTest(absltest.TestCase):
 
   def test_compute_returns_result(self, mock_executor_grpc_stub):
-    proto = federated_language.framework.ConcreteComputation.get_proto(
-        _empty_struct
-    )
+    proto = _empty_struct.to_proto()
     value = executor_pb2.Value(computation=proto)
     response = executor_pb2.ComputeResponse(value=value)
     instance = mock_executor_grpc_stub.return_value

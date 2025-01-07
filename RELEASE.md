@@ -167,6 +167,10 @@ and this project adheres to
 *   `tff.types.TypeRelation`, this object is no longer used.
 *   `tff.types.TypesNotEquivalentError`, use
     `federated_language.framework.TypesNotEquivalentError` instead.
+*   `tff.framework.deserialize_computation`, use
+    `federated_language.framework.ConcreteComputation.from_proto` instead.
+*   `tff.framework.serialize_computation`, use
+    `federated_language.framework.ConcreteComputation.to_proto` instead.
 *   `tff.framework.Executor`, use `federated_language.framework.Executor`
     instead.
 *   `tff.framework.CardinalitiesType`, use
