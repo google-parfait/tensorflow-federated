@@ -160,6 +160,12 @@ and this project adheres to
     `federated_language.num_elements_in_array_shape` instead
 *   `tff.types.is_tensorflow_compatible_type`, this function is no longer used
     externally.
+*   `tff.types.is_structure_of_floats`, use
+    `federated_language.framework.is_structure_of_floats` instead.
+*   `tff.types.is_structure_of_integers`, use
+    `federated_language.framework.is_structure_of_integers` instead.
+*   `tff.types.is_structure_of_tensors`, use
+    `federated_language.framework.is_structure_of_tensors` instead.
 *   `tff.TypedObject`, use `federated_language.TypedObject` instead.
 *   `tff.CLIENTS`, use `federated_language.CLIENTS` instead.
 *   `tff.SERVER`, use `federated_language.SERVER` instead.
