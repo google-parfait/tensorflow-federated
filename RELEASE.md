@@ -194,26 +194,50 @@ and this project adheres to
     `federated_language.framework.AsyncExecutionContext` instead.
 *   `tff.framework.SyncExecutionContext`, use
     `federated_language.framework.SyncExecutionContext` instead.
-*   `tff.framework.Block`, use `federated_language.frameworkBlock` instead.
-*   `tff.framework.Call`, use `federated_language.frameworkCall` instead.
+*   `tff.framework.Block`, use `federated_language.framework.Block` instead.
+*   `tff.framework.Call`, use `federated_language.framework.Call` instead.
 *   `tff.framework.CompiledComputation`, use
-    `federated_language.frameworkCompiledComputation` instead.
-*   `tff.framework.ComputationBuildingBlock`, use
-    `federated_language.frameworkComputationBuildingBlock` instead.
-*   `tff.framework.Data`, use `federated_language.frameworkData` instead.
-*   `tff.framework.Intrinsic`, use `federated_language.frameworkIntrinsic`
+    `federated_language.frameworkCompiled.Computation` instead.
+*   `tff.framework.ComputationBuilding.Block`, use
+    `federated_language.frameworkComputationBuilding.Block` instead.
+*   `tff.framework.Data`, use `federated_language.framework.Data` instead.
+*   `tff.framework.Intrinsic`, use `federated_language.framework.Intrinsic`
     instead.
-*   `tff.framework.Lambda`, use `federated_language.frameworkLambda` instead.
-*   `tff.framework.Literal`, use `federated_language.frameworkLiteral` instead.
-*   `tff.framework.Placement`, use `federated_language.frameworkPlacement`
+*   `tff.framework.Lambda`, use `federated_language.framework.Lambda` instead.
+*   `tff.framework.Literal`, use `federated_language.framework.Literal` instead.
+*   `tff.framework.Placement`, use `federated_language.framework.Placement`
     instead.
-*   `tff.framework.Reference`, use `federated_language.frameworkReference`
+*   `tff.framework.Reference`, use `federated_language.framework.Reference`
     instead.
-*   `tff.framework.Selection`, use `federated_language.frameworkSelection`
+*   `tff.framework.Selection`, use `federated_language.framework.Selection`
     instead.
-*   `tff.framework.Struct`, use `federated_language.frameworkStruct` instead.
+*   `tff.framework.Struct`, use `federated_language.framework.Struct` instead.
 *   `tff.framework.UnexpectedBlockError`, use
-    `federated_language.frameworkUnexpectedBlockError` instead.
+    `federated_language.framework.UnexpectedBlockError` instead.
+*   `tff.framework.FEDERATED_AGGREGATE`, use
+    `federated_language.framework.FEDERATED_AGGREGATE` instead.
+*   `tff.framework.FEDERATED_APPLY`, use
+    `federated_language.framework.FEDERATED_APPLY` instead.
+*   `tff.framework.FEDERATED_BROADCAST`, use
+    `federated_language.framework.FEDERATED_BROADCAST` instead.
+*   `tff.framework.FEDERATED_EVAL_AT_CLIENTS`, use
+    `federated_language.framework.FEDERATED_EVAL_AT_CLIENTS` instead.
+*   `tff.framework.FEDERATED_EVAL_AT_SERVER`, use
+    `federated_language.framework.FEDERATED_EVAL_AT_SERVER` instead.
+*   `tff.framework.FEDERATED_MAP`, use
+    `federated_language.framework.FEDERATED_MAP` instead.
+*   `tff.framework.FEDERATED_MAP_ALL_EQUAL`, use
+    `federated_language.framework.FEDERATED_MAP_ALL_EQUAL` instead.
+*   `tff.framework.FEDERATED_SUM`, use
+    `federated_language.framework.FEDERATED_SUM` instead.
+*   `tff.framework.FEDERATED_VALUE_AT_CLIENTS`, use
+    `federated_language.framework.FEDERATED_VALUE_AT_CLIENTS` instead.
+*   `tff.framework.FEDERATED_VALUE_AT_SERVER`, use
+    `federated_language.framework.FEDERATED_VALUE_AT_SERVER` instead.
+*   `tff.framework.FEDERATED_ZIP_AT_CLIENTS`, use
+    `federated_language.framework.FEDERATED_ZIP_AT_CLIENTS` instead.
+*   `tff.framework.FEDERATED_ZIP_AT_SERVER`, use
+    `federated_language.framework.FEDERATED_ZIP_AT_SERVER` instead.
 
 ## Release 0.88.0
 

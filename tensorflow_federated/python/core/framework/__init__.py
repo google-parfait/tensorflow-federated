@@ -16,24 +16,6 @@
 import federated_language
 # pylint: disable=g-importing-member
 unique_name_generator = federated_language.framework.unique_name_generator
-FEDERATED_AGGREGATE = federated_language.framework.FEDERATED_AGGREGATE
-FEDERATED_APPLY = federated_language.framework.FEDERATED_APPLY
-FEDERATED_BROADCAST = federated_language.framework.FEDERATED_BROADCAST
-FEDERATED_EVAL_AT_CLIENTS = (
-    federated_language.framework.FEDERATED_EVAL_AT_CLIENTS
-)
-FEDERATED_EVAL_AT_SERVER = federated_language.framework.FEDERATED_EVAL_AT_SERVER
-FEDERATED_MAP = federated_language.framework.FEDERATED_MAP
-FEDERATED_MAP_ALL_EQUAL = federated_language.framework.FEDERATED_MAP_ALL_EQUAL
-FEDERATED_SUM = federated_language.framework.FEDERATED_SUM
-FEDERATED_VALUE_AT_CLIENTS = (
-    federated_language.framework.FEDERATED_VALUE_AT_CLIENTS
-)
-FEDERATED_VALUE_AT_SERVER = (
-    federated_language.framework.FEDERATED_VALUE_AT_SERVER
-)
-FEDERATED_ZIP_AT_CLIENTS = federated_language.framework.FEDERATED_ZIP_AT_CLIENTS
-FEDERATED_ZIP_AT_SERVER = federated_language.framework.FEDERATED_ZIP_AT_SERVER
 transform_postorder = federated_language.framework.transform_postorder
 transform_preorder = federated_language.framework.transform_preorder
 from tensorflow_federated.python.core.impl.compiler.transformations import to_call_dominant
