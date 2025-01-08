@@ -29,6 +29,7 @@ from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core.environments import jax
 from tensorflow_federated.python.core.environments import tensorflow
 from tensorflow_federated.python.core.impl import types
+from tensorflow_federated.version import __version__
 from federated_language import Computation
 from federated_language import federated_computation
 from federated_language import federated_aggregate
@@ -50,15 +51,6 @@ from federated_language import sequence_reduce
 from federated_language import sequence_sum
 from federated_language import to_value
 from federated_language import Value
-from federated_language import FederatedType
-from federated_language import FunctionType
-from federated_language import SequenceType
-from federated_language import StructType
-from federated_language import StructWithPythonType
-from federated_language import TensorType
-from federated_language import to_type
-from federated_language import Type
-from tensorflow_federated.version import __version__
 # pylint: enable=g-importing-member
 
 if sys.version_info < (3, 9):

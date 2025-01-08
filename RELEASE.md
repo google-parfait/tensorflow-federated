@@ -238,6 +238,15 @@ and this project adheres to
     `federated_language.framework.FEDERATED_ZIP_AT_CLIENTS` instead.
 *   `tff.framework.FEDERATED_ZIP_AT_SERVER`, use
     `federated_language.framework.FEDERATED_ZIP_AT_SERVER` instead.
+*   `tff.FederatedType`, use`federated_language.FederatedType` instead.
+*   `tff.FunctionType`, use`federated_language.FunctionType` instead.
+*   `tff.SequenceType`, use`federated_language.SequenceType` instead.
+*   `tff.StructType`, use`federated_language.StructType` instead.
+*   `tff.StructWithPythonType`, use`federated_language.StructWithPythonType`
+    instead.
+*   `tff.TensorType`, use`federated_language.TensorType` instead.
+*   `tff.to_type`, use`federated_language.to_type` instead.
+*   `tff.Type`, use`federated_language.Type` instead.
 
 ## Release 0.88.0
 
