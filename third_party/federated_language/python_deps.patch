@@ -204,7 +204,7 @@ index 9752558..9dde47b 100644
      ],
  )
 diff --git federated_language/computation/BUILD federated_language/computation/BUILD
-index 8c4e69a..da34426 100644
+index a2718fb..05c0392 100644
 --- federated_language/computation/BUILD
 +++ federated_language/computation/BUILD
 @@ -70,8 +70,6 @@ py_test(
@@ -216,16 +216,7 @@ index 8c4e69a..da34426 100644
      ],
  )
  
-@@ -98,8 +96,6 @@ py_test(
-         "//federated_language/compiler:computation_factory",
-         "//federated_language/context_stack:context_stack_impl",
-         "//federated_language/types:computation_types",
--        "@pypi//absl_py",
--        "@pypi//numpy",
-     ],
- )
- 
-@@ -128,8 +124,6 @@ py_test(
+@@ -102,8 +100,6 @@ py_test(
          "//federated_language/context_stack:context_stack_impl",
          "//federated_language/proto:computation_py_pb2",
          "//federated_language/types:computation_types",
@@ -234,7 +225,7 @@ index 8c4e69a..da34426 100644
      ],
  )
  
-@@ -154,8 +148,6 @@ py_test(
+@@ -128,8 +124,6 @@ py_test(
          ":function_utils",
          "//federated_language/common_libs:structure",
          "//federated_language/types:computation_types",
@@ -243,7 +234,7 @@ index 8c4e69a..da34426 100644
      ],
  )
  
-@@ -180,7 +172,5 @@ py_test(
+@@ -154,7 +148,5 @@ py_test(
          "//federated_language/proto:computation_py_pb2",
          "//federated_language/types:computation_types",
          "//federated_language/types:type_conversions",
