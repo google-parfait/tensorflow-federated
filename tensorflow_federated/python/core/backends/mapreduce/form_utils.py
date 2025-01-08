@@ -148,7 +148,7 @@ def get_state_initialization_computation(
   )
   return federated_language.framework.ConcreteComputation(
       computation_proto=initialize_tree.proto,
-      context_stack=federated_language.framework.global_context_stack,
+      context_stack=federated_language.framework.get_context_stack(),
   )
 
 
@@ -1047,7 +1047,7 @@ def get_broadcast_form_for_computation(
   def _create_comp(proto):
     return federated_language.framework.ConcreteComputation(
         computation_proto=proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
 
   compute_server_context, client_processing = (
@@ -1135,7 +1135,7 @@ def get_map_reduce_form_for_computation(
   def _create_comp(proto):
     return federated_language.framework.ConcreteComputation(
         computation_proto=proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
 
   blocks = (
@@ -1242,13 +1242,10 @@ def get_distribute_aggregate_form_for_computation(
         )
         and inner_comp.function.intrinsic_def().aggregation_kind
     ):
-      aggregation_args = (
-          inner_comp.argument
-          if isinstance(
-              inner_comp.argument, federated_language.framework.Struct
-          )
-          else [inner_comp.argument]
-      )
+      if isinstance(inner_comp.argument, federated_language.framework.Struct):
+        aggregation_args = inner_comp.argument
+      else:
+        aggregation_args = [inner_comp.argument]
       unbound_ref_names_for_intrinsic = unbound_refs[inner_comp.argument]
 
       for aggregation_arg in aggregation_args:
@@ -1494,7 +1491,7 @@ def get_distribute_aggregate_form_for_computation(
   def _create_comp(proto):
     return federated_language.framework.ConcreteComputation(
         computation_proto=proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
 
   comps = [_create_comp(bb.proto) for bb in blocks]

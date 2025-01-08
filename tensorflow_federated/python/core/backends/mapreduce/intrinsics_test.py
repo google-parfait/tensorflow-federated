@@ -29,7 +29,7 @@ def _create_context() -> (
     federated_language.framework.FederatedComputationContext
 ):
   return federated_language.framework.FederatedComputationContext(
-      federated_language.framework.global_context_stack
+      federated_language.framework.get_context_stack()
   )
 
 

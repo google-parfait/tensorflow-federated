@@ -108,7 +108,7 @@ def transform_to_native_form(
       )
     return federated_language.framework.ConcreteComputation(
         computation_proto=form_with_ids.proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
   except ValueError as e:
     logging.debug('Compilation for native runtime failed with error %s', e)
@@ -143,7 +143,7 @@ def desugar_and_transform_to_native(comp):
   native_form = transform_to_native_form(
       federated_language.framework.ConcreteComputation(
           computation_proto=intrinsics_desugared_bb.proto,
-          context_stack=federated_language.framework.global_context_stack,
+          context_stack=federated_language.framework.get_context_stack(),
       ),
       grappler_config=grappler_config,
   )

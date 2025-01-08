@@ -41,7 +41,7 @@ def _select_output_result_and_wrap_as_noarg_tensorflow(
   selected_and_compiled = _compile_to_tf(selected_and_wrapped)
   return federated_language.framework.ConcreteComputation(
       computation_proto=selected_and_compiled.proto,
-      context_stack=federated_language.framework.global_context_stack,
+      context_stack=federated_language.framework.get_context_stack(),
   )
 
 
@@ -55,7 +55,7 @@ def _select_output_result_and_wrap_as_tensorflow(
   selected_and_compiled = _compile_to_tf(selected_fn)
   return federated_language.framework.ConcreteComputation(
       computation_proto=selected_and_compiled.proto,
-      context_stack=federated_language.framework.global_context_stack,
+      context_stack=federated_language.framework.get_context_stack(),
   )
 
 
@@ -201,11 +201,11 @@ def compile_to_mergeable_comp_form(
 
   before_agg_callable = federated_language.framework.ConcreteComputation(
       computation_proto=before_agg.proto,
-      context_stack=federated_language.framework.global_context_stack,
+      context_stack=federated_language.framework.get_context_stack(),
   )
   after_agg_callable = federated_language.framework.ConcreteComputation(
       computation_proto=after_agg.proto,
-      context_stack=federated_language.framework.global_context_stack,
+      context_stack=federated_language.framework.get_context_stack(),
   )
 
   if before_agg.type_signature.parameter is not None:

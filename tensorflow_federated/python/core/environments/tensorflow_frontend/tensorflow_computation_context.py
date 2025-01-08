@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.environments.tensorflow_backend import typ
 
 def get_session_token() -> tf.Tensor:
   """Returns a string tensor identifying the current session."""
-  context = federated_language.framework.global_context_stack.current
+  context = federated_language.framework.get_context_stack().current
   if not isinstance(context, TensorFlowComputationContext):
     raise federated_language.framework.ContextError(
         'Session tokens can only be retrieved from within the '

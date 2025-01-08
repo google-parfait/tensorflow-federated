@@ -30,7 +30,7 @@ class TensorFlowComputationContextTest(absltest.TestCase):
     )
     non_tf_computation = federated_language.framework.ConcreteComputation(
         computation_proto=bogus_proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
 
     context = tensorflow_computation_context.TensorFlowComputationContext(

@@ -340,7 +340,7 @@ def _evaluate_to_tensorflow(
       def call_concrete(*args):
         concrete = federated_language.framework.ConcreteComputation(
             computation_proto=comp.proto,
-            context_stack=federated_language.framework.global_context_stack,
+            context_stack=federated_language.framework.get_context_stack(),
         )
         result = concrete(*args)
         if isinstance(

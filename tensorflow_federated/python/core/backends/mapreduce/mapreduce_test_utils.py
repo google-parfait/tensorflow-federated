@@ -87,7 +87,7 @@ def _make_map_reduce_form_example(
     )[0]
     return federated_language.framework.ConcreteComputation(
         computation_proto=transformed_comp.proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
 
   return MapReduceFormExample(
