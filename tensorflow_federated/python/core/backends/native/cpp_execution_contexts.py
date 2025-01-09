@@ -56,7 +56,8 @@ def create_sync_local_cpp_execution_context(
     stream_structs: The flag to enable decomposing and streaming struct values.
 
   Returns:
-    An instance of `tff.framework.SyncContext` representing the TFF-C++ runtime.
+    An instance of `federated_language.framework.SyncContext` representing the
+    TFF-C++ runtime.
   """
   del stream_structs  # Unused.
   factory = cpp_executor_factory.local_cpp_executor_factory(

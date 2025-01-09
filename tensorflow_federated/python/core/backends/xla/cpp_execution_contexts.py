@@ -14,6 +14,7 @@
 """Execution contexts for the XLA backend."""
 
 import federated_language
+
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.environments.jax_frontend import jax_computation
 from tensorflow_federated.python.core.environments.xla_backend import xla_executor_bindings
@@ -85,7 +86,8 @@ def create_sync_local_cpp_execution_context(
       limit.
 
   Returns:
-    An instance of `tff.framework.SyncContext` representing the TFF-C++ runtime.
+    An instance of `federated_language.framework.SyncContext` representing the
+    TFF-C++ runtime.
   """
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,

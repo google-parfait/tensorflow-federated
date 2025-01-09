@@ -2134,7 +2134,7 @@ amitport, ronaldseoh
 *   Removed `tff.framework.set_default_executor` function, instead you should
     use the more convenient `tff.backends.native.set_local_execution_context`
     function or manually construct a context an set it using
-    `tff.framework.set_default_context`.
+    `federated_language.framework.set_default_context`.
 *   The `tff.Computation` base class now contains an abstract `__hash__` method,
     to ensure compilation results can be cached. Any custom implementations of
     this interface should be updated accordingly.

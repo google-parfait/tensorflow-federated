@@ -23,11 +23,6 @@ from tensorflow_federated.python.core.impl.compiler.transformations import to_ca
 ConcreteComputation = federated_language.framework.ConcreteComputation
 pack_args_into_struct = federated_language.framework.pack_args_into_struct
 unpack_args_from_struct = federated_language.framework.unpack_args_from_struct
-AsyncContext = federated_language.framework.AsyncContext
-SyncContext = federated_language.framework.SyncContext
-ContextStack = federated_language.framework.ContextStack
-get_context_stack = federated_language.framework.get_context_stack
-set_default_context = federated_language.framework.set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompExecutionContext
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompForm
 from tensorflow_federated.python.core.impl.executor_stacks.executor_factory import local_cpp_executor_factory

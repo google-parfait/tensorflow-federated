@@ -32,7 +32,7 @@ class AsyncContextInstallationTest(
     def identity(x):
       return x
 
-    with tff.framework.get_context_stack().install(context):
+    with federated_language.framework.get_context_stack().install(context):
       value = await identity(1)
       self.assertEqual(value, 1)
 
@@ -48,7 +48,7 @@ class AsyncContextInstallationTest(
     def repackage_arg(x):
       return [x, x]
 
-    with tff.framework.get_context_stack().install(context):
+    with federated_language.framework.get_context_stack().install(context):
       single_value = await repackage_arg([1])
       self.assertEqual(single_value, [[1], [1]])
       second_value = await repackage_arg([1, 2])
@@ -64,7 +64,7 @@ class AsyncContextInstallationTest(
     def identity(x):
       return x
 
-    with tff.framework.get_context_stack().install(context):
+    with federated_language.framework.get_context_stack().install(context):
       data = 0
       # This computation is independent of cardinalities
       value = await identity(data)
@@ -89,7 +89,7 @@ class AsyncContextInstallationTest(
     def identity(x):
       return x
 
-    with tff.framework.get_context_stack().install(context):
+    with federated_language.framework.get_context_stack().install(context):
       # This argument conflicts with the value returned by the
       # cardinality-inference function; we should get an error surfaced.
       data = [0, 1]

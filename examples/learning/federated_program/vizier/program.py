@@ -97,7 +97,7 @@ def main(argv: Sequence[str]) -> None:
 
   context = tff.backends.native.create_async_local_cpp_execution_context()
   context = tff.program.NativeFederatedContext(context)
-  tff.framework.set_default_context(context)
+  federated_language.framework.set_default_context(context)
 
   timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
   experiment_name = f'vizier_example_{timestamp}'
