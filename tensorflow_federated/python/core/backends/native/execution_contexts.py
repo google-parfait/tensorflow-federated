@@ -71,7 +71,7 @@ def set_mergeable_comp_execution_context(
       async_contexts=async_contexts,
       num_subrounds=num_subrounds,
   )
-  federated_language.framework.global_context_stack.set_default_context(context)
+  federated_language.framework.get_context_stack().set_default_context(context)
 
 
 def create_async_local_cpp_execution_context(
@@ -120,7 +120,7 @@ def set_async_local_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
   )
-  federated_language.framework.global_context_stack.set_default_context(context)
+  federated_language.framework.get_context_stack().set_default_context(context)
 
 
 def create_sync_local_cpp_execution_context(
@@ -170,4 +170,4 @@ def set_sync_local_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
   )
-  federated_language.framework.global_context_stack.set_default_context(context)
+  federated_language.framework.get_context_stack().set_default_context(context)

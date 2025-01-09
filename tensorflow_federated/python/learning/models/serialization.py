@@ -125,7 +125,7 @@ class _LoadedSavedModel(variable.VariableModel):
       )
       return federated_language.framework.ConcreteComputation(
           computation_proto=computation_proto,
-          context_stack=federated_language.framework.global_context_stack,
+          context_stack=federated_language.framework.get_context_stack(),
       )
 
     return collections.OrderedDict(
@@ -336,11 +336,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
     finalizer_computation = tensorflow_computation.tf_computation(
         finalizer, metric_type
     )
-    computation_proto = (
-        federated_language.framework.ConcreteComputation.get_proto(
-            finalizer_computation
-        )
-    )
+    computation_proto = finalizer_computation.to_proto()
     return tf.Variable(
         computation_proto.SerializeToString(deterministic=True),
         trainable=False,

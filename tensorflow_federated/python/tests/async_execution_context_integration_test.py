@@ -26,13 +26,13 @@ class AsyncContextInstallationTest(
 
   async def test_install_and_execute_in_context(self):
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(factory)
+    context = federated_language.framework.AsyncExecutionContext(factory)
 
-    @tff.federated_computation(np.int32)
+    @federated_language.federated_computation(np.int32)
     def identity(x):
       return x
 
-    with tff.framework.get_context_stack().install(context):
+    with federated_language.framework.get_context_stack().install(context):
       value = await identity(1)
       self.assertEqual(value, 1)
 
@@ -40,15 +40,15 @@ class AsyncContextInstallationTest(
       self,
   ):
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(factory)
+    context = federated_language.framework.AsyncExecutionContext(factory)
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def repackage_arg(x):
       return [x, x]
 
-    with tff.framework.get_context_stack().install(context):
+    with federated_language.framework.get_context_stack().install(context):
       single_value = await repackage_arg([1])
       self.assertEqual(single_value, [[1], [1]])
       second_value = await repackage_arg([1, 2])
@@ -56,15 +56,15 @@ class AsyncContextInstallationTest(
 
   async def test_runs_cardinality_free(self):
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(
+    context = federated_language.framework.AsyncExecutionContext(
         factory, cardinality_inference_fn=(lambda x, y: {})
     )
 
-    @tff.federated_computation(np.int32)
+    @federated_language.federated_computation(np.int32)
     def identity(x):
       return x
 
-    with tff.framework.get_context_stack().install(context):
+    with federated_language.framework.get_context_stack().install(context):
       data = 0
       # This computation is independent of cardinalities
       value = await identity(data)
@@ -77,7 +77,7 @@ class AsyncContextInstallationTest(
       del x, y  # Unused
       return {federated_language.CLIENTS: 1}
 
-    context = tff.framework.AsyncExecutionContext(
+    context = federated_language.framework.AsyncExecutionContext(
         factory, cardinality_inference_fn=_cardinality_fn
     )
 
@@ -85,11 +85,11 @@ class AsyncContextInstallationTest(
         np.int32, federated_language.CLIENTS
     )
 
-    @tff.federated_computation(arg_type)
+    @federated_language.federated_computation(arg_type)
     def identity(x):
       return x
 
-    with tff.framework.get_context_stack().install(context):
+    with federated_language.framework.get_context_stack().install(context):
       # This argument conflicts with the value returned by the
       # cardinality-inference function; we should get an error surfaced.
       data = [0, 1]

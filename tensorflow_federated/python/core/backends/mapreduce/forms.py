@@ -26,7 +26,7 @@ def _check_tensorflow_computation(label, comp):
   py_typecheck.check_type(
       comp, federated_language.framework.ConcreteComputation, label
   )
-  comp_proto = federated_language.framework.ConcreteComputation.get_proto(comp)
+  comp_proto = comp.to_proto()
   which_comp = comp_proto.WhichOneof('computation')
   if which_comp != 'tensorflow':
     raise TypeError(
@@ -36,10 +36,11 @@ def _check_tensorflow_computation(label, comp):
 
 
 def _check_lambda_computation(label, comp):
+  """Validates a Lambda computation."""
   py_typecheck.check_type(
       comp, federated_language.framework.ConcreteComputation, label
   )
-  comp_proto = federated_language.framework.ConcreteComputation.get_proto(comp)
+  comp_proto = comp.to_proto()
   which_comp = comp_proto.WhichOneof('computation')
   if which_comp != 'lambda':
     raise TypeError(
@@ -131,7 +132,7 @@ class BroadcastForm:
   ```
   server_data_type = self.compute_server_context.type_signature.parameter
   client_data_type = self.client_processing.type_signature.parameter[1]
-  @tff.federated_computation(server_data_type, client_data_type)
+  @federated_language.federated_computation(server_data_type, client_data_type)
   def _(server_data, client_data):
     # Select out the bit of server context to send to the clients.
     context_at_server = tff.federated_map(
@@ -660,12 +661,14 @@ class DistributeAggregateForm(federated_language.TypedObject):
     ) in server_to_client_broadcast.to_building_block().result.locals:  # pytype: disable=attribute-error
       if not isinstance(local_value, federated_language.framework.Call):
         raise ValueError(
-            f'Expected a `tff.framework.Call`, found {type(local_value)}.'
+            'Expected a `federated_language.framework.Call`, found'
+            f' {type(local_value)}.'
         )
       local_fn = local_value.function
       if not isinstance(local_fn, federated_language.framework.Intrinsic):
         raise ValueError(
-            f'Expected a `tff.framework.Intrinsic`, found {type(local_fn)}.'
+            'Expected a `federated_language.framework.Intrinsic`, found'
+            f' {type(local_fn)}.'
         )
       if not local_fn.intrinsic_def().broadcast_kind:
         raise ValueError(
@@ -683,7 +686,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
         federated_language.framework.Struct,
     ):
       raise ValueError(
-          'Expected a `tff.framework.Struct`, found'
+          'Expected a `federated_language.framework.Struct`, found'
           f' {type(server_to_client_broadcast.to_building_block().result.result)}.'  # pytype: disable=attribute-error
       )
     return_references = [
@@ -719,12 +722,14 @@ class DistributeAggregateForm(federated_language.TypedObject):
     ) in client_to_server_aggregation.to_building_block().result.locals:  # pytype: disable=attribute-error
       if not isinstance(local_value, federated_language.framework.Call):
         raise ValueError(
-            f'Expected a `tff.framework.Call`, found {type(local_value)}.'
+            'Expected a `federated_language.framework.Call`, found'
+            f' {type(local_value)}.'
         )
       local_fn = local_value.function
       if not isinstance(local_fn, federated_language.framework.Intrinsic):
         raise ValueError(
-            f'Expected a `tff.framework.Intrinsic`, found {type(local_fn)}.'
+            'Expected a `federated_language.framework.Intrinsic`, found'
+            f' {type(local_fn)}.'
         )
       if not local_fn.intrinsic_def().aggregation_kind:
         raise ValueError(
@@ -745,7 +750,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
         aggregation_result_result, federated_language.framework.Struct
     ):
       raise ValueError(
-          'Expected a `tff.framework.Struct`, found'
+          'Expected a `federated_language.framework.Struct`, found'
           f' {type(aggregation_result_result)}.'
       )
     return_references = [

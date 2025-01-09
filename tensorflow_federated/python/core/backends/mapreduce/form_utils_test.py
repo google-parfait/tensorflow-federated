@@ -736,7 +736,7 @@ class GetDistributeAggregateFormTest(
     )
     bad_comp = federated_language.framework.ConcreteComputation(
         computation_proto=lam.proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
     with self.assertRaises(TypeError):
       form_utils.get_distribute_aggregate_form_for_computation(bad_comp)
@@ -759,7 +759,7 @@ class GetDistributeAggregateFormTest(
     )
     bad_comp = federated_language.framework.ConcreteComputation(
         computation_proto=not_reducible.proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
       form_utils.get_distribute_aggregate_form_for_computation(bad_comp)
@@ -964,7 +964,7 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     )
     bad_comp = federated_language.framework.ConcreteComputation(
         computation_proto=lam.proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
     with self.assertRaises(TypeError):
       form_utils.get_map_reduce_form_for_computation(bad_comp)
@@ -987,7 +987,7 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     )
     bad_comp = federated_language.framework.ConcreteComputation(
         computation_proto=not_reducible.proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
 
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):

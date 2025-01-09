@@ -129,7 +129,7 @@ def set_async_test_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
   )
-  federated_language.framework.global_context_stack.set_default_context(context)
+  federated_language.framework.get_context_stack().set_default_context(context)
 
 
 def create_sync_interprocess_cpp_execution_context(
@@ -152,7 +152,8 @@ def create_sync_interprocess_cpp_execution_context(
     stream_structs: The flag to enable decomposing and streaming struct values.
 
   Returns:
-    An instance of `tff.framework.SyncExecutionContext` representing the TFF-C++
+    An instance of `federated_language.framework.SyncExecutionContext`
+    representing the TFF-C++
     runtime.
 
   Raises:
@@ -314,4 +315,4 @@ def set_sync_test_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
   )
-  federated_language.framework.global_context_stack.set_default_context(context)
+  federated_language.framework.get_context_stack().set_default_context(context)

@@ -160,6 +160,17 @@ and this project adheres to
     `federated_language.num_elements_in_array_shape` instead
 *   `tff.types.is_tensorflow_compatible_type`, this function is no longer used
     externally.
+*   `tff.types.is_structure_of_floats`, use
+    `federated_language.framework.is_structure_of_floats` instead.
+*   `tff.types.is_structure_of_integers`, use
+    `federated_language.framework.is_structure_of_integers` instead.
+*   `tff.types.is_structure_of_tensors`, use
+    `federated_language.framework.is_structure_of_tensors` instead.
+*   `tff.types.contains`, use `federated_language.framework.type_contains`
+    instead.
+*   `tff.types.contains_only`, use
+    `federated_language.framework.type_contains_only` instead.
+*   `tff.types.count`, use `federated_language.framework.type_count` instead.
 *   `tff.TypedObject`, use `federated_language.TypedObject` instead.
 *   `tff.CLIENTS`, use `federated_language.CLIENTS` instead.
 *   `tff.SERVER`, use `federated_language.SERVER` instead.
@@ -167,6 +178,75 @@ and this project adheres to
 *   `tff.types.TypeRelation`, this object is no longer used.
 *   `tff.types.TypesNotEquivalentError`, use
     `federated_language.framework.TypesNotEquivalentError` instead.
+*   `tff.framework.deserialize_computation`, use
+    `federated_language.framework.ConcreteComputation.from_proto` instead.
+*   `tff.framework.serialize_computation`, use
+    `federated_language.framework.ConcreteComputation.to_proto` instead.
+*   `tff.framework.Executor`, use `federated_language.framework.Executor`
+    instead.
+*   `tff.framework.CardinalitiesType`, use
+    `federated_language.framework.CardinalitiesType` instead.
+*   `tff.framework.ExecutorFactory`, use
+    `federated_language.framework.ExecutorFactory` instead.
+*   `tff.framework.RetryableError`, use
+    `federated_language.framework.RetryableError` instead.
+*   `tff.framework.AsyncExecutionContext`, use
+    `federated_language.framework.AsyncExecutionContext` instead.
+*   `tff.framework.SyncExecutionContext`, use
+    `federated_language.framework.SyncExecutionContext` instead.
+*   `tff.framework.Block`, use `federated_language.framework.Block` instead.
+*   `tff.framework.Call`, use `federated_language.framework.Call` instead.
+*   `tff.framework.CompiledComputation`, use
+    `federated_language.frameworkCompiled.Computation` instead.
+*   `tff.framework.ComputationBuilding.Block`, use
+    `federated_language.frameworkComputationBuilding.Block` instead.
+*   `tff.framework.Data`, use `federated_language.framework.Data` instead.
+*   `tff.framework.Intrinsic`, use `federated_language.framework.Intrinsic`
+    instead.
+*   `tff.framework.Lambda`, use `federated_language.framework.Lambda` instead.
+*   `tff.framework.Literal`, use `federated_language.framework.Literal` instead.
+*   `tff.framework.Placement`, use `federated_language.framework.Placement`
+    instead.
+*   `tff.framework.Reference`, use `federated_language.framework.Reference`
+    instead.
+*   `tff.framework.Selection`, use `federated_language.framework.Selection`
+    instead.
+*   `tff.framework.Struct`, use `federated_language.framework.Struct` instead.
+*   `tff.framework.UnexpectedBlockError`, use
+    `federated_language.framework.UnexpectedBlockError` instead.
+*   `tff.framework.FEDERATED_AGGREGATE`, use
+    `federated_language.framework.FEDERATED_AGGREGATE` instead.
+*   `tff.framework.FEDERATED_APPLY`, use
+    `federated_language.framework.FEDERATED_APPLY` instead.
+*   `tff.framework.FEDERATED_BROADCAST`, use
+    `federated_language.framework.FEDERATED_BROADCAST` instead.
+*   `tff.framework.FEDERATED_EVAL_AT_CLIENTS`, use
+    `federated_language.framework.FEDERATED_EVAL_AT_CLIENTS` instead.
+*   `tff.framework.FEDERATED_EVAL_AT_SERVER`, use
+    `federated_language.framework.FEDERATED_EVAL_AT_SERVER` instead.
+*   `tff.framework.FEDERATED_MAP`, use
+    `federated_language.framework.FEDERATED_MAP` instead.
+*   `tff.framework.FEDERATED_MAP_ALL_EQUAL`, use
+    `federated_language.framework.FEDERATED_MAP_ALL_EQUAL` instead.
+*   `tff.framework.FEDERATED_SUM`, use
+    `federated_language.framework.FEDERATED_SUM` instead.
+*   `tff.framework.FEDERATED_VALUE_AT_CLIENTS`, use
+    `federated_language.framework.FEDERATED_VALUE_AT_CLIENTS` instead.
+*   `tff.framework.FEDERATED_VALUE_AT_SERVER`, use
+    `federated_language.framework.FEDERATED_VALUE_AT_SERVER` instead.
+*   `tff.framework.FEDERATED_ZIP_AT_CLIENTS`, use
+    `federated_language.framework.FEDERATED_ZIP_AT_CLIENTS` instead.
+*   `tff.framework.FEDERATED_ZIP_AT_SERVER`, use
+    `federated_language.framework.FEDERATED_ZIP_AT_SERVER` instead.
+*   `tff.FederatedType`, use`federated_language.FederatedType` instead.
+*   `tff.FunctionType`, use`federated_language.FunctionType` instead.
+*   `tff.SequenceType`, use`federated_language.SequenceType` instead.
+*   `tff.StructType`, use`federated_language.StructType` instead.
+*   `tff.StructWithPythonType`, use`federated_language.StructWithPythonType`
+    instead.
+*   `tff.TensorType`, use`federated_language.TensorType` instead.
+*   `tff.to_type`, use`federated_language.to_type` instead.
+*   `tff.Type`, use`federated_language.Type` instead.
 
 ## Release 0.88.0
 
@@ -2054,7 +2134,7 @@ amitport, ronaldseoh
 *   Removed `tff.framework.set_default_executor` function, instead you should
     use the more convenient `tff.backends.native.set_local_execution_context`
     function or manually construct a context an set it using
-    `tff.framework.set_default_context`.
+    `federated_language.framework.set_default_context`.
 *   The `tff.Computation` base class now contains an abstract `__hash__` method,
     to ensure compilation results can be cached. Any custom implementations of
     this interface should be updated accordingly.

@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.environments.tensorflow_backend import typ
 
 def get_session_token() -> tf.Tensor:
   """Returns a string tensor identifying the current session."""
-  context = federated_language.framework.global_context_stack.current
+  context = federated_language.framework.get_context_stack().current
   if not isinstance(context, TensorFlowComputationContext):
     raise federated_language.framework.ContextError(
         'Session tokens can only be retrieved from within the '
@@ -83,9 +83,7 @@ class TensorFlowComputationContext(federated_language.framework.SyncContext):
     py_typecheck.check_type(
         comp, federated_language.framework.ConcreteComputation
     )
-    computation_proto = (
-        federated_language.framework.ConcreteComputation.get_proto(comp)
-    )
+    computation_proto = comp.to_proto()
     computation_oneof = computation_proto.WhichOneof('computation')
     if computation_oneof != 'tensorflow':
       raise ValueError(

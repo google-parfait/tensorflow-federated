@@ -69,7 +69,7 @@ def _tf_wrapper_fn(
   fn = federated_language.framework.wrap_as_zero_or_one_arg_callable(
       fn, parameter_type, unpack
   )
-  context_stack = federated_language.framework.global_context_stack
+  context_stack = federated_language.framework.get_context_stack()
   comp_pb, extra_type_spec = (
       tensorflow_serialization.serialize_py_fn_as_tf_computation(
           fn, parameter_type, context_stack

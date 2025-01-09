@@ -277,7 +277,7 @@ def serialize_value(
     return _serialize_computation(value, type_spec)
   elif isinstance(value, federated_language.framework.ConcreteComputation):
     return _serialize_computation(
-        federated_language.framework.ConcreteComputation.get_proto(value),
+        value.to_proto(),
         executor_utils.reconcile_value_with_type_spec(value, type_spec),
     )
   elif type_spec is None:

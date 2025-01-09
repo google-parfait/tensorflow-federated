@@ -58,9 +58,7 @@ class RemoteValueTest(parameterized.TestCase):
   def test_compute_returns_result_with_stream_structs(
       self, stream_structs, mock_stub
   ):
-    proto = federated_language.framework.ConcreteComputation.get_proto(
-        _empty_struct
-    )
+    proto = _empty_struct.to_proto()
     value = executor_pb2.Value(computation=proto)
     mock_stub.compute.return_value = executor_pb2.ComputeResponse(value=value)
     executor = remote_executor.RemoteExecutor(

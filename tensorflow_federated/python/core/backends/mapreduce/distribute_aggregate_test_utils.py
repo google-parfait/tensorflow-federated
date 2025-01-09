@@ -62,7 +62,7 @@ def _make_distribute_aggregate_form_example(
     )[0]
     return federated_language.framework.ConcreteComputation(
         computation_proto=transformed_comp.proto,
-        context_stack=federated_language.framework.global_context_stack,
+        context_stack=federated_language.framework.get_context_stack(),
     )
 
   return DistributeAggregateFormExample(
@@ -184,7 +184,7 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
         results.comp
     )
     return federated_language.Value(
-        federated_language.framework.global_context_stack.current.bind_computation_to_reference(
+        federated_language.framework.get_context_stack().current.bind_computation_to_reference(
             unzipped_results
         )
     )
@@ -399,7 +399,7 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
         results.comp
     )
     client_update = federated_language.Value(
-        federated_language.framework.global_context_stack.current.bind_computation_to_reference(
+        federated_language.framework.get_context_stack().current.bind_computation_to_reference(
             unzipped_results
         )
     )

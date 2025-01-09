@@ -25,7 +25,8 @@ def build_sum_client_arg_computation(
     server_arg_type: federated_language.FederatedType,
     clients_arg_type: federated_language.FederatedType,
 ) -> federated_language.Computation:
-  @tff.federated_computation(server_arg_type, clients_arg_type)
+
+  @federated_language.federated_computation(server_arg_type, clients_arg_type)
   def up_to_merge(server_arg, client_arg):
     del server_arg  # Unused
     return tff.federated_sum(client_arg)
@@ -34,7 +35,8 @@ def build_sum_client_arg_computation(
 
 
 def build_noarg_count_clients_computation() -> federated_language.Computation:
-  @tff.federated_computation()
+
+  @federated_language.federated_computation()
   def up_to_merge():
     return tff.federated_sum(tff.federated_value(1, federated_language.CLIENTS))
 
@@ -44,7 +46,8 @@ def build_noarg_count_clients_computation() -> federated_language.Computation:
 def build_whimsy_merge_computation(
     arg_type: federated_language.Type,
 ) -> federated_language.Computation:
-  @tff.federated_computation(arg_type, arg_type)
+
+  @federated_language.federated_computation(arg_type, arg_type)
   def merge(arg0, arg1):
     del arg1  # Unused
     return arg0
@@ -69,7 +72,7 @@ def build_whimsy_after_merge_computation(
 ) -> federated_language.Computation:
   if original_arg_type is not None:
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         original_arg_type,
         federated_language.FederatedType(
             merge_result_type, federated_language.SERVER
@@ -81,7 +84,7 @@ def build_whimsy_after_merge_computation(
 
   else:
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         federated_language.FederatedType(
             merge_result_type, federated_language.SERVER
         )
@@ -97,7 +100,7 @@ def build_return_merge_result_computation(
     merge_result_type: federated_language.Type,
 ) -> federated_language.Computation:
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       original_arg_type,
       federated_language.FederatedType(
           merge_result_type, federated_language.SERVER
@@ -114,7 +117,7 @@ def build_return_merge_result_with_no_first_arg_computation(
     merge_result_type: federated_language.Type,
 ) -> federated_language.Computation:
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       federated_language.FederatedType(
           merge_result_type, federated_language.SERVER
       )
@@ -135,7 +138,7 @@ def build_sum_merge_with_first_arg_computation(
   def add(x, y):
     return x + y
 
-  @tff.federated_computation(
+  @federated_language.federated_computation(
       original_arg_type,
       federated_language.FederatedType(
           merge_result_type, federated_language.SERVER
@@ -157,7 +160,7 @@ class MergeableCompFormTest(absltest.TestCase):
 
     bad_merge = build_whimsy_merge_computation(np.float32)
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         up_to_merge.type_signature.parameter,
         federated_language.FederatedType(
             bad_merge.type_signature.result, federated_language.SERVER
@@ -177,12 +180,12 @@ class MergeableCompFormTest(absltest.TestCase):
         federated_language.FederatedType(np.int32, federated_language.CLIENTS),
     )
 
-    @tff.federated_computation(np.int32, np.int32)
+    @federated_language.federated_computation(np.int32, np.int32)
     def bad_merge(x, y):
       del x, y  # Unused
       return 1.0  # of type float.
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         up_to_merge.type_signature.parameter,
         federated_language.FederatedType(
             bad_merge.type_signature.result, federated_language.SERVER
@@ -204,7 +207,7 @@ class MergeableCompFormTest(absltest.TestCase):
 
     merge = build_whimsy_merge_computation(np.int32)
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         federated_language.FederatedType(
             merge.type_signature.result, federated_language.SERVER
         )
@@ -219,7 +222,7 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_up_to_merge_returns_non_server_placed_result(self):
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         federated_language.FederatedType(np.int32, federated_language.SERVER)
     )
     def bad_up_to_merge(x):
@@ -245,7 +248,7 @@ class MergeableCompFormTest(absltest.TestCase):
 
     merge = build_whimsy_merge_computation(np.int32)
 
-    @tff.federated_computation(
+    @federated_language.federated_computation(
         up_to_merge.type_signature.parameter,
         federated_language.FederatedType(
             merge.type_signature.result, federated_language.SERVER
@@ -358,7 +361,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(num_contexts):
-      context = tff.framework.AsyncExecutionContext(
+      context = federated_language.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
               max_concurrent_computation_calls=1
           ),
@@ -436,7 +439,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(5):
-      context = tff.framework.AsyncExecutionContext(
+      context = federated_language.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
               max_concurrent_computation_calls=1
           ),
@@ -492,7 +495,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(1):
-      context = tff.framework.AsyncExecutionContext(
+      context = federated_language.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
               max_concurrent_computation_calls=1
           ),
@@ -529,7 +532,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(num_executors):
-      context = tff.framework.AsyncExecutionContext(
+      context = federated_language.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
               default_num_clients=int(num_clients / num_executors),
               max_concurrent_computation_calls=1,
@@ -548,12 +551,13 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     self.assertEqual(result, expected_result)
 
   def test_invoke_raises_computation_no_compiler(self):
-    @tff.federated_computation()
+
+    @federated_language.federated_computation()
     def return_one():
       return 1
 
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(
+    context = federated_language.framework.AsyncExecutionContext(
         executor_fn=factory,
         transform_args=tff.tensorflow.transform_args,
         transform_result=tff.tensorflow.transform_result,
@@ -564,12 +568,13 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       context.invoke(return_one)
 
   def test_invoke_raises_computation_not_compiled_to_mergeable_comp_form(self):
-    @tff.federated_computation()
+
+    @federated_language.federated_computation()
     def return_one():
       return 1
 
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(
+    context = federated_language.framework.AsyncExecutionContext(
         executor_fn=factory,
         transform_args=tff.tensorflow.transform_args,
         transform_result=tff.tensorflow.transform_result,

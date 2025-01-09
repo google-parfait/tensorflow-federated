@@ -33,7 +33,7 @@ def count_total(ds):
   return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
 
-@tff.federated_computation(
+@federated_language.federated_computation(
     federated_language.FederatedType(
         federated_language.SequenceType(np.float32), federated_language.CLIENTS
     ),

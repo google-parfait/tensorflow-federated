@@ -199,7 +199,7 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
   def setUp(self):
     super().setUp()
     self.maxDiff = None
-    federated_language.framework.global_context_stack.set_default_context(
+    federated_language.framework.get_context_stack().set_default_context(
         _create_test_context()
     )
 
@@ -637,7 +637,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       return self.time_after_end
 
     self._mock_return_time_fn = _return_time
-    federated_language.framework.global_context_stack.set_default_context(
+    federated_language.framework.get_context_stack().set_default_context(
         _create_test_context()
     )
 

@@ -175,7 +175,7 @@ def create_null_federated_secure_modular_sum():
 
 
 def _bind_comp_as_reference(comp):
-  context = federated_language.framework.global_context_stack.current
+  context = federated_language.framework.get_context_stack().current
   if not isinstance(context, federated_language.framework.SymbolBindingContext):
     raise federated_language.framework.ContextError(
         f'Attempted to construct an intrinsic in context {context} which '

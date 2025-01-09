@@ -109,7 +109,7 @@ def _jax_wrapper_fn(
           f' for more information.\nFound: {parameter_type}'
       )
 
-  context_stack = federated_language.framework.global_context_stack
+  context_stack = federated_language.framework.get_context_stack()
   comp_pb, extra_type_spec = jax_serialization.serialize_jax_computation(
       fn, parameter_type, context_stack
   )

@@ -36,7 +36,7 @@ class JaxSerializationTest(absltest.TestCase):
     parameter_type = federated_language.TensorType(dtype=np.int32, shape=None)
     with self.assertRaisesRegex(TypeError, 'fully-defined TensorShapes'):
       jax_serialization.serialize_jax_computation(
-          fn, parameter_type, federated_language.framework.global_context_stack
+          fn, parameter_type, federated_language.framework.get_context_stack()
       )
 
   def test_serialize_jax_computation_raises_type_error_with_unknown_dimension(
@@ -48,7 +48,7 @@ class JaxSerializationTest(absltest.TestCase):
     parameter_type = federated_language.TensorType(dtype=np.int32, shape=[None])
     with self.assertRaisesRegex(TypeError, 'fully-defined TensorShapes'):
       jax_serialization.serialize_jax_computation(
-          fn, parameter_type, federated_language.framework.global_context_stack
+          fn, parameter_type, federated_language.framework.get_context_stack()
       )
 
   def test_serialize_jax_with_noarg_to_int32(self):
@@ -59,7 +59,7 @@ class JaxSerializationTest(absltest.TestCase):
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
         traced_fn,
         parameter_type,
-        federated_language.framework.global_context_stack,
+        federated_language.framework.get_context_stack(),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
@@ -90,7 +90,7 @@ class JaxSerializationTest(absltest.TestCase):
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
         traced_fn,
         parameter_type,
-        federated_language.framework.global_context_stack,
+        federated_language.framework.get_context_stack(),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
@@ -120,7 +120,7 @@ class JaxSerializationTest(absltest.TestCase):
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
         traced_fn,
         parameter_type,
-        federated_language.framework.global_context_stack,
+        federated_language.framework.get_context_stack(),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
@@ -154,7 +154,7 @@ class JaxSerializationTest(absltest.TestCase):
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
         traced_fn,
         parameter_type,
-        federated_language.framework.global_context_stack,
+        federated_language.framework.get_context_stack(),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
@@ -209,7 +209,7 @@ class JaxSerializationTest(absltest.TestCase):
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
         traced_fn,
         parameter_type,
-        federated_language.framework.global_context_stack,
+        federated_language.framework.get_context_stack(),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
@@ -258,7 +258,7 @@ class JaxSerializationTest(absltest.TestCase):
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
         traced_fn,
         parameter_type,
-        federated_language.framework.global_context_stack,
+        federated_language.framework.get_context_stack(),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
@@ -284,7 +284,7 @@ class JaxSerializationTest(absltest.TestCase):
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
         traced_fn,
         parameter_type,
-        federated_language.framework.global_context_stack,
+        federated_language.framework.get_context_stack(),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
@@ -314,7 +314,7 @@ class JaxSerializationTest(absltest.TestCase):
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
         traced_fn,
         parameter_type,
-        federated_language.framework.global_context_stack,
+        federated_language.framework.get_context_stack(),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
@@ -339,7 +339,7 @@ class JaxSerializationTest(absltest.TestCase):
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
         identity_fn,
         parameter_type,
-        federated_language.framework.global_context_stack,
+        federated_language.framework.get_context_stack(),
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')

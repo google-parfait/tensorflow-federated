@@ -31,7 +31,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             lambda: tf.constant(99),
             None,
-            federated_language.framework.global_context_stack,
+            federated_language.framework.get_context_stack(),
         )
     )
     self.assertEqual(
@@ -65,7 +65,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             table_lookup,
             federated_language.TensorType(np.str_, (None,)),
-            federated_language.framework.global_context_stack,
+            federated_language.framework.get_context_stack(),
         )
     )
     self.assertEqual(
@@ -100,7 +100,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             lambda x: x + 3,
             federated_language.TensorType(np.int32),
-            federated_language.framework.global_context_stack,
+            federated_language.framework.get_context_stack(),
         )
     )
     self.assertEqual(
@@ -133,7 +133,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
             federated_language.StructWithPythonType(
                 [('x', np.int32), ('y', (np.float32, [2]))], batch_type
             ),
-            federated_language.framework.global_context_stack,
+            federated_language.framework.get_context_stack(),
         )
     )
     self.assertEqual(
@@ -165,7 +165,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             _legacy_dataset_reducer_example,
             federated_language.SequenceType(np.int64),
-            federated_language.framework.global_context_stack,
+            federated_language.framework.get_context_stack(),
         )
     )
     self.assertEqual(
@@ -202,7 +202,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             _legacy_dataset_reducer_example,
             federated_language.SequenceType([np.int64]),
-            federated_language.framework.global_context_stack,
+            federated_language.framework.get_context_stack(),
         )
     )
     self.assertEqual(
