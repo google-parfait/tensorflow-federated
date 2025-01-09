@@ -663,9 +663,9 @@ class MergeableCompExecutionContext(
         assumed to implement their `invoke` method as a coroutine function,
         returning an awaitable.
       compiler_fn: An optional callable which accepts a
-        `tff.framework.ConcreteComputation` and returns an instance of
-        `MergeableCompForm`. If not provided, this context will only execute
-        instances of `MergeableCompForm` directly.
+        `federated_language.framework.ConcreteComputation` and returns an
+        instance of `MergeableCompForm`. If not provided, this context will only
+        execute instances of `MergeableCompForm` directly.
       transform_args: An `Optional` `Callable` used to transform the args before
         they are passed to the computation.
       transform_result: An `Optional` `Callable` used to transform the result

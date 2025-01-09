@@ -1076,11 +1076,12 @@ def get_map_reduce_form_for_computation(
   """Constructs `tff.backends.mapreduce.MapReduceForm` for a computation.
 
   Args:
-    comp: An instance of `tff.framework.ConcreteComputation` that is compatible
-      with MapReduce form. The computation must take exactly two arguments, and
-      the first must be a state value placed at `SERVER`. The computation must
-      return exactly two values. The type of the first element in the result
-      must also be assignable to the first element of the parameter.
+    comp: An instance of `federated_language.framework.ConcreteComputation` that
+      is compatible with MapReduce form. The computation must take exactly two
+      arguments, and the first must be a state value placed at `SERVER`. The
+      computation must return exactly two values. The type of the first element
+      in the result must also be assignable to the first element of the
+      parameter.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the TensorFlow graphs backing the
       resulting `tff.backends.mapreduce.MapReduceForm`. These options are
@@ -1093,7 +1094,7 @@ def get_map_reduce_form_for_computation(
 
   Returns:
     An instance of `tff.backends.mapreduce.MapReduceForm` equivalent to the
-    provided `tff.framework.ConcreteComputation`.
+    provided `federated_language.framework.ConcreteComputation`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
