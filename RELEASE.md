@@ -270,6 +270,12 @@ and this project adheres to
 *   `tff.sequence_map`, use `federated_language.sequence_map` instead.
 *   `tff.sequence_reduce`, use `federated_language.sequence_reduce` instead.
 *   `tff.sequence_sum`, use `federated_language.sequence_sum` instead.
+*   `tff.framework.ConcreteComputation`, use
+    `federated_language.framework.ConcreteComputation` instead.
+*   `tff.framework.pack_args_into_struct`, use
+    `federated_language.framework.pack_args_into_struct` instead.
+*   `tff.framework.unpack_args_from_struct`, use
+    `federated_language.framework.unpack_args_from_struct` instead.
 *   `tff.framework.PlacementLiteral`, use
     `federated_language.framework.PlacementLiteral` instead.
 

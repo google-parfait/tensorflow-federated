@@ -19,10 +19,6 @@ unique_name_generator = federated_language.framework.unique_name_generator
 transform_postorder = federated_language.framework.transform_postorder
 transform_preorder = federated_language.framework.transform_preorder
 from tensorflow_federated.python.core.impl.compiler.transformations import to_call_dominant
-
-ConcreteComputation = federated_language.framework.ConcreteComputation
-pack_args_into_struct = federated_language.framework.pack_args_into_struct
-unpack_args_from_struct = federated_language.framework.unpack_args_from_struct
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompExecutionContext
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompForm
 from tensorflow_federated.python.core.impl.executor_stacks.executor_factory import local_cpp_executor_factory
