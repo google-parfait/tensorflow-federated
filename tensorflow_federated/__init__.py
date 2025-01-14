@@ -49,7 +49,6 @@ from federated_language import federated_zip
 from federated_language import sequence_map
 from federated_language import sequence_reduce
 from federated_language import sequence_sum
-from federated_language import to_value
 from federated_language import Value
 # pylint: enable=g-importing-member
 

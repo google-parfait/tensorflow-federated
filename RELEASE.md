@@ -247,6 +247,7 @@ and this project adheres to
 *   `tff.TensorType`, use`federated_language.TensorType` instead.
 *   `tff.to_type`, use`federated_language.to_type` instead.
 *   `tff.Type`, use`federated_language.Type` instead.
+*   `tff.to_value`, use`federated_language.to_value` instead.
 
 ## Release 0.88.0
 
