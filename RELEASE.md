@@ -270,6 +270,8 @@ and this project adheres to
 *   `tff.sequence_map`, use `federated_language.sequence_map` instead.
 *   `tff.sequence_reduce`, use `federated_language.sequence_reduce` instead.
 *   `tff.sequence_sum`, use `federated_language.sequence_sum` instead.
+*   `tff.framework.PlacementLiteral`, use
+    `federated_language.framework.PlacementLiteral` instead.
 
 ## Release 0.88.0
 

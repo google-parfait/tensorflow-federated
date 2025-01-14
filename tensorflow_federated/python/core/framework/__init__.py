@@ -32,6 +32,4 @@ from tensorflow_federated.python.core.impl.executors.remote_executor_grpc_stub i
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
 from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
 from tensorflow_federated.python.core.impl.executors.value_serialization import serialize_value
-
-PlacementLiteral = federated_language.framework.PlacementLiteral
 # pylint: enable=g-importing-member
