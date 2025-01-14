@@ -62,7 +62,8 @@ def build_reservoir_type(
   """Create the TFF type for the reservoir's state.
 
   `UnweightedReservoirSamplingFactory` will use this type as the "state" type in
-  a `tff.federated_aggregate` (an input to `accumulate`, `merge` and `report`).
+  a `federated_language.federated_aggregate` (an input to `accumulate`, `merge`
+  and `report`).
 
   Args:
     sample_value_type: The `federated_language.Type` of the values that will be
@@ -103,8 +104,8 @@ def build_reservoir_type(
     return t, False
 
   # TODO: b/181155367 - creating a value from a type for the `zero` is a common
-  # pattern for users of `tff.federated_aggregate` that could be made easier
-  # for TFF users. Replace this once such helper exists.
+  # pattern for users of `federated_language.federated_aggregate` that could be
+  # made easier for TFF users. Replace this once such helper exists.
   return federated_language.to_type(
       collections.OrderedDict(
           random_seed=federated_language.TensorType(np.int64, shape=[2]),

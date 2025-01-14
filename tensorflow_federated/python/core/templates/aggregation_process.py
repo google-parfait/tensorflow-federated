@@ -53,7 +53,8 @@ class AggregationProcess(measured_process.MeasuredProcess):
     - Actual aggregation.
     - A post-aggregation computation placed at `SERVER`.
   The second step can be realized by direct application of appropriate intrinsic
-  such as `tff.federated_sum`, or by delegation to (one or more) "inner"
+  such as `federated_language.federated_sum`, or by delegation to (one or more)
+  "inner"
   aggregation processes.
 
   Both `initialize` and `next` must be `federated_language.Computation`s with
@@ -119,7 +120,7 @@ class AggregationProcess(measured_process.MeasuredProcess):
           'Provided `initialize_fn` must return a federated type, but found '
           f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
           'see a collection of federated types, try wrapping the returned '
-          'value in `tff.federated_zip` before returning.'
+          'value in `federated_language.federated_zip` before returning.'
       )
     next_types = structure.flatten(
         next_fn.type_signature.parameter

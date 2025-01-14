@@ -154,25 +154,29 @@ def build_federated_averaging_process(
     Returns:
       A tuple of updated `ServerState` and `tf.Tensor` of average loss.
     """
-    server_message = tff.federated_map(server_message_fn, server_state)
-    server_message_at_client = tff.federated_broadcast(server_message)
+    server_message = federated_language.federated_map(
+        server_message_fn, server_state
+    )
+    server_message_at_client = federated_language.federated_broadcast(
+        server_message
+    )
 
-    client_outputs = tff.federated_map(
+    client_outputs = federated_language.federated_map(
         client_update_fn,
         (federated_dataset, client_states, server_message_at_client),
     )
 
     weight_denom = client_outputs.client_weight
-    round_model_delta = tff.federated_mean(
+    round_model_delta = federated_language.federated_mean(
         client_outputs.weights_delta, weight=weight_denom
     )
-    total_iters_count = tff.federated_sum(
+    total_iters_count = federated_language.federated_sum(
         client_outputs.client_state.iters_count
     )
-    server_state = tff.federated_map(
+    server_state = federated_language.federated_map(
         server_update_fn, (server_state, round_model_delta, total_iters_count)
     )
-    round_loss_metric = tff.federated_mean(
+    round_loss_metric = federated_language.federated_mean(
         client_outputs.model_output, weight=weight_denom
     )
 
@@ -181,7 +185,9 @@ def build_federated_averaging_process(
   @federated_language.federated_computation
   def server_init_tff():
     """Orchestration logic for server model initialization."""
-    return tff.federated_value(server_init_tf(), federated_language.SERVER)
+    return federated_language.federated_value(
+        server_init_tf(), federated_language.SERVER
+    )
 
   return tff.templates.IterativeProcess(
       initialize_fn=server_init_tff, next_fn=run_one_round

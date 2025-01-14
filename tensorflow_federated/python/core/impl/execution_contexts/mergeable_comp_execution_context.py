@@ -73,7 +73,7 @@ class MergeableCompForm:
   @federated_language.federated_computation(...)
   def single_aggregation(arg):
     result_at_clients = work(arg)
-    agg_result = tff.federated_aggregate(
+    agg_result = federated_language.federated_aggregate(
         result_at_clients, zero, accumulate, merge, report)
     return postprocess(arg, agg_result)
   ```
@@ -83,7 +83,7 @@ class MergeableCompForm:
   @federated_language.federated_computation(federated_language.AbstractType('T'))
   def up_to_merge(arg):
     result_at_clients = work(arg)
-    agg_result = tff.federated_aggregate(
+    agg_result = federated_language.federated_aggregate(
         result_at_clients, accumulate_zero, accumulate, merge, identity_report)
     return agg_result
 

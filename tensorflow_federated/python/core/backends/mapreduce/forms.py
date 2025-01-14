@@ -135,15 +135,16 @@ class BroadcastForm:
   @federated_language.federated_computation(server_data_type, client_data_type)
   def _(server_data, client_data):
     # Select out the bit of server context to send to the clients.
-    context_at_server = tff.federated_map(
+    context_at_server = federated_language.federated_map(
       self.compute_server_context, server_data)
 
     # Broadcast the context to the clients.
-    context_at_clients = tff.federated_broadcast(context_at_server)
+    context_at_clients =
+    federated_language.federated_broadcast(context_at_server)
 
     # Compute some value on the clients based on the server context and
     # the client data.
-    return tff.federated_map(
+    return federated_language.federated_map(
       self.client_processing, (context_at_clients, client_data))
   ```
   """

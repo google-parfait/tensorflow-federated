@@ -56,7 +56,7 @@ class DistributionProcess(measured_process.MeasuredProcess):
           'Provided `initialize_fn` must return a federated type, but found '
           f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
           'see a collection of federated types, try wrapping the returned '
-          'value in `tff.federated_zip` before returning.'
+          'value in `federated_language.federated_zip` before returning.'
       )
     next_types = structure.flatten(
         next_fn.type_signature.parameter

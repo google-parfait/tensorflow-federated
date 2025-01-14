@@ -87,12 +87,14 @@ def round_comp(server_state, client_data):
   # what will happen in this round.
 
   client_input = (
-    tff.federated_broadcast(tff.federated_map(prepare, server_state)))
+    federated_language.federated_broadcast(federated_language.federated_map(prepare,
+    server_state)))
 
   # The clients all independently do local work and produce updates, plus the
   # optional client-side outputs.
 
-  client_updates = tff.federated_map(work, [client_data, client_input])
+  client_updates = federated_language.federated_map(work, [client_data,
+  client_input])
 
   # `client_updates` is a 4-tuple whose elements are passed to the following
   # intrinsics:
@@ -103,11 +105,12 @@ def round_comp(server_state, client_data):
   # The intrinsics aggregate the updates across the system into a single global
   # update at the server.
 
-  simple_agg = tff.federated_aggregate(
+  simple_agg = federated_language.federated_aggregate(
     client_updates[0], zero(), accumulate, merge, report))
   secure_aggs = [
-    tff.federated_secure_sum_bitwidth(client_updates[1], bitwidth()),
-    tff.federated_secure_sum(client_updates[2], max_input()),
+    federated_language.federated_secure_sum_bitwidth(client_updates[1],
+    bitwidth()),
+    federated_language.federated_secure_sum(client_updates[2], max_input()),
     tff.backends.mapreduce.federated_secure_modular_sum(
         client_updates[3], modulus()),
   ]
@@ -118,7 +121,7 @@ def round_comp(server_state, client_data):
   # emit from this round.
 
   new_server_state, server_output = (
-    tff.federated_map(update, [server_state, global_update]))
+    federated_language.federated_map(update, [server_state, global_update]))
 
   # The updated server state, server- and client-side outputs are returned as
   # results of this round.
@@ -128,7 +131,8 @@ def round_comp(server_state, client_data):
 
 Details on the seven main pieces of pure TensorFlow logic in the `MapReduceForm`
 are below. Please also consult the documentation for related federated operators
-for more detail (particularly the `tff.federated_aggregate()`, as several of the
+for more detail (particularly the `federated_language.federated_aggregate()`, as
+several of the
 components below correspond directly to the parameters of that operator).
 
 * `prepare` represents the preparatory steps taken by the server to generate

@@ -68,15 +68,16 @@ will need to use a
     subtleties with using randomness in decentralized computations, and proposes
     best practices and recommend patterns.
 
-*   [Sending Different Data To Particular Clients With tff.federated_select](federated_select.ipynb)
-    introduces the `tff.federated_select` operator and gives a simple example of
+*   [Sending Different Data To Particular Clients With
+    federated_language.federated_select](federated_select.ipynb) introduces the
+    `federated_language.federated_select` operator and gives a simple example of
     a custom federated algorithm that sends different data to different clients.
 
 *   [Client-efficient large-model federated learning via federated_select and
     sparse aggregation](sparse_federated_learning.ipynb) shows how TFF can be
     used to train a very large model where each client device only downloads and
-    updates a small part of the model, using `tff.federated_select` and sparse
-    aggregation.
+    updates a small part of the model, using
+    `federated_language.federated_select` and sparse aggregation.
 
 *   [Federated Learning with Differential Privacy in TFF](federated_learning_with_differential_privacy.ipynb)
     demonstrates how to use TFF to train models with user-level differential

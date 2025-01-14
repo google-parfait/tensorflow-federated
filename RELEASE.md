@@ -248,6 +248,28 @@ and this project adheres to
 *   `tff.to_type`, use`federated_language.to_type` instead.
 *   `tff.Type`, use`federated_language.Type` instead.
 *   `tff.to_value`, use`federated_language.to_value` instead.
+*   `tff.federated_aggregate`, use `federated_language.federated_aggregate`
+    instead.
+*   `tff.federated_broadcast`, use `federated_language.federated_broadcast`
+    instead.
+*   `tff.federated_eval`, use `federated_language.federated_eval` instead.
+*   `tff.federated_map`, use `federated_language.federated_map` instead.
+*   `tff.federated_max`, use `federated_language.federated_max` instead.
+*   `tff.federated_mean`, use `federated_language.federated_mean` instead.
+*   `tff.federated_min`, use `federated_language.federated_min` instead.
+*   `tff.federated_secure_select`, use
+    `federated_language.federated_secure_select` instead.
+*   `tff.federated_secure_sum`, use `federated_language.federated_secure_sum`
+    instead.
+*   `tff.federated_secure_sum_bitwidth`, use
+    `federated_language.federated_secure_sum_bitwidth` instead.
+*   `tff.federated_select`, use `federated_language.federated_select` instead.
+*   `tff.federated_sum`, use `federated_language.federated_sum` instead.
+*   `tff.federated_value`, use `federated_language.federated_value` instead.
+*   `tff.federated_zip`, use `federated_language.federated_zip` instead.
+*   `tff.sequence_map`, use `federated_language.sequence_map` instead.
+*   `tff.sequence_reduce`, use `federated_language.sequence_reduce` instead.
+*   `tff.sequence_sum`, use `federated_language.sequence_sum` instead.
 
 ## Release 0.88.0
 

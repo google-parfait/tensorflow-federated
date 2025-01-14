@@ -68,7 +68,7 @@ def _type_check_initialize_fn(
         'Provided `initialize_fn` must return a federated type, but found '
         f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
         'see a collection of federated types, try wrapping the returned '
-        'value in `tff.federated_zip` before returning.'
+        'value in `federated_language.federated_zip` before returning.'
     )
   if initialize_fn.type_signature.result.placement != federated_language.SERVER:  # pytype: disable=attribute-error
     raise errors.TemplatePlacementError(

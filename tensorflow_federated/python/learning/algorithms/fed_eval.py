@@ -414,7 +414,7 @@ def build_fed_eval(
       that broadcasts the model weights on the server to the clients. It must
       support the signature `(input_values@SERVER -> output_values@CLIENTS)` and
       have empty state. If None, the server model is broadcast to the clients
-      using the default `tff.federated_broadcast`.
+      using the default `federated_language.federated_broadcast`.
     metrics_aggregation_process: An optional `tff.templates.AggregationProcess`
       which aggregates the local unfinalized metrics at clients to server and
       finalizes the metrics at server. The `tff.templates.AggregationProcess`

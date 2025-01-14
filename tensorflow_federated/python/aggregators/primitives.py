@@ -377,7 +377,7 @@ def _client_tensor_shift_for_secure_sum(value, lower_bound, upper_bound):
 
   This operation is performed on `federated_language.CLIENTS` to prepare values
   to format
-  compatible with `tff.federated_secure_sum_bitwidth` operator.
+  compatible with `federated_language.federated_secure_sum_bitwidth` operator.
 
   This clips elements of `value` to `[lower_bound, upper_bound]`, shifts and
   scales it to range `[0, 2**32-1]` and casts it to `tf.int64`. The specific
@@ -447,7 +447,7 @@ def _server_tensor_shift_for_secure_sum(
 
   This operation is performed on `federated_language.SERVER` to dequantize
   outputs of the
-  `tff.federated_secure_sum_bitwidth` operator.
+  `federated_language.federated_secure_sum_bitwidth` operator.
 
   It is reverse of `_client_tensor_shift_for_secure_sum` taking into account
   that `num_summands` elements were summed, so the inverse shift needs to be
@@ -532,7 +532,8 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   corresponding Tensor in `client_value`.
 
   This method converts each Tensor in provided `client_value` to appropriate
-  format and uses the `tff.federated_secure_sum_bitwidth` operator to realize
+  format and uses the `federated_language.federated_secure_sum_bitwidth`
+  operator to realize
   the sum.
 
   The dtype of Tensors in provided `client_value` can be one of `[tf.int32,

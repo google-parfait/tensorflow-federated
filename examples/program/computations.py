@@ -29,7 +29,7 @@ METRICS_TOTAL_SUM = 'total_sum'
 @federated_language.federated_computation()
 def initialize():
   """Returns the initial state."""
-  return tff.federated_value(0, federated_language.SERVER)
+  return federated_language.federated_value(0, federated_language.SERVER)
 
 
 @tff.tensorflow.computation(federated_language.SequenceType(np.int32))
@@ -66,15 +66,17 @@ def train(server_state: int, client_data: tf.data.Dataset):
   Returns:
     A tuple of the updated server state and the train metrics.
   """
-  client_sums = tff.federated_map(_sum_dataset, client_data)
-  total_sum = tff.federated_sum(client_sums)
-  updated_state = tff.federated_map(_sum_integers, (server_state, total_sum))
+  client_sums = federated_language.federated_map(_sum_dataset, client_data)
+  total_sum = federated_language.federated_sum(client_sums)
+  updated_state = federated_language.federated_map(
+      _sum_integers, (server_state, total_sum)
+  )
   metrics = collections.OrderedDict(
       [
           (METRICS_TOTAL_SUM, total_sum),
       ]
   )
-  metrics = tff.federated_zip(metrics)
+  metrics = federated_language.federated_zip(metrics)
   return updated_state, metrics
 
 
@@ -101,12 +103,12 @@ def evaluation(server_state: int, client_data: tf.data.Dataset):
     The evaluation metrics.
   """
   del server_state  # Unused.
-  client_sums = tff.federated_map(_sum_dataset, client_data)
-  total_sum = tff.federated_sum(client_sums)
+  client_sums = federated_language.federated_map(_sum_dataset, client_data)
+  total_sum = federated_language.federated_sum(client_sums)
   metrics = collections.OrderedDict(
       [
           (METRICS_TOTAL_SUM, total_sum),
       ]
   )
-  metrics = tff.federated_zip(metrics)
+  metrics = federated_language.federated_zip(metrics)
   return metrics

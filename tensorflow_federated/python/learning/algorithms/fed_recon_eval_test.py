@@ -807,7 +807,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     def build_custom_distributor(
         model_weights_type,
     ) -> distributors.DistributionProcess:
-      """Builds a `DistributionProcess` that wraps `tff.federated_broadcast`."""
+      """Builds a `DistributionProcess` that wraps `federated_language.federated_broadcast`."""
 
       @federated_language.federated_computation()
       def test_server_initialization():

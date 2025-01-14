@@ -42,8 +42,10 @@ class NoClientAggregationsTest(parameterized.TestCase):
 
     @federated_language.federated_computation()
     def empty_agg():
-      val_at_clients = tff.federated_value([], federated_language.CLIENTS)
-      return tff.federated_aggregate(
+      val_at_clients = federated_language.federated_value(
+          [], federated_language.CLIENTS
+      )
+      return federated_language.federated_aggregate(
           val_at_clients, [], accumulate, accumulate, report
       )
 
@@ -57,7 +59,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
         federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def fed_sum(x):
-      return tff.federated_sum(x)
+      return federated_language.federated_sum(x)
 
     result = fed_sum([])
     self.assertEqual(result, 0)
@@ -72,7 +74,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
         federated_language.FederatedType(np.float32, federated_language.CLIENTS)
     )
     def fed_mean(x):
-      return tff.federated_mean(x)
+      return federated_language.federated_mean(x)
 
     with self.assertRaises(RuntimeError):
       fed_mean([])
@@ -114,7 +116,7 @@ class DatasetManipulationTest(parameterized.TestCase):
         )
     )
     def do_a_federated_aggregate(client_ds):
-      return tff.federated_aggregate(
+      return federated_language.federated_aggregate(
           value=client_ds,
           zero=create_dataset(),
           accumulate=concat_datasets,
@@ -186,7 +188,7 @@ class FederatedComputationTest(parameterized.TestCase):
 
     @federated_language.federated_computation
     def foo(x):
-      return tff.federated_value(x, federated_language.SERVER)
+      return federated_language.federated_value(x, federated_language.SERVER)
 
     result = foo(10)
     self.assertIsNotNone(result)
@@ -199,7 +201,7 @@ class FederatedComputationTest(parameterized.TestCase):
         * 2
     )
     def foo(x):
-      return tff.federated_zip(x)
+      return federated_language.federated_zip(x)
 
     result = foo([[1, 2], [3, 4]])
     self.assertIsNotNone(result)
@@ -216,7 +218,7 @@ class FederatedComputationTest(parameterized.TestCase):
         * num_element
     )
     def foo(x):
-      return tff.federated_zip(x)
+      return federated_language.federated_zip(x)
 
     value = [list(range(num_clients))] * num_element
     result = foo(value)
@@ -233,7 +235,7 @@ class FederatedComputationTest(parameterized.TestCase):
         federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def map_add_one(federated_arg):
-      return tff.federated_map(add_one, federated_arg)
+      return federated_language.federated_map(add_one, federated_arg)
 
     result1 = map_add_one([0, 1])
     result2 = map_add_one([0, 1])
@@ -252,7 +254,7 @@ class FederatedComputationTest(parameterized.TestCase):
         federated_language.FederatedType(np.int32, federated_language.CLIENTS)
     )
     def map_add_one(federated_arg):
-      return tff.federated_map(add_one, federated_arg)
+      return federated_language.federated_map(add_one, federated_arg)
 
     result1 = map_add_one([0, 1])
     result2 = map_add_one([0, 1, 2])
@@ -289,7 +291,7 @@ class FederatedComputationTest(parameterized.TestCase):
         )
     )
     def bar(server_tuple):
-      return tff.federated_map(foo, server_tuple)
+      return federated_language.federated_map(foo, server_tuple)
 
     result = bar(collections.OrderedDict(x=1, y=2))
     self.assertEqual(result, 1)
@@ -309,7 +311,7 @@ class FederatedComputationTest(parameterized.TestCase):
         )
     )
     def bar(clients_tuple):
-      return tff.federated_map(foo, clients_tuple)
+      return federated_language.federated_map(foo, clients_tuple)
 
     result = bar([collections.OrderedDict(x=1, y=2)])
     self.assertEqual(result, [1])
@@ -330,13 +332,13 @@ class FederatedComputationTest(parameterized.TestCase):
         )
     )
     def map_foo_at_clients(x):
-      return tff.federated_map(foo, x)
+      return federated_language.federated_map(foo, x)
 
     @federated_language.federated_computation(
         federated_language.FederatedType(tensor_type, federated_language.SERVER)
     )
     def map_foo_at_server(x):
-      return tff.federated_map(foo, x)
+      return federated_language.federated_map(foo, x)
 
     bad_tensor = np.array([1.0] * 10, dtype=np.float32)
     good_tensor = np.array([1.0], dtype=np.float32)
@@ -374,10 +376,10 @@ class FederatedComputationTest(parameterized.TestCase):
         ),
     )
     def select(server_val, client_keys):
-      max_key_at_server = tff.federated_value(
+      max_key_at_server = federated_language.federated_value(
           max_key, federated_language.SERVER
       )
-      return tff.federated_select(
+      return federated_language.federated_select(
           client_keys, max_key_at_server, server_val, gather
       )
 

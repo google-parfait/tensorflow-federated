@@ -205,11 +205,11 @@ def federated_secure_modular_sum(value, modulus):
   Example:
 
   ```python
-  value = tff.federated_value(5, federated_language.CLIENTS)
+  value = federated_language.federated_value(5, federated_language.CLIENTS)
   result = tff.backends.mapreduce.federated_secure_modular_sum(value, 3)
   # `result == (5 * num_clients % 3)@SERVER`
 
-  value = tff.federated_value((3, 9), federated_language.CLIENTS)
+  value = federated_language.federated_value((3, 9), federated_language.CLIENTS)
   result = tff.backends.mapreduce.federated_secure_modular_sum(
       value, (100, 200))
   # `result == (3 * num_clients % 100, 9 * num_clients % 100)@SERVER`

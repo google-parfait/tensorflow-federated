@@ -29,7 +29,7 @@ def build_sum_client_arg_computation(
   @federated_language.federated_computation(server_arg_type, clients_arg_type)
   def up_to_merge(server_arg, client_arg):
     del server_arg  # Unused
-    return tff.federated_sum(client_arg)
+    return federated_language.federated_sum(client_arg)
 
   return up_to_merge
 
@@ -38,7 +38,9 @@ def build_noarg_count_clients_computation() -> federated_language.Computation:
 
   @federated_language.federated_computation()
   def up_to_merge():
-    return tff.federated_sum(tff.federated_value(1, federated_language.CLIENTS))
+    return federated_language.federated_sum(
+        federated_language.federated_value(1, federated_language.CLIENTS)
+    )
 
   return up_to_merge
 
@@ -145,7 +147,9 @@ def build_sum_merge_with_first_arg_computation(
       ),
   )
   def after_merge(original_arg, merge_result):
-    return tff.federated_map(add, (original_arg[0], merge_result))
+    return federated_language.federated_map(
+        add, (original_arg[0], merge_result)
+    )
 
   return after_merge
 
@@ -257,7 +261,7 @@ class MergeableCompFormTest(absltest.TestCase):
     def after_merge_with_sum(original_arg, merged_arg):
       del merged_arg  # Unused
       # Second element in original arg is the clients-placed value.
-      return tff.federated_sum(original_arg[1])
+      return federated_language.federated_sum(original_arg[1])
 
     with self.assertRaises(ValueError):
       tff.framework.MergeableCompForm(

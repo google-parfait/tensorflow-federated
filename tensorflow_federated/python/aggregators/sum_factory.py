@@ -30,7 +30,7 @@ class SumFactory(factory.UnweightedAggregationFactory):
   `CLIENTS`, and outputs the sum placed at `SERVER`.
 
   The process has empty `state` and returns no `measurements`. For summation,
-  implementation delegates to the `tff.federated_sum` operator.
+  implementation delegates to the `federated_language.federated_sum` operator.
   """
 
   def create(

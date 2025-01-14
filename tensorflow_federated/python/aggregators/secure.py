@@ -243,12 +243,14 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   """`AggregationProcess` factory for securely summing values.
 
   The created `tff.templates.AggregationProcess` uses the
-  `tff.federated_secure_sum_bitwidth` operator for movement of all values from
+  `federated_language.federated_secure_sum_bitwidth` operator for movement of
+  all values from
   `federated_language.CLIENTS` to `federated_language.SERVER`.
 
   In order for values to be securely summed, their range needs to be known in
   advance and communicated to clients, so that clients can prepare the values in
-  a form compatible with the `tff.federated_secure_sum_bitwidth` operator (that
+  a form compatible with the `federated_language.federated_secure_sum_bitwidth`
+  operator (that
   is, integers in range `[0, 2**b-1]` for some `b`), and for inverse mapping to
   be applied on the server. This will be done as specified by the
   `upper_bound_threshold` and `lower_bound_threshold` constructor arguments,

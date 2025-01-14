@@ -130,7 +130,7 @@ def build_model_delta_update_with_tff_optimizer(
     model_output = model.report_local_unfinalized_metrics()
 
     # TODO: b/122071074 - Consider moving this functionality into
-    # tff.federated_mean?
+    # federated_language.federated_mean?
     client_update, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(client_update)
     )

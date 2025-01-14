@@ -71,8 +71,9 @@ TFF's Federated Core is designed to describe the behavior of the system from the
 
 Consequently, while distributed frameworks for general purposes may offer
 operations such as *send* and *receive* as building blocks, FC provides building
-blocks such as `tff.federated_sum`, `tff.federated_reduce`, or
-`tff.federated_broadcast` that encapsulate simple distributed protocols.
+blocks such as `federated_language.federated_sum`, `tff.federated_reduce`, or
+`federated_language.federated_broadcast` that encapsulate simple distributed
+protocols.
 
 ## Language
 
@@ -98,7 +99,7 @@ Here's just one example; more examples can be found in the
 ```python
 @tff.federated_computation(federated_language.FederatedType(np.float32, federated_language.CLIENTS))
 def get_average_temperature(sensor_readings):
-  return tff.federated_mean(sensor_readings)
+  return federated_language.federated_mean(sensor_readings)
 ```
 
 Readers familiar with non-eager TensorFlow will find this approach analogous to
@@ -107,8 +108,8 @@ section of Python code that defines a TensorFlow graph. Albeit the code is
 technically expressed in Python, its purpose is to construct a serializable
 representation of a `tf.Graph` underneath, and it is the graph, not the Python
 code, that is internally executed by the TensorFlow runtime. Likewise, one can
-think of `tff.federated_mean` as inserting a *federated op* into a federated
-computation represented by `get_average_temperature`.
+think of `federated_language.federated_mean` as inserting a *federated op* into
+a federated computation represented by `get_average_temperature`.
 
 A part of the reason for FC defining a language has to do with the fact that, as
 noted above, federated computations specify distributed collective behaviors,
@@ -268,9 +269,10 @@ public API:
     ```
 
 *   **Intrinsics** or *federated operators* (`tff.federated_...`). This is a
-    library of functions such as `tff.federated_sum` or
-    `tff.federated_broadcast` that constitute the bulk of FC API, most of which
-    represent distributed communication operators for use with TFF.
+    library of functions such as `federated_language.federated_sum` or
+    `federated_language.federated_broadcast` that constitute the bulk of FC API,
+    most of which represent distributed communication operators for use with
+    TFF.
 
     We refer to these as *intrinsics* because, somewhat like
     [intrinsic functions](https://en.wikipedia.org/wiki/Intrinsic_function),
@@ -280,8 +282,8 @@ public API:
     Most of these operators have parameters and results of federated types, and
     most are templates that can be applied to various kinds of data.
 
-    For example, `tff.federated_broadcast` can be thought of as a template
-    operator of a functional type `T@SERVER -> T@CLIENTS`.
+    For example, `federated_language.federated_broadcast` can be thought of as a
+    template operator of a functional type `T@SERVER -> T@CLIENTS`.
 
 *   **Lambda expressions** (`tff.federated_computation`). A lambda expression in
     TFF is the equivalent of a `lambda` or `def` in Python; it consists of the
@@ -296,7 +298,7 @@ public API:
     ```python
     @tff.federated_computation(federated_language.FederatedType(np.float32, federated_language.CLIENTS))
     def get_average_temperature(sensor_readings):
-      return tff.federated_mean(sensor_readings)
+      return federated_language.federated_mean(sensor_readings)
     ```
 
 *   **Placement literals**. For now, only `federated_language.SERVER` and
@@ -314,10 +316,10 @@ public API:
         computation defined earlier on an argument `x`. The type of this
         expression is `int32`.
 
-    *   `tff.federated_mean(sensor_readings)` represents an invocation of the
-        federated averaging operator on `sensor_readings`. The type of this
-        expression is `float32@SERVER` (assuming context from the example
-        above).
+    *   `federated_language.federated_mean(sensor_readings)` represents an
+        invocation of the federated averaging operator on `sensor_readings`. The
+        type of this expression is `float32@SERVER` (assuming context from the
+        example above).
 
 *   Forming **tuples** and **selecting** their elements. Python expressions of
     the form `[x, y]`, `x[y]`, or `x.y` that appear in the bodies of functions

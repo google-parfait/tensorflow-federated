@@ -247,7 +247,7 @@ def compose_dataset_computation_with_computation(
         A Python `list` of elements identical to the input `param` with the
         exception that at the possibly-nested part of `param` as identified by
         the indices in `index_path`, `computation` has been applied to the
-        original part of `param` via tff.federated_map.
+        original part of `param` via federated_language.federated_map.
       """
       ret_param = []
       for idx, elem in enumerate(param):

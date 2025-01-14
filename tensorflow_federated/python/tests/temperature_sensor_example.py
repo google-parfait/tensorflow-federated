@@ -40,8 +40,8 @@ def count_total(ds):
     federated_language.FederatedType(np.float32, federated_language.SERVER),
 )
 def mean_over_threshold(temperatures, threshold):
-  client_data = tff.federated_broadcast(threshold)
-  client_data = tff.federated_zip([temperatures, client_data])
-  result_map = tff.federated_map(count_over, client_data)
-  count_map = tff.federated_map(count_total, temperatures)
-  return tff.federated_mean(result_map, count_map)
+  client_data = federated_language.federated_broadcast(threshold)
+  client_data = federated_language.federated_zip([temperatures, client_data])
+  result_map = federated_language.federated_map(count_over, client_data)
+  count_map = federated_language.federated_map(count_total, temperatures)
+  return federated_language.federated_mean(result_map, count_map)

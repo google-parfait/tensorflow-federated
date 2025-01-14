@@ -111,7 +111,7 @@ def _execute_computation(
       visible. Defaults to `1`.
     secure_sum_bitwidth: The bitwidth used for secure sum. The default value is
       `None`, which disables secure sum. If not `None`, must be in the range
-      `[1,62]`. See `tff.federated_secure_sum_bitwidth`.
+      `[1,62]`. See `federated_language.federated_secure_sum_bitwidth`.
     multi_contribution: Whether each client is allowed to contribute multiple
       counts or only a count of one for each unique word. Defaults to `True`.
     string_postprocessor: A callable function that is run after strings are

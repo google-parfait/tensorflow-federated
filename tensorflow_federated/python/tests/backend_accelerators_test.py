@@ -38,7 +38,9 @@ def _create_tff_parallel_clients_with_dataset_reduce():
       tff.at_clients(federated_language.SequenceType(np.int64))
   )
   def parallel_client_run(client_datasets):
-    return tff.federated_map(dataset_reduce_fn_wrapper, client_datasets)
+    return federated_language.federated_map(
+        dataset_reduce_fn_wrapper, client_datasets
+    )
 
   return parallel_client_run
 
@@ -63,7 +65,9 @@ def _create_tff_parallel_clients_with_iter_dataset():
       tff.at_clients(federated_language.SequenceType(np.int64))
   )
   def parallel_client_run(client_datasets):
-    return tff.federated_map(dataset_reduce_fn_wrapper, client_datasets)
+    return federated_language.federated_map(
+        dataset_reduce_fn_wrapper, client_datasets
+    )
 
   return parallel_client_run
 

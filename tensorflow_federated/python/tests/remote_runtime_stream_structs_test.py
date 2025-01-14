@@ -44,7 +44,7 @@ def _make_federated(
       ),
   )
   def compute(a):
-    return tff.federated_map(computation, a)
+    return federated_language.federated_map(computation, a)
 
   return compute
 
