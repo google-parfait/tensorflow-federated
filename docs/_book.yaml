@@ -50,7 +50,7 @@ upper_tabs:
       - heading: Advanced tutorials
       - title: "Random Noise Generation"
         path: /federated/tutorials/random_noise_generation
-      - title: "Sending Different Data To Particular Clients With tff.federated_select"
+      - title: "Sending Different Data To Particular Clients With federated select"
         path: /federated/tutorials/federated_select
       - title: "Federated Learning with Differential Privacy in TFF"
         path: /federated/tutorials/federated_learning_with_differential_privacy
