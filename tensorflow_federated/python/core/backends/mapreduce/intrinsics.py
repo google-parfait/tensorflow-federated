@@ -94,18 +94,24 @@ def create_federated_secure_modular_sum(
   py_typecheck.check_type(
       modulus, federated_language.framework.ComputationBuildingBlock
   )
+
+  if not isinstance(value.type_signature, federated_language.FederatedType):
+    raise ValueError(
+        'Expected `value.type_signature` to be a'
+        f' `federated_language.FederatedType`, found {value.type_signature}'
+    )
+  value_type = federated_language.FederatedType(
+      value.type_signature.member,
+      value.type_signature.placement,
+      all_equal=False,
+  )
+
   result_type = federated_language.FederatedType(
       value.type_signature.member,  # pytype: disable=attribute-error
       federated_language.SERVER,
   )
   intrinsic_type = federated_language.FunctionType(
-      [
-          federated_language.framework.type_to_non_all_equal(
-              value.type_signature
-          ),
-          modulus.type_signature,
-      ],
-      result_type,
+      [value_type, modulus.type_signature], result_type
   )
   intrinsic = federated_language.framework.Intrinsic(
       FEDERATED_SECURE_MODULAR_SUM.uri, intrinsic_type
