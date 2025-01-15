@@ -248,6 +248,7 @@ and this project adheres to
 *   `tff.to_type`, use`federated_language.to_type` instead.
 *   `tff.Type`, use`federated_language.Type` instead.
 *   `tff.to_value`, use`federated_language.to_value` instead.
+*   `tff.Computation`, use`federated_language.Computation` instead.
 *   `tff.federated_aggregate`, use `federated_language.federated_aggregate`
     instead.
 *   `tff.federated_broadcast`, use `federated_language.federated_broadcast`
