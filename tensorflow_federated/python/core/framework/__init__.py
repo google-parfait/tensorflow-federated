@@ -13,11 +13,7 @@
 # limitations under the License.
 """Libraries for extending the TensorFlow Federated core library."""
 
-import federated_language
 # pylint: disable=g-importing-member
-unique_name_generator = federated_language.framework.unique_name_generator
-transform_postorder = federated_language.framework.transform_postorder
-transform_preorder = federated_language.framework.transform_preorder
 from tensorflow_federated.python.core.impl.compiler.transformations import to_call_dominant
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompExecutionContext
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompForm

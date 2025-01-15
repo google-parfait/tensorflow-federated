@@ -25,6 +25,5 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_stub",
         "//tensorflow_federated/python/core/impl/executors:value_serialization",
-        "@federated_language//federated_language",
     ],
 )

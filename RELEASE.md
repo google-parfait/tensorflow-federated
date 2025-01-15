@@ -278,6 +278,12 @@ and this project adheres to
     `federated_language.framework.unpack_args_from_struct` instead.
 *   `tff.framework.PlacementLiteral`, use
     `federated_language.framework.PlacementLiteral` instead.
+*   `tff.framework.unique_name_generator`, use
+    `federated_language.framework.unique_name_generator` instead.
+*   `tff.framework.transform_postorder`, use
+    `federated_language.framework.transform_postorder` instead.
+*   `tff.framework.transform_preorder`, use
+    `federated_language.framework.transform_preorder` instead.
 
 ## Release 0.88.0
 
