@@ -32,23 +32,6 @@ from tensorflow_federated.python.core.impl import types
 from tensorflow_federated.version import __version__
 from federated_language import Computation
 from federated_language import federated_computation
-from federated_language import federated_aggregate
-from federated_language import federated_broadcast
-from federated_language import federated_eval
-from federated_language import federated_map
-from federated_language import federated_max
-from federated_language import federated_mean
-from federated_language import federated_min
-from federated_language import federated_secure_select
-from federated_language import federated_secure_sum
-from federated_language import federated_secure_sum_bitwidth
-from federated_language import federated_select
-from federated_language import federated_sum
-from federated_language import federated_value
-from federated_language import federated_zip
-from federated_language import sequence_map
-from federated_language import sequence_reduce
-from federated_language import sequence_sum
 from federated_language import Value
 # pylint: enable=g-importing-member
 
