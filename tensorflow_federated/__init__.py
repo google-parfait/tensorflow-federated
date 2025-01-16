@@ -28,7 +28,6 @@ from tensorflow_federated.python.core import templates
 from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core.environments import jax
 from tensorflow_federated.python.core.environments import tensorflow
-from tensorflow_federated.python.core.impl import types
 from tensorflow_federated.version import __version__
 from federated_language import federated_computation
 from federated_language import Value

@@ -380,7 +380,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     # We preemptively package as a struct to work around shortcircuiting in
     # type_to_py_container in a non-Struct argument case.
     arg = tff.structure.Struct.unnamed(*arg)
-    expected_result = tff.types.type_to_py_container(
+    expected_result = federated_language.framework.type_to_py_container(
         arg, after_merge.type_signature.result
     )
     result = mergeable_comp_context.invoke(mergeable_comp_form, arg)
@@ -456,7 +456,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
         contexts, num_subrounds=num_subrounds
     )
 
-    expected_result = tff.types.type_to_py_container(
+    expected_result = federated_language.framework.type_to_py_container(
         expected_sum, after_merge.type_signature.result
     )
     result = mergeable_comp_context.invoke(mergeable_comp_form, arg)
@@ -512,7 +512,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
         contexts, num_subrounds=num_subrounds
     )
 
-    expected_result = tff.types.type_to_py_container(
+    expected_result = federated_language.framework.type_to_py_container(
         expected_sum, after_merge.type_signature.result
     )
     result = mergeable_comp_context.invoke(mergeable_comp_form, arg)
