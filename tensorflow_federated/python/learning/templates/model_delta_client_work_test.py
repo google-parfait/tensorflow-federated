@@ -264,12 +264,8 @@ class ModelDeltaClientWorkExecutionTest(
       self.assertEqual(client_result.update_weight, 1.0)
     else:
       self.assertEqual(client_result.update_weight, 12.0)
-    self.assertDictContainsSubset(
-        {
-            'num_examples': 12,
-        },
-        model_output,
-    )
+    expected = {'num_examples': 12}
+    self.assertEqual(model_output, {**model_output, **expected})
     self.assertBetween(model_output['loss'][0], np.finfo(np.float32).eps, 10.0)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))

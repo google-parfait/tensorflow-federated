@@ -103,7 +103,8 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # non-trainable 'c'. Model deltas for squared error:
     self.assertAllClose(client_result.update, [[[-1.0], [0.0]], -1.0])
     self.assertAllClose(client_result.update_weight, 12.0)
-    self.assertDictContainsSubset({'num_examples': 12}, model_output)
+    expected = {'num_examples': 12}
+    self.assertEqual(model_output, {**model_output, **expected})
 
   @parameterized.named_parameters(
       ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
@@ -123,7 +124,8 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # non-trainable 'c'. Model deltas for squared error:
     self.assertAllClose(client_result.update, [[[-1.0], [0.0]], -1.0, 0.0])
     self.assertAllClose(client_result.update_weight, 12.0)
-    self.assertDictContainsSubset({'num_examples': 12}, model_output)
+    expected = {'num_examples': 12}
+    self.assertEqual(model_output, {**model_output, **expected})
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
@@ -207,7 +209,8 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # error:
     self.assertAllClose(client_result.update, [[[-2.0], [0.0]], -2.0])
     self.assertAllClose(client_result.update_weight, 12.0)
-    self.assertDictContainsSubset({'num_examples': 12}, model_output)
+    expected = {'num_examples': 12}
+    self.assertEqual(model_output, {**model_output, **expected})
 
   @parameterized.named_parameters(
       ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
@@ -227,7 +230,8 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # error:
     self.assertAllClose(client_result.update, [[[-2.0], [0.0]], -2.0, 0.0])
     self.assertAllClose(client_result.update_weight, 12.0)
-    self.assertDictContainsSubset({'num_examples': 12}, model_output)
+    expected = {'num_examples': 12}
+    self.assertEqual(model_output, {**model_output, **expected})
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):

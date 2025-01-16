@@ -215,7 +215,7 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEqual(client_result.update_weight, 1.0)
     else:
       self.assertEqual(client_result.update_weight, 12.0)
-    self.assertDictContainsSubset({'num_examples': 12}, model_output)
+    self.assertEqual(model_output, {**model_output, **{'num_examples': 12}})
     self.assertBetween(model_output['loss'][0], np.finfo(np.float32).eps, 10.0)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
@@ -406,7 +406,7 @@ class FunctionalProximalClientWorkExecutionTest(
       self.assertEqual(client_result.update_weight, 1.0)
     else:
       self.assertEqual(client_result.update_weight, 12.0)
-    self.assertDictContainsSubset({'num_examples': 12}, model_output)
+    self.assertEqual(model_output, {**model_output, **{'num_examples': 12}})
     self.assertBetween(model_output['loss'], np.finfo(np.float32).eps, 10.0)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
