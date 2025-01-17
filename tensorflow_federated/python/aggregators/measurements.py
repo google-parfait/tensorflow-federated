@@ -38,7 +38,8 @@ def add_measurements(
   The function `client_measurement_fn` should be a Python callable that will be
   called as `client_measurement_fn(value)` or `client_measurement_fn(value,
   weight)` depending on whether `inner_agg_factory` is weighted or unweighted.
-  It must be traceable by TFF and expect `tff.Value` objects placed at `CLIENTS`
+  It must be traceable by TFF and expect `federated_language.Value` objects
+  placed at `CLIENTS`
   as inputs, and return a `collections.OrderedDict` mapping string names to
   tensor values placed at `SERVER`, which will be added to the measurement dict
   produced by the `inner_agg_factory`.

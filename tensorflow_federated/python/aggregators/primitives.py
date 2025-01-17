@@ -32,8 +32,8 @@ def _validate_value_on_clients(value):
   )
   if value.type_signature.placement is not federated_language.CLIENTS:
     raise TypeError(
-        '`value` argument must be a tff.Value placed at CLIENTS. Got: {!s}'
-        .format(value.type_signature)
+        '`value` argument must be a federated_language.Value placed at CLIENTS.'
+        ' Got: {!s}'.format(value.type_signature)
     )
 
 
@@ -117,7 +117,8 @@ def federated_sample(value, max_num_samples=100):
   N is user provided `max_num_samples`.
 
   Args:
-    value: A `tff.Value` placed on the `federated_language.CLIENTS`.
+    value: A `federated_language.Value` placed on the
+      `federated_language.CLIENTS`.
     max_num_samples: The maximum number of samples to collect from client
       values. If fewer clients than the defined max sample size participated in
       the round of computation, the actual number of samples will equal the
@@ -282,16 +283,17 @@ def _normalize_secure_quantized_sum_args(
   `federated_language.SERVER`-placed federated values.
 
   Args:
-    client_value: A `tff.Value` placed at `federated_language.CLIENTS`.
+    client_value: A `federated_language.Value` placed at
+      `federated_language.CLIENTS`.
     lower_bound: The smallest possible value for `client_value` (inclusive).
       Values smaller than this bound will be clipped. Must be either a scalar or
       a nested structure of scalars, matching the structure of `client_value`.
-      Must be either a Python constant or a `tff.Value` placed at
+      Must be either a Python constant or a `federated_language.Value` placed at
       `federated_language.SERVER`, with dtype matching that of `client_value`.
     upper_bound: The largest possible value for `client_value` (inclusive).
       Values greater than this bound will be clipped. Must be either a scalar or
       a nested structure of scalars, matching the structure of `client_value`.
-      Must be either a Python constant or a `tff.Value` placed at
+      Must be either a Python constant or a `federated_language.Value` placed at
       `federated_language.SERVER`, with dtype matching that of `client_value`.
 
   Returns:
@@ -299,7 +301,7 @@ def _normalize_secure_quantized_sum_args(
 
   Raises:
     BoundsDifferentTypesError: If `lower_bound` and `upper_bound` are not both
-      `tff.Value`s or both not `tff.Value`s.
+      `federated_language.Value`s or both not `federated_language.Value`s.
     BoundsDifferentSignaturesError: If `lower_bound.type_signature` and
       `upper_bound.type_signature` are not equal.
     BoundsNotPlacedAtServerError: If `lower_bound.type_signature` and
@@ -576,16 +578,17 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   element should be expected for `tf.float32` and up to `1e-5` for `tf.float64`.
 
   Args:
-    client_value: A `tff.Value` placed at `federated_language.CLIENTS`.
+    client_value: A `federated_language.Value` placed at
+      `federated_language.CLIENTS`.
     lower_bound: The smallest possible value for `client_value` (inclusive).
       Values smaller than this bound will be clipped. Must be either a scalar or
       a nested structure of scalars, matching the structure of `client_value`.
-      Must be either a Python constant or a `tff.Value` placed at
+      Must be either a Python constant or a `federated_language.Value` placed at
       `federated_language.SERVER`, with dtype matching that of `client_value`.
     upper_bound: The largest possible value for `client_value` (inclusive).
       Values greater than this bound will be clipped. Must be either a scalar or
       a nested structure of scalars, matching the structure of `client_value`.
-      Must be either a Python constant or a `tff.Value` placed at
+      Must be either a Python constant or a `federated_language.Value` placed at
       `federated_language.SERVER`, with dtype matching that of `client_value`.
 
   Returns:

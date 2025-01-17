@@ -71,7 +71,8 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_wrong_placement(self):
     with self.assertRaisesRegex(
-        TypeError, r'.*argument must be a tff.Value placed at CLIENTS.*'
+        TypeError,
+        r'.*argument must be a federated_language.Value placed at CLIENTS.*',
     ):
 
       @federated_language.federated_computation(
