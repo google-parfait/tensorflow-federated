@@ -77,11 +77,7 @@ class CountDistinctComputationTest(tf.test.TestCase):
             np.int64, [count_distinct.HLL_SKETCH_SIZE]
         ),
     )
-    self.assertTrue(
-        client_hyperloglog.type_signature.is_identical_to(
-            expected_type_signature
-        )
-    )
+    self.assertEqual(client_hyperloglog.type_signature, expected_type_signature)
 
 
 class CountDistinctExecutionTest(tf.test.TestCase, parameterized.TestCase):

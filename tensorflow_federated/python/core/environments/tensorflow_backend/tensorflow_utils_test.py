@@ -289,7 +289,7 @@ class GraphUtilsTest(tf.test.TestCase):
           tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4]), graph
       )
       del binding
-      federated_language.framework.assert_types_identical(
+      self.assertEqual(
           type_spec,
           federated_language.StructWithPythonType(
               [
@@ -315,7 +315,7 @@ class GraphUtilsTest(tf.test.TestCase):
           tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5]), graph
       )
       del binding
-      federated_language.framework.assert_types_identical(
+      self.assertEqual(
           type_spec,
           federated_language.StructWithPythonType(
               [

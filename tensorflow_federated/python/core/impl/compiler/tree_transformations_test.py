@@ -38,9 +38,7 @@ class TransformTestBase(absltest.TestCase):
         ),
     )
     if not changes_type:
-      federated_language.framework.assert_types_identical(
-          comp.type_signature, after.type_signature
-      )
+      self.assertEqual(comp.type_signature, after.type_signature)
     if unmodified:
       self.assertFalse(modified)
     else:
@@ -1311,12 +1309,8 @@ class StripPlacementTest(parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    federated_language.framework.assert_types_identical(
-        before.type_signature, server_int_type
-    )
-    federated_language.framework.assert_types_identical(
-        after.type_signature, int_type
-    )
+    self.assertEqual(before.type_signature, server_int_type)
+    self.assertEqual(after.type_signature, int_type)
     self.assertEqual(
         before.compact_representation(),
         'federated_apply(<(x -> x),federated_apply(<(x -> x),x>)>)',
@@ -1340,12 +1334,8 @@ class StripPlacementTest(parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    federated_language.framework.assert_types_identical(
-        before.type_signature, clients_int_type
-    )
-    federated_language.framework.assert_types_identical(
-        after.type_signature, int_type
-    )
+    self.assertEqual(before.type_signature, clients_int_type)
+    self.assertEqual(after.type_signature, int_type)
     self.assertEqual(
         before.compact_representation(),
         'federated_map(<(x -> x),federated_map(<(x -> x),x>)>)',
@@ -1363,12 +1353,8 @@ class StripPlacementTest(parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    federated_language.framework.assert_types_identical(
-        before.type_signature, server_list_type
-    )
-    federated_language.framework.assert_types_identical(
-        after.type_signature, list_type
-    )
+    self.assertEqual(before.type_signature, server_list_type)
+    self.assertEqual(after.type_signature, list_type)
 
   def test_unwrap_removes_federated_zips_at_clients(self):
     list_type = federated_language.StructType([np.int32, np.float32] * 2)
@@ -1381,12 +1367,8 @@ class StripPlacementTest(parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    federated_language.framework.assert_types_identical(
-        before.type_signature, clients_list_type
-    )
-    federated_language.framework.assert_types_identical(
-        after.type_signature, list_type
-    )
+    self.assertEqual(before.type_signature, clients_list_type)
+    self.assertEqual(after.type_signature, list_type)
 
   def test_strip_placement_removes_federated_value_at_server(self):
     int_data = federated_language.framework.Literal(
@@ -1411,13 +1393,11 @@ class StripPlacementTest(parameterized.TestCase):
     tuple_type = federated_language.StructWithPythonType(
         [(None, np.int32), (None, np.float32)], tuple
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         before.type_signature,
         federated_language.FederatedType(tuple_type, federated_language.SERVER),
     )
-    federated_language.framework.assert_types_identical(
-        after.type_signature, tuple_type
-    )
+    self.assertEqual(after.type_signature, tuple_type)
 
   def test_strip_placement_federated_value_at_clients(self):
     int_data = federated_language.framework.Literal(
@@ -1442,15 +1422,13 @@ class StripPlacementTest(parameterized.TestCase):
     tuple_type = federated_language.StructWithPythonType(
         [(None, np.int32), (None, np.float32)], tuple
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         before.type_signature,
         federated_language.FederatedType(
             tuple_type, federated_language.CLIENTS
         ),
     )
-    federated_language.framework.assert_types_identical(
-        after.type_signature, tuple_type
-    )
+    self.assertEqual(after.type_signature, tuple_type)
 
   def test_strip_placement_with_called_lambda(self):
     int_type = federated_language.TensorType(np.int32)
@@ -1470,12 +1448,8 @@ class StripPlacementTest(parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    federated_language.framework.assert_types_identical(
-        before.type_signature, server_int_type
-    )
-    federated_language.framework.assert_types_identical(
-        after.type_signature, int_type
-    )
+    self.assertEqual(before.type_signature, server_int_type)
+    self.assertEqual(after.type_signature, int_type)
 
   def test_strip_placement_nested_federated_type(self):
     int_type = federated_language.TensorType(np.int32)
@@ -1492,12 +1466,8 @@ class StripPlacementTest(parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    federated_language.framework.assert_types_identical(
-        before.type_signature, tupled_server_int_type
-    )
-    federated_language.framework.assert_types_identical(
-        after.type_signature, tupled_int_type
-    )
+    self.assertEqual(before.type_signature, tupled_server_int_type)
+    self.assertEqual(after.type_signature, tupled_int_type)
 
 
 if __name__ == '__main__':

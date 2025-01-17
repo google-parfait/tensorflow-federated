@@ -437,7 +437,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     factory = _clipped_sum()
     mixed_float = federated_language.to_type(type_spec)
     process = factory.create(mixed_float)
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         mixed_float, process.next.type_signature.result.result.member
     )
 
@@ -467,7 +467,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     factory = _zeroed_sum(norm_order=norm_order)
     mixed_float = federated_language.to_type(type_spec)
     process = factory.create(mixed_float)
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         mixed_float, process.next.type_signature.result.result.member
     )
 

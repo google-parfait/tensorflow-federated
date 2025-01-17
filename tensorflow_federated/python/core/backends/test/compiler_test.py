@@ -65,17 +65,13 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     )
     self.assertFalse(modified)
     self.assertGreater(_count_intrinsics(comp, uri), 0)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     # Now replace bodies including secure intrinsics.
     reduced, modified = (
         compiler._replace_secure_intrinsics_with_insecure_bodies(comp)
     )
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(
         _count_intrinsics(
             reduced, federated_language.framework.FEDERATED_AGGREGATE.uri
@@ -112,17 +108,13 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     )
     self.assertFalse(modified)
     self.assertGreater(_count_intrinsics(comp, uri), 0)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     # Now replace bodies including secure intrinsics.
     reduced, modified = (
         compiler._replace_secure_intrinsics_with_insecure_bodies(comp)
     )
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(
         _count_intrinsics(
             reduced, federated_language.framework.FEDERATED_AGGREGATE.uri
@@ -159,9 +151,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     )
     self.assertFalse(modified)
     self.assertGreater(_count_intrinsics(comp, uri), 0)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     # Now replace bodies including secure intrinsics.
     reduced, modified = (
         compiler._replace_secure_intrinsics_with_insecure_bodies(comp)
@@ -211,17 +201,13 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     )
     self.assertFalse(modified)
     self.assertGreater(_count_intrinsics(comp, uri), 0)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     # Now replace bodies including secure intrinsics.
     reduced, modified = (
         compiler._replace_secure_intrinsics_with_insecure_bodies(comp)
     )
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(
         _count_intrinsics(
             reduced, federated_language.framework.FEDERATED_SELECT.uri

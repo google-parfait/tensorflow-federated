@@ -170,7 +170,7 @@ class MergeableCompCompilerTest(absltest.TestCase):
     self.assertIsInstance(
         mergeable_form, mergeable_comp_execution_context.MergeableCompForm
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         mergeable_form.after_merge.type_signature.result,
         return_list.type_signature.result,
     )

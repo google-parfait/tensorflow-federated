@@ -456,7 +456,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     def foo(x):
       return x
 
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         foo.type_signature,
         federated_language.FunctionType(
             parameter=federated_language.TensorType(tf.bfloat16.as_numpy_dtype),

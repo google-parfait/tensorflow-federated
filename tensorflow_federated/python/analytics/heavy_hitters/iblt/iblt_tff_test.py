@@ -162,7 +162,7 @@ class IbltTffConstructionTest(absltest.TestCase):
     self.assertIsInstance(
         iblt_computation, federated_language.framework.Computation
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         iblt_computation.type_signature,
         federated_language.FunctionType(
             parameter=federated_language.FederatedType(

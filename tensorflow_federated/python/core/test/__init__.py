@@ -24,7 +24,6 @@ assert_type_assignable_from = (
     federated_language.framework.assert_type_assignable_from
 )
 assert_types_equivalent = federated_language.framework.assert_types_equivalent
-assert_types_identical = federated_language.framework.assert_types_identical
 assert_contains_secure_aggregation = (
     federated_language.framework.assert_contains_secure_aggregation
 )

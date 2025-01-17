@@ -86,9 +86,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value
     )
-    federated_language.framework.assert_types_identical(
-        type_spec, expected_type_spec
-    )
+    self.assertEqual(type_spec, expected_type_spec)
     self.assertAllEqual(deserialized_value, [1, 2, 3])
     # 2. Test a struct of tensors, ensure that we get a different ID.
     expected_type_spec = federated_language.StructType([
@@ -184,7 +182,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
     result, result_type_spec = value_serialization.deserialize_value(output_pb)
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         result_type_spec,
         federated_language.TensorType(sequence_type.element.dtype),
     )
@@ -224,9 +222,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     _, result_type_spec = value_serialization.deserialize_value(
         output_pb, type_hint=struct_of_sequence_type
     )
-    federated_language.framework.assert_types_identical(
-        result_type_spec, struct_of_sequence_type
-    )
+    self.assertEqual(result_type_spec, struct_of_sequence_type)
 
   def test_create_struct(self):
     executor = get_executor()

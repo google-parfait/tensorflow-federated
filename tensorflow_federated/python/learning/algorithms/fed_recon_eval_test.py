@@ -221,7 +221,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
         federated_language.SERVER,
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
@@ -325,7 +325,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
         federated_language.SERVER,
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
@@ -428,7 +428,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
         federated_language.SERVER,
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
@@ -525,7 +525,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
         federated_language.SERVER,
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
@@ -630,7 +630,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
         federated_language.SERVER,
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
@@ -734,7 +734,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
         federated_language.SERVER,
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
@@ -868,7 +868,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
         federated_language.SERVER,
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
@@ -928,7 +928,6 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
       return tf.keras.losses.MeanSquaredError()
 
     fed_recon_eval.build_fed_recon_eval(model_fn=mock_model_fn, loss_fn=loss_fn)
-    # TODO: b/186451541 - Reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 2)
 
 

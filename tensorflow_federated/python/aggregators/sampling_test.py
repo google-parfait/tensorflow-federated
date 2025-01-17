@@ -181,9 +181,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
         ),
         result=reservoir_type,
     )
-    federated_language.framework.assert_types_identical(
-        sample_computation.type_signature, expected_type
-    )
+    self.assertEqual(sample_computation.type_signature, expected_type)
     # Get the sentinel seed so that the first call initializes based on
     # timestamp.
     reservoir = sampling.build_initial_sample_reservoir(example_type)
@@ -216,9 +214,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
         ),
         result=reservoir_type,
     )
-    federated_language.framework.assert_types_identical(
-        sample_computation.type_signature, expected_type
-    )
+    self.assertEqual(sample_computation.type_signature, expected_type)
     reservoir = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
@@ -271,9 +267,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
         ),
         result=reservoir_type,
     )
-    federated_language.framework.assert_types_identical(
-        sample_computation.type_signature, expected_type
-    )
+    self.assertEqual(sample_computation.type_signature, expected_type)
     reservoir = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
@@ -337,9 +331,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
         parameter=collections.OrderedDict(a=reservoir_type, b=reservoir_type),
         result=reservoir_type,
     )
-    federated_language.framework.assert_types_identical(
-        merge_computation.type_signature, expected_type
-    )
+    self.assertEqual(merge_computation.type_signature, expected_type)
     reservoir_a = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
@@ -411,9 +403,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
         parameter=collections.OrderedDict(a=reservoir_type, b=reservoir_type),
         result=reservoir_type,
     )
-    federated_language.framework.assert_types_identical(
-        merge_computation.type_signature, expected_type
-    )
+    self.assertEqual(merge_computation.type_signature, expected_type)
     reservoir_a = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
@@ -517,9 +507,7 @@ class BuildFinalizeSampleTest(tf.test.TestCase):
     expected_type = FunctionType(
         parameter=reservoir_type, result=reservoir_type.samples
     )
-    federated_language.framework.assert_types_identical(
-        finalize_computation.type_signature, expected_type
-    )
+    self.assertEqual(finalize_computation.type_signature, expected_type)
     reservoir = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
@@ -545,9 +533,7 @@ class BuildFinalizeSampleTest(tf.test.TestCase):
     expected_type = FunctionType(
         parameter=reservoir_type, result=reservoir_type.samples
     )
-    federated_language.framework.assert_types_identical(
-        finalize_computation.type_signature, expected_type
-    )
+    self.assertEqual(finalize_computation.type_signature, expected_type)
     reservoir = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )

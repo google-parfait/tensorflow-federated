@@ -70,7 +70,7 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         annotated_type,
         federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
@@ -101,7 +101,7 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         annotated_type,
         federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
@@ -131,7 +131,7 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         annotated_type,
         federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
@@ -168,7 +168,7 @@ class JaxSerializationTest(absltest.TestCase):
             ),
         ),
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         annotated_type,
         federated_language.FunctionType(
             parameter=parameter_type,
@@ -220,7 +220,7 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         annotated_type,
         federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
@@ -269,7 +269,7 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         annotated_type,
         federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
@@ -295,7 +295,7 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         annotated_type,
         federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
@@ -325,7 +325,7 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         annotated_type,
         federated_language.FunctionType(
             parameter=parameter_type, result=np.int32
@@ -350,7 +350,7 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=np.float64, result=np.float64
         ),
     )
-    federated_language.framework.assert_types_identical(
+    self.assertEqual(
         annotated_type,
         federated_language.FunctionType(
             parameter=np.float64, result=np.float64

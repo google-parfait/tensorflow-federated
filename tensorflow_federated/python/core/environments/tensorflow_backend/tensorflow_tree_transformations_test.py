@@ -61,9 +61,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
         reduced, federated_language.framework.FEDERATED_AGGREGATE.uri
     )
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_means_before_reduction, 0)
     self.assertEqual(count_means_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -95,9 +93,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     )
     count_means_after_reduction = _count_intrinsics(reduced, uri)
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_means_before_reduction, 0)
     self.assertEqual(count_means_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -126,9 +122,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
         reduced, federated_language.framework.FEDERATED_AGGREGATE.uri
     )
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_min_before_reduction, 0)
     self.assertEqual(count_min_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -157,9 +151,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
         reduced, federated_language.framework.FEDERATED_AGGREGATE.uri
     )
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_max_before_reduction, 0)
     self.assertEqual(count_max_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -188,9 +180,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
         reduced, federated_language.framework.FEDERATED_AGGREGATE.uri
     )
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_sum_before_reduction, 0)
     self.assertEqual(count_sum_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -209,9 +199,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     count_after_reduction = _count_intrinsics(reduced, uri)
 
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
     federated_language.framework.check_contains_only_reducible_intrinsics(
@@ -232,9 +220,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     count_after_reduction = _count_intrinsics(reduced, uri)
 
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
     federated_language.framework.check_contains_only_reducible_intrinsics(
@@ -255,9 +241,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     count_after_reduction = _count_intrinsics(reduced, uri)
 
     self.assertTrue(modified)
-    federated_language.framework.assert_types_identical(
-        comp.type_signature, reduced.type_signature
-    )
+    self.assertEqual(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
     federated_language.framework.check_contains_only_reducible_intrinsics(

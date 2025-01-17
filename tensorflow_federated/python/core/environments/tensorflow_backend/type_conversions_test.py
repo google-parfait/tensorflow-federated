@@ -385,9 +385,7 @@ class StructureFromTensorTypeTreeTest(absltest.TestCase):
 
   def test_single_tensor(self):
     def expect_tfint32_return_5(tensor_type):
-      federated_language.framework.assert_types_identical(
-          tensor_type, federated_language.TensorType(np.int32)
-      )
+      self.assertEqual(tensor_type, federated_language.TensorType(np.int32))
       return 5
 
     result = tensorflow_type_conversions.structure_from_tensor_type_tree(
