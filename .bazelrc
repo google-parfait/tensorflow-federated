@@ -33,10 +33,17 @@ build --define=allow_oversize_protos=true
 # explicit __init__.py files.
 # build --incompatible_default_to_explicit_init_py
 
+# TODO: find a way to automatically actvate os_arch specific flags
+# Configuration for Linux on AMD64 (x86_64)
 # Haswell processor and later optimizations. This covers most processors deployed
 # today, includin Colab CPU runtimes.
-build --copt=-march=haswell
-build --host_copt=-march=haswell
+build:linux_x86_64 --copt=-march=haswell
+build:linux_x86_64 --host_copt=-march=haswell
+
+# Configuration for Linux on ARM64 (aarch64)
+build:linux_aarch64 --copt=-march=armv8-a
+build:linux_aarch64 --host_copt=-march=armv8-a
+
 # Only use level three optimizations for target, not necessarily for host
 # since host artifacts don't need to be fast.
 build --copt=-O3
