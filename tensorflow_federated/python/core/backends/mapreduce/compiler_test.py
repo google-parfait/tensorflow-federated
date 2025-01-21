@@ -213,8 +213,10 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     )
     # Assert assignability only goes one way in this case--the compiler can
     # concretize the type of the lambda further.
-    federated_language.framework.assert_type_assignable_from(
-        lam_with_knowable_size.type_signature, extracted_tf.type_signature
+    self.assertTrue(
+        lam_with_knowable_size.type_signature.is_assignable_from(
+            extracted_tf.type_signature
+        )
     )
     self.assertFalse(
         extracted_tf.type_signature.is_assignable_from(

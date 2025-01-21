@@ -77,13 +77,9 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec
     )
-    federated_language.framework.assert_type_assignable_from(
-        value_type, serialize_type_spec
-    )
+    self.assertTrue(value_type.is_assignable_from(serialize_type_spec))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    federated_language.framework.assert_type_assignable_from(
-        serialize_type_spec, type_spec
-    )
+    self.assertTrue(serialize_type_spec.is_assignable_from(type_spec))
     self.assertEqual(y.dtype, serialize_type_spec.dtype)
     if isinstance(y, (np.ndarray, np.generic)):
       np.testing.assert_array_equal(y, x, strict=True)
