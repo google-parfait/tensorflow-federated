@@ -286,6 +286,8 @@ and this project adheres to
     `federated_language.framework.transform_postorder` instead.
 *   `tff.framework.transform_preorder`, use
     `federated_language.framework.transform_preorder` instead.
+*   `tff.test.create_runtime_error_context`, use
+    `federated_language.framework.RuntimeErrorContext` instead.
 
 ## Release 0.88.0
 

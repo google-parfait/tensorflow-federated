@@ -16,9 +16,6 @@ import federated_language
 
 with_context = federated_language.framework.with_context
 with_contexts = federated_language.framework.with_contexts
-create_runtime_error_context = (
-    federated_language.framework.create_runtime_error_context
-)
 set_no_default_context = federated_language.framework.set_no_default_context
 assert_type_assignable_from = (
     federated_language.framework.assert_type_assignable_from
