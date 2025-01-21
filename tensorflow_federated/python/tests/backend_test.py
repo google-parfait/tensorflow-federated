@@ -616,5 +616,5 @@ class KerasIntegrationTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tff.test.set_no_default_context()
+  federated_language.framework.set_no_default_context()
   absltest.main()
