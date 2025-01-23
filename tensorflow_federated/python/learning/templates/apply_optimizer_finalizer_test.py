@@ -93,8 +93,10 @@ class ApplyOptimizerFinalizerComputationTest(
     expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
-    federated_language.framework.assert_types_equivalent(
-        finalizer.initialize.type_signature, expected_initialize_type
+    self.assertTrue(
+        finalizer.initialize.type_signature.is_equivalent_to(
+            expected_initialize_type
+        )
     )
 
   def test_next_has_expected_type_with_tff_optimizer(self):
@@ -131,8 +133,8 @@ class ApplyOptimizerFinalizerComputationTest(
             expected_measurements_type,
         ),
     )
-    federated_language.framework.assert_types_equivalent(
-        finalizer.next.type_signature, expected_next_type
+    self.assertTrue(
+        finalizer.next.type_signature.is_equivalent_to(expected_next_type)
     )
 
   def test_get_hparams_has_expected_type_with_tff_optimizer(self):
@@ -147,8 +149,10 @@ class ApplyOptimizerFinalizerComputationTest(
     expected_get_hparams_type = federated_language.FunctionType(
         parameter=expected_state_type, result=expected_hparams_type
     )
-    federated_language.framework.assert_types_equivalent(
-        finalizer.get_hparams.type_signature, expected_get_hparams_type
+    self.assertTrue(
+        finalizer.get_hparams.type_signature.is_equivalent_to(
+            expected_get_hparams_type
+        )
     )
 
   def test_set_hparams_has_expected_type_with_tff_optimizer(self):
@@ -166,8 +170,10 @@ class ApplyOptimizerFinalizerComputationTest(
         ),
         result=expected_state_type,
     )
-    federated_language.framework.assert_types_equivalent(
-        finalizer.set_hparams.type_signature, expected_set_hparams_type
+    self.assertTrue(
+        finalizer.set_hparams.type_signature.is_equivalent_to(
+            expected_set_hparams_type
+        )
     )
 
   @parameterized.named_parameters(

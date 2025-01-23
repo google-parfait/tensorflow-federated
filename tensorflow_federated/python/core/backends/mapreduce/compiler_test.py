@@ -444,9 +444,7 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
             'Expected a `federated_language.framework.CompiledComputation`,'
             f' found {type(result.function)}.'
         )
-    federated_language.framework.assert_types_equivalent(
-        comp.type_signature, result.type_signature
-    )
+    self.assertTrue(comp.type_signature.is_equivalent_to(result.type_signature))
 
   def test_returns_tf_computation_with_functional_type_lambda_no_block(self):
     param = federated_language.framework.Reference(
@@ -628,9 +626,7 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     self.assertIsInstance(
         result.function, federated_language.framework.CompiledComputation
     )
-    federated_language.framework.assert_types_equivalent(
-        comp.type_signature, result.type_signature
-    )
+    self.assertTrue(comp.type_signature.is_equivalent_to(result.type_signature))
 
 
 class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):

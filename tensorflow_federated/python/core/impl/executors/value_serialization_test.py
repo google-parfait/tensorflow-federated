@@ -251,7 +251,7 @@ class ValueSerializationTest(parameterized.TestCase):
     result, result_type = value_serialization.deserialize_value(
         value_proto, type_spec
     )
-    federated_language.framework.assert_types_equivalent(result_type, type_spec)
+    self.assertTrue(result_type.is_equivalent_to(type_spec))
     self.assertEqual(result, value)
 
   def test_serialize_deserialize_tensor_value_with_bad_shape(self):
@@ -289,7 +289,7 @@ class ValueSerializationTest(parameterized.TestCase):
     self.assertEqual(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Don't assert on the Python container since it is lost in serialization.
-    federated_language.framework.assert_types_equivalent(type_spec, x_type)
+    self.assertTrue(type_spec.is_equivalent_to(x_type))
     self.assertEqual(y, structure.from_container(x, recursive=True))
 
   def test_serialize_deserialize_nested_tuple_value_without_names(self):
@@ -298,7 +298,7 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
     self.assertEqual(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    federated_language.framework.assert_types_equivalent(type_spec, x_type)
+    self.assertTrue(type_spec.is_equivalent_to(x_type))
     self.assertEqual(y, structure.from_container((10, 20)))
 
   def test_serialize_deserialize_federated_at_clients(self):

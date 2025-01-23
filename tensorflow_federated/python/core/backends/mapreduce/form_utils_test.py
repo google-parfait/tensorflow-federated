@@ -1183,21 +1183,24 @@ class BroadcastFormTest(absltest.TestCase):
     )
     self.assertEqual(bf.server_data_label, 'server_number')
     self.assertEqual(bf.client_data_label, 'client_numbers')
-    federated_language.framework.assert_types_equivalent(
-        bf.compute_server_context.type_signature,
-        federated_language.FunctionType(np.int32, (np.int32,)),
+    self.assertTrue(
+        bf.compute_server_context.type_signature.is_equivalent_to(
+            federated_language.FunctionType(np.int32, (np.int32,))
+        )
     )
     self.assertEqual(2, bf.compute_server_context(1)[0])
-    federated_language.framework.assert_types_equivalent(
-        bf.client_processing.type_signature,
-        federated_language.FunctionType(((np.int32,), np.int32), np.int32),
+    self.assertTrue(
+        bf.client_processing.type_signature.is_equivalent_to(
+            federated_language.FunctionType(((np.int32,), np.int32), np.int32)
+        )
     )
     self.assertEqual(3, bf.client_processing((1,), 2))
 
     round_trip_comp = form_utils.get_computation_for_broadcast_form(bf)
-    federated_language.framework.assert_types_equivalent(
-        round_trip_comp.type_signature,
-        add_server_number_plus_one.type_signature,
+    self.assertTrue(
+        round_trip_comp.type_signature.is_equivalent_to(
+            add_server_number_plus_one.type_signature
+        )
     )
     # 2 (server data) + 1 (constant in comp) + 2 (client data) = 5 (output)
     self.assertEqual([5, 6, 7], round_trip_comp(2, [2, 3, 4]))
@@ -1221,19 +1224,23 @@ class BroadcastFormTest(absltest.TestCase):
     bf = form_utils.get_broadcast_form_for_computation(add_five_at_clients)
     self.assertEqual(bf.server_data_label, 'naught_at_server')
     self.assertEqual(bf.client_data_label, 'client_numbers')
-    federated_language.framework.assert_types_equivalent(
-        bf.compute_server_context.type_signature,
-        federated_language.FunctionType((), ()),
+    self.assertTrue(
+        bf.compute_server_context.type_signature.is_equivalent_to(
+            federated_language.FunctionType((), ())
+        )
     )
-    federated_language.framework.assert_types_equivalent(
-        bf.client_processing.type_signature,
-        federated_language.FunctionType(((), np.int32), np.int32),
+    self.assertTrue(
+        bf.client_processing.type_signature.is_equivalent_to(
+            federated_language.FunctionType(((), np.int32), np.int32)
+        )
     )
     self.assertEqual(6, bf.client_processing((), 1))
 
     round_trip_comp = form_utils.get_computation_for_broadcast_form(bf)
-    federated_language.framework.assert_types_equivalent(
-        round_trip_comp.type_signature, add_five_at_clients.type_signature
+    self.assertTrue(
+        round_trip_comp.type_signature.is_equivalent_to(
+            add_five_at_clients.type_signature
+        )
     )
     self.assertEqual([10, 11, 12], round_trip_comp((), [5, 6, 7]))
 
@@ -1245,11 +1252,12 @@ class AsFunctionOfSingleSubparameterTest(absltest.TestCase):
     new_type = new_lam.type_signature
     self.assertIsInstance(old_type, federated_language.FunctionType)
     self.assertIsInstance(new_type, federated_language.FunctionType)
-    federated_language.framework.assert_types_equivalent(
-        new_type,
-        federated_language.FunctionType(
-            old_type.parameter[index], old_type.result
-        ),
+    self.assertTrue(
+        new_type.is_equivalent_to(
+            federated_language.FunctionType(
+                old_type.parameter[index], old_type.result
+            )
+        )
     )
 
   def test_selection(self):
@@ -1373,11 +1381,12 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     expected_parameter_type = federated_language.FederatedType(
         (np.int32,), federated_language.CLIENTS
     )
-    federated_language.framework.assert_types_equivalent(
-        new_lam.type_signature,
-        federated_language.FunctionType(
-            expected_parameter_type, lam.result.type_signature
-        ),
+    self.assertTrue(
+        new_lam.type_signature.is_equivalent_to(
+            federated_language.FunctionType(
+                expected_parameter_type, lam.result.type_signature
+            )
+        )
     )
 
   def test_single_named_element_selection(self):
@@ -1407,11 +1416,12 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     expected_parameter_type = federated_language.FederatedType(
         (np.int32,), federated_language.CLIENTS
     )
-    federated_language.framework.assert_types_equivalent(
-        new_lam.type_signature,
-        federated_language.FunctionType(
-            expected_parameter_type, lam.result.type_signature
-        ),
+    self.assertTrue(
+        new_lam.type_signature.is_equivalent_to(
+            federated_language.FunctionType(
+                expected_parameter_type, lam.result.type_signature
+            )
+        )
     )
 
   def test_single_element_selection_leaves_no_unbound_references(self):
@@ -1474,11 +1484,12 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     expected_parameter_type = federated_language.FederatedType(
         (np.int32,), federated_language.CLIENTS
     )
-    federated_language.framework.assert_types_equivalent(
-        new_lam.type_signature,
-        federated_language.FunctionType(
-            expected_parameter_type, lam.result.type_signature
-        ),
+    self.assertTrue(
+        new_lam.type_signature.is_equivalent_to(
+            federated_language.FunctionType(
+                expected_parameter_type, lam.result.type_signature
+            )
+        )
     )
 
   def test_multiple_nested_element_selection(self):
@@ -1524,11 +1535,12 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     expected_parameter_type = federated_language.FederatedType(
         (np.int32, np.int32), federated_language.CLIENTS
     )
-    federated_language.framework.assert_types_equivalent(
-        new_lam.type_signature,
-        federated_language.FunctionType(
-            expected_parameter_type, lam.result.type_signature
-        ),
+    self.assertTrue(
+        new_lam.type_signature.is_equivalent_to(
+            federated_language.FunctionType(
+                expected_parameter_type, lam.result.type_signature
+            )
+        )
     )
 
   def test_multiple_nested_named_element_selection(self):
@@ -1576,11 +1588,12 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     expected_parameter_type = federated_language.FederatedType(
         (np.int32, np.int32), federated_language.CLIENTS
     )
-    federated_language.framework.assert_types_equivalent(
-        new_lam.type_signature,
-        federated_language.FunctionType(
-            expected_parameter_type, lam.result.type_signature
-        ),
+    self.assertTrue(
+        new_lam.type_signature.is_equivalent_to(
+            federated_language.FunctionType(
+                expected_parameter_type, lam.result.type_signature
+            )
+        )
     )
 
   def test_binding_multiple_args_results_in_unique_names(self):

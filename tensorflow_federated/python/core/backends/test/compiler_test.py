@@ -159,8 +159,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     self.assertTrue(modified)
     # Inserting tensorflow, as we do here, does not preserve python containers
     # currently.
-    federated_language.framework.assert_types_equivalent(
-        comp.type_signature, reduced.type_signature
+    self.assertTrue(
+        comp.type_signature.is_equivalent_to(reduced.type_signature)
     )
     self.assertGreater(
         _count_intrinsics(

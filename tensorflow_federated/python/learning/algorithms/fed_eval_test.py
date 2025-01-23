@@ -249,48 +249,52 @@ class FedEvalProcessTest(tf.test.TestCase):
         ),
         federated_language.SERVER,
     )
-    federated_language.framework.assert_types_equivalent(
-        eval_process.initialize.type_signature,
-        FunctionType(parameter=None, result=expected_state_type),
+    self.assertTrue(
+        eval_process.initialize.type_signature.is_equivalent_to(
+            FunctionType(parameter=None, result=expected_state_type),
+        )
     )
-    federated_language.framework.assert_types_equivalent(
-        eval_process.next.type_signature,
-        FunctionType(
-            parameter=StructType([
-                ('state', expected_state_type),
-                (
-                    'client_data',
-                    federated_language.FederatedType(
-                        SequenceType(
-                            StructType([(
-                                'temp',
-                                TensorType(dtype=np.float32, shape=[None]),
-                            )])
+    self.assertTrue(
+        eval_process.next.type_signature.is_equivalent_to(
+            FunctionType(
+                parameter=StructType([
+                    ('state', expected_state_type),
+                    (
+                        'client_data',
+                        federated_language.FederatedType(
+                            SequenceType(
+                                StructType([(
+                                    'temp',
+                                    TensorType(dtype=np.float32, shape=[None]),
+                                )])
+                            ),
+                            federated_language.CLIENTS,
                         ),
-                        federated_language.CLIENTS,
                     ),
+                ]),
+                result=learning_process.LearningProcessOutput(
+                    state=expected_state_type, metrics=expected_metrics_type
                 ),
-            ]),
-            result=learning_process.LearningProcessOutput(
-                state=expected_state_type, metrics=expected_metrics_type
-            ),
-        ),
+            )
+        )
     )
-    federated_language.framework.assert_types_equivalent(
-        eval_process.get_model_weights.type_signature,
-        FunctionType(
-            parameter=expected_state_type.member, result=model_weights_type
-        ),
+    self.assertTrue(
+        eval_process.get_model_weights.type_signature.is_equivalent_to(
+            FunctionType(
+                parameter=expected_state_type.member, result=model_weights_type
+            )
+        )
     )
-    federated_language.framework.assert_types_equivalent(
-        eval_process.set_model_weights.type_signature,
-        FunctionType(
-            parameter=StructType([
-                ('state', expected_state_type.member),
-                ('model_weights', model_weights_type),
-            ]),
-            result=expected_state_type.member,
-        ),
+    self.assertTrue(
+        eval_process.set_model_weights.type_signature.is_equivalent_to(
+            FunctionType(
+                parameter=StructType([
+                    ('state', expected_state_type.member),
+                    ('model_weights', model_weights_type),
+                ]),
+                result=expected_state_type.member,
+            )
+        )
     )
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
@@ -367,17 +371,20 @@ class FedEvalProcessTest(tf.test.TestCase):
       return distributors.DistributionProcess(init_fn, next_fn)
 
     eval_process = fed_eval.build_fed_eval(TestModel, test_distributor())
-    federated_language.framework.assert_types_equivalent(
-        eval_process.initialize.type_signature.result.member.distributor,
-        test_distributor().initialize.type_signature.result.member,
+    self.assertTrue(
+        eval_process.initialize.type_signature.result.member.distributor.is_equivalent_to(
+            test_distributor().initialize.type_signature.result.member
+        )
     )
-    federated_language.framework.assert_types_equivalent(
-        eval_process.next.type_signature.result.state.member.distributor,
-        test_distributor().next.type_signature.result.state.member,
+    self.assertTrue(
+        eval_process.next.type_signature.result.state.member.distributor.is_equivalent_to(
+            test_distributor().next.type_signature.result.state.member
+        )
     )
-    federated_language.framework.assert_types_equivalent(
-        eval_process.next.type_signature.result.metrics.member.distributor,
-        test_distributor().next.type_signature.result.measurements.member,
+    self.assertTrue(
+        eval_process.next.type_signature.result.metrics.member.distributor.is_equivalent_to(
+            test_distributor().next.type_signature.result.measurements.member
+        )
     )
 
   @tensorflow_test_utils.skip_test_for_multi_gpu

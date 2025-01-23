@@ -121,8 +121,10 @@ class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
     expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=server_state_type
     )
-    federated_language.framework.assert_types_equivalent(
-        process.initialize.type_signature, expected_initialize_type
+    self.assertTrue(
+        process.initialize.type_signature.is_equivalent_to(
+            expected_initialize_type
+        )
     )
 
     expected_measurements_type = federated_language.FederatedType(
@@ -143,8 +145,8 @@ class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
             measurements=expected_measurements_type,
         ),
     )
-    federated_language.framework.assert_types_equivalent(
-        process.next.type_signature, expected_next_type
+    self.assertTrue(
+        process.next.type_signature.is_equivalent_to(expected_next_type)
     )
 
   @parameterized.named_parameters(

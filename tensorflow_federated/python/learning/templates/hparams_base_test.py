@@ -115,8 +115,8 @@ class HparamsBaseTest(absltest.TestCase):
     expected_function_type = federated_language.FunctionType(
         parameter=state_type, result=expected_hparams_type
     )
-    federated_language.framework.assert_types_equivalent(
-        get_hparams_fn.type_signature, expected_function_type
+    self.assertTrue(
+        get_hparams_fn.type_signature.is_equivalent_to(expected_function_type)
     )
 
   def test_default_set_hparams_returns_state_of_matching_type(self):
@@ -133,8 +133,8 @@ class HparamsBaseTest(absltest.TestCase):
         ),
         result=state_type,
     )
-    federated_language.framework.assert_types_equivalent(
-        set_hparams_fn.type_signature, expected_function_type
+    self.assertTrue(
+        set_hparams_fn.type_signature.is_equivalent_to(expected_function_type)
     )
 
 

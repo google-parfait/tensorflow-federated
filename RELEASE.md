@@ -292,6 +292,8 @@ and this project adheres to
     `federated_language.framework.RuntimeErrorContext` instead.
 *   `tff.test.set_no_default_context`, use
     `federated_language.framework.set_no_default_context` instead.
+*   `tff.test.assert_types_equivalent`, use
+    `federated_language.Type.is_equivalent_to` instead.
 
 ## Release 0.88.0
 

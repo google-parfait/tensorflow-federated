@@ -407,8 +407,8 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
 
     if comp.parameter_type is not None:
-      federated_language.framework.assert_types_equivalent(
-          comp.parameter_type, before.parameter_type
+      self.assertTrue(
+          comp.parameter_type.is_equivalent_to(before.parameter_type)
       )
     else:
       self.assertIsNone(before.parameter_type)
@@ -426,8 +426,10 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after.parameter_type, federated_language.StructType)
     if comp.parameter_type is not None:
       self.assertLen(after.parameter_type, 2)
-      federated_language.framework.assert_types_equivalent(
-          comp.parameter_type, after.parameter_type.original_arg
+      self.assertTrue(
+          comp.parameter_type.is_equivalent_to(
+              after.parameter_type.original_arg
+          )
       )
     else:
       self.assertLen(after.parameter_type, 1)

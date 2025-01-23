@@ -64,11 +64,12 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    federated_language.framework.assert_types_equivalent(
-        type_spec,
-        federated_language.FunctionType(
-            parameter=parameter_type, result=np.int32
-        ),
+    self.assertTrue(
+        type_spec.is_equivalent_to(
+            federated_language.FunctionType(
+                parameter=parameter_type, result=np.int32
+            )
+        )
     )
     self.assertEqual(
         annotated_type,
@@ -95,11 +96,12 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    federated_language.framework.assert_types_equivalent(
-        type_spec,
-        federated_language.FunctionType(
-            parameter=parameter_type, result=np.int32
-        ),
+    self.assertTrue(
+        type_spec.is_equivalent_to(
+            federated_language.FunctionType(
+                parameter=parameter_type, result=np.int32
+            )
+        )
     )
     self.assertEqual(
         annotated_type,
@@ -125,11 +127,12 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    federated_language.framework.assert_types_equivalent(
-        type_spec,
-        federated_language.FunctionType(
-            parameter=parameter_type, result=np.int32
-        ),
+    self.assertTrue(
+        type_spec.is_equivalent_to(
+            federated_language.FunctionType(
+                parameter=parameter_type, result=np.int32
+            )
+        )
     )
     self.assertEqual(
         annotated_type,
@@ -159,14 +162,15 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    federated_language.framework.assert_types_equivalent(
-        type_spec,
-        federated_language.FunctionType(
-            parameter=parameter_type,
-            result=federated_language.StructType(
-                [('sum', np.int32), ('difference', np.int32)]
-            ),
-        ),
+    self.assertTrue(
+        type_spec.is_equivalent_to(
+            federated_language.FunctionType(
+                parameter=parameter_type,
+                result=federated_language.StructType(
+                    [('sum', np.int32), ('difference', np.int32)]
+                ),
+            )
+        )
     )
     self.assertEqual(
         annotated_type,
@@ -214,11 +218,12 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    federated_language.framework.assert_types_equivalent(
-        type_spec,
-        federated_language.FunctionType(
-            parameter=parameter_type, result=np.int32
-        ),
+    self.assertTrue(
+        type_spec.is_equivalent_to(
+            federated_language.FunctionType(
+                parameter=parameter_type, result=np.int32
+            )
+        )
     )
     self.assertEqual(
         annotated_type,
@@ -263,11 +268,12 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    federated_language.framework.assert_types_equivalent(
-        type_spec,
-        federated_language.FunctionType(
-            parameter=parameter_type, result=np.int32
-        ),
+    self.assertTrue(
+        type_spec.is_equivalent_to(
+            federated_language.FunctionType(
+                parameter=parameter_type, result=np.int32
+            )
+        )
     )
     self.assertEqual(
         annotated_type,
@@ -289,11 +295,12 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    federated_language.framework.assert_types_equivalent(
-        type_spec,
-        federated_language.FunctionType(
-            parameter=parameter_type, result=np.int32
-        ),
+    self.assertTrue(
+        type_spec.is_equivalent_to(
+            federated_language.FunctionType(
+                parameter=parameter_type, result=np.int32
+            )
+        )
     )
     self.assertEqual(
         annotated_type,
@@ -319,11 +326,12 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    federated_language.framework.assert_types_equivalent(
-        type_spec,
-        federated_language.FunctionType(
-            parameter=parameter_type, result=np.int32
-        ),
+    self.assertTrue(
+        type_spec.is_equivalent_to(
+            federated_language.FunctionType(
+                parameter=parameter_type, result=np.int32
+            )
+        )
     )
     self.assertEqual(
         annotated_type,
@@ -344,11 +352,12 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    federated_language.framework.assert_types_equivalent(
-        type_spec,
-        federated_language.FunctionType(
-            parameter=np.float64, result=np.float64
-        ),
+    self.assertTrue(
+        type_spec.is_equivalent_to(
+            federated_language.FunctionType(
+                parameter=np.float64, result=np.float64
+            )
+        )
     )
     self.assertEqual(
         annotated_type,

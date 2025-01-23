@@ -62,8 +62,10 @@ class ModelDeltaClientWorkComputationTest(
     expected_initialize_type = federated_language.FunctionType(
         parameter=None, result=expected_state_type
     )
-    federated_language.framework.assert_types_equivalent(
-        client_work_process.initialize.type_signature, expected_initialize_type
+    self.assertTrue(
+        client_work_process.initialize.type_signature.is_equivalent_to(
+            expected_initialize_type
+        )
     )
 
   @parameterized.named_parameters(
@@ -123,8 +125,10 @@ class ModelDeltaClientWorkComputationTest(
             expected_measurements_type,
         ),
     )
-    federated_language.framework.assert_types_equivalent(
-        client_work_process.next.type_signature, expected_next_type
+    self.assertTrue(
+        client_work_process.next.type_signature.is_equivalent_to(
+            expected_next_type
+        )
     )
 
   @parameterized.named_parameters(
@@ -146,9 +150,10 @@ class ModelDeltaClientWorkComputationTest(
     expected_get_hparams_type = federated_language.FunctionType(
         parameter=expected_state_type, result=expected_hparams_type
     )
-    federated_language.framework.assert_types_equivalent(
-        client_work_process.get_hparams.type_signature,
-        expected_get_hparams_type,
+    self.assertTrue(
+        client_work_process.get_hparams.type_signature.is_equivalent_to(
+            expected_get_hparams_type
+        )
     )
 
   @parameterized.named_parameters(
@@ -173,9 +178,10 @@ class ModelDeltaClientWorkComputationTest(
     expected_set_hparams_type = federated_language.FunctionType(
         parameter=expected_parameter_type, result=expected_state_type
     )
-    federated_language.framework.assert_types_equivalent(
-        client_work_process.set_hparams.type_signature,
-        expected_set_hparams_type,
+    self.assertTrue(
+        client_work_process.set_hparams.type_signature.is_equivalent_to(
+            expected_set_hparams_type
+        )
     )
 
   def test_raises_with_created_model(self):

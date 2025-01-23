@@ -242,9 +242,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     struct_type_spec = federated_language.to_type(
         [expected_type_spec, expected_type_spec]
     )
-    federated_language.framework.assert_types_equivalent(
-        type_spec, struct_type_spec
-    )
+    self.assertTrue(type_spec.is_equivalent_to(struct_type_spec))
     deserialized_value = federated_language.framework.type_to_py_container(
         deserialized_value, struct_type_spec
     )
@@ -258,9 +256,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     struct_type_spec = federated_language.to_type(
         [struct_type_spec, expected_type_spec]
     )
-    federated_language.framework.assert_types_equivalent(
-        type_spec, struct_type_spec
-    )
+    self.assertTrue(type_spec.is_equivalent_to(struct_type_spec))
     deserialized_value = federated_language.framework.type_to_py_container(
         deserialized_value, struct_type_spec
     )
@@ -284,9 +280,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     struct_type_spec = federated_language.to_type(
         [expected_type_spec, expected_type_spec]
     )
-    federated_language.framework.assert_types_equivalent(
-        type_spec, struct_type_spec
-    )
+    self.assertTrue(type_spec.is_equivalent_to(struct_type_spec))
     deserialized_value = federated_language.framework.type_to_py_container(
         deserialized_value, struct_type_spec
     )
@@ -297,9 +291,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value
     )
-    federated_language.framework.assert_types_equivalent(
-        type_spec, expected_type_spec
-    )
+    self.assertTrue(type_spec.is_equivalent_to(expected_type_spec))
     deserialized_value = federated_language.framework.type_to_py_container(
         deserialized_value, struct_type_spec
     )
