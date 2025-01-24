@@ -16,15 +16,3 @@ import federated_language
 
 with_context = federated_language.framework.with_context
 with_contexts = federated_language.framework.with_contexts
-assert_contains_secure_aggregation = (
-    federated_language.framework.assert_contains_secure_aggregation
-)
-assert_contains_unsecure_aggregation = (
-    federated_language.framework.assert_contains_unsecure_aggregation
-)
-assert_not_contains_secure_aggregation = (
-    federated_language.framework.assert_not_contains_secure_aggregation
-)
-assert_not_contains_unsecure_aggregation = (
-    federated_language.framework.assert_not_contains_unsecure_aggregation
-)

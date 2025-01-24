@@ -292,6 +292,14 @@ and this project adheres to
     `federated_language.framework.RuntimeErrorContext` instead.
 *   `tff.test.set_no_default_context`, use
     `federated_language.framework.set_no_default_context` instead.
+*   `tff.test.assert_contains_secure_aggregation`, use
+    `federated_language.framework.computation_contains` instead.
+*   `tff.test.assert_not_contains_secure_aggregation`, use
+    `federated_language.framework.computation_contains` instead.
+*   `tff.test.assert_contains_unsecure_aggregation`, use
+    `federated_language.framework.computation_contains` instead.
+*   `tff.test.assert_not_contains_unsecure_aggregation`, use
+    `federated_language.framework.computation_contains` instead.
 *   `tff.test.assert_types_equivalent`, use
     `federated_language.Type.is_equivalent_to` instead.
 
