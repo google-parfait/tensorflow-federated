@@ -266,7 +266,7 @@ class TrainFederatedModelTest(
       ('equal_to_total_rounds', 10, _create_mock_program_state_manager),
       ('greater_than_total_rounds', 100, _create_mock_program_state_manager),
   )
-  @tff.test.with_context(_create_mock_context)
+  @federated_language.framework.with_context(_create_mock_context)
   async def test_calls_program_components(
       self, round_num, mock_program_state_manager_factory
   ):
@@ -484,7 +484,7 @@ class TrainFederatedModelIntegrationTest(
     absltest.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  @tff.test.with_context(_create_native_federated_context)
+  @federated_language.framework.with_context(_create_native_federated_context)
   async def test_fault_tolerance(self):
     datasets = [tf.data.Dataset.range(10, output_type=tf.int32)] * 3
     train_data_source = tff.program.DatasetDataSource(datasets)

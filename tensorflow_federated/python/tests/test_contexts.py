@@ -13,6 +13,13 @@
 # limitations under the License.
 """Contexts and constructors for integration testing."""
 
+import asyncio
+from collections.abc import Callable
+import functools
+from typing import Union
+
+from absl.testing import parameterized
+import federated_language
 import tensorflow_federated as tff
 
 
@@ -35,3 +42,47 @@ def get_all_contexts():
       ),
       ('test_sync', tff.backends.test.create_sync_test_cpp_execution_context),
   ]
+
+
+_Context = Union[
+    federated_language.framework.AsyncContext,
+    federated_language.framework.SyncContext,
+]
+
+
+def with_contexts(*named_contexts):
+  """Returns a decorator for parameterizing a test by a context.
+
+  Args:
+    *named_contexts: Named parameters used to construct the `with_context`
+      decorator; either a single iterable, or a list of `tuple`s or `dict`s.
+
+  Raises:
+    ValueError: If no named contexts are passed to the decorator.
+  """
+  if not named_contexts:
+    raise ValueError('Expected at least one named parameter, found none.')
+
+  def decorator(fn):
+
+    if asyncio.iscoroutinefunction(fn):
+
+      @functools.wraps(fn)
+      @parameterized.named_parameters(*named_contexts)
+      async def wrapper(self, context_fn: Callable[[], _Context]):
+        decorator = federated_language.framework.with_context(context_fn)
+        decorated_fn = decorator(fn)
+        await decorated_fn(self)
+
+    else:
+
+      @functools.wraps(fn)
+      @parameterized.named_parameters(*named_contexts)
+      def wrapper(self, context_fn: Callable[[], _Context]):
+        decorator = federated_language.framework.with_context(context_fn)
+        decorated_fn = decorator(fn)
+        decorated_fn(self)
+
+    return wrapper
+
+  return decorator

@@ -24,7 +24,7 @@ import tensorflow_federated as tff
 
 class ExecutionContextIntegrationTest(parameterized.TestCase):
 
-  @tff.test.with_context(
+  @federated_language.framework.with_context(
       tff.backends.native.create_sync_local_cpp_execution_context
   )
   def test_simple_no_arg_tf_computation_with_int_result(self):
@@ -37,7 +37,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
 
     self.assertEqual(result, 10)
 
-  @tff.test.with_context(
+  @federated_language.framework.with_context(
       tff.backends.native.create_sync_local_cpp_execution_context
   )
   def test_one_arg_tf_computation_with_int_param_and_result(self):
@@ -50,7 +50,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
 
     self.assertEqual(result, 13)
 
-  @tff.test.with_context(
+  @federated_language.framework.with_context(
       tff.backends.native.create_sync_local_cpp_execution_context
   )
   def test_three_arg_tf_computation_with_int_params_and_result(self):
@@ -63,7 +63,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
 
     self.assertEqual(result, 35)
 
-  @tff.test.with_context(
+  @federated_language.framework.with_context(
       tff.backends.native.create_sync_local_cpp_execution_context
   )
   def test_tf_computation_with_dataset_params_and_int_result(self):
@@ -77,7 +77,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
 
     self.assertEqual(result, 45)
 
-  @tff.test.with_context(
+  @federated_language.framework.with_context(
       tff.backends.native.create_sync_local_cpp_execution_context
   )
   def test_tf_computation_with_structured_result(self):
@@ -94,7 +94,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     self.assertIsInstance(result, collections.OrderedDict)
     self.assertDictEqual(result, {'a': 10, 'b': 20})
 
-  @tff.test.with_context(
+  @federated_language.framework.with_context(
       tff.backends.native.create_sync_local_cpp_execution_context
   )
   def test_changing_cardinalities_across_calls(self):
@@ -114,7 +114,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     self.assertEqual(five, five_ints)
     self.assertEqual(ten, ten_ints)
 
-  @tff.test.with_context(
+  @federated_language.framework.with_context(
       tff.backends.native.create_sync_local_cpp_execution_context
   )
   def test_conflicting_cardinalities_within_call(self):
@@ -132,7 +132,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
       comp([five_ints, ten_ints])
 
-  @tff.test.with_context(
+  @federated_language.framework.with_context(
       tff.backends.native.create_sync_local_cpp_execution_context
   )
   def test_tuple_argument_can_accept_unnamed_elements(self):

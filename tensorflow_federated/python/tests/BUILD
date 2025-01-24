@@ -90,6 +90,7 @@ py_test(
     srcs = ["remote_runtime_stream_structs_test.py"],
     tags = ["requires-mem:20g"],
     deps = [
+        ":test_contexts",
         "//tensorflow_federated",
         "@federated_language//federated_language",
     ],
@@ -119,5 +120,17 @@ py_library(
     testonly = True,
     srcs = ["test_contexts.py"],
     data = ["//tensorflow_federated/cc/simulation:worker_binary"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@federated_language//federated_language",
+    ],
+)
+
+py_test(
+    name = "test_contexts_test",
+    srcs = ["test_contexts_test.py"],
+    deps = [
+        ":test_contexts",
+        "@federated_language//federated_language",
+    ],
 )

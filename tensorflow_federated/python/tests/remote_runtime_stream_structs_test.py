@@ -21,6 +21,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.tests import test_contexts
+
 
 _CONTEXTS = [
     (
@@ -51,7 +53,7 @@ def _make_federated(
 
 class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
-  @tff.test.with_contexts(*_CONTEXTS)
+  @test_contexts.with_contexts(*_CONTEXTS)
   def test_large_unnamed_struct_identity(self):
     # Expect ~400 MB per small tensor (100_000_000 * 4 bytes)
     small_tensor_shape = (100_000_000, 1)
@@ -75,7 +77,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     with self.subTest('local'):
       identity(large_struct)
 
-  @tff.test.with_contexts(*_CONTEXTS)
+  @test_contexts.with_contexts(*_CONTEXTS)
   def test_large_named_struct_identity(self):
     # Expect ~400 MB per small tensor (100_000_000 * 4 bytes)
     small_tensor_shape = (100_000, 1000)
@@ -123,7 +125,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     with self.subTest('local'):
       identity(large_struct)
 
-  @tff.test.with_contexts(*_CONTEXTS)
+  @test_contexts.with_contexts(*_CONTEXTS)
   def test_small_struct_identity(self):
     # Expect ~4KB per small tensor.
     small_tensor_shape = (100, 10)

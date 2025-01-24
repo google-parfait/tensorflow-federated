@@ -27,7 +27,7 @@ from tensorflow_federated.python.tests import test_contexts
 
 class NoClientAggregationsTest(parameterized.TestCase):
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_null_aggregate(self):
     unit_type = federated_language.StructWithPythonType([], tuple)
 
@@ -52,7 +52,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
     result = empty_agg()
     self.assertEqual(result, ())
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_empty_sum(self):
 
     @federated_language.federated_computation(
@@ -64,7 +64,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
     result = fed_sum([])
     self.assertEqual(result, 0)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_empty_mean_returns_nan(self):
     self.skipTest('b/200970992')
     # TODO: b/200970992 - Standardize handling of this case. We currently have a
@@ -82,7 +82,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
 
 class DatasetManipulationTest(parameterized.TestCase):
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_passthru_dataset(self):
 
     @tff.tensorflow.computation(federated_language.SequenceType(np.int64))
@@ -93,7 +93,7 @@ class DatasetManipulationTest(parameterized.TestCase):
     ds = passthru_dataset(input_data)
     self.assertIsInstance(ds, list)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_dataset_concat_aggregation(self):
     element_type = federated_language.TensorType(np.float32, [2])
 
@@ -131,7 +131,7 @@ class DatasetManipulationTest(parameterized.TestCase):
 
 class TemperatureSensorExampleTest(parameterized.TestCase):
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_temperature_sensor_example_with_clients_datasets(self):
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
@@ -146,7 +146,7 @@ class TemperatureSensorExampleTest(parameterized.TestCase):
     )
     self.assertEqual(result, 12.5)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_temperature_sensor_example_with_clients_lists(self):
     temperatures = [
         [float(x) for x in range(10)],
@@ -163,7 +163,7 @@ class TemperatureSensorExampleTest(parameterized.TestCase):
 
 class FederatedComputationTest(parameterized.TestCase):
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_constant(self):
 
     @federated_language.federated_computation
@@ -173,7 +173,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo()
     self.assertEqual(result, 10)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_empty_tuple(self):
 
     @federated_language.federated_computation
@@ -183,7 +183,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo()
     self.assertEqual(result, ())
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_federated_value(self):
 
     @federated_language.federated_computation
@@ -193,7 +193,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo(10)
     self.assertIsNotNone(result)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_federated_zip(self):
 
     @federated_language.federated_computation(
@@ -206,7 +206,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo([[1, 2], [3, 4]])
     self.assertIsNotNone(result)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_federated_zip_with_twenty_elements(self):
     # This test will fail if execution scales factorially with number of
     # elements zipped.
@@ -224,7 +224,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo(value)
     self.assertIsNotNone(result)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_repeated_invocations_of_map(self):
 
     @tff.tensorflow.computation(np.int32)
@@ -243,7 +243,7 @@ class FederatedComputationTest(parameterized.TestCase):
     self.assertIsNotNone(result1)
     self.assertEqual(result1, result2)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_polymorphism(self):
 
     @tff.tensorflow.computation(np.int32)
@@ -265,7 +265,7 @@ class FederatedComputationTest(parameterized.TestCase):
     self.assertLen(result1, 2)
     self.assertLen(result2, 3)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_runs_unplaced_lambda(self):
 
     @federated_language.federated_computation(np.int32, np.int32)
@@ -276,7 +276,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = bar(1, 2)
     self.assertEqual(result, 1)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_runs_server_placed_lambda(self):
 
     @federated_language.federated_computation(np.int32, np.int32)
@@ -296,7 +296,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = bar(collections.OrderedDict(x=1, y=2))
     self.assertEqual(result, 1)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_runs_clients_placed_lambda(self):
 
     @federated_language.federated_computation(np.int32, np.int32)
@@ -316,7 +316,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = bar([collections.OrderedDict(x=1, y=2)])
     self.assertEqual(result, [1])
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_bad_type_coercion_raises(self):
     tensor_type = federated_language.TensorType(np.float32, [None])
 
@@ -356,7 +356,7 @@ class FederatedComputationTest(parameterized.TestCase):
     # cleanup happens after failures have been handled.
     map_foo_at_clients([good_tensor] * 10)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_runs_federated_select(self):
     keys_per_client = 3
     max_key = 5
@@ -399,7 +399,7 @@ class FederatedComputationTest(parameterized.TestCase):
 
 class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_create_call_take_two_from_stateful_dataset(self):
     vocab = ['a', 'b', 'c', 'd', 'e', 'f']
 
@@ -418,7 +418,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = take_two(ds)
     self.assertCountEqual(result, [0, 1])
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_twice_used_variable_keeps_separate_state(self):
     def count_one_body():
       variable = tf.Variable(initial_value=0, name='var_of_interest')
@@ -434,7 +434,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual((1, 1, 1), count_one_twice())
 
-  @tff.test.with_contexts(
+  @test_contexts.with_contexts(
       (
           'native_sync_local',
           tff.backends.native.create_sync_local_cpp_execution_context,
@@ -455,7 +455,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = comp(tf.constant(['a', 'b', 'c']), tf.constant(['a', 'z', 'c']))
     self.assertAllEqual(result, [0, 101, 2])
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_reinitialize_dynamic_lookup_table(self):
 
     @tff.tensorflow.computation(
@@ -474,7 +474,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(expected_zero, 0)
     self.assertEqual(expected_three, 3)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_constant(self):
 
     @tff.tensorflow.computation
@@ -484,7 +484,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = foo()
     self.assertEqual(result, 10)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_empty_tuple(self):
 
     @tff.tensorflow.computation
@@ -494,7 +494,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = foo()
     self.assertEqual(result, ())
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_variable(self):
 
     @tff.tensorflow.computation
@@ -504,7 +504,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = foo()
     self.assertEqual(result, 10)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_result_with_typed_fn(self):
 
     @tff.tensorflow.computation(np.int32, np.int32)
@@ -514,7 +514,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = foo(1, 2)
     self.assertEqual(result, 3)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_raises_type_error_with_typed_fn(self):
 
     @tff.tensorflow.computation(np.int32, np.int32)
@@ -524,7 +524,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       foo(1.0, 2.0)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_result_with_polymorphic_fn(self):
 
     @tff.tensorflow.computation
@@ -539,7 +539,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
 class NonDeterministicTest(parameterized.TestCase):
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_computation_called_once_is_invoked_once(self):
 
     @tff.tensorflow.computation
@@ -554,7 +554,7 @@ class NonDeterministicTest(parameterized.TestCase):
     first_random, second_random = get_one_random_twice()
     self.assertEqual(first_random, second_random)
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_computation_called_twice_is_invoked_twice(self):
 
     @tff.tensorflow.computation
@@ -571,7 +571,7 @@ class NonDeterministicTest(parameterized.TestCase):
 
 class KerasIntegrationTest(parameterized.TestCase):
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_keras_model_with_activity_regularization_runs_fedavg(self):
     self.skipTest('b/171358068')
 
