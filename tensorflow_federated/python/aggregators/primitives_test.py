@@ -22,15 +22,6 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.core.backends.test import execution_contexts
 
-_MIN_MAX_TEST_DTYPES = [
-    ('int16', np.int16),
-    ('int32', np.int32),
-    ('int64', np.int64),
-    ('float16', np.float16),
-    ('float32', np.float32),
-    ('float64', np.float64),
-]
-
 
 class FederatedSampleTest(tf.test.TestCase):
 
