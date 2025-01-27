@@ -48,7 +48,6 @@ limitations under the License
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/macros.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/public/session.h"
 #include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_from_tensor_structures.h"
@@ -764,7 +763,7 @@ absl::Status MaterializeSequence(const tensorflow::Tensor& graph_def_tensor,
   std::unique_ptr<tensorflow::data::standalone::Dataset> dataset =
       TFF_TRY(DatasetFromGraphDefTensor(graph_def_tensor));
   std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
-  tensorflow::Status iter_status = dataset->MakeIterator(&iterator);
+  absl::Status iter_status = dataset->MakeIterator(&iterator);
   if (!iter_status.ok()) {
     return absl::InternalError(absl::StrCat(
         "Error creating iterator from dataset: ", iter_status.message()));

@@ -208,7 +208,6 @@ cc_test(
         "@org_tensorflow//tensorflow/core:portable_gif_internal",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
-        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 
@@ -305,7 +304,6 @@ tff_cc_cpu_gpu_test(
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
-        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 
@@ -358,7 +356,6 @@ pybind_extension(
         "@com_google_absl//absl/strings",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core/platform:status",
         "@org_tensorflow//tensorflow/core/platform:strcat",
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_headers",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
@@ -706,7 +703,6 @@ cc_library(
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core/data:standalone",
-        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 
@@ -764,7 +760,6 @@ cc_library(
         "@org_tensorflow//tensorflow/core/common_runtime:device_mgr",
         "@org_tensorflow//tensorflow/core/common_runtime:session",
         "@org_tensorflow//tensorflow/core/common_runtime:session_options",
-        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 
@@ -937,7 +932,6 @@ cc_library(
         "@org_tensorflow//tensorflow/core/common_runtime:session",
         "@org_tensorflow//tensorflow/core/data:standalone",
         "@org_tensorflow//tensorflow/core/platform:macros",
-        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 
@@ -979,7 +973,6 @@ tff_cc_cpu_gpu_test(
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
-        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 

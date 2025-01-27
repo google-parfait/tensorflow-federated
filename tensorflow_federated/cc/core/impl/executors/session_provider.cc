@@ -39,7 +39,6 @@ limitations under the License
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/types.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/public/session.h"
 #include "tensorflow/core/public/session_options.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -98,7 +97,7 @@ const AcceleratorDevices& GetAcceleratorDevices() {
     int16_t num_gpus = 0;
     int16_t num_tpus = 0;
     std::vector<std::string> devices;
-    tensorflow::Status s =
+    absl::Status s =
         tensorflow::DeviceFactory::ListAllPhysicalDevices(&devices);
     if (!s.ok()) {
       LOG(ERROR) << "Error detecting physical devices, defaulting to CPU only: "

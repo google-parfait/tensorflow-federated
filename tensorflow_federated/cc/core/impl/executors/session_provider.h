@@ -29,7 +29,6 @@ limitations under the License
 #include "absl/synchronization/mutex.h"
 #include "tensorflow/core/common_runtime/device_mgr.h"
 #include "tensorflow/core/framework/graph.pb.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/protobuf/rewriter_config.pb.h"
 #include "tensorflow/core/public/session.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -58,7 +57,7 @@ class SessionProvider {
                                  uint32_t function_id, int16_t session_id)
         : session_(std::move(session)),
           container_name_(absl::StrCat(function_id, "/", session_id)) {
-      tensorflow::Status status = session_->LocalDeviceManager(&device_mgr_);
+      absl::Status status = session_->LocalDeviceManager(&device_mgr_);
       if (!status.ok()) {
         LOG(FATAL) << "Unable to retrieve device manager for function ["
                    << function_id << "] with session [" << session_id << "]";

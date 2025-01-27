@@ -49,7 +49,6 @@ limitations under the License
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -85,7 +84,7 @@ inline federated_language::Computation ComputationV(
 
   tensorflow::GraphDef graphdef_pb;
 
-  tensorflow::Status status = scope.ToGraphDef(&graphdef_pb);
+  absl::Status status = scope.ToGraphDef(&graphdef_pb);
   CHECK(status.ok()) << status;
 
   if (!function_defs.empty()) {

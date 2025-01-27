@@ -47,7 +47,6 @@ limitations under the License
 #include "tensorflow/c/safe_ptr.h"
 #include "tensorflow/c/tf_tensor.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/strcat.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
@@ -209,7 +208,7 @@ struct type_caster<tensorflow::Tensor> {
   bool load(handle src, bool) {
     {
       tensorflow::Safe_TF_TensorPtr tf_tensor_ptr;
-      tensorflow::Status status = tensorflow::NdarrayToTensor(
+      absl::Status status = tensorflow::NdarrayToTensor(
           /*ctx=*/nullptr, src.ptr(), &tf_tensor_ptr);
       if (!status.ok()) {
         LOG(ERROR) << status;
@@ -229,7 +228,7 @@ struct type_caster<tensorflow::Tensor> {
   static handle cast(const tensorflow::Tensor tensor, return_value_policy,
                      handle) {
     PyObject* result = nullptr;
-    tensorflow::Status status = tensorflow::TensorToNdarray(tensor, &result);
+    absl::Status status = tensorflow::TensorToNdarray(tensor, &result);
     if (!status.ok()) {
       PyErr_SetString(PyExc_ValueError, "Failed to create np.ndarray");
       return nullptr;

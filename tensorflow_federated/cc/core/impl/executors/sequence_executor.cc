@@ -36,7 +36,6 @@ limitations under the License
 #include "federated_language/proto/computation.pb.h"
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
@@ -252,7 +251,7 @@ class Sequence {
         }
       }
       std::unique_ptr<tensorflow::data::standalone::Iterator> iter;
-      tensorflow::Status iter_status;
+      absl::Status iter_status;
       {
         absl::ReaderMutexLock reader_lock(&dataset_mutex_);
         iter_status = ds_.value()->MakeIterator(&iter);

@@ -46,7 +46,6 @@ limitations under the License
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -132,7 +131,7 @@ inline v0::Value ComputationV(
   // by the C++ TensorFlow executor.
   federated_language::TensorFlow* tensorflow_pb = comp_pb->mutable_tensorflow();
   tensorflow::GraphDef graphdef_pb;
-  tensorflow::Status status = scope.ToGraphDef(&graphdef_pb);
+  absl::Status status = scope.ToGraphDef(&graphdef_pb);
   CHECK(status.ok()) << status;
   tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
   if (in_binding.has_value()) {

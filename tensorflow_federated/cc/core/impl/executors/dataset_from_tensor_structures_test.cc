@@ -31,7 +31,6 @@ limitations under the License
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
@@ -139,7 +138,7 @@ TEST(DatasetFromTensorStructuresTest, ReturnsReducibleDataset) {
       "output_tensor_1",
       "output_tensor_2",
   });
-  tf::Status status = session->Run(
+  absl::Status status = session->Run(
       {
           {reduce_dataset_input_name, serialized_dataset},
       },
