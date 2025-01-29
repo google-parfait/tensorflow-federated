@@ -87,17 +87,18 @@ though. Rather, we provide a Python API (the `tff` namespace) that wraps arounds
 it as a way to define computations.
 
 Specifically, TFF provides Python function decorators such as
-`tff.federated_computation` that trace the bodies of the decorated functions,
-and produce serialized representations of the federated computation logic in
-TFF's language. A function decorated with `tff.federated_computation` acts as a
-carrier of such serialized representation, and can embed it as a building block
-in the body of another computation, or execute it on demand when invoked.
+`federated_language.federated_computation` that trace the bodies of the
+decorated functions, and produce serialized representations of the federated
+computation logic in TFF's language. A function decorated with
+`federatedd_language.federated_computation` acts as a carrier of such serialized
+representation, and can embed it as a building block in the body of another
+computation, or execute it on demand when invoked.
 
 Here's just one example; more examples can be found in the
 [custom algorithms](tutorials/custom_federated_algorithms_1.ipynb) tutorials.
 
 ```python
-@tff.federated_computation(federated_language.FederatedType(np.float32, federated_language.CLIENTS))
+@federated_language.federated_computation(federated_language.FederatedType(np.float32, federated_language.CLIENTS))
 def get_average_temperature(sensor_readings):
   return federated_language.federated_mean(sensor_readings)
 ```
@@ -285,18 +286,18 @@ public API:
     For example, `federated_language.federated_broadcast` can be thought of as a
     template operator of a functional type `T@SERVER -> T@CLIENTS`.
 
-*   **Lambda expressions** (`tff.federated_computation`). A lambda expression in
-    TFF is the equivalent of a `lambda` or `def` in Python; it consists of the
-    parameter name, and a body (expression) that contains references to this
-    parameter.
+*   **Lambda expressions** (`federated_language.federated_computation`). A
+    lambda expression in TFF is the equivalent of a `lambda` or `def` in Python;
+    it consists of the parameter name, and a body (expression) that contains
+    references to this parameter.
 
     In Python code, these can be created by decorating Python functions with
-    `tff.federated_computation` and defining an argument.
+    `federated_language.federated_computation` and defining an argument.
 
     Here's an example of a lambda expression we've already mentioned earlier:
 
     ```python
-    @tff.federated_computation(federated_language.FederatedType(np.float32, federated_language.CLIENTS))
+    @federated_language.federated_computation(federated_language.FederatedType(np.float32, federated_language.CLIENTS))
     def get_average_temperature(sensor_readings):
       return federated_language.federated_mean(sensor_readings)
     ```
@@ -323,4 +324,4 @@ public API:
 
 *   Forming **tuples** and **selecting** their elements. Python expressions of
     the form `[x, y]`, `x[y]`, or `x.y` that appear in the bodies of functions
-    decorated with `tff.federated_computation`.
+    decorated with `federated_language.federated_computation`.

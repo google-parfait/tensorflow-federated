@@ -28,8 +28,8 @@ types of logic.
     individual `tf.function`s from 1. by wrapping them as
     `tff.tensorflow.computation`s and then orchestrating them using abstractions
     like `federated_language.federated_broadcast` and
-    `federated_language.federated_mean` inside a `tff.federated_computation`.
-    See, for example, this
+    `federated_language.federated_mean` inside a
+    `federated_language.federated_computation`. See, for example, this
     [orchestration for Federated Averaging](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tff.py#L112-L140).
 
 1.  An outer driver script that simulates the control logic of a production FL

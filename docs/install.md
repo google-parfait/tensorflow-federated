@@ -41,7 +41,7 @@ Note: To exit the virtual environment, run `deactivate`.
 ### 4. Test Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"</code>
+<code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; print(tff.tensorflow_computation(lambda: 'Hello World')())"</code>
 </pre>
 
 Success: The latest TensorFlow Federated Python package is now installed.
@@ -125,7 +125,7 @@ Note: To exit the virtual environment, run `deactivate`.
 ### 10. Test Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"</code>
+<code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; print(tff.tensorflow_computation(lambda: 'Hello World')())"</code>
 </pre>
 
 Success: A TensorFlow Federated Python package is now built from source and
