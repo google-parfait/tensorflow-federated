@@ -82,13 +82,14 @@ def remove_mapped_or_applied_identity(comp):
   return federated_language.framework.transform_postorder(comp, _transform)
 
 
-class RemoveUnusedBlockLocals(federated_language.framework.TransformSpec):
+class RemoveUnusedBlockLocals:
   """Removes block local variables which are not used in the result."""
 
   def should_transform(self, comp):
     return isinstance(comp, federated_language.framework.Block)
 
   def transform(self, comp):
+    """Transforms `comp`."""
     if not self.should_transform(comp):
       return comp, False
     unbound_ref_set = (

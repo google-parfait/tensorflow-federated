@@ -108,14 +108,12 @@ def optimize_tensorflow_comp(tf_computation, config_proto):
   )
 
 
-class TensorFlowOptimizer(federated_language.framework.TransformSpec):
+class TensorFlowOptimizer:
   """Applies TF graph optimizations to `federated_language.framework.CompiledComputation`s.
 
-  This `federated_language.framework.TransformSpec` does not alter the TFF
-  structure of
-  the computations on which it is called; rather, it calls out to TensorFlow
-  libraries which perform optimization on the underlying TensorFlow graph
-  representing local processing.
+  This transformer does not alter the TFF structure of the computations on which
+  it is called; rather, it calls out to TensorFlow libraries which perform
+  optimization on the underlying TensorFlow graph representing local processing.
   """
 
   def __init__(self, config_proto):
@@ -138,15 +136,14 @@ def optimize_tensorflow_graphs(comp, grappler_config_proto):
   )
 
 
-class DisableCallOpGrappler(federated_language.framework.TransformSpec):
+class DisableCallOpGrappler:
   """Disables grappler in Call ops in `federated_language.framework.CompiledComputation`s.
 
   This overwrites the `config_proto` key of the `NodeDef.attr` field of nodes
   in a `tf.compat.v1.GraphDef` to ensure that Grappler is disabled at runtime.
 
-  This `federated_language.framework.TransformSpec` does not alter the TFF
-  structure of
-  the computations on which it is called.
+  This transformer does not alter the TFF structure of the computations on which
+  it is called.
   """
 
   def should_transform(self, comp):
@@ -180,7 +177,7 @@ def transform_tf_call_ops_to_disable_grappler(comp):
   )
 
 
-class VerifyAllowedOps(federated_language.framework.TransformSpec):
+class VerifyAllowedOps:
   """Identity transformation that verifies computation contains only allowed ops.
 
   This tranverses Tensorflow compiled computations and checks each op is
@@ -188,9 +185,8 @@ class VerifyAllowedOps(federated_language.framework.TransformSpec):
   `DisallowedOpInTensorFlowComputationError`. Otherwise if only allowed ops are
   found, the original computation is returned.
 
-  This `federated_language.framework.TransformSpec` does not alter the TFF
-  structure of
-  the computations on which it is called.
+  This transformer does not alter the TFF structure of the computations on which
+  it is called.
   """
 
   def __init__(self, allowed_op_names: frozenset[str]):
@@ -229,7 +225,7 @@ def check_allowed_ops(
   )
 
 
-class RaiseOnDisallowedOp(federated_language.framework.TransformSpec):
+class RaiseOnDisallowedOp:
   """Identity transformation that raises an error if a disallowed op is found.
 
   This tranverses Tensorflow compiled computations searching for ops that have
@@ -237,9 +233,8 @@ class RaiseOnDisallowedOp(federated_language.framework.TransformSpec):
   `DisallowedOpInTensorFlowComputationError`. Otherwise if no disallowed ops are
   found, the original computation is returned.
 
-  This `federated_language.framework.TransformSpec` does not alter the TFF
-  structure of
-  the computations on which it is called.
+  This transformer does not alter the TFF structure of the computations on which
+  it is called.
   """
 
   def __init__(self, disallowed_op_names: frozenset[str]):
@@ -278,16 +273,15 @@ def check_disallowed_ops(
   )
 
 
-class AddUniqueIDs(federated_language.framework.TransformSpec):
+class AddUniqueIDs:
   """Populates unique IDs for compiled computations.
 
   This overwrites the `tensorlfow.id` field (and in the future other compiled
   computations) with a unique ID. The IDs produced should be determinstic and
   reproducible when the transform is applied to the same computation.
 
-  This `federated_language.framework.TransformSpec` does not alter the TFF
-  structure of
-  the computations on which it is called.
+  This transformer does not alter the TFF structure of the computations on which
+  it is called.
   """
 
   def should_transform(self, comp):
@@ -297,6 +291,7 @@ class AddUniqueIDs(federated_language.framework.TransformSpec):
     )
 
   def transform(self, comp):
+    """Transforms `comp`."""
     if not self.should_transform(comp):
       return comp, False
     py_typecheck.check_type(

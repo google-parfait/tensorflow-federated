@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
@@ -343,6 +342,23 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
       )
 
 
+def _num_elements_in_type(type_spec: federated_language.Type) -> int:
+  count = 0
+
+  def _fn(type_signature):
+    nonlocal count
+    if isinstance(type_signature, federated_language.TensorType):
+      num_elements = federated_language.num_elements_in_array_shape(
+          type_signature.shape
+      )
+      if num_elements is not None:
+        count += num_elements
+    return type_signature, False
+
+  federated_language.framework.transform_type_postorder(type_spec, _fn)
+  return count
+
+
 class CompilerIntegrationTest(parameterized.TestCase):
   """Integration tests making sure compiler does not end up confused.
 
@@ -356,9 +372,9 @@ class CompilerIntegrationTest(parameterized.TestCase):
   ):
     aggregator = _mrfify_aggregator(aggregator)
     mrf = form_utils.get_map_reduce_form_for_computation(aggregator.next)
-    num_aggregated_scalars = federated_language.framework.count_tensors_in_type(
+    num_aggregated_scalars = _num_elements_in_type(
         mrf.work.type_signature.result
-    )['parameters']
+    )
     self.assertLess(num_aggregated_scalars, max_scalars)
     self.assertGreaterEqual(num_aggregated_scalars, min_scalars)
     return mrf
