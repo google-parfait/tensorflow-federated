@@ -253,6 +253,7 @@ and this project adheres to
 *   `tff.federated_aggregate`, use `federated_language.federated_aggregate`
     instead.
 *   `tff.federated_broadcast`, use `federated_language.federated_broadcast`
+*   `tff.federated_computation`, use `federated_language.federated_computation`
     instead.
 *   `tff.federated_eval`, use `federated_language.federated_eval` instead.
 *   `tff.federated_map`, use `federated_language.federated_map` instead.

@@ -28,7 +28,6 @@ from tensorflow_federated.python.core import templates
 from tensorflow_federated.python.core.environments import jax
 from tensorflow_federated.python.core.environments import tensorflow
 from tensorflow_federated.version import __version__
-from federated_language import federated_computation
 # pylint: enable=g-bad-import-order,g-importing-member
 
 if sys.version_info < (3, 9):

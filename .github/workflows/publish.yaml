@@ -184,7 +184,6 @@ jobs:
           exit 1
         fi
         pip install --upgrade "${package}"
-        python -I -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"
         python -I -c "import tensorflow_federated as tff; print(tff.__version__)"
 
   publish-package:

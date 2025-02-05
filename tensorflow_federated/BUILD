@@ -24,7 +24,6 @@ py_library(
         "//tensorflow_federated/python/learning",
         "//tensorflow_federated/python/program",
         "//tensorflow_federated/python/simulation",
-        "@federated_language//federated_language",
     ],
 )
 

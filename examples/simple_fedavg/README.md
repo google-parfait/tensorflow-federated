@@ -27,7 +27,8 @@ federated learning simulation.
 *   The orchestration logic binds together the local computations by wrapping
     them as `tff.tensorflow.computation`s and using key TFF functions like
     `federated_language.federated_broadcast` and
-    `federated_language.federated_map` inside a `tff.federated_computation`.
+    `federated_language.federated_map` inside a
+    `federated_language.federated_computation`.
 
 This EMNIST example can easily be adapted for experimental changes:
 
