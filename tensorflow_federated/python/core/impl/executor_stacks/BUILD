@@ -19,14 +19,12 @@ licenses(["notice"])
 py_library(
     name = "executor_stacks",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tools/python_package:python_package_tool"],
 )
 
 py_library(
     name = "cpp_executor_factory",
     srcs = ["cpp_executor_factory.py"],
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -70,7 +68,6 @@ py_library(
 py_library(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.py"],
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -98,7 +95,6 @@ py_test(
 py_library(
     name = "python_executor_stacks",
     srcs = ["python_executor_stacks.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@federated_language//federated_language",

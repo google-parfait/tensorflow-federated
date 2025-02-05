@@ -20,7 +20,6 @@ licenses(["notice"])
 py_library(
     name = "executors",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tools/python_package:python_package_tool"],
 )
 
@@ -57,7 +56,6 @@ py_test(
 py_library(
     name = "data_conversions",
     srcs = ["data_conversions.py"],
-    srcs_version = "PY3",
     deps = ["@federated_language//federated_language"],
 )
 
@@ -73,7 +71,6 @@ py_test(
 py_library(
     name = "executor_bindings",
     srcs = ["executor_bindings.py"],
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -111,7 +108,6 @@ py_library(
 py_library(
     name = "executor_utils",
     srcs = ["executor_utils.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@federated_language//federated_language",
@@ -130,14 +126,12 @@ py_test(
 py_library(
     name = "executors_errors",
     srcs = ["executors_errors.py"],
-    srcs_version = "PY3",
     deps = ["@federated_language//federated_language"],
 )
 
 py_library(
     name = "remote_executor",
     srcs = ["remote_executor.py"],
-    srcs_version = "PY3",
     deps = [
         ":executors_errors",
         ":remote_executor_stub",
@@ -165,14 +159,12 @@ py_test(
 py_library(
     name = "remote_executor_stub",
     srcs = ["remote_executor_stub.py"],
-    srcs_version = "PY3",
     deps = ["//tensorflow_federated/proto/v0:executor_py_pb2"],
 )
 
 py_library(
     name = "remote_executor_grpc_stub",
     srcs = ["remote_executor_grpc_stub.py"],
-    srcs_version = "PY3",
     deps = [
         ":executors_errors",
         ":remote_executor_stub",
@@ -198,7 +190,6 @@ py_test(
 py_library(
     name = "value_serialization",
     srcs = ["value_serialization.py"],
-    srcs_version = "PY3",
     deps = [
         ":executor_utils",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
