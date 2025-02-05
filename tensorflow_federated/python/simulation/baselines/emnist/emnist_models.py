@@ -30,7 +30,7 @@ class _DeterministicInitializer:
   ):
     self._initializer_type = initializer_type
     if base_seed is None:
-      base_seed = random.randint(1, 1e9)
+      base_seed = random.randint(1, 1_000_000_000)
     self._base_seed = base_seed
 
   def __call__(self):
