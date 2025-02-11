@@ -64,7 +64,7 @@ limitations under the License
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow {
-Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
+absl::Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
 }  // namespace tensorflow
 
 namespace tensorflow_federated {
