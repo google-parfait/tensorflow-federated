@@ -65,6 +65,10 @@ class ConfigConverterTest : public ::testing::Test {
       RegisterAggregatorFactory("GoogleSQL:max", &mock_factory);
       RegisterAggregatorFactory("GoogleSQL:$differential_privacy_sum",
                                 &mock_factory);
+      RegisterAggregatorFactory(
+          "GoogleSQL:$differential_privacy_percentile_cont", &mock_factory);
+      RegisterAggregatorFactory("differential_privacy_tensor_aggregator_bundle",
+                                &mock_factory);
       is_registered_ = true;
     }
   }
@@ -534,8 +538,103 @@ TEST_F(ConfigConverterTest, ConvertFedSqlDp_GroupByNotPresent) {
   Status s = ParseFromConfig(config).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
-              ::testing::HasSubstr("Inner DP SQL intrinsics must already be "
-                                   "wrapped with an outer DP SQL intrinsic"));
+              ::testing::HasSubstr(
+                  "Inner DP sum intrinsics must already be "
+                  "wrapped with an outer DPGroupByAggregator intrinsic"));
+}
+
+TEST_F(ConfigConverterTest, ConvertFedSqlDp_TensorAggregatorBundleNotPresent) {
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs {
+      intrinsic_uri: "GoogleSQL:$differential_privacy_percentile_cont"
+      intrinsic_args {
+        input_tensor {
+          name: "bar"
+          dtype: DT_INT32
+          shape {}
+        }
+      }
+      output_tensors {
+        name: "bar_out"
+        dtype: DT_INT64
+        shape {}
+      }
+    }
+  )pb");
+  Status s = ParseFromConfig(config).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(),
+              ::testing::HasSubstr(
+                  "Inner DP quantile intrinsics must already be "
+                  "wrapped with an outer DPTensorAggregatorBundle intrinsic"));
+}
+
+TEST_F(ConfigConverterTest, ConvertFedSqlDp_TensorAggregatorBundlePresent) {
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "differential_privacy_tensor_aggregator_bundle"
+      intrinsic_args:
+      [ {
+        parameter {
+          dtype: DT_DOUBLE
+          shape {}
+          double_val: 1.0
+        }
+      }
+        , {
+          parameter {
+            dtype: DT_DOUBLE
+            shape {}
+            double_val: 1e-8
+          }
+        }]
+      inner_intrinsics {
+        intrinsic_uri: "GoogleSQL:$differential_privacy_percentile_cont"
+        intrinsic_args:
+        [ {
+          input_tensor {
+            name: "the_input"
+            dtype: DT_INT32
+            shape {}
+          }
+        }
+          , {
+            parameter {
+              dtype: DT_DOUBLE
+              shape {}
+              double_val: 0.83
+            }
+          }]
+        output_tensors {
+          name: "the_output"
+          dtype: DT_DOUBLE
+          shape {}
+        }
+      }
+    }
+  )pb");
+  StatusOr<std::vector<Intrinsic>> parsed_intrinsics = ParseFromConfig(config);
+  ASSERT_THAT(parsed_intrinsics, IsOk());
+  ASSERT_THAT(parsed_intrinsics.value(), SizeIs(1));
+  Intrinsic expected_inner =
+      Intrinsic{"GoogleSQL:$differential_privacy_percentile_cont",
+                {TensorSpec{"the_input", DT_INT32, {}}},  // not transformed
+                {TensorSpec{"the_output", DT_DOUBLE, {}}},
+                {},
+                {}};
+  expected_inner.parameters.push_back(
+      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({0.83})).value());
+
+  Intrinsic expected_outer{
+      "differential_privacy_tensor_aggregator_bundle", {}, {}, {}, {}};
+  expected_outer.parameters.push_back(
+      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({1.0})).value());
+  expected_outer.parameters.push_back(
+      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({1e-8})).value());
+
+  expected_outer.nested_intrinsics.push_back(std::move(expected_inner));
+  ASSERT_THAT(parsed_intrinsics.value()[0],
+              EqIntrinsic(std::move(expected_outer)));
 }
 
 }  // namespace

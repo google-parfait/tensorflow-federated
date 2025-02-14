@@ -86,22 +86,24 @@ StatusOr<std::vector<Intrinsic>> ParseFromConfig(
   std::vector<Intrinsic> intrinsics;
   std::vector<Intrinsic> wrapped_fedsql_intrinsics;
   bool need_fedsql_wrapper = false;
-  // The implementation of all FedSQL intrinsics relies on the presence of a
-  // wrapping fedsql_group_by intrinsic. In the case that no grouping by keys
+  // For non-DP cases, all FedSQL intrinsics must be wrapped by an outer
+  // fedsql_group_by intrinsic. In the case that no grouping by keys
   // should be performed and a single scalar output should be produced by each
   // FedSQL intrinsic, a fedsql_group_by with empty input and output tensors is
   // added to wrap the FedSQL intrinsic. For efficiency, use the same
   // fedsql_group_by to wrap multiple fedsql intrinsics rather than wrapping
   // each with a separate fedsql_group_by.
   //
-  // For cases that involve DP, a wrapping fedsql_dp_group_by intrinsic is
+  // For cases that involve DP, the wrapping intrinsic---either
+  // fedsql_dp_group_by or differential_privacy_tensor_aggregator_bundle---is
   // guaranteed to always be already present because it holds required DP
   // parameters.
   //
   // TODO: b/285201184 - Revisit the design decision to perform this
   // transformation in this location; as it requires this class to have special
   // knowledge about FedSQL intrinsics.
-  if (parent_uri != kGroupByUri && parent_uri != kDPGroupByUri) {
+  if (parent_uri != kGroupByUri && parent_uri != kDPGroupByUri &&
+      parent_uri != kDPTensorAggregatorBundleUri) {
     need_fedsql_wrapper = true;
   }
   for (const Configuration::IntrinsicConfig& intrinsic_config :
@@ -113,14 +115,22 @@ StatusOr<std::vector<Intrinsic>> ParseFromConfig(
     // core implementations.
     bool is_fedsql = intrinsic.uri.find(kFedSqlPrefix)  // NOLINT
                      != std::string::npos;              // NOLINT
-    if (is_fedsql) {
+    // Ensure that the specs are flexible enough to handle the case where the
+    // dimensionality of input and output tensors is unknown.
+    bool flexible_dimension = is_fedsql && intrinsic.uri != kDPQuantileUri;
+    if (flexible_dimension) {
       TransformFedSqlSpecs(intrinsic);
     }
     if (is_fedsql && need_fedsql_wrapper) {
       if (intrinsic.uri == kDPSumUri) {
         return TFF_STATUS(INVALID_ARGUMENT)
-               << "Inner DP SQL intrinsics must already be wrapped with an "
-                  "outer DP SQL intrinsic.";
+               << "Inner DP sum intrinsics must already be wrapped with an "
+                  "outer DPGroupByAggregator intrinsic.";
+      }
+      if (intrinsic.uri == kDPQuantileUri) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "Inner DP quantile intrinsics must already be wrapped with "
+                  "an outer DPTensorAggregatorBundle intrinsic.";
       }
       wrapped_fedsql_intrinsics.push_back(std::move(intrinsic));
     } else {

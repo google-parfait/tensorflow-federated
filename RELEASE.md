@@ -75,6 +75,8 @@ and this project adheres to
 *   Moved the tests of compatibility from `DPQuantileAggregator::MergeWith` to
     `DPQuantileAggregator::IsCompatible`.
 *   Updated `MeasuredProcessOutput` to be a `NamedTuple`.
+*   Updated `ParseFromConfig` in `config_converter.cc` to account for the new
+    `DPQuantileAggregator` and `DPTensorAggregatorBundle` classes.
 
 ### Removed
 
@@ -468,7 +470,7 @@ and this project adheres to
     different training graphs when `use_experimental_simulation_loop=True` and
     `model_fn` is of type `tff.learning.models.FunctionalModel`.
 
-# Fixed
+### Fixed
 
 *   `tff.learning.programs.EvaluationManager` raised an error when the version
     IDs of two state-saving operations were the same.
@@ -2120,7 +2122,7 @@ Madhava Jay, nbishdev@
 
 ### Bug Fixes
 
-*   Fixed streaming mode hang in remote executor.
+*   Fixed streaming mode stalling in remote executor.
 *   Wrap `collections.namedtuple._asdict` calls in `collections.OrderedDict` to
     support Python 3.8.
 *   Correctly serialize/deserialize `tff.TensorType` with unknown shapes.

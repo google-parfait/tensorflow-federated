@@ -1183,6 +1183,102 @@ TEST(CheckpointAggregatorTest, DeserializeInvalidState) {
               StatusIs(INVALID_ARGUMENT));
 }
 
+TEST(CheckpointAggregatorTest,
+     SuccessfullyCreateBundleOfDPQuantileAggregators) {
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "differential_privacy_tensor_aggregator_bundle"
+      intrinsic_args:
+      [ {
+        parameter {
+          dtype: DT_DOUBLE
+          shape {}
+          double_val: 1.0
+        }
+      }
+        , {
+          parameter {
+            dtype: DT_DOUBLE
+            shape {}
+            double_val: 1e-8
+          }
+        }]
+      inner_intrinsics:
+      [ {
+        intrinsic_uri: "GoogleSQL:$differential_privacy_percentile_cont"
+        intrinsic_args:
+        [ {
+          input_tensor {
+            name: "L0"
+            dtype: DT_INT32
+            shape {}
+          }
+        }
+          , {
+            parameter {
+              dtype: DT_DOUBLE
+              shape {}
+              double_val: 0.83
+            }
+          }]
+        output_tensors {
+          name: "L0_estimated"
+          dtype: DT_DOUBLE
+          shape {}
+        }
+      }
+        , {
+          intrinsic_uri: "GoogleSQL:$differential_privacy_percentile_cont"
+          intrinsic_args:
+          [ {
+            input_tensor {
+              name: "L1_1"
+              dtype: DT_DOUBLE
+              shape {}
+            }
+          }
+            , {
+              parameter {
+                dtype: DT_DOUBLE
+                shape {}
+                double_val: 0.83
+              }
+            }]
+          output_tensors {
+            name: "L1_1_estimated"
+            dtype: DT_DOUBLE
+            shape {}
+          }
+        }]
+    }
+  )pb");
+  auto aggregator = Create(config);
+
+  // Feed 100 copies of the same input to the aggregator.
+  for (int i = 0; i < 100; i++) {
+    MockCheckpointParser parser;
+    EXPECT_CALL(parser, GetTensor(StrEq("L0"))).WillOnce(Invoke([] {
+      return Tensor::Create(DT_INT32, {}, CreateTestData({1}));
+    }));
+    EXPECT_CALL(parser, GetTensor(StrEq("L1_1"))).WillOnce(Invoke([] {
+      return Tensor::Create(DT_DOUBLE, {}, CreateTestData({0.1}));
+    }));
+    TFF_EXPECT_OK(aggregator->Accumulate(parser));
+  }
+  // Given the duplication, the output should be (1.0, 0.1) even with DP noise.
+  MockCheckpointBuilder builder;
+  EXPECT_CALL(builder, Add(StrEq("L0_estimated"), IsTensor<double>({}, {1.0})))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(builder,
+              Add(StrEq("L1_1_estimated"), IsTensor<double>({}, {0.1})))
+      .WillOnce(Return(absl::OkStatus()));
+  absl::StatusOr<int> num_checkpoints_aggregated =
+      aggregator->GetNumCheckpointsAggregated();
+  TFF_EXPECT_OK(num_checkpoints_aggregated);
+  EXPECT_EQ(*num_checkpoints_aggregated, 100);
+  TFF_EXPECT_OK(aggregator->Report(builder));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     CheckpointAggregatorTestInstantiation, CheckpointAggregatorTest,
     testing::ValuesIn<bool>({false, true}),
