@@ -51,6 +51,8 @@ and this project adheres to
     `ReportWithEpsilonAndDelta` methods and stitches the outputs together.
 *   Number of round retries to training metrics in
     `tff.learning.programs.train_model`.
+*   Added a function to build a learning process that evaluates multiple models
+    on the same client dataset.
 
 ### Fixed
 
