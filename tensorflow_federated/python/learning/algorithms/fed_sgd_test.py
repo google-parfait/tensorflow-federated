@@ -186,8 +186,10 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
         model_aggregator=model_update_aggregator.secure_aggregator(),
         metrics_aggregator=aggregator.secure_sum_then_finalize,
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        learning_process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            learning_process.next
+        )
     )
 
 
@@ -287,8 +289,10 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
         model_aggregator=model_update_aggregator.secure_aggregator(),
         metrics_aggregator=aggregator.secure_sum_then_finalize,
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        learning_process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            learning_process.next
+        )
     )
 
 

@@ -479,8 +479,10 @@ class MimeLiteTest(tf.test.TestCase, parameterized.TestCase):
         full_gradient_aggregator=aggregator,
         metrics_aggregator=metrics_aggregator.secure_sum_then_finalize,
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        learning_process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            learning_process.next
+        )
     )
 
   def test_unweighted_mime_lite_with_only_secure_aggregation(self):
@@ -492,8 +494,10 @@ class MimeLiteTest(tf.test.TestCase, parameterized.TestCase):
         full_gradient_aggregator=aggregator,
         metrics_aggregator=metrics_aggregator.secure_sum_then_finalize,
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        learning_process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            learning_process.next
+        )
     )
 
   @tensorflow_test_utils.skip_test_for_multi_gpu

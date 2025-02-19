@@ -182,8 +182,10 @@ class SecureQuantizedSumStaticAssertsTest(
           np.array(1.0, dtype),
       )
 
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        comp_py_bounds
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            comp_py_bounds
+        )
     )
 
     # Bounds provided as tff values.
@@ -197,12 +199,12 @@ class SecureQuantizedSumStaticAssertsTest(
     def comp_tff_bounds(value, upper_bound, lower_bound):
       return primitives.secure_quantized_sum(value, upper_bound, lower_bound)
 
-    try:
-      federated_language.framework.assert_not_contains_unsecure_aggregation(
-          comp_tff_bounds
-      )
-    except AssertionError:
-      self.fail('Computation contains non-secure aggregation.')
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            comp_tff_bounds
+        ),
+        'Computation contains non-secure aggregation.',
+    )
 
 
 class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):

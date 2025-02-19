@@ -46,7 +46,6 @@ py_test(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/program:file_program_state_manager",
-        "//tensorflow_federated/python/program:native_platform",
         "@federated_language//federated_language",
     ],
 )
@@ -84,7 +83,6 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:learning_process",
-        "//tensorflow_federated/python/program:native_platform",
         "@federated_language//federated_language",
     ],
 )
@@ -109,7 +107,6 @@ py_test(
         ":vizier_program_logic",
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:learning_process",
-        "//tensorflow_federated/python/program:native_platform",
         "@federated_language//federated_language",
     ],
 )

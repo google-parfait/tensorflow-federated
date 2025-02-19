@@ -171,8 +171,10 @@ class FedProxConstructionTest(parameterized.TestCase):
         ),
         metrics_aggregator=aggregator.secure_sum_then_finalize,
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        learning_process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            learning_process.next
+        )
     )
 
   def test_unweighted_fed_prox_with_only_secure_aggregation(self):
@@ -186,8 +188,10 @@ class FedProxConstructionTest(parameterized.TestCase):
         ),
         metrics_aggregator=aggregator.secure_sum_then_finalize,
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        learning_process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            learning_process.next
+        )
     )
 
 

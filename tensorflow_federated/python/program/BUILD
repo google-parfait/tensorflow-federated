@@ -26,7 +26,6 @@ py_library(
         ":dataset_data_source",
         ":file_program_state_manager",
         ":file_release_manager",
-        ":native_platform",
         ":tensorboard_release_manager",
     ],
 )
@@ -121,29 +120,6 @@ py_test(
     name = "file_utils_test",
     srcs = ["file_utils_test.py"],
     deps = [":file_utils"],
-)
-
-py_library(
-    name = "native_platform",
-    srcs = ["native_platform.py"],
-    deps = [
-        ":structure_utils",
-        "//tensorflow_federated/python/common_libs:structure",
-        "@federated_language//federated_language",
-    ],
-)
-
-py_test(
-    name = "native_platform_test",
-    srcs = ["native_platform_test.py"],
-    deps = [
-        ":native_platform",
-        ":program_test_utils",
-        ":structure_utils",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "@federated_language//federated_language",
-    ],
 )
 
 py_library(

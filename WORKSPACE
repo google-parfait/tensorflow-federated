@@ -99,8 +99,8 @@ http_archive(
         "@protobuf": "@com_google_protobuf",
     },
     sha256 = "d1500db4e6dc7403c3da121cf98ec03693b48384ec7cccae6fdc8ac3df182be0",
-    strip_prefix = "federated-language-be055feb0137577e0d27fe7c78aab87fbcb70b6d",
-    url = "https://github.com/google-parfait/federated-language/archive/be055feb0137577e0d27fe7c78aab87fbcb70b6d.tar.gz",
+    strip_prefix = "federated-language-b685d2243891f9d7ca3c5820cfd690b4ecdb9697",
+    url = "https://github.com/google-parfait/federated-language/archive/b685d2243891f9d7ca3c5820cfd690b4ecdb9697.tar.gz",
 )
 
 # The version of TensorFlow should match the version in

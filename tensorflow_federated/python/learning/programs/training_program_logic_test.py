@@ -29,7 +29,6 @@ from tensorflow_federated.python.learning.programs import program_logic
 from tensorflow_federated.python.learning.programs import training_program_logic
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.program import native_platform
 
 # Convenience aliases.
 ProgramState = training_program_logic.ProgramState
@@ -82,7 +81,7 @@ class TaskManagerTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
 
 
 def _create_test_context() -> federated_language.program.FederatedContext:
-  return native_platform.NativeFederatedContext(
+  return federated_language.program.NativeFederatedContext(
       execution_contexts.create_async_local_cpp_execution_context()
   )
 

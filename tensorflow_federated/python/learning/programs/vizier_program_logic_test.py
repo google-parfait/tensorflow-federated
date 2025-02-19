@@ -25,12 +25,13 @@ from tensorflow_federated.python.learning.programs import evaluation_program_log
 from tensorflow_federated.python.learning.programs import vizier_program_logic
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.program import native_platform
 
 
 def _create_mock_context() -> mock.Mock:
   return mock.create_autospec(
-      native_platform.NativeFederatedContext, spec_set=True, instance=True
+      federated_language.program.NativeFederatedContext,
+      spec_set=True,
+      instance=True,
   )
 
 

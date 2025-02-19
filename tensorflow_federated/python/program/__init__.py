@@ -23,7 +23,5 @@ from tensorflow_federated.python.program.file_release_manager import CSVFileRele
 from tensorflow_federated.python.program.file_release_manager import CSVKeyFieldnameNotFoundError
 from tensorflow_federated.python.program.file_release_manager import CSVSaveMode
 from tensorflow_federated.python.program.file_release_manager import SavedModelFileReleaseManager
-from tensorflow_federated.python.program.native_platform import NativeFederatedContext
-from tensorflow_federated.python.program.native_platform import NativeValueReference
 from tensorflow_federated.python.program.tensorboard_release_manager import TensorBoardReleaseManager
 # pylint: enable=g-importing-member

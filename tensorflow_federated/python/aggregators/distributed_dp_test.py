@@ -189,8 +189,10 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
     actual_next_type = process.next.type_signature
     self.assertTrue(actual_next_type.is_equivalent_to(expected_next_type))
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            process.next
+        )
     )
 
   @parameterized.named_parameters(

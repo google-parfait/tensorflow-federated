@@ -145,8 +145,10 @@ class SecureModularSumFactoryComputationTest(
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            process.next
+        )
     )
 
   def test_float_modulus_raises(self):
@@ -321,8 +323,10 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            process.next
+        )
     )
 
   @parameterized.named_parameters(
@@ -374,8 +378,10 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            process.next
+        )
     )
 
   @parameterized.named_parameters(
@@ -430,8 +436,10 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            process.next
+        )
     )
 
   @parameterized.named_parameters(

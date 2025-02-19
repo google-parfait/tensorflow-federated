@@ -354,8 +354,10 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     def aggregator_computation(unfinalized_metrics):
       return polymorphic_aggregator_computation(unfinalized_metrics)
 
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        aggregator_computation
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            aggregator_computation
+        )
     )
 
     aggregated_metrics = aggregator_computation(
