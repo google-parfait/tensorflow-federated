@@ -82,7 +82,7 @@ def main(argv: Sequence[str]) -> None:
 
   # Create a context in which to execute the program logic.
   context = tff.backends.native.create_async_local_cpp_execution_context()
-  context = tff.program.NativeFederatedContext(context)
+  context = federated_language.program.NativeFederatedContext(context)
   federated_language.framework.set_default_context(context)
 
   # Create data sources that are compatible with the context and computations.

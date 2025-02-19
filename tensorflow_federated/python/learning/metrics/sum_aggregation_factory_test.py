@@ -264,8 +264,10 @@ class SumThenFinalizeFactoryComputationTest(
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            process.next
+        )
     )
 
   @parameterized.named_parameters(
@@ -518,8 +520,10 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
 
     client_data = [local_unfinalized_metrics, local_unfinalized_metrics]
     output = process.next(state, client_data)
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            process.next
+        )
     )
 
     _, unfinalized_metrics_accumulators = output.state
@@ -600,8 +604,10 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         collections.OrderedDict,
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            process.next
+        )
     )
 
     state = process.initialize()
@@ -688,8 +694,10 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         metric_value_ranges
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            process.next
+        )
     )
 
     state = process.initialize()

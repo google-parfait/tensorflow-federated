@@ -1064,8 +1064,10 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
         dp_mechanism=dp_mechanism,
         enable_secure_sum=True,
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        hihi_computation
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            hihi_computation
+        )
     )
 
   @mock.patch('tensorflow.timestamp')

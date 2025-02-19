@@ -228,10 +228,10 @@ class MergeableCompForm:
     # computation.protos; to avoid opening up a visibility hole that isn't
     # technically necessary here, we prefer to simply skip the static check here
     # for computations which cannot convert themselves to building blocks.
-    if hasattr(
-        after_merge, 'to_building_block'
+    if isinstance(
+        after_merge, federated_language.framework.ConcreteComputation
     ) and federated_language.framework.computation_contains(
-        after_merge.to_building_block(), _aggregation_predicate
+        after_merge, _aggregation_predicate
     ):
       formatted_aggregations = ', '.join(
           '{}: {}'.format(elem[0], elem[1]) for elem in aggregations
