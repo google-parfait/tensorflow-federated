@@ -126,6 +126,116 @@ class ExtractAndRewrapMetricsTest(
       self.fail(f'Unexpected error raised: {e}')
 
 
+class ExtractAndRewrapMetricsForMultiModelEvalTest(tf.test.TestCase):
+
+  def test_extracts_substructure_adds_prefix(self):
+    test_structure = collections.OrderedDict(
+        test=collections.OrderedDict(
+            a=collections.OrderedDict(
+                path=collections.OrderedDict(test_a=[1, 2, 3], test_b=10.0),
+                other=collections.OrderedDict(test_one=1.0, test_two=2.0),
+            ),
+            b=collections.OrderedDict(
+                path=collections.OrderedDict(test_a=[4, 5, 6], test_b=20.0),
+                other=collections.OrderedDict(test_one=3.0, test_two=4.0),
+            ),
+        )
+    )
+    extracted_structure = evaluation_program_logic._extract_and_rewrap_metrics_for_multi_model_evaluation(
+        test_structure,
+        path_before_model_id=('test',),
+        path_after_model_id=('path',),
+        model_ids=('a', 'b'),
+    )
+    self.assertAllClose(
+        extracted_structure,
+        collections.OrderedDict([
+            (
+                evaluation_program_logic.MODEL_METRICS_PREFIX,
+                collections.OrderedDict(
+                    a=collections.OrderedDict(test_a=[1, 2, 3], test_b=10.0),
+                    b=collections.OrderedDict(test_a=[4, 5, 6], test_b=20.0),
+                ),
+            ),
+            (
+                'test',
+                collections.OrderedDict(
+                    a=collections.OrderedDict(
+                        other=collections.OrderedDict(
+                            test_one=1.0, test_two=2.0
+                        )
+                    ),
+                    b=collections.OrderedDict(
+                        other=collections.OrderedDict(
+                            test_one=3.0, test_two=4.0
+                        )
+                    ),
+                ),
+            ),
+        ]),
+    )
+
+  def test_path_does_not_exist_in_structure_fails(self):
+    with self.subTest('early_path'):
+      with self.assertRaisesRegex(KeyError, r'\[test\]'):
+        evaluation_program_logic._extract_and_rewrap_metrics_for_multi_model_evaluation(
+            collections.OrderedDict(foo=1, bar=2),
+            path_before_model_id=('test',),
+            path_after_model_id=('path',),
+            model_ids=('a', 'b'),
+        )
+    with self.subTest('last_path'):
+      with self.assertRaisesRegex(KeyError, r'\[bad_path\]'):
+        evaluation_program_logic._extract_and_rewrap_metrics_for_multi_model_evaluation(
+            collections.OrderedDict(
+                foo=collections.OrderedDict(
+                    a=collections.OrderedDict(bar=2),
+                    b=collections.OrderedDict(bar=3),
+                )
+            ),
+            path_before_model_id=('foo',),
+            path_after_model_id=('bad_path',),
+            model_ids=('a', 'b'),
+        )
+
+
+class GetModelIdsForMultiModelEvalTest(tf.test.TestCase):
+
+  def test_get_model_ids_for_multi_model_eval(self):
+    test_structure = collections.OrderedDict(
+        client_work=collections.OrderedDict(
+            a=collections.OrderedDict(
+                path=collections.OrderedDict(test_a=[1, 2, 3], test_b=10.0),
+                other=collections.OrderedDict(test_one=1.0, test_two=2.0),
+            ),
+            b=collections.OrderedDict(
+                path=collections.OrderedDict(test_a=[4, 5, 6], test_b=20.0),
+                other=collections.OrderedDict(test_one=3.0, test_two=4.0),
+            ),
+        )
+    )
+    model_ids = (
+        evaluation_program_logic._get_model_ids_for_multi_model_evaluation(
+            test_structure
+        )
+    )
+    self.assertSequenceEqual(model_ids, ('a', 'b'))
+
+  def test_get_model_ids_for_multi_model_eval_no_model_ids_returns_none(self):
+    test_structure = collections.OrderedDict(
+        test=collections.OrderedDict(
+            path=collections.OrderedDict(test_a=[1, 2, 3], test_b=10.0),
+            other=collections.OrderedDict(test_one=1.0, test_two=2.0),
+        ),
+    )
+    model_ids = (
+        evaluation_program_logic._get_model_ids_for_multi_model_evaluation(
+            test_structure
+        )
+    )
+    self.assertIsNone(model_ids)
+
+
 def _create_test_context() -> federated_language.program.FederatedContext:
   return native_platform.NativeFederatedContext(
       execution_contexts.create_async_local_cpp_execution_context()
@@ -152,20 +262,26 @@ def _create_mock_datasource() -> mock.Mock:
   return mock_datasource
 
 
-def _create_per_round_eval_metrics_release_call(*, key: int):
+def _create_per_round_eval_metrics_release_call(
+    *, key: int, is_multi_model_eval: bool = False
+):
+  if is_multi_model_eval:
+    model_metrics = {'a': mock.ANY, 'b': mock.ANY}
+  else:
+    model_metrics = mock.ANY
   return mock.call(
       collections.OrderedDict([
           ('distributor', ()),
           ('client_work', mock.ANY),
           ('aggregator', mock.ANY),
           ('finalizer', ()),
-          (evaluation_program_logic.MODEL_METRICS_PREFIX, mock.ANY),
+          (evaluation_program_logic.MODEL_METRICS_PREFIX, model_metrics),
       ]),
       key=key,
   )
 
 
-def _create_mock_eval_process() -> mock.Mock:
+def _create_mock_eval_process(is_multi_model_eval: bool = False) -> mock.Mock:
   mock_process = mock.create_autospec(
       learning_process.LearningProcess, instance=True, spec_set=True
   )
@@ -177,16 +293,33 @@ def _create_mock_eval_process() -> mock.Mock:
       finalizer=(),
   )
   mock_process.initialize.return_value = empty_state
+  if is_multi_model_eval:
+    client_work = collections.OrderedDict(
+        a=collections.OrderedDict(
+            eval=collections.OrderedDict(
+                current_round_metrics=collections.OrderedDict(),
+                total_rounds_metrics=collections.OrderedDict(),
+            )
+        ),
+        b=collections.OrderedDict(
+            eval=collections.OrderedDict(
+                current_round_metrics=collections.OrderedDict(),
+                total_rounds_metrics=collections.OrderedDict(),
+            )
+        ),
+    )
+  else:
+    client_work = collections.OrderedDict(
+        eval=collections.OrderedDict(
+            current_round_metrics=collections.OrderedDict(),
+            total_rounds_metrics=collections.OrderedDict(),
+        )
+    )
   mock_process.next.return_value = learning_process.LearningProcessOutput(
       empty_state,
       collections.OrderedDict(
           distributor=(),
-          client_work=collections.OrderedDict(
-              eval=collections.OrderedDict(
-                  current_round_metrics=collections.OrderedDict(),
-                  total_rounds_metrics=collections.OrderedDict(),
-              )
-          ),
+          client_work=client_work,
           aggregator=(),
           finalizer=(),
       ),
@@ -923,6 +1056,46 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     mock_per_round_metrics_manager.release.assert_has_calls([
         _create_per_round_eval_metrics_release_call(
             key=train_round_num + latest_version
+        ),
+    ])
+    # Assert the aggregated metrics are output once at the end.
+    self.assertEqual(
+        mock_aggregated_metrics_manager.release.call_args_list,
+        [mock.call(mock.ANY, key=train_round_num)],
+    )
+
+  async def test_multi_model_evaluation_metrics_are_extracted_and_rewrapped(
+      self,
+  ):
+    eval_process = _create_mock_eval_process(is_multi_model_eval=True)
+    state_manager = mock.create_autospec(
+        file_program_state_manager.FileProgramStateManager, instance=True
+    )
+    state_manager.load_latest.return_value = (eval_process.initialize(), 0)
+    num_clients = 3
+    mock_per_round_metrics_manager = mock.create_autospec(
+        federated_language.program.ReleaseManager, instance=True
+    )
+    mock_aggregated_metrics_manager = mock.create_autospec(
+        federated_language.program.ReleaseManager, instance=True
+    )
+    train_round_num = 1
+    await evaluation_program_logic._run_evaluation(
+        train_round_num=train_round_num,
+        state_manager=state_manager,
+        evaluation_process=eval_process,
+        evaluation_name='test_evaluation',
+        evaluation_data_source=_create_mock_datasource(),
+        evaluation_per_round_clients_number=num_clients,
+        evaluation_end_time=self.end_time,
+        per_round_metrics_manager=mock_per_round_metrics_manager,
+        aggregated_metrics_manager=mock_aggregated_metrics_manager,
+    )
+    print(mock_per_round_metrics_manager.release.call_args_list)
+    print(mock_aggregated_metrics_manager.release.call_args_list)
+    mock_per_round_metrics_manager.release.assert_has_calls([
+        _create_per_round_eval_metrics_release_call(
+            key=train_round_num, is_multi_model_eval=True
         ),
     ])
     # Assert the aggregated metrics are output once at the end.

@@ -77,6 +77,7 @@ and this project adheres to
 *   Updated `MeasuredProcessOutput` to be a `NamedTuple`.
 *   Updated `ParseFromConfig` in `config_converter.cc` to account for the new
     `DPQuantileAggregator` and `DPTensorAggregatorBundle` classes.
+*   Updated `EvaluationManager` to support the new `fed_multi_model_eval` task.
 
 ### Removed
 

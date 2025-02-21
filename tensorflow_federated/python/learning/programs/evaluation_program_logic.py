@@ -62,9 +62,10 @@ the training round that provides the checkpoint that is being evaluated.
 import asyncio
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 import datetime
+import string
 import time
 import typing
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from absl import logging as _logging
 import federated_language
@@ -80,6 +81,13 @@ MODEL_METRICS_PREFIX = 'model_metrics'
 # This path matches the `tff.learning.algorithms.build_fed_eval` signature. It
 # is the prefix path to the current round and total round metrics.
 _EVAL_METRICS_PATH_COMPONENTS = ('client_work', 'eval')
+
+# This path matches the `tff.learning.algorithms.build_fed_multi_model_eval`
+# signature for multi-model evaluation. It is the prefix path to the current
+# round and total round metrics for each model. For example, the metrics for
+# model 'a' will be stored under 'client_work/a/eval/...'.
+_MULTI_MODEL_EVAL_METRICS_PATH_COMPONENTS_BEFORE_MODEL_ID = ('client_work',)
+_MULTI_MODEL_EVAL_METRICS_PATH_COMPONENTS_AFTER_MODEL_ID = ('eval',)
 
 
 def _append_integer(integer_array: np.ndarray, new_value: int) -> np.ndarray:
@@ -403,7 +411,10 @@ class EvaluationManager:
       self,
       train_round: int,
       start_timestamp_seconds: int,
-      model_weights: model_weights_lib.ModelWeights,
+      model_weights: Union[
+          model_weights_lib.ModelWeights,
+          dict[str, model_weights_lib.ModelWeights],
+      ],
   ) -> None:
     """Starts a new evaluation loop for the incoming model_weights."""
     self._evaluating_training_checkpoints = _append_integer(
@@ -560,6 +571,117 @@ def extract_and_rewrap_metrics(
   return structure_copy
 
 
+def _extract_and_rewrap_metrics_for_multi_model_evaluation(
+    metrics_structure: Mapping[str, Any],
+    *,
+    path_before_model_id: Sequence[str],
+    path_after_model_id: Sequence[str],
+    model_ids: Sequence[str],
+) -> Mapping[str, Any]:
+  """Extracts and re-wraps metrics for multi-model evaluation.
+
+  This is used to normalize outputs from the multi-model evaluation
+  computations. For example, we are interested in the following substructure
+  from the evaluation task:
+
+  ```
+    client_work/a/eval/current_round_metrics/...
+    client_work/b/eval/total_rounds_metrics/...
+  ```
+
+  And we like to "re-home" these structures under:
+
+  ```
+    model_metrics/a/...
+    model_metrics/b/...
+  ```
+
+  while leaving all the other metrics alone. This can be thought of as a
+  "subtree promotion" method.
+
+  This is used for grouping metrics so that they appear aligned in
+  http://tensorboard/ in a uniform way. TensorBoard uses the name up to the
+  first `/` as a tab separator in the UI.
+
+  Args:
+    metrics_structure: The nested structure of tensor-like metric values.
+    path_before_model_id: A sequence of strings that will be used to traverse
+      the keys of `metrics_structure` and identify the substructure of interest
+      before the model ID.
+    path_after_model_id: A sequence of strings that will be used to traverse the
+      keys of `metrics_structure` and identify the substructure of interest
+      after the model ID.
+    model_ids: A sequence of model IDs that will be used to extract the
+      substructure
+
+  Returns:
+    A structure of metrics of `metrics_substructure`.
+
+  Raises:
+    KeyError: If any key in `path_before_model_id` or `path_after_model_id`
+      sequence does not exist in the `metrics_structure`.
+  """
+  current_structure = typing.cast(
+      MutableMapping[str, Any], metrics_structure.copy()
+  )
+  structure_copy = current_structure
+  for model_id in model_ids:
+    full_path = (
+        list(path_before_model_id) + [model_id] + list(path_after_model_id)
+    )
+    *path_parts, last_part = full_path
+    for path_part in path_parts:
+      part = current_structure.get(path_part)
+      if part is None:
+        raise KeyError(
+            f'[{path_part}] of path {full_path} did not exist in'
+            f' structure: {structure_copy}'
+        )
+      part = part.copy()
+      current_structure[path_part] = part
+      current_structure = part
+    if (substructure := current_structure.get(last_part)) is None:
+      raise KeyError(
+          f'[{last_part}] of path {full_path} did not exist in'
+          f' structure: {structure_copy}'
+      )
+    del current_structure[last_part]
+    if structure_copy.get(MODEL_METRICS_PREFIX) is None:
+      structure_copy[MODEL_METRICS_PREFIX] = {}
+    structure_copy[MODEL_METRICS_PREFIX][model_id] = substructure
+    # Reset the current structure to the root of the structure.
+    current_structure = structure_copy
+
+  return structure_copy
+
+
+def _get_model_ids_for_multi_model_evaluation(
+    metrics_structure: Mapping[str, Any],
+) -> Optional[Sequence[str]]:
+  """Returns model IDs if the metrics structure is for multi-model evaluation.
+
+  The model IDs are expected to be in the format of lowercase letters (i.e.,
+  'a', 'b', 'c', etc.).
+
+  Args:
+    metrics_structure: The nested structure of tensor-like metric values.
+
+  Returns:
+    Model IDs if the metrics structure is for multi-model evaluation, otherwise
+    `None`.
+  """
+  current_structure = metrics_structure
+  for path_part in _MULTI_MODEL_EVAL_METRICS_PATH_COMPONENTS_BEFORE_MODEL_ID:
+    part = current_structure.get(path_part)
+    if part is None:
+      return None
+    current_structure = part
+  for key in current_structure.keys():
+    if key not in string.ascii_lowercase:
+      return None
+    return list(current_structure.keys())
+
+
 async def _run_evaluation(
     train_round_num: int,
     state_manager: file_program_state_manager.FileProgramStateManager,
@@ -643,10 +765,20 @@ async def _run_evaluation(
     # Only output the `current_round_metrics` here. The total_rounds_metrics
     # will be output once at the end of the evaluation loop.
     if per_round_metrics_manager is not None:
-      current_round_eval_metrics = extract_and_rewrap_metrics(
-          evaluation_metrics,
-          path=_EVAL_METRICS_PATH_COMPONENTS + ('current_round_metrics',),
-      )
+      model_ids = _get_model_ids_for_multi_model_evaluation(evaluation_metrics)
+      if model_ids is not None:
+        current_round_eval_metrics = _extract_and_rewrap_metrics_for_multi_model_evaluation(
+            evaluation_metrics,
+            path_before_model_id=_MULTI_MODEL_EVAL_METRICS_PATH_COMPONENTS_BEFORE_MODEL_ID,
+            path_after_model_id=_MULTI_MODEL_EVAL_METRICS_PATH_COMPONENTS_AFTER_MODEL_ID
+            + ('current_round_metrics',),
+            model_ids=model_ids,
+        )
+      else:
+        current_round_eval_metrics = extract_and_rewrap_metrics(
+            evaluation_metrics,
+            path=_EVAL_METRICS_PATH_COMPONENTS + ('current_round_metrics',),
+        )
       await per_round_metrics_manager.release(
           current_round_eval_metrics,
           key=eval_round_num,
@@ -698,10 +830,20 @@ async def _run_evaluation(
       evaluation_end_time,
   )
   if aggregated_metrics_manager is not None:
-    total_rounds_eval_metrics = extract_and_rewrap_metrics(
-        evaluation_metrics,
-        path=_EVAL_METRICS_PATH_COMPONENTS + ('total_rounds_metrics',),
-    )
+    model_ids = _get_model_ids_for_multi_model_evaluation(evaluation_metrics)
+    if model_ids is not None:
+      total_rounds_eval_metrics = _extract_and_rewrap_metrics_for_multi_model_evaluation(
+          evaluation_metrics,
+          path_before_model_id=_MULTI_MODEL_EVAL_METRICS_PATH_COMPONENTS_BEFORE_MODEL_ID,
+          path_after_model_id=_MULTI_MODEL_EVAL_METRICS_PATH_COMPONENTS_AFTER_MODEL_ID
+          + ('total_rounds_metrics',),
+          model_ids=model_ids,
+      )
+    else:
+      total_rounds_eval_metrics = extract_and_rewrap_metrics(
+          evaluation_metrics,
+          path=_EVAL_METRICS_PATH_COMPONENTS + ('total_rounds_metrics',),
+      )
     await aggregated_metrics_manager.release(
         total_rounds_eval_metrics,
         key=train_round_num,
