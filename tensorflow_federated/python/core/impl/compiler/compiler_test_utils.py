@@ -39,7 +39,7 @@ def _name_compiled_computations(
       counter += 1
       return (
           federated_language.framework.CompiledComputation(
-              proto=building_block.proto, name=new_name
+              proto=building_block.to_proto(), name=new_name
           ),
           True,
       )

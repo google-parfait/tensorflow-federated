@@ -359,6 +359,6 @@ def replace_secure_intrinsics_with_bodies(comp):
       _replace_secure_intrinsics_with_insecure_bodies(comp.to_building_block())
   )
   return federated_language.framework.ConcreteComputation(
-      computation_proto=replaced_intrinsic_bodies.proto,
+      computation_proto=replaced_intrinsic_bodies.to_proto(),
       context_stack=federated_language.framework.get_context_stack(),
   )

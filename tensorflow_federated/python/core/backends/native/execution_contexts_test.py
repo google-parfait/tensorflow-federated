@@ -112,7 +112,9 @@ def _create_mock_remote_executor_grpc_stub(
   mock_ex.get_executor.return_value = _GetExecutorResponse()
   mock_ex.create_value.return_value = executor_pb2.CreateValueResponse()
   mock_ex.create_call.return_value = executor_pb2.CreateCallResponse()
-  value = executor_pb2.Value(computation=computation.to_building_block().proto)
+  value = executor_pb2.Value(
+      computation=computation.to_building_block().to_proto()
+  )
   mock_ex.compute.return_value = executor_pb2.ComputeResponse(value=value)
   return mock_ex
 

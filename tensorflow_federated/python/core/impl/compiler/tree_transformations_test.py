@@ -897,7 +897,7 @@ class ReplaceSelectionsTest(absltest.TestCase):
     new_comp = tree_transformations.replace_selections(
         comp, 'x', path_to_replacement
     )
-    self.assertEqual(new_comp.proto, y.proto)
+    self.assertEqual(new_comp.to_proto(), y.to_proto())
 
   def test_replace_multiple_instances_of_selection(self):
     comp = federated_language.framework.Struct([
@@ -923,10 +923,10 @@ class ReplaceSelectionsTest(absltest.TestCase):
         comp, 'x', path_to_replacement
     )
     self.assertEqual(
-        new_comp.proto,
+        new_comp.to_proto(),
         federated_language.framework.Struct(
             [y, federated_language.framework.Selection(y, index=0)]
-        ).proto,
+        ).to_proto(),
     )
 
   def test_replace_selection_mismatching_ref_name(self):
@@ -941,7 +941,7 @@ class ReplaceSelectionsTest(absltest.TestCase):
     new_comp = tree_transformations.replace_selections(
         comp, 'z', path_to_replacement
     )
-    self.assertEqual(new_comp.proto, comp.proto)
+    self.assertEqual(new_comp.to_proto(), comp.to_proto())
 
   def test_fail_replace_compiled_comp(self):
     arg_type = federated_language.StructType([np.int32])
@@ -985,10 +985,10 @@ class ReplaceSelectionsTest(absltest.TestCase):
     # This resulting x[0] should not in turn be replaced by x because the
     # type signatures would not be accurate.
     self.assertEqual(
-        new_comp.proto,
+        new_comp.to_proto(),
         federated_language.framework.Selection(
             federated_language.framework.Reference('x', [np.int32]), index=0
-        ).proto,
+        ).to_proto(),
     )
 
 

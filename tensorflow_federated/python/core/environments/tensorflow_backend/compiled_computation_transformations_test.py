@@ -76,8 +76,10 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     self.assertIsInstance(
         transformed_comp, federated_language.framework.CompiledComputation
     )
-    self.assertTrue(transformed_comp.proto.tensorflow.HasField('parameter'))
-    self.assertFalse(transformed_comp.proto.tensorflow.initialize_op)
+    self.assertTrue(
+        transformed_comp.to_proto().tensorflow.HasField('parameter')
+    )
+    self.assertFalse(transformed_comp.to_proto().tensorflow.initialize_op)
 
   def test_transform_compiled_computation_returns_compiled_computation_without_empty_fields(
       self,
@@ -95,8 +97,10 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     self.assertIsInstance(
         transformed_comp, federated_language.framework.CompiledComputation
     )
-    self.assertFalse(transformed_comp.proto.tensorflow.HasField('parameter'))
-    self.assertFalse(transformed_comp.proto.tensorflow.initialize_op)
+    self.assertFalse(
+        transformed_comp.to_proto().tensorflow.HasField('parameter')
+    )
+    self.assertFalse(transformed_comp.to_proto().tensorflow.initialize_op)
 
   def test_transform_compiled_computation_semantic_equivalence(self):
     tuple_type = federated_language.TensorType(np.int32)
@@ -116,10 +120,10 @@ class TensorFlowOptimizerTest(absltest.TestCase):
         transformed_comp, federated_language.framework.CompiledComputation
     )
     zero_before_transform = tensorflow_computation_test_utils.run_tensorflow(
-        compiled_computation.proto, 0
+        compiled_computation.to_proto(), 0
     )
     zero_after_transform = tensorflow_computation_test_utils.run_tensorflow(
-        transformed_comp.proto, 0
+        transformed_comp.to_proto(), 0
     )
     self.assertEqual(zero_before_transform, zero_after_transform)
 
@@ -167,9 +171,11 @@ class AddUniqueIDsTest(absltest.TestCase):
         first_transformed_comp, federated_language.framework.CompiledComputation
     )
     self.assertTrue(
-        first_transformed_comp.proto.tensorflow.HasField('cache_key')
+        first_transformed_comp.to_proto().tensorflow.HasField('cache_key')
     )
-    self.assertNotEqual(first_transformed_comp.proto.tensorflow.cache_key.id, 0)
+    self.assertNotEqual(
+        first_transformed_comp.to_proto().tensorflow.cache_key.id, 0
+    )
     # Now create the same NoOp tf.Graph, but with a different binding and
     # type_signature.
     proto, type_signature = (
@@ -191,15 +197,15 @@ class AddUniqueIDsTest(absltest.TestCase):
         federated_language.framework.CompiledComputation,
     )
     self.assertTrue(
-        second_transformed_comp.proto.tensorflow.HasField('cache_key')
+        second_transformed_comp.to_proto().tensorflow.HasField('cache_key')
     )
     self.assertNotEqual(
-        second_transformed_comp.proto.tensorflow.cache_key.id, 0
+        second_transformed_comp.to_proto().tensorflow.cache_key.id, 0
     )
     # Assert the IDs are different based on the type signture.
     self.assertNotEqual(
-        first_transformed_comp.proto.tensorflow.cache_key.id,
-        second_transformed_comp.proto.tensorflow.cache_key.id,
+        first_transformed_comp.to_proto().tensorflow.cache_key.id,
+        second_transformed_comp.to_proto().tensorflow.cache_key.id,
     )
 
   def test_transform_compiled_computation_returns_compiled_computation_with_id(
@@ -221,10 +227,10 @@ class AddUniqueIDsTest(absltest.TestCase):
           federated_language.framework.CompiledComputation,
       )
       self.assertTrue(
-          first_transformed_comp.proto.tensorflow.HasField('cache_key')
+          first_transformed_comp.to_proto().tensorflow.HasField('cache_key')
       )
       self.assertNotEqual(
-          first_transformed_comp.proto.tensorflow.cache_key.id, 0
+          first_transformed_comp.to_proto().tensorflow.cache_key.id, 0
       )
     with self.subTest('second_comp_same_id'):
       second_transformed_comp, mutated = add_ids.transform(compiled_computation)
@@ -234,14 +240,14 @@ class AddUniqueIDsTest(absltest.TestCase):
           federated_language.framework.CompiledComputation,
       )
       self.assertTrue(
-          second_transformed_comp.proto.tensorflow.HasField('cache_key')
+          second_transformed_comp.to_proto().tensorflow.HasField('cache_key')
       )
       self.assertNotEqual(
-          second_transformed_comp.proto.tensorflow.cache_key.id, 0
+          second_transformed_comp.to_proto().tensorflow.cache_key.id, 0
       )
       self.assertEqual(
-          first_transformed_comp.proto.tensorflow.cache_key.id,
-          second_transformed_comp.proto.tensorflow.cache_key.id,
+          first_transformed_comp.to_proto().tensorflow.cache_key.id,
+          second_transformed_comp.to_proto().tensorflow.cache_key.id,
       )
     with self.subTest('restart_transformation_same_id'):
       # Test that the sequence ids are the same if we run a new compiler pass.
@@ -251,14 +257,14 @@ class AddUniqueIDsTest(absltest.TestCase):
       third_transformed_comp, mutated = add_ids.transform(compiled_computation)
       self.assertTrue(mutated)
       self.assertTrue(
-          third_transformed_comp.proto.tensorflow.HasField('cache_key')
+          third_transformed_comp.to_proto().tensorflow.HasField('cache_key')
       )
       self.assertNotEqual(
-          third_transformed_comp.proto.tensorflow.cache_key.id, 0
+          third_transformed_comp.to_proto().tensorflow.cache_key.id, 0
       )
       self.assertEqual(
-          first_transformed_comp.proto.tensorflow.cache_key.id,
-          third_transformed_comp.proto.tensorflow.cache_key.id,
+          first_transformed_comp.to_proto().tensorflow.cache_key.id,
+          third_transformed_comp.to_proto().tensorflow.cache_key.id,
       )
     with self.subTest('different_computation_different_id'):
       different_compiled_computation = _create_compiled_computation(
@@ -270,14 +276,14 @@ class AddUniqueIDsTest(absltest.TestCase):
       )
       self.assertTrue(mutated)
       self.assertTrue(
-          different_transformed_comp.proto.tensorflow.HasField('cache_key')
+          different_transformed_comp.to_proto().tensorflow.HasField('cache_key')
       )
       self.assertNotEqual(
-          different_transformed_comp.proto.tensorflow.cache_key.id, 0
+          different_transformed_comp.to_proto().tensorflow.cache_key.id, 0
       )
       self.assertNotEqual(
-          first_transformed_comp.proto.tensorflow.cache_key.id,
-          different_transformed_comp.proto.tensorflow.cache_key.id,
+          first_transformed_comp.to_proto().tensorflow.cache_key.id,
+          different_transformed_comp.to_proto().tensorflow.cache_key.id,
       )
 
 

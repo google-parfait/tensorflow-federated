@@ -107,7 +107,7 @@ def transform_to_native_form(
           )
       )
     return federated_language.framework.ConcreteComputation(
-        computation_proto=form_with_ids.proto,
+        computation_proto=form_with_ids.to_proto(),
         context_stack=federated_language.framework.get_context_stack(),
     )
   except ValueError as e:
@@ -142,7 +142,7 @@ def desugar_and_transform_to_native(comp):
   # in this order.
   native_form = transform_to_native_form(
       federated_language.framework.ConcreteComputation(
-          computation_proto=intrinsics_desugared_bb.proto,
+          computation_proto=intrinsics_desugared_bb.to_proto(),
           context_stack=federated_language.framework.get_context_stack(),
       ),
       grappler_config=grappler_config,

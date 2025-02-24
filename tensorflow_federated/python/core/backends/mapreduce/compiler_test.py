@@ -165,8 +165,8 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     self.assertIsInstance(
         result, federated_language.framework.CompiledComputation
     )
-    self.assertIsInstance(result.proto, computation_pb2.Computation)
-    self.assertEqual(result.proto.WhichOneof('computation'), 'tensorflow')
+    self.assertIsInstance(result.to_proto(), computation_pb2.Computation)
+    self.assertEqual(result.to_proto().WhichOneof('computation'), 'tensorflow')
 
   def test_reduces_unplaced_lambda_leaving_type_signature_alone(self):
     lam = federated_language.framework.Lambda(
