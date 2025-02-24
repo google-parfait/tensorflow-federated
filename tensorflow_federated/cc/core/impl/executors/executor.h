@@ -265,8 +265,8 @@ class ExecutorBase : public Executor,
 
  protected:
   // Logs the current method and records its trace to the TensorFlow profiler.
-  std::optional<tensorflow::profiler::TraceMe> Trace(const char* method_name) {
-    bool enabled = VLOG_IS_ON(1) || tensorflow::profiler::TraceMe::Active();
+  std::optional<tsl::profiler::TraceMe> Trace(const char* method_name) {
+    bool enabled = VLOG_IS_ON(1) || tsl::profiler::TraceMe::Active();
     if (!enabled) {
       return std::nullopt;
     }
@@ -275,7 +275,7 @@ class ExecutorBase : public Executor,
     VLOG(1) << path_view;
     // Safe to pass in a view here: `TraceMe` internally copies to an owned
     // `std::string`.
-    return std::make_optional<tensorflow::profiler::TraceMe>(path_view);
+    return std::make_optional<tsl::profiler::TraceMe>(path_view);
   }
 
   // Clears all currently tracked values from the executor.
