@@ -1,0 +1,35 @@
+diff --git federated_language/types/dtype_utils.py federated_language/types/dtype_utils.py
+index 59f8937..342fbee 100644
+--- federated_language/types/dtype_utils.py
++++ federated_language/types/dtype_utils.py
+@@ -102,15 +102,21 @@ def can_cast(
+     dtype: The dtype to check against.
+   """
+ 
+-  # When encountering an overflow, numpy issues a `RuntimeWarning` for floating
+-  # dtypes and raises an `OverflowError` for integer dtypes.
+-  with warnings.catch_warnings():
+-    warnings.simplefilter(action='error', category=RuntimeWarning)
+-    try:
+-      np.asarray(value, dtype=dtype)
+-      return True
+-    except (OverflowError, RuntimeWarning):
+-      return False
++  # `np.can_cast` does not support Python scalars (since version 2.0). Casting
++  # the value to a numpy value and testing for an overflow is equivalent to
++  # testing the Python value.
++  numpy_version = tuple(int(x) for x in np.__version__.split('.'))
++  if numpy_version >= (2, 0):
++    # When encountering an overflow, numpy issues a `RuntimeWarning` for
++    # floating dtypes and raises an `OverflowError` for integer dtypes.
++    with warnings.catch_warnings(action='error', category=RuntimeWarning):
++      try:
++        np.asarray(value, dtype=dtype)
++        return True
++      except (OverflowError, RuntimeWarning):
++        return False
++  else:
++    return np.can_cast(value, dtype)
+ 
+ 
+ def infer_dtype(

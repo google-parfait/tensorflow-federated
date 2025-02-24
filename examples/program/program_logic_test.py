@@ -31,12 +31,14 @@ from examplesprogram import program_logic
 
 def _create_native_federated_context():
   context = tff.backends.native.create_async_local_cpp_execution_context()
-  return tff.program.NativeFederatedContext(context)
+  return federated_language.program.NativeFederatedContext(context)
 
 
 def _create_mock_context() -> mock.Mock:
   return mock.create_autospec(
-      tff.program.NativeFederatedContext, spec_set=True, instance=True
+      federated_language.program.NativeFederatedContext,
+      spec_set=True,
+      instance=True,
   )
 
 

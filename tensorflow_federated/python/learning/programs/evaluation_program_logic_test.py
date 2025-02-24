@@ -30,7 +30,6 @@ from tensorflow_federated.python.learning.programs import evaluation_program_log
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.program import file_program_state_manager
-from tensorflow_federated.python.program import native_platform
 
 # Convenience aliases.
 TensorType = federated_language.TensorType
@@ -108,7 +107,7 @@ class ExtractAndRewrapMetricsTest(
 
       coro = _value()
       task = asyncio.create_task(coro)
-      return native_platform.NativeValueReference(task, value_type)
+      return federated_language.program.NativeValueReference(task, value_type)
 
     test_value = collections.OrderedDict(
         a=awaitable_value('foo', federated_language.TensorType(np.str_)),
@@ -237,7 +236,7 @@ class GetModelIdsForMultiModelEvalTest(tf.test.TestCase):
 
 
 def _create_test_context() -> federated_language.program.FederatedContext:
-  return native_platform.NativeFederatedContext(
+  return federated_language.program.NativeFederatedContext(
       execution_contexts.create_async_local_cpp_execution_context()
   )
 

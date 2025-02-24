@@ -96,7 +96,7 @@ def main(argv: Sequence[str]) -> None:
     raise app.UsageError('Too many command-line arguments.')
 
   context = tff.backends.native.create_async_local_cpp_execution_context()
-  context = tff.program.NativeFederatedContext(context)
+  context = federated_language.program.NativeFederatedContext(context)
   federated_language.framework.set_default_context(context)
 
   timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')

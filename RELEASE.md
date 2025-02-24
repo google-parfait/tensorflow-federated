@@ -308,6 +308,10 @@ and this project adheres to
     `federated_language.framework.computation_contains` instead.
 *   `tff.test.assert_types_equivalent`, use
     `federated_language.Type.is_equivalent_to` instead.
+*   `tff.program.NativeFederatedContext`, use
+    `federated_language.program.NativeFederatedContext` instead.
+*   `tff.program.NativeValueReference`, use
+    `federated_language.program.NativeValueReference` instead.
 
 ## Release 0.88.0
 

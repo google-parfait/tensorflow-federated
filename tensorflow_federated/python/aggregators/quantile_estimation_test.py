@@ -216,8 +216,10 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
         learning_rate=1.0,
         secure_estimation=True,
     )
-    federated_language.framework.assert_not_contains_unsecure_aggregation(
-        secure_process.next
+    self.assertFalse(
+        federated_language.framework.computation_contains_unsecure_aggregation(
+            secure_process.next
+        )
     )
 
 
