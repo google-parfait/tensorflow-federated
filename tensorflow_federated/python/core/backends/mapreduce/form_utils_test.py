@@ -612,7 +612,7 @@ def _count_tensorflow_variables_under(
     """Counts TF Variables in `comp` if `comp` is a TF block."""
     if (
         not isinstance(comp, federated_language.framework.CompiledComputation)
-        or comp.proto.WhichOneof('computation') != 'tensorflow'
+        or comp.to_proto().WhichOneof('computation') != 'tensorflow'
     ):
       raise ValueError(
           'Please pass a '
@@ -620,7 +620,7 @@ def _count_tensorflow_variables_under(
           '`tensorflow` variety to `count_tensorflow_variables_in`.'
       )
     graph_def = serialization_utils.unpack_graph_def(
-        comp.proto.tensorflow.graph_def
+        comp.to_proto().tensorflow.graph_def
     )
 
     def _node_is_variable(node):
@@ -647,7 +647,7 @@ def _count_tensorflow_variables_under(
     nonlocal count_vars
     if (
         isinstance(inner_comp, federated_language.framework.CompiledComputation)
-        and inner_comp.proto.WhichOneof('computation') == 'tensorflow'
+        and inner_comp.to_proto().WhichOneof('computation') == 'tensorflow'
     ):
       count_vars += _count_tensorflow_variables_in(inner_comp)
 
@@ -735,7 +735,7 @@ class GetDistributeAggregateFormTest(
         federated_language.framework.Reference('x', init_result),
     )
     bad_comp = federated_language.framework.ConcreteComputation(
-        computation_proto=lam.proto,
+        computation_proto=lam.to_proto(),
         context_stack=federated_language.framework.get_context_stack(),
     )
     with self.assertRaises(TypeError):
@@ -758,7 +758,7 @@ class GetDistributeAggregateFormTest(
         comp_bb.parameter_name, comp_bb.parameter_type, second_result
     )
     bad_comp = federated_language.framework.ConcreteComputation(
-        computation_proto=not_reducible.proto,
+        computation_proto=not_reducible.to_proto(),
         context_stack=federated_language.framework.get_context_stack(),
     )
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
@@ -963,7 +963,7 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
         federated_language.framework.Reference('x', init_result),
     )
     bad_comp = federated_language.framework.ConcreteComputation(
-        computation_proto=lam.proto,
+        computation_proto=lam.to_proto(),
         context_stack=federated_language.framework.get_context_stack(),
     )
     with self.assertRaises(TypeError):
@@ -986,7 +986,7 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
         comp_bb.parameter_name, comp_bb.parameter_type, second_result
     )
     bad_comp = federated_language.framework.ConcreteComputation(
-        computation_proto=not_reducible.proto,
+        computation_proto=not_reducible.to_proto(),
         context_stack=federated_language.framework.get_context_stack(),
     )
 

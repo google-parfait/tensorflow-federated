@@ -147,7 +147,7 @@ def get_state_initialization_computation(
       initialize_tree, grappler_config
   )
   return federated_language.framework.ConcreteComputation(
-      computation_proto=initialize_tree.proto,
+      computation_proto=initialize_tree.to_proto(),
       context_stack=federated_language.framework.get_context_stack(),
   )
 
@@ -1051,7 +1051,7 @@ def get_broadcast_form_for_computation(
     )
 
   compute_server_context, client_processing = (
-      _create_comp(bb.proto)
+      _create_comp(bb.to_proto())
       for bb in (compute_server_context, client_processing)
   )
 
@@ -1151,7 +1151,7 @@ def get_map_reduce_form_for_computation(
       secure_sum_modulus,
       update,
   )
-  comps = [_create_comp(bb.proto) for bb in blocks]
+  comps = [_create_comp(bb.to_proto()) for bb in blocks]
   return forms.MapReduceForm(comp.type_signature, *comps)
 
 
@@ -1495,6 +1495,6 @@ def get_distribute_aggregate_form_for_computation(
         context_stack=federated_language.framework.get_context_stack(),
     )
 
-  comps = [_create_comp(bb.proto) for bb in blocks]
+  comps = [_create_comp(bb.to_proto()) for bb in blocks]
 
   return forms.DistributeAggregateForm(comp.type_signature, *comps)

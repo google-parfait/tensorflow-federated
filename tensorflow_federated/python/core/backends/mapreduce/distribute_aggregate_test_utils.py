@@ -61,7 +61,7 @@ def _make_distribute_aggregate_form_example(
         building_block
     )[0]
     return federated_language.framework.ConcreteComputation(
-        computation_proto=transformed_comp.proto,
+        computation_proto=transformed_comp.to_proto(),
         context_stack=federated_language.framework.get_context_stack(),
     )
 

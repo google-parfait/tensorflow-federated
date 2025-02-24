@@ -40,7 +40,7 @@ def _select_output_result_and_wrap_as_noarg_tensorflow(
   )
   selected_and_compiled = _compile_to_tf(selected_and_wrapped)
   return federated_language.framework.ConcreteComputation(
-      computation_proto=selected_and_compiled.proto,
+      computation_proto=selected_and_compiled.to_proto(),
       context_stack=federated_language.framework.get_context_stack(),
   )
 
@@ -54,7 +54,7 @@ def _select_output_result_and_wrap_as_tensorflow(
   ).result
   selected_and_compiled = _compile_to_tf(selected_fn)
   return federated_language.framework.ConcreteComputation(
-      computation_proto=selected_and_compiled.proto,
+      computation_proto=selected_and_compiled.to_proto(),
       context_stack=federated_language.framework.get_context_stack(),
   )
 
@@ -200,11 +200,11 @@ def compile_to_mergeable_comp_form(
   )
 
   before_agg_callable = federated_language.framework.ConcreteComputation(
-      computation_proto=before_agg.proto,
+      computation_proto=before_agg.to_proto(),
       context_stack=federated_language.framework.get_context_stack(),
   )
   after_agg_callable = federated_language.framework.ConcreteComputation(
-      computation_proto=after_agg.proto,
+      computation_proto=after_agg.to_proto(),
       context_stack=federated_language.framework.get_context_stack(),
   )
 

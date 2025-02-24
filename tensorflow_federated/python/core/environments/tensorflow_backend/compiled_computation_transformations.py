@@ -149,7 +149,7 @@ class DisableCallOpGrappler:
   def should_transform(self, comp):
     return (
         isinstance(comp, federated_language.framework.CompiledComputation)
-        and comp.proto.WhichOneof('computation') == 'tensorflow'
+        and comp.to_proto().WhichOneof('computation') == 'tensorflow'
     )
 
   def transform(self, comp):
@@ -197,7 +197,7 @@ class VerifyAllowedOps:
   ) -> bool:
     return (
         isinstance(comp, federated_language.framework.CompiledComputation)
-        and comp.proto.WhichOneof('computation') == 'tensorflow'
+        and comp.to_proto().WhichOneof('computation') == 'tensorflow'
     )
 
   def transform(
@@ -209,7 +209,7 @@ class VerifyAllowedOps:
         comp, federated_language.framework.CompiledComputation
     )
     tensorflow_computation_transformations.check_allowed_ops(
-        comp.proto, self._allowed_op_names
+        comp.to_proto(), self._allowed_op_names
     )
     return comp, False
 
@@ -245,7 +245,7 @@ class RaiseOnDisallowedOp:
   ) -> bool:
     return (
         isinstance(comp, federated_language.framework.CompiledComputation)
-        and comp.proto.WhichOneof('computation') == 'tensorflow'
+        and comp.to_proto().WhichOneof('computation') == 'tensorflow'
     )
 
   def transform(
@@ -257,7 +257,7 @@ class RaiseOnDisallowedOp:
         comp, federated_language.framework.CompiledComputation
     )
     tensorflow_computation_transformations.check_no_disallowed_ops(
-        comp.proto, self._disallowed_op_names
+        comp.to_proto(), self._disallowed_op_names
     )
     return comp, False
 
@@ -287,7 +287,7 @@ class AddUniqueIDs:
   def should_transform(self, comp):
     return (
         isinstance(comp, federated_language.framework.CompiledComputation)
-        and comp.proto.WhichOneof('computation') == 'tensorflow'
+        and comp.to_proto().WhichOneof('computation') == 'tensorflow'
     )
 
   def transform(self, comp):
@@ -298,18 +298,18 @@ class AddUniqueIDs:
         comp, federated_language.framework.CompiledComputation
     )
     new_tf_proto = computation_pb2.TensorFlow()
-    new_tf_proto.CopyFrom(comp.proto.tensorflow)
+    new_tf_proto.CopyFrom(comp.to_proto().tensorflow)
     # Important: we must also serialize the type_signature because TFF might
     # produce (<> -> <>) or (<> -> <<>>) functions, which both could be
     # represented as the same graph with a single NoOp node. This can occur
     # particularly in MapReduceForm compiltion for secure_sum intrinsics over
     # empty structures.
     hash_value = hash(
-        (comp.type_signature, comp.proto.tensorflow.graph_def.value)
+        (comp.type_signature, comp.to_proto().tensorflow.graph_def.value)
     )
     new_tf_proto.cache_key.id = ctypes.c_uint64(hash_value).value
     new_comp_proto = computation_pb2.Computation(
-        type=comp.proto.type, tensorflow=new_tf_proto
+        type=comp.to_proto().type, tensorflow=new_tf_proto
     )
     return (
         federated_language.framework.CompiledComputation(

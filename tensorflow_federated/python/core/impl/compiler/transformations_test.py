@@ -816,7 +816,9 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
             federated_language.framework.Reference('x', int_at_clients_type),
         ],
     ):
-      self.assertEqual(new_input_comp.proto, expected_new_input_comp.proto)
+      self.assertEqual(
+          new_input_comp.to_proto(), expected_new_input_comp.to_proto()
+      )
 
   def test_identifies_unbound_selections(self):
     original_arg_type = federated_language.StructType([np.int32])
@@ -871,7 +873,9 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
     for new_input_comp, expected_new_input_comp in zip(
         new_input_comps, [federated_sum_param, other_result_param]
     ):
-      self.assertEqual(new_input_comp.proto, expected_new_input_comp.proto)
+      self.assertEqual(
+          new_input_comp.to_proto(), expected_new_input_comp.to_proto()
+      )
 
   def test_identifies_unbound_refs_in_struct(self):
     original_arg_type = federated_language.StructType(
@@ -933,7 +937,9 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
             federated_language.framework.Reference('c', int_at_clients_type),
         ],
     ):
-      self.assertEqual(new_input_comp.proto, expected_new_input_comp.proto)
+      self.assertEqual(
+          new_input_comp.to_proto(), expected_new_input_comp.to_proto()
+      )
 
   def test_no_unbound_refs(self):
     original_arg_type = federated_language.StructType([np.int32])
@@ -1463,7 +1469,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     # original arg).
     self.assertNotEmpty(before.result.result[1])
     self.assertEqual(
-        before.result.result[1].proto,
+        before.result.result[1].to_proto(),
         federated_language.framework.Struct([
             federated_language.framework.Selection(
                 federated_language.framework.Selection(
@@ -1474,7 +1480,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
                 ),
                 index=server_data_index,
             )
-        ]).proto,
+        ]).to_proto(),
     )
 
     # Allow all the output comps to depend on all portions of the original comp

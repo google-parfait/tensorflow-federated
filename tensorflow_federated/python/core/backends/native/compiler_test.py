@@ -35,8 +35,8 @@ class DesugarAndTransformTest(absltest.TestCase):
     def _check_tf_computations_have_ids(comp):
       if (
           isinstance(comp, federated_language.framework.CompiledComputation)
-          and comp.proto.WhichOneof('computation') == 'tensorflow'
-          and not comp.proto.tensorflow.cache_key.id
+          and comp.to_proto().WhichOneof('computation') == 'tensorflow'
+          and not comp.to_proto().tensorflow.cache_key.id
       ):
         raise ValueError(
             f'Building block {comp.formatted_representation()} is a compiled '

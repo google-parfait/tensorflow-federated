@@ -280,12 +280,12 @@ def unpack_compiled_computations(
         subcomp, federated_language.framework.CompiledComputation
     ):
       return subcomp, False
-    kind = subcomp.proto.WhichOneof('computation')
+    kind = subcomp.to_proto().WhichOneof('computation')
     if kind == 'tensorflow' or kind == 'xla':
       return subcomp, False
     return (
         federated_language.framework.ComputationBuildingBlock.from_proto(
-            subcomp.proto
+            subcomp.to_proto()
         ),
         True,
     )
@@ -334,12 +334,12 @@ def _evaluate_to_tensorflow(
       bindings[name] = _evaluate_to_tensorflow(value, bindings)
     return _evaluate_to_tensorflow(comp.result, bindings)
   if isinstance(comp, federated_language.framework.CompiledComputation):
-    kind = comp.proto.WhichOneof('computation')
+    kind = comp.to_proto().WhichOneof('computation')
     if kind == 'tensorflow':
 
       def call_concrete(*args):
         concrete = federated_language.framework.ConcreteComputation(
-            computation_proto=comp.proto,
+            computation_proto=comp.to_proto(),
             context_stack=federated_language.framework.get_context_stack(),
         )
         result = concrete(*args)
@@ -431,7 +431,7 @@ def compile_local_computation_to_tensorflow(
 
   if (
       isinstance(comp, federated_language.framework.CompiledComputation)
-      and comp.proto.WhichOneof('computation') == 'tensorflow'
+      and comp.to_proto().WhichOneof('computation') == 'tensorflow'
   ):
     return comp
 
@@ -489,7 +489,7 @@ def compile_local_subcomputations_to_tensorflow(
       return False
     if (
         isinstance(comp, federated_language.framework.CompiledComputation)
-        and comp.proto.WhichOneof('computation') == 'xla'
+        and comp.to_proto().WhichOneof('computation') == 'xla'
     ):
       local_cache[comp] = False
       return False
