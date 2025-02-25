@@ -266,10 +266,12 @@ def compile_to_mergeable_comp_form(
   annotated_type_signature = federated_language.FunctionType(
       after_merge_computation.type_signature.parameter, original_return_type
   )
-  after_merge_computation = (
-      federated_language.framework.ConcreteComputation.with_type(
-          after_merge_computation, annotated_type_signature
-      )
+  # Note: Update to latest version of `federated-language` to use a public
+  # property and remove the pylint directive.
+  after_merge_computation = federated_language.framework.ConcreteComputation(
+      computation_proto=after_merge_computation.to_proto(),
+      context_stack=after_merge_computation._context_stack,  # pylint: disable=protected-access
+      annotated_type=annotated_type_signature,
   )
 
   return mergeable_comp_execution_context.MergeableCompForm(
