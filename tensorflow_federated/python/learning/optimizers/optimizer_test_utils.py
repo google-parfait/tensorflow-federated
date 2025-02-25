@@ -111,13 +111,23 @@ class TestCase(tf.test.TestCase):
       state = optimizer.initialize(model_weight_specs)
       for grad in gradients:
         state, model_weights = optimizer.next(state, model_weights, grad)
-      return model_weights
+      return tf.nest.map_structure(
+          lambda actual, initial: initial - actual,
+          model_weights,
+          model_variables_fn(),
+      )
 
     def _run_keras():
       model_variables = model_variables_fn()
       optimizer = keras_optimizer_fn()
       for grad in gradients:
         optimizer.apply_gradients(zip(grad, model_variables))
-      return model_variables
+      return tf.nest.map_structure(
+          lambda actual, initial: initial - actual,
+          model_variables,
+          model_variables_fn(),
+      )
 
-    self.assertAllClose(_run_tff(), _run_keras(), rtol=5e-5, atol=5e-5)
+    tff_delta = _run_tff()
+    keras_delta = _run_keras()
+    self.assertAllClose(tff_delta, keras_delta, rtol=3e-4, atol=1e-5)
