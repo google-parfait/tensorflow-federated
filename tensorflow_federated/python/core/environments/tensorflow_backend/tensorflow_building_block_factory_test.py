@@ -41,7 +41,7 @@ class CreateGenericConstantTest(absltest.TestCase):
     self.assertTrue(
         np.array_equal(
             tensorflow_computation_test_utils.run_tensorflow(
-                tensor_zero.function.proto
+                tensor_zero.function.to_proto()
             ),
             np.zeros([2, 2]),
         )
@@ -56,7 +56,7 @@ class CreateGenericConstantTest(absltest.TestCase):
     self.assertEqual(tuple_zero.type_signature, tuple_type)
     self.assertIsInstance(tuple_zero, federated_language.framework.Call)
     result = tensorflow_computation_test_utils.run_tensorflow(
-        tuple_zero.function.proto
+        tuple_zero.function.to_proto()
     )
     self.assertLen(result, 2)
     self.assertTrue(np.array_equal(result[0], np.zeros([2, 2])))
@@ -75,7 +75,7 @@ class CreateGenericConstantTest(absltest.TestCase):
     self.assertEqual(tuple_zero.type_signature, tuple_type)
     self.assertIsInstance(tuple_zero, federated_language.framework.Call)
     result = tensorflow_computation_test_utils.run_tensorflow(
-        tuple_zero.function.proto
+        tuple_zero.function.to_proto()
     )
     self.assertLen(result, 2)
     self.assertTrue(np.array_equal(result.a, np.ones([2, 2])))
@@ -104,7 +104,7 @@ class CreateGenericConstantTest(absltest.TestCase):
     self.assertTrue(
         np.array_equal(
             tensorflow_computation_test_utils.run_tensorflow(
-                fed_zero.argument.function.proto
+                fed_zero.argument.function.to_proto()
             ),
             np.ones([2, 2]),
         )
@@ -134,7 +134,7 @@ class CreateGenericConstantTest(absltest.TestCase):
     )
     self.assertIsInstance(fed_zero.argument, federated_language.framework.Call)
     result = tensorflow_computation_test_utils.run_tensorflow(
-        fed_zero.argument.function.proto
+        fed_zero.argument.function.to_proto()
     )
     self.assertLen(result, 2)
     self.assertTrue(np.array_equal(result.a, np.ones([2, 2])))
@@ -165,7 +165,7 @@ class CreateGenericConstantTest(absltest.TestCase):
     )
     self.assertIsInstance(fed_zero.argument, federated_language.framework.Call)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(
-        fed_zero.argument.function.proto
+        fed_zero.argument.function.to_proto()
     )
     self.assertTrue(np.array_equal(actual_result, np.zeros([2, 2])))
 

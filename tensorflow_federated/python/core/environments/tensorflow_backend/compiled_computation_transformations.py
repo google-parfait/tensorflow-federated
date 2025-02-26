@@ -77,7 +77,7 @@ def optimize_tensorflow_comp(tf_computation, config_proto):
   py_typecheck.check_type(
       tf_computation, federated_language.framework.CompiledComputation
   )
-  tf_proto = tf_computation.proto
+  tf_proto = tf_computation.to_proto()
   graph_spec_obj = _unpack_proto_into_graph_spec(tf_proto)
 
   optimized_graph_spec = graph_optimizations.optimize_graph_spec(
@@ -159,7 +159,7 @@ class DisableCallOpGrappler:
         comp, federated_language.framework.CompiledComputation
     )
     new_comp_proto = tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
-        comp.proto
+        comp.to_proto()
     )
     return (
         federated_language.framework.CompiledComputation(
