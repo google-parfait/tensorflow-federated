@@ -250,6 +250,13 @@ async def train_model(
     logging.info(
         'Starting program without previous state, saving initial state.'
     )
+    logging.info('Releasing initial training checkpoint')
+    task_manager.add_task(
+        model_output_manager.release(
+            train_state,
+            key=f'training_checkpoint_round_{start_round}',
+        )
+    )
     # Ensure the initial state (round 0) is saved before any training occurs.
     # The program manager `keep_first=True` parameterization will enable users
     # to start future experiments from the same initialization.

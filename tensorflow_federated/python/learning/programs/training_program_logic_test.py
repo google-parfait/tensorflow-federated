@@ -334,7 +334,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                 any_algorithm_state,
                 key=f'training_checkpoint_round_{round_num}',
             )
-            for round_num in (10, 11)
+            for round_num in (0, 10, 11)
         ],
         mock_model_output_manager.release.call_args_list,
     )
@@ -503,8 +503,9 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                key=f'training_checkpoint_round_{training_rounds}',
+                key=f'training_checkpoint_round_{round_num}',
             )
+            for round_num in (0, training_rounds)
         ],
         mock_model_output_manager.release.call_args_list,
     )
@@ -623,8 +624,9 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                key=f'training_checkpoint_round_{training_rounds}',
+                key=f'training_checkpoint_round_{round_num}',
             )
+            for round_num in [0, training_rounds]
         ],
         mock_model_output_manager.release.call_args_list,
     )
@@ -993,7 +995,9 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         'INFO:absl:Finished train round 1 with 1 retries.',
         log_output.output,
     )
-    mock_model_output_manager.release.assert_called_once()
+    # Assert that the model was released twice, once for the initial state and
+    # once after the successful training.
+    self.assertLen(mock_model_output_manager.release.call_args_list, 2)
     # Assert that training metrics were released once with the number of
     # retries.
     self.assertSequenceEqual(
