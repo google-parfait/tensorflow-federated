@@ -705,7 +705,7 @@ class MergeableCompExecutionContext(
     if isinstance(comp, federated_language.framework.Computation):
       if self._compiler_pipeline is None:
         raise ValueError(
-            'Without a compiler, mergeable comp execution context '
+            'Without a compiler, mergeable comp execution context nope'
             'can only invoke instances of MergeableCompForm. '
             'Encountered a `federated_language.Computation`.'
         )
