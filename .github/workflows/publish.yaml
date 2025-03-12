@@ -40,7 +40,7 @@ jobs:
     if: |
       github.repository == 'google-parfait/tensorflow-federated'
       && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
       contents: write  # Required to create a release.
@@ -97,8 +97,15 @@ jobs:
   build-package:
     name: Build Package
     needs: [publish-release]
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: x86_64
+          - os: ubuntu-22.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 360
     steps:
 
     - name: Checkout repository
@@ -114,11 +121,11 @@ jobs:
         create_credentials_file: true
 
     - name: Set up bazel repository cache
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4.2.0
       with:
         path: "~/.cache/bazel/"
-        key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE') }}
-        restore-keys: ${{ runner.os }}-bazel-
+        key: ${{ runner.os }}-${{ matrix.arch }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE') }}
+        restore-keys: ${{ runner.os }}-${{ matrix.arch }}-bazel
 
     - name: Set up Python
       uses: actions/setup-python@v5.1.0
@@ -130,6 +137,11 @@ jobs:
       run: |
         pip install --upgrade "pip"
 
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v2
+      with:
+        version: "14.0"
+
     - name: Build Python package
       run: |
         pip install --upgrade "numpy~=1.25"
@@ -137,19 +149,27 @@ jobs:
             --build_tag_filters="-nokokoro,-nopresubmit,-requires-gpu-nvidia" \
             --google_credentials="${{ steps.auth.outputs.credentials_file_path }}" \
             --remote_cache="https://storage.googleapis.com/tensorflow-federated-bazel-cache/${{ github.job }}" \
+            --config="linux_${{ matrix.arch }}" \
             -- \
             --output_dir="${{ github.workspace }}/dist/"
 
     - name: Upload Python package
       uses: actions/upload-artifact@v4.3.3
       with:
-        name: python-package-distributions
+        name: python-package-distributions-${{ matrix.arch }}
         path: dist/*.whl
 
   test-package:
     name: Test Package
     needs: [build-package]
-    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: x86_64
+          - os: ubuntu-22.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
 
@@ -161,7 +181,7 @@ jobs:
     - name: Download Python package
       uses: actions/download-artifact@v4.1.7
       with:
-        name: python-package-distributions
+        name: python-package-distributions-${{ matrix.arch }}
         path: dist/
 
     - name: Set up Python
@@ -189,7 +209,7 @@ jobs:
   publish-package:
     name: Publish Package
     needs: [build-package, test-package]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
       id-token: write  # Required for trusted publishing.
@@ -198,7 +218,8 @@ jobs:
     - name: Download Python package
       uses: actions/download-artifact@v4.1.7
       with:
-        name: python-package-distributions
+        pattern: python-package-distributions-*
+        merge-multiple: true
         path: dist/
 
     - name: Publish Python package
