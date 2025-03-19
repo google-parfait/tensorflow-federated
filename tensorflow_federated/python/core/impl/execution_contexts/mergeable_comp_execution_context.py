@@ -679,6 +679,7 @@ class MergeableCompExecutionContext(
     for ctx in async_contexts:
       py_typecheck.check_type(ctx, federated_language.framework.AsyncContext)
     self._async_execution_contexts = async_contexts
+    self._compiler_fn = compiler_fn
     self._transform_args = transform_args
     self._transform_result = transform_result
     self._num_subrounds = (
@@ -686,12 +687,6 @@ class MergeableCompExecutionContext(
         if num_subrounds is not None
         else len(self._async_execution_contexts)
     )
-    if compiler_fn is not None:
-      self._compiler_pipeline = federated_language.framework.CompilerPipeline(
-          compiler_fn
-      )
-    else:
-      self._compiler_pipeline = None
 
   def invoke(
       self,
@@ -703,13 +698,13 @@ class MergeableCompExecutionContext(
     )
 
     if isinstance(comp, federated_language.framework.Computation):
-      if self._compiler_pipeline is None:
+      if self._compiler_fn is None:
         raise ValueError(
             'Without a compiler, mergeable comp execution context '
             'can only invoke instances of MergeableCompForm. '
             'Encountered a `federated_language.Computation`.'
         )
-      comp = self._compiler_pipeline.compile(comp)
+      comp = self._compile(comp)
       if not isinstance(comp, MergeableCompForm):
         raise ValueError(
             'Expected compilation in mergeable comp execution '
@@ -736,3 +731,9 @@ class MergeableCompExecutionContext(
     if self._transform_result is not None:
       result = self._transform_result(result)
     return result
+
+  @functools.lru_cache()
+  def _compile(self, comp):
+    if self._compiler_fn is not None:
+      comp = self._compiler_fn(comp)
+    return comp

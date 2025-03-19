@@ -25,6 +25,9 @@ from tensorflow_federated.python.tests import temperature_sensor_example
 from tensorflow_federated.python.tests import test_contexts
 
 
+# DO_NOT_SUBMIT: Fix these tests.
+
+
 class NoClientAggregationsTest(parameterized.TestCase):
 
   @test_contexts.with_contexts(*test_contexts.get_all_contexts())
