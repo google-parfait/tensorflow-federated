@@ -257,7 +257,7 @@ absl::StatusOr<federated_language::Array> ArrayFromTensor(
     }
     default:
       return absl::UnimplementedError(
-          absl::StrCat("Unexpected DataType found:", array_pb.dtype()));
+          absl::StrCat("Unexpected DataType found:", tensor_pb.dtype()));
   }
 
   return array_pb;
@@ -285,7 +285,7 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   // field of type int32 using the following logic in order to maintain
   // compatibility with how other external environments (e.g. TensorFlow, Jax)
   // represent values of np.float16.
-  std::transform(src.begin(), src.end(), dest, [](int x) -> Eigen::half {
+  std::transform(src.begin(), src.end(), dest, [](int32_t x) -> Eigen::half {
     return Eigen::numext::bit_cast<Eigen::half>(static_cast<uint16_t>(x));
   });
 }
@@ -304,9 +304,11 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   // protobuf field of type int32 using the following logic in order to maintain
   // compatibility with how other external environments (e.g. TensorFlow, Jax)
   // represent values of ml_dtypes.bfloat16.
-  std::transform(src.begin(), src.end(), dest, [](int x) -> Eigen::bfloat16 {
-    return Eigen::numext::bit_cast<Eigen::bfloat16>(static_cast<uint16_t>(x));
-  });
+  std::transform(src.begin(), src.end(), dest,
+                 [](int32_t x) -> Eigen::bfloat16 {
+                   return Eigen::numext::bit_cast<Eigen::bfloat16>(
+                       static_cast<uint16_t>(x));
+                 });
 }
 
 // Overload for string.
