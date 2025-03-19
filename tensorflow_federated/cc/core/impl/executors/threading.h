@@ -104,8 +104,9 @@ std::shared_future<ReturnValue> ThreadRun(Func lambda,
     // be trying to make a _copy_ of the lambda capture values which are not
     // always copy constructable (especially in the case of ExecutorValue).
     // Wrapping in a `shared_ptr` makes this possible.
-    thread_pool->Schedule(
-        [t = std::make_shared<TaskT>(std::move(task))]() { (*t)(); });
+    thread_pool
+        ->Schedule([t = std::make_shared<TaskT>(std::move(task))]() { (*t)(); })
+        .IgnoreError();
   } else {
     std::thread th(std::move(task));
     th.detach();
