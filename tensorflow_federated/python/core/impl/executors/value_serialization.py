@@ -114,14 +114,14 @@ def _serialize_tensor_value(
   # Repeated fields are used for strings and constants to maintain compatibility
   # with other external environments.
   if (
-      federated_language.array_shape_is_scalar(type_spec.shape)
-      or type_spec.dtype.type is np.str_
+      not federated_language.array_shape_is_scalar(type_spec.shape)
+      and type_spec.dtype.type is not np.str_
   ):
-    array_pb = federated_language.array_to_proto(
+    array_pb = federated_language.array_to_proto_content(
         value, dtype_hint=type_spec.dtype.type
     )
   else:
-    array_pb = federated_language.array_to_proto_content(
+    array_pb = federated_language.array_to_proto(
         value, dtype_hint=type_spec.dtype.type
     )
 
@@ -346,13 +346,10 @@ def _deserialize_tensor_value(
 
   # Repeated fields are used for strings and constants to maintain compatibility
   # with other external environments.
-  if (
-      federated_language.array_shape_is_scalar(type_spec.shape)
-      or type_spec.dtype.type is np.str_
-  ):
-    value = federated_language.array_from_proto(array_proto)
-  else:
+  if array_proto.HasField('content'):
     value = federated_language.array_from_proto_content(array_proto)
+  else:
+    value = federated_language.array_from_proto(array_proto)
 
   return value, type_spec
 

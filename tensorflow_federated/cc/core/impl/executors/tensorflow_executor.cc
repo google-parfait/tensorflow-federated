@@ -785,12 +785,12 @@ absl::Status MaterializeSequence(const tensorflow::Tensor& graph_def_tensor,
     for (const tensorflow::Tensor& tensor : tensors) {
       // Repeated fields are used for strings and constants to maintain
       // compatibility with TensorFlow.
-      if ((tensor.shape().dims() == 0 && !tensor.shape().unknown_rank()) ||
-          tensor.dtype() == tensorflow::DataType::DT_STRING) {
-        element_pb->mutable_flat_value()->Add(TFF_TRY(ArrayFromTensor(tensor)));
-      } else {
+      if (!tensorflow::TensorShapeUtils::IsScalar(tensor.shape()) &&
+          tensor.dtype() != tensorflow::DataType::DT_STRING) {
         element_pb->mutable_flat_value()->Add(
             TFF_TRY(ArrayContentFromTensor(tensor)));
+      } else {
+        element_pb->mutable_flat_value()->Add(TFF_TRY(ArrayFromTensor(tensor)));
       }
     }
   }

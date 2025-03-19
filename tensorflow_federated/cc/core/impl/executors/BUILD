@@ -216,7 +216,6 @@ cc_library(
     srcs = ["dataset_utils.cc"],
     hdrs = ["dataset_utils.h"],
     deps = [
-        ":array_shape_utils",
         ":dataset_from_tensor_structures",
         ":status_macros",
         ":tensorflow_utils",
@@ -886,7 +885,6 @@ cc_library(
     hdrs = ["tensor_serialization.h"],
     visibility = ["//visibility:public"],
     deps = [
-        ":array_shape_utils",
         ":status_macros",
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
