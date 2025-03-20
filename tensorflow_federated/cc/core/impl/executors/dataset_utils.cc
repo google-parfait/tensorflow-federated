@@ -27,7 +27,6 @@ limitations under the License
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/tstring.h"
-#include "tensorflow_federated/cc/core/impl/executors/array_shape_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_from_tensor_structures.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
@@ -42,11 +41,10 @@ absl::StatusOr<tensorflow::Tensor> GraphDefTensorFromSequence(
     for (const federated_language::Array& array_pb : element_pb.flat_value()) {
       // Repeated fields are used for strings and scalars to maintain
       // compatibility with TensorFlow.
-      if (tensorflow_federated::IsScalar(array_pb.shape()) ||
-          array_pb.dtype() == federated_language::DataType::DT_STRING) {
-        tensors.push_back(TFF_TRY(TensorFromArray(array_pb)));
-      } else {
+      if (array_pb.has_content()) {
         tensors.push_back(TFF_TRY(TensorFromArrayContent(array_pb)));
+      } else {
+        tensors.push_back(TFF_TRY(TensorFromArray(array_pb)));
       }
     }
     tensor_structures.push_back(tensors);
