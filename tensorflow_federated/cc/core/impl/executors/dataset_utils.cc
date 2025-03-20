@@ -73,11 +73,4 @@ DatasetFromGraphDefTensor(const tensorflow::Tensor& tensor) {
 
   return std::move(dataset);
 }
-
-absl::StatusOr<std::unique_ptr<tensorflow::data::standalone::Dataset>>
-DatasetFromSequence(const v0::Value::Sequence& sequence_pb) {
-  return DatasetFromGraphDefTensor(
-      TFF_TRY(GraphDefTensorFromSequence(sequence_pb)));
-}
-
 }  // namespace tensorflow_federated

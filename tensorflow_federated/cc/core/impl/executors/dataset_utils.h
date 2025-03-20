@@ -32,8 +32,6 @@ absl::StatusOr<tensorflow::Tensor> GraphDefTensorFromSequence(
 absl::StatusOr<std::unique_ptr<tensorflow::data::standalone::Dataset>>
 DatasetFromGraphDefTensor(const tensorflow::Tensor& tensor);
 
-absl::StatusOr<std::unique_ptr<tensorflow::data::standalone::Dataset>>
-DatasetFromSequence(const v0::Value::Sequence& sequence_pb);
 }  // namespace tensorflow_federated
 
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_DATASET_UTILS_H_

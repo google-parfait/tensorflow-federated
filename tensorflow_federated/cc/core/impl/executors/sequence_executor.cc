@@ -15,6 +15,8 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 
+#include <sys/types.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -33,15 +35,12 @@ limitations under the License
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
-#include "tensorflow/core/data/standalone.h"
-#include "tensorflow/core/framework/tensor.h"
-#include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/struct_traversal_order.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -88,20 +87,20 @@ absl::StatusOr<uint32_t> NumTensorsInType(
   }
 }
 
-absl::StatusOr<Embedded> EmbedTensorsAsType(
-    const absl::Span<const tensorflow::Tensor> tensors,
+absl::StatusOr<Embedded> EmbedArraysAsType(
+    const absl::Span<const federated_language::Array> arrays,
     Executor& target_executor, const federated_language::Type& type) {
   switch (type.type_case()) {
     case federated_language::Type::kTensor: {
-      if (tensors.size() != 1) {
+      if (arrays.size() != 1) {
         return absl::InvalidArgumentError(absl::StrCat(
-            "Attempted to embed a vector of tensors of length ", tensors.size(),
+            "Attempted to embed a vector of tensors of length ", arrays.size(),
             " as a single tensor. This embedding is only supported for a "
             "vector of length 1."));
       }
 
       v0::Value tensor_value;
-      TFF_TRY(SerializeTensorValue(tensors.at(0), &tensor_value));
+      *tensor_value.mutable_array() = arrays.at(0);
       return ShareValueId(TFF_TRY(target_executor.CreateValue(tensor_value)));
     }
     case federated_language::Type::kStruct: {
@@ -111,12 +110,12 @@ absl::StatusOr<Embedded> EmbedTensorsAsType(
       std::vector<Embedded> owned_elements;
       std::vector<ValueId> unowned_elements;
       for (const uint32_t idx : traversal_order) {
-        auto el_type = type.struct_().element().at(idx);
-        uint32_t num_tensors = TFF_TRY(NumTensorsInType(el_type.value()));
-        absl::Span<const tensorflow::Tensor> subsampled_tensors =
-            tensors.subspan(next_element_index, num_tensors);
-        Embedded owned_element = TFF_TRY(EmbedTensorsAsType(
-            subsampled_tensors, target_executor, el_type.value()));
+        auto element_type = type.struct_().element().at(idx);
+        uint32_t num_tensors = TFF_TRY(NumTensorsInType(element_type.value()));
+        absl::Span<const federated_language::Array> element_arrays =
+            arrays.subspan(next_element_index, num_tensors);
+        Embedded owned_element = TFF_TRY(EmbedArraysAsType(
+            element_arrays, target_executor, element_type.value()));
         owned_elements.emplace_back(owned_element);
         unowned_elements.emplace_back(owned_element->ref());
         next_element_index += num_tensors;
@@ -157,38 +156,34 @@ class MappedIterator : public SequenceIterator {
   Embedded mapping_fn_;
 };
 
-class DatasetIterator : public SequenceIterator {
+class ArrayIterator : public SequenceIterator {
  public:
-  explicit DatasetIterator(
-      std::unique_ptr<tensorflow::data::standalone::Iterator> iter,
-      federated_language::Type element_type)
-      : ds_iterator_(std::move(iter)), element_type_(std::move(element_type)) {}
+  explicit ArrayIterator(v0::Value::Sequence sequence_pb)
+      : sequence_pb_(std::move(sequence_pb)), index_(0) {}
 
-  ~DatasetIterator() final = default;
+  ~ArrayIterator() final = default;
 
   absl::StatusOr<std::optional<Embedded>> GetNextEmbedded(
       Executor& target) final {
-    v0::Value next_value;
-    std::vector<tensorflow::Tensor> output_tensors;
-    bool end_of_data = false;
-    auto status = ds_iterator_->GetNext(&output_tensors, &end_of_data);
-    if (!status.ok()) {
-      return absl::InternalError(absl::StrCat(
-          "error pulling elements from dataset: ", status.message()));
-    }
-    if (end_of_data) {
+    if (index_ >= sequence_pb_.element_size()) {
       return std::nullopt;
     }
-    return TFF_TRY(EmbedTensorsAsType(output_tensors, target, element_type_));
+
+    std::vector<federated_language::Array> arrays;
+    for (const federated_language::Array& array_pb :
+         sequence_pb_.element(index_).flat_value()) {
+      arrays.push_back(array_pb);
+    }
+    ++index_;
+    return TFF_TRY(
+        EmbedArraysAsType(arrays, target, sequence_pb_.element_type()));
   }
 
  private:
-  DatasetIterator() = delete;
-  std::unique_ptr<tensorflow::data::standalone::Iterator> ds_iterator_;
-  federated_language::Type element_type_;
+  ArrayIterator() = delete;
+  v0::Value::Sequence sequence_pb_;
+  uint32_t index_;
 };
-
-class SequenceIterator;
 
 using IteratorFactory =
     std::function<absl::StatusOr<std::unique_ptr<SequenceIterator>>()>;
@@ -239,31 +234,7 @@ class Sequence {
 
   absl::StatusOr<std::unique_ptr<SequenceIterator>> CreateIterator() {
     if (type() == SequenceValueType::VALUE_PROTO) {
-      bool ds_is_set = false;
-      {
-        absl::ReaderMutexLock reader_lock(&dataset_mutex_);
-        ds_is_set = (ds_.has_value());
-      }
-      if (!ds_is_set) {
-        absl::WriterMutexLock writer_lock(&dataset_mutex_);
-        if (!ds_.has_value()) {
-          ds_ = TFF_TRY(DatasetFromSequence(proto().sequence()));
-        }
-      }
-      std::unique_ptr<tensorflow::data::standalone::Iterator> iter;
-      absl::Status iter_status;
-      {
-        absl::ReaderMutexLock reader_lock(&dataset_mutex_);
-        iter_status = ds_.value()->MakeIterator(&iter);
-      }
-      if (!iter_status.ok()) {
-        return absl::InternalError(
-            absl::StrCat("Error creating iterator from dataset in sequence "
-                         "executor. Message: ",
-                         iter_status.message()));
-      }
-      return std::make_unique<DatasetIterator>(
-          std::move(iter), proto().sequence().element_type());
+      return std::make_unique<ArrayIterator>(proto().sequence());
     } else {
       return iterator_factory()();
     }
@@ -274,9 +245,6 @@ class Sequence {
     return std::get<IteratorFactory>(value_);
   }
   SequenceVariant value_;
-  absl::Mutex dataset_mutex_;
-  std::optional<std::unique_ptr<tensorflow::data::standalone::Dataset>> ds_
-      ABSL_GUARDED_BY(dataset_mutex_) = std::nullopt;
   std::shared_ptr<Executor> executor_;
   absl::Mutex embedded_mutex_;
   std::optional<Embedded> embedded_sequence_ ABSL_GUARDED_BY(embedded_mutex_) =

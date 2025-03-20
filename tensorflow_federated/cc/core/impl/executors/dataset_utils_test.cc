@@ -33,20 +33,15 @@ namespace tensorflow_federated {
 
 namespace {
 
-using ::absl::StatusCode;
 using ::tensorflow_federated::testing::EqualsProto;
 using ::tensorflow_federated::testing::SequenceV;
 
-TEST(DatasetConversionsTest, TestDatasetCreationFromSequence) {
-  v0::Value value_pb = SequenceV(0, 10, 1);
-  TFF_ASSERT_OK(DatasetFromSequence(value_pb.sequence()));
-}
-
 TEST(DatasetConversionsTest, TestIterationOverCreatedDataset) {
   v0::Value value_pb = SequenceV(0, 10, 1);
-  TFF_ASSERT_OK_AND_ASSIGN(
-      std::shared_ptr<tensorflow::data::standalone::Dataset> ds,
-      DatasetFromSequence(value_pb.sequence()));
+  std::shared_ptr<tensorflow::data::standalone::Dataset> ds =
+      TFF_ASSERT_OK(DatasetFromGraphDefTensor(
+          TFF_ASSERT_OK(GraphDefTensorFromSequence(value_pb.sequence()))));
+
   std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
   // We avoid taking a dependency on TF testing internals.
   auto status = ds->MakeIterator(&iterator);

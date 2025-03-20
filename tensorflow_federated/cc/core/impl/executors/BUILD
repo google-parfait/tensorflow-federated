@@ -684,12 +684,10 @@ cc_library(
     srcs = ["sequence_executor.cc"],
     hdrs = ["sequence_executor.h"],
     deps = [
-        ":dataset_utils",
         ":executor",
         ":sequence_intrinsics",
         ":status_macros",
         ":struct_traversal_order",
-        ":tensor_serialization",
         ":threading",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/base:core_headers",
@@ -699,9 +697,8 @@ cc_library(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
+        "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core/data:standalone",
     ],
 )
 
@@ -714,6 +711,8 @@ cc_test(
         "nokokoro",  # TODO: b/340292788 - Temporarily disable flaky test.
     ],
     deps = [
+        ":array_shape_test_utils",
+        ":array_test_utils",
         ":executor",
         ":executor_test_base",
         ":mock_executor",
