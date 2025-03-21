@@ -54,9 +54,13 @@ def create_async_local_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       leaf_executor_fn=_create_xla_backend_execution_stack,
   )
+
+  def _compile(comp):
+    return compiler.transform_to_native_form(comp)
+
   return federated_language.framework.AsyncExecutionContext(
       executor_fn=factory,
-      compiler_fn=compiler.transform_to_native_form,
+      compiler_fn=_compile,
       transform_args=jax_computation.transform_args,
       transform_result=jax_computation.transform_result,
   )
@@ -95,12 +99,15 @@ def create_sync_local_cpp_execution_context(
       leaf_executor_fn=_create_xla_backend_execution_stack,
   )
 
+  def _compile(comp):
+    return compiler.transform_to_native_form(comp)
+
   # TODO: b/255978089 - implement lowering to federated_aggregate to create JAX
   # computations instead of TensorFlow, similar to "desugar intrinsics" in the
   # native backend.
   return federated_language.framework.SyncExecutionContext(
       executor_fn=factory,
-      compiler_fn=compiler.transform_to_native_form,
+      compiler_fn=_compile,
       transform_args=jax_computation.transform_args,
       transform_result=jax_computation.transform_result,
   )
