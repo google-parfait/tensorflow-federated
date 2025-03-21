@@ -17,7 +17,9 @@ limitations under the License
 
 #include <complex>
 #include <cstdint>
+#include <initializer_list>
 
+#include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -34,6 +36,7 @@ limitations under the License
 #include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
+#include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -91,24 +94,24 @@ TEST(ShapeFromTensorTypeTest, TestFails_unknown) {
 TEST(ShapeFromArrayShapeTest, TestReturnsShape_fully_defined) {
   const federated_language::ArrayShape& shape_pb =
       testing::CreateArrayShape({2, 3});
-  const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
-      xla::primitive_util::NativeToPrimitiveType<int32_t>(), {2, 3});
 
   const xla::Shape& actual_shape = TFF_ASSERT_OK(
       ShapeFromArrayShape(federated_language::DataType::DT_INT32, shape_pb));
 
+  const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
+      xla::primitive_util::NativeToPrimitiveType<int32_t>(), {2, 3});
   EXPECT_TRUE(xla::Shape::Equal()(actual_shape, expected_shape));
 }
 
 TEST(ShapeFromArrayShapeTest, TestReturnsShape_scalar) {
   const federated_language::ArrayShape& shape_pb =
       testing::CreateArrayShape({});
-  const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
-      xla::primitive_util::NativeToPrimitiveType<int32_t>(), {});
 
   const xla::Shape& actual_shape = TFF_ASSERT_OK(
       ShapeFromArrayShape(federated_language::DataType::DT_INT32, shape_pb));
 
+  const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
+      xla::primitive_util::NativeToPrimitiveType<int32_t>(), {});
   EXPECT_TRUE(xla::Shape::Equal()(actual_shape, expected_shape));
 }
 
@@ -132,6 +135,205 @@ TEST(ShapeFromArrayShapeTest, TestFails_unknown) {
   EXPECT_EQ(result.status().code(), absl::StatusCode::kInvalidArgument);
 }
 
+TEST(ArrayFromLiteralTest, TestReturnsArray_bool) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0(true);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_BOOL,
+                           testing::CreateArrayShape({}), {true}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_int8) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<int8_t>(1);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT8,
+                                         testing::CreateArrayShape({}), {1}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_int16) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<int16_t>(1);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT16,
+                                         testing::CreateArrayShape({}), {1}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_int32) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<int32_t>(1);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {1}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_int64) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<int64_t>(1);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
+                                         testing::CreateArrayShape({}), {1}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_uint8) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<uint8_t>(1);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_UINT8,
+                                         testing::CreateArrayShape({}), {1}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_uint16) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<uint16_t>(1);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_UINT16,
+                           testing::CreateArrayShape({}), {1}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_uint32) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<uint32_t>(1);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_UINT32,
+                           testing::CreateArrayShape({}), {1}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_uint64) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<uint64_t>(1);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_UINT64,
+                           testing::CreateArrayShape({}), {1}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_float16) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0(Eigen::half{1.0});
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_HALF,
+                           testing::CreateArrayShape({}), {Eigen::half{1.0}}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_float32) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<float>(1.0);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_float64) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0<double>(1.0);
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_DOUBLE,
+                           testing::CreateArrayShape({}), {1.0}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_complex64) {
+  const xla::Literal literal =
+      xla::LiteralUtil::CreateR0(xla::complex64{1.0, 1.0});
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(
+          federated_language::DataType::DT_COMPLEX64,
+          testing::CreateArrayShape({}), {std::complex<float>{1.0, 1.0}}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_complex128) {
+  const xla::Literal literal =
+      xla::LiteralUtil::CreateR0(xla::complex128{1.0, 1.0});
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(
+          federated_language::DataType::DT_COMPLEX128,
+          testing::CreateArrayShape({}), {std::complex<double>{1.0, 1.0}}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_bfloat16) {
+  const xla::Literal literal = xla::LiteralUtil::CreateR0(Eigen::bfloat16{1.0});
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(
+          federated_language::DataType::DT_BFLOAT16,
+          testing::CreateArrayShape({}), {Eigen::bfloat16{1.0}}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
+TEST(ArrayFromLiteralTest, TestReturnsArray_array) {
+  const xla::Literal literal =
+      xla::LiteralUtil::CreateR2<int32_t>({{1, 2, 3}, {4, 5, 6}});
+
+  const federated_language::Array& actual_array_pb =
+      TFF_ASSERT_OK(ArrayFromLiteral(literal));
+
+  const federated_language::Array& expected_array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({2, 3}),
+                                         {1, 2, 3, 4, 5, 6}));
+  EXPECT_THAT(actual_array_pb, testing::EqualsProto(expected_array_pb));
+}
+
 TEST(LiteralFromArrayTest, TestReturnsLiteral_bool) {
   const federated_language::Array& array_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_BOOL,
@@ -140,7 +342,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_bool) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0(true);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0(true);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -152,7 +354,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_int8) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<int8_t>(1);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<int8_t>(1);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -164,7 +366,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_int16) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<int16_t>(1);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<int16_t>(1);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -176,7 +378,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_int32) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<int32_t>(1);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<int32_t>(1);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -188,7 +390,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_int64) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<int64_t>(1);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<int64_t>(1);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -200,7 +402,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_uint8) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<uint8_t>(1);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<uint8_t>(1);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -212,7 +414,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_uint16) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<uint16_t>(1);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<uint16_t>(1);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -224,7 +426,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_uint32) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<uint32_t>(1);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<uint32_t>(1);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -236,7 +438,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_uint64) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<uint64_t>(1);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<uint64_t>(1);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -248,7 +450,8 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_float16) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0(Eigen::half{1.0});
+  const xla::Literal expected_literal =
+      xla::LiteralUtil::CreateR0(Eigen::half{1.0});
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -260,7 +463,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_float32) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<float>(1.0);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<float>(1.0);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -272,7 +475,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_float64) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal = xla::LiteralUtil::CreateR0<double>(1.0);
+  const xla::Literal expected_literal = xla::LiteralUtil::CreateR0<double>(1.0);
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
@@ -285,7 +488,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_complex64) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal =
+  const xla::Literal expected_literal =
       xla::LiteralUtil::CreateR0(xla::complex64{1.0, 1.0});
   EXPECT_EQ(actual_literal, expected_literal);
 }
@@ -299,7 +502,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_complex128) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal =
+  const xla::Literal expected_literal =
       xla::LiteralUtil::CreateR0(xla::complex128{1.0, 1.0});
   EXPECT_EQ(actual_literal, expected_literal);
 }
@@ -313,7 +516,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_bfloat16) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal =
+  const xla::Literal expected_literal =
       xla::LiteralUtil::CreateR0(Eigen::bfloat16{1.0});
   EXPECT_EQ(actual_literal, expected_literal);
 }
@@ -327,7 +530,7 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_array) {
   const xla::Literal& actual_literal =
       TFF_ASSERT_OK(LiteralFromArray(array_pb));
 
-  xla::Literal expected_literal =
+  const xla::Literal expected_literal =
       xla::LiteralUtil::CreateR2<int32_t>({{1, 2, 3}, {4, 5, 6}});
   EXPECT_EQ(actual_literal, expected_literal);
 }

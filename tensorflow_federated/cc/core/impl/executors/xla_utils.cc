@@ -19,9 +19,11 @@ limitations under the License
 #include <complex>
 #include <cstdint>
 
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
@@ -34,8 +36,47 @@ limitations under the License
 
 namespace tensorflow_federated {
 
+absl::StatusOr<federated_language::DataType> DataTypeFromPrimitiveType(
+    xla::PrimitiveType primative_type) {
+  switch (primative_type) {
+    case xla::PRED:
+      return federated_language::DataType::DT_BOOL;
+    case xla::S8:
+      return federated_language::DataType::DT_INT8;
+    case xla::S16:
+      return federated_language::DataType::DT_INT16;
+    case xla::S32:
+      return federated_language::DataType::DT_INT32;
+    case xla::S64:
+      return federated_language::DataType::DT_INT64;
+    case xla::U8:
+      return federated_language::DataType::DT_UINT8;
+    case xla::U16:
+      return federated_language::DataType::DT_UINT16;
+    case xla::U32:
+      return federated_language::DataType::DT_UINT32;
+    case xla::U64:
+      return federated_language::DataType::DT_UINT64;
+    case xla::F16:
+      return federated_language::DataType::DT_HALF;
+    case xla::F32:
+      return federated_language::DataType::DT_FLOAT;
+    case xla::F64:
+      return federated_language::DataType::DT_DOUBLE;
+    case xla::C64:
+      return federated_language::DataType::DT_COMPLEX64;
+    case xla::C128:
+      return federated_language::DataType::DT_COMPLEX128;
+    case xla::BF16:
+      return federated_language::DataType::DT_BFLOAT16;
+    default:
+      return absl::UnimplementedError(
+          absl::StrCat("Unexpected PrimitiveType found:", primative_type));
+  }
+}
+
 absl::StatusOr<xla::PrimitiveType> PrimitiveTypeFromDataType(
-    const federated_language::DataType data_type) {
+    federated_language::DataType data_type) {
   switch (data_type) {
     case federated_language::DataType::DT_BOOL:
       return xla::PRED;
@@ -73,6 +114,14 @@ absl::StatusOr<xla::PrimitiveType> PrimitiveTypeFromDataType(
   }
 }
 
+federated_language::ArrayShape ArrayShapeFromShape(const xla::Shape& shape) {
+  federated_language::ArrayShape shape_pb;
+  for (int i = 0; i < shape.dimensions().size(); i++) {
+    shape_pb.mutable_dim()->Add(shape.dimensions(i));
+  }
+  return shape_pb;
+}
+
 absl::StatusOr<xla::Shape> ShapeFromTensorType(
     const federated_language::TensorType& tensor_type_pb) {
   if (tensor_type_pb.unknown_rank()) {
@@ -96,6 +145,138 @@ absl::StatusOr<xla::Shape> ShapeFromArrayShape(
 }
 
 template <typename T>
+static void CopyToRepeatedField(const absl::Span<const T> src,
+                                google::protobuf::RepeatedField<T>* dest) {
+  std::copy(src.begin(), src.end(), google::protobuf::RepeatedFieldBackInserter(dest));
+}
+
+// Overload for different SrcType and DestType.
+template <typename SrcType, typename DestType>
+static void CopyToRepeatedField(const absl::Span<const SrcType> src,
+                                google::protobuf::RepeatedField<DestType>* dest) {
+  std::transform(
+      src.begin(), src.end(), google::protobuf::RepeatedFieldBackInserter(dest),
+      [](const SrcType& x) -> DestType { return static_cast<DestType>(x); });
+}
+
+// Overload for Eigen::half.
+static void CopyToRepeatedField(const absl::Span<const Eigen::half> src,
+                                google::protobuf::RepeatedField<int32_t>* dest) {
+  // Values of dtype Eigen::half are packed to and unpacked from a protobuf
+  // field of type int32 using the following logic in order to maintain
+  // compatibility with how other external libraries (e.g. TensorFlow, Jax)
+  // represent values of Eigen::half.
+  std::transform(
+      src.begin(), src.end(), google::protobuf::RepeatedFieldBackInserter(dest),
+      [](Eigen::half x) -> int32_t {
+        return static_cast<int32_t>(Eigen::numext::bit_cast<uint16_t>(x));
+      });
+}
+
+// Overload for complex.
+template <typename T>
+static void CopyToRepeatedField(const absl::Span<const std::complex<T>> src,
+                                google::protobuf::RepeatedField<T>* dest) {
+  for (std::complex<T> value : src) {
+    dest->Add(value.real());
+    dest->Add(value.imag());
+  }
+}
+
+// Overload for xla::bfloat16.
+static void CopyToRepeatedField(const absl::Span<const xla::bfloat16> src,
+                                google::protobuf::RepeatedField<int32_t>* dest) {
+  // Values of dtype Eigen::bfloat16 are packed to and unpacked from a
+  // protobuf field of type int32 using the following logic in order to maintain
+  // compatibility with how other external libraries (e.g. TensorFlow, Jax)
+  // represent values of Eigen::bfloat16.
+  std::transform(
+      src.begin(), src.end(), google::protobuf::RepeatedFieldBackInserter(dest),
+      [](xla::bfloat16 x) -> int32_t {
+        return static_cast<int32_t>(Eigen::numext::bit_cast<uint16_t>(x));
+      });
+}
+
+absl::StatusOr<federated_language::Array> ArrayFromLiteral(
+    const xla::Literal& literal) {
+  federated_language::Array array_pb;
+  federated_language::DataType data_type =
+      TFF_TRY(DataTypeFromPrimitiveType(literal.shape().element_type()));
+  array_pb.set_dtype(data_type);
+  federated_language::ArrayShape shape_pb =
+      ArrayShapeFromShape(literal.shape());
+  array_pb.mutable_shape()->Swap(&shape_pb);
+
+  switch (literal.shape().element_type()) {
+    case xla::PRED:
+      CopyToRepeatedField(literal.data<bool>(),
+                          array_pb.mutable_bool_list()->mutable_value());
+      break;
+    case xla::S8:
+      CopyToRepeatedField(literal.data<int8_t>(),
+                          array_pb.mutable_int8_list()->mutable_value());
+      break;
+    case xla::S16:
+      CopyToRepeatedField(literal.data<int16_t>(),
+                          array_pb.mutable_int16_list()->mutable_value());
+      break;
+    case xla::S32:
+      CopyToRepeatedField(literal.data<int32_t>(),
+                          array_pb.mutable_int32_list()->mutable_value());
+      break;
+    case xla::S64:
+      CopyToRepeatedField(literal.data<int64_t>(),
+                          array_pb.mutable_int64_list()->mutable_value());
+      break;
+    case xla::U8:
+      CopyToRepeatedField(literal.data<uint8_t>(),
+                          array_pb.mutable_uint8_list()->mutable_value());
+      break;
+    case xla::U16:
+      CopyToRepeatedField(literal.data<uint16_t>(),
+                          array_pb.mutable_uint16_list()->mutable_value());
+      break;
+    case xla::U32:
+      CopyToRepeatedField(literal.data<uint32_t>(),
+                          array_pb.mutable_uint32_list()->mutable_value());
+      break;
+    case xla::U64:
+      CopyToRepeatedField(literal.data<uint64_t>(),
+                          array_pb.mutable_uint64_list()->mutable_value());
+      break;
+    case xla::F16:
+      CopyToRepeatedField(literal.data<xla::half>(),
+                          array_pb.mutable_float16_list()->mutable_value());
+      break;
+    case xla::F32:
+      CopyToRepeatedField(literal.data<float>(),
+                          array_pb.mutable_float32_list()->mutable_value());
+      break;
+    case xla::F64:
+      CopyToRepeatedField(literal.data<double>(),
+                          array_pb.mutable_float64_list()->mutable_value());
+      break;
+    case xla::C64:
+      CopyToRepeatedField(literal.data<xla::complex64>(),
+                          array_pb.mutable_complex64_list()->mutable_value());
+      break;
+    case xla::C128:
+      CopyToRepeatedField(literal.data<xla::complex128>(),
+                          array_pb.mutable_complex128_list()->mutable_value());
+      break;
+    case xla::BF16:
+      CopyToRepeatedField(literal.data<xla::bfloat16>(),
+                          array_pb.mutable_bfloat16_list()->mutable_value());
+      break;
+    default:
+      return absl::UnimplementedError(absl::StrCat(
+          "Unexpected DataType found:", literal.shape().element_type()));
+  }
+
+  return array_pb;
+}
+
+template <typename T>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
                                   T* dest) {
   std::copy(src.begin(), src.end(), dest);
@@ -113,11 +294,11 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<SrcType>
 // Overload for Eigen::half.
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>& src,
                                   Eigen::half* dest) {
-  // Values of dtype np.float16 are packed to and unpacked from a protobuf
+  // Values of dtype Eigen::half are packed to and unpacked from a protobuf
   // field of type int32 using the following logic in order to maintain
-  // compatibility with how other external environments (e.g. TensorFlow, Jax)
-  // represent values of np.float16.
-  std::transform(src.begin(), src.end(), dest, [](int x) -> Eigen::half {
+  // compatibility with how other external libraries (e.g. TensorFlow, Jax)
+  // represent values of Eigen::half.
+  std::transform(src.begin(), src.end(), dest, [](int32_t x) -> Eigen::half {
     return Eigen::numext::bit_cast<Eigen::half>(static_cast<uint16_t>(x));
   });
 }
@@ -132,13 +313,15 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
 // Overload for Eigen::bfloat16.
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>& src,
                                   Eigen::bfloat16* dest) {
-  // Values of dtype ml_dtypes.bfloat16 are packed to and unpacked from a
+  // Values of dtype Eigen::bfloat16 are packed to and unpacked from a
   // protobuf field of type int32 using the following logic in order to maintain
-  // compatibility with how other external environments (e.g. TensorFlow, Jax)
-  // represent values of ml_dtypes.bfloat16.
-  std::transform(src.begin(), src.end(), dest, [](int x) -> Eigen::bfloat16 {
-    return Eigen::numext::bit_cast<Eigen::bfloat16>(static_cast<uint16_t>(x));
-  });
+  // compatibility with how other external libraries (e.g. TensorFlow, Jax)
+  // represent values of Eigen::bfloat16.
+  std::transform(src.begin(), src.end(), dest,
+                 [](int32_t x) -> Eigen::bfloat16 {
+                   return Eigen::numext::bit_cast<Eigen::bfloat16>(
+                       static_cast<uint16_t>(x));
+                 });
 }
 
 absl::StatusOr<xla::Literal> LiteralFromArray(
