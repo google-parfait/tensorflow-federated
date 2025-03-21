@@ -111,20 +111,9 @@ def _serialize_tensor_value(
         f' {type_spec.dtype.type}.'
     )
 
-  # Repeated fields are used for strings and constants to maintain compatibility
-  # with other external environments.
-  if (
-      not federated_language.array_shape_is_scalar(type_spec.shape)
-      and type_spec.dtype.type is not np.str_
-  ):
-    array_pb = federated_language.array_to_proto_content(
-        value, dtype_hint=type_spec.dtype.type
-    )
-  else:
-    array_pb = federated_language.array_to_proto(
-        value, dtype_hint=type_spec.dtype.type
-    )
-
+  array_pb = federated_language.array_to_proto(
+      value, dtype_hint=type_spec.dtype.type
+  )
   value_pb = executor_pb2.Value(array=array_pb)
   return value_pb, type_spec
 
