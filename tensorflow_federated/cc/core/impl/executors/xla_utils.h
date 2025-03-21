@@ -25,9 +25,16 @@ limitations under the License
 
 namespace tensorflow_federated {
 
+// Creates a ::federated_language::DataType from a xla::PrimitiveType.
+absl::StatusOr<federated_language::DataType> DataTypeFromPrimitiveType(
+    xla::PrimitiveType primative_type);
+
 // Creates a xla::PrimitiveType from a ::federated_language::DataType.
 absl::StatusOr<xla::PrimitiveType> PrimitiveTypeFromDataType(
     federated_language::DataType data_type);
+
+// Creates a federated_language::ArrayShape from a xla::Shape.
+federated_language::ArrayShape ArrayShapeFromShape(const xla::Shape& shape);
 
 // Creates a xla::Shape from a federated_language::TensorType.
 absl::StatusOr<xla::Shape> ShapeFromTensorType(
@@ -37,6 +44,10 @@ absl::StatusOr<xla::Shape> ShapeFromTensorType(
 absl::StatusOr<xla::Shape> ShapeFromArrayShape(
     federated_language::DataType data_type,
     const federated_language::ArrayShape& shape_pb);
+
+// Creates a federated_language::Array from a xla::Literal.
+absl::StatusOr<federated_language::Array> ArrayFromLiteral(
+    const xla::Literal& literal);
 
 // Creates a xla::Literal from a federated_language::Array.
 absl::StatusOr<xla::Literal> LiteralFromArray(
