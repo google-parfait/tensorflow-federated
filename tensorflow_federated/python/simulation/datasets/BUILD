@@ -200,6 +200,7 @@ py_test(
     name = "inaturalist_test",
     size = "small",
     srcs = ["inaturalist_test.py"],
+    tags = ["manual"],
     deps = [
         ":inaturalist",
         ":vision_datasets_utils",

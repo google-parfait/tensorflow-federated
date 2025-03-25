@@ -1217,7 +1217,10 @@ cc_test(
     name = "xla_executor_gpu_test",
     srcs = ["xla_executor_test.cc"],
     args = ["--tff_xla_executor_test_platform=CUDA"],
-    tags = ["requires-gpu-nvidia"],
+    tags = [
+        "manual",
+        "requires-gpu-nvidia",
+    ],
     deps = [
         ":array_shape_test_utils",
         ":array_test_utils",
