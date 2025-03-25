@@ -86,7 +86,6 @@ py_test(
 py_test(
     name = "remote_runtime_stream_structs_test",
     size = "large",
-    timeout = "moderate",
     srcs = ["remote_runtime_stream_structs_test.py"],
     tags = ["requires-mem:20g"],
     deps = [

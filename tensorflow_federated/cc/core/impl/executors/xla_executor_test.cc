@@ -16,6 +16,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/xla_executor.h"
 
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -33,8 +34,6 @@ limitations under the License
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
-#include "tensorflow/compiler/tf2xla/shape_util.h"
-#include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/xla/client/xla_builder.h"
 #include "tensorflow/compiler/xla/client/xla_computation.h"
 #include "tensorflow/compiler/xla/service/platform_util.h"
@@ -42,15 +41,13 @@ limitations under the License
 #include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/compiler/xla/stream_executor/platform.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/type_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
+#include "tensorflow_federated/cc/core/impl/executors/xla_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
@@ -70,7 +67,6 @@ using ::tensorflow_federated::testing::NoArgFunctionT;
 using ::tensorflow_federated::testing::StructT;
 using ::tensorflow_federated::testing::StructV;
 using ::tensorflow_federated::testing::TensorT;
-using ::tensorflow_federated::testing::TensorV;
 using ::testing::HasSubstr;
 
 inline absl::StatusOr<std::tuple<federated_language::Xla::Binding, int>>
@@ -114,41 +110,22 @@ inline v0::Value ComputationV(
   return value_pb;
 }
 
-// Creates an XLA shape via TF's TensorShapeToXLAShape with unknown rank set to
-// true.
-inline xla::Shape UnknownRankShapeWithDtype(tensorflow::DataType dtype) {
-  tensorflow::TensorShapeProto tensor_shape;
-  tensor_shape.set_unknown_rank(true);
-  xla::PrimitiveType xla_type;
-  tensorflow::DataTypeToPrimitiveType(dtype, &xla_type).IgnoreError();
-  tensorflow::PartialTensorShape partial_shape;
-  tensorflow::PartialTensorShape::BuildPartialTensorShape(tensor_shape,
-                                                          &partial_shape)
-      .IgnoreError();
-  xla::Shape to_return =
-      tensorflow::TensorShapeToXLAShape(xla_type, partial_shape);
-  return to_return;
+// Creates an XLA shape with unknown rank.
+absl::StatusOr<xla::Shape> ShapeWithUnknownRank(
+    federated_language::DataType data_type) {
+  xla::PrimitiveType element_type =
+      TFF_TRY(PrimitiveTypeFromDataType(data_type));
+  // For unknown rank, create a rank 1 size 0 tensor.
+  return xla::ShapeUtil::MakeShapeWithDenseLayout(element_type, {0}, {0});
 }
 
-// Creates an XLA shape via TF's TensorShapeToXLAShape with known rank, but each
-// dimension of unknown shape.
-inline xla::Shape XLAShapeWithUnknownDims(tensorflow::DataType dtype,
-                                          int num_dims) {
-  tensorflow::TensorShapeProto tensor_shape;
-  tensor_shape.set_unknown_rank(false);
-  for (int i = 0; i < num_dims; i++) {
-    // TensorShapeProto uses -1 to represent unknown dim, just like TFF.
-    tensor_shape.add_dim()->set_size(-1);
-  }
-  xla::PrimitiveType xla_type;
-  tensorflow::DataTypeToPrimitiveType(dtype, &xla_type).IgnoreError();
-  tensorflow::PartialTensorShape partial_shape;
-  tensorflow::PartialTensorShape::BuildPartialTensorShape(tensor_shape,
-                                                          &partial_shape)
-      .IgnoreError();
-  xla::Shape to_return =
-      tensorflow::TensorShapeToXLAShape(xla_type, partial_shape);
-  return to_return;
+// Creates an XLA shape with known rank, but each dimension has unknown shape.
+absl::StatusOr<xla::Shape> ShapeWithUnknownDims(
+    federated_language::DataType data_type, int num_dims) {
+  xla::PrimitiveType element_type =
+      TFF_TRY(PrimitiveTypeFromDataType(data_type));
+  std::vector<int64_t> dimensions(num_dims, 0);
+  return xla::ShapeUtil::MakeShape(element_type, dimensions);
 }
 
 class XLAExecutorTest : public ::testing::Test {
@@ -198,12 +175,6 @@ class XLAExecutorTest : public ::testing::Test {
     CheckMaterializeEqual(id, input_pb);
   }
 
-  template <typename... Ts>
-  void CheckTensorRoundTrip(Ts... tensor_constructor_args) {
-    auto input_pb = TensorV(tensor_constructor_args...);
-    CheckRoundTrip(input_pb);
-  }
-
   void CheckRoundTripFails(v0::Value& input_pb,
                            ::testing::Matcher<absl::Status> status_matcher) {
     TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
@@ -214,89 +185,157 @@ class XLAExecutorTest : public ::testing::Test {
 };
 
 TEST_F(XLAExecutorTest, RoundTripSimpleTensor) {
-  int8_t input_int = 9;
-  CheckTensorRoundTrip(input_int);
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT8,
+                                         testing::CreateArrayShape({}), {1}));
+  v0::Value value_pb;
+  value_pb.mutable_array()->Swap(&array_pb);
+  CheckRoundTrip(value_pb);
 }
 
 TEST_F(XLAExecutorTest, RoundTripInt64Tensor) {
-  int64_t input_int = 9;
-  CheckTensorRoundTrip(input_int);
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
+                                         testing::CreateArrayShape({}), {1}));
+  v0::Value value_pb;
+  value_pb.mutable_array()->Swap(&array_pb);
+  CheckRoundTrip(value_pb);
 }
 
 TEST_F(XLAExecutorTest, RoundTripFloatTensor) {
-  float input_float = 9;
-  CheckTensorRoundTrip(input_float);
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  v0::Value value_pb;
+  value_pb.mutable_array()->Swap(&array_pb);
+  CheckRoundTrip(value_pb);
 }
 
 TEST_F(XLAExecutorTest, RoundTripNonScalarFloatTensor) {
-  tensorflow::Tensor input_tensor(tensorflow::DataType::DT_FLOAT,
-                                  tensorflow::TensorShape({10, 10}));
-  CheckTensorRoundTrip(input_tensor);
+  federated_language::Array array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                           testing::CreateArrayShape({2}), {1.0, 1.0}));
+  v0::Value value_pb;
+  value_pb.mutable_array()->Swap(&array_pb);
+  CheckRoundTrip(value_pb);
 }
 
 TEST_F(XLAExecutorTest, RoundTripStructWithTensor) {
-  v0::Value input_pb = StructV({TensorV(9)});
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
+                                         testing::CreateArrayShape({}), {1}));
+  v0::Value value_pb;
+  value_pb.mutable_array()->Swap(&array_pb);
+  v0::Value input_pb = StructV({value_pb});
   CheckRoundTrip(input_pb);
 }
 
 TEST_F(XLAExecutorTest, RoundTripStructOfNestedTensors) {
-  v0::Value input_pb = StructV({StructV({TensorV(24)}), TensorV(88)});
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {1}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  federated_language::Array array2_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {2}));
+  v0::Value value2_pb;
+  value2_pb.mutable_array()->Swap(&array2_pb);
+  v0::Value input_pb = StructV({StructV({value1_pb}), value2_pb});
   CheckRoundTrip(input_pb);
 }
 
 TEST_F(XLAExecutorTest, RoundTripStringTensorFails) {
-  // String tensors are unsupported in XLA; see
-  // https://github.com/tensorflow/tensorflow/issues/19140, and the enumeration
-  // of primitive dtypes at
-  // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/compiler/xla/xla_data.proto
-  auto string_tensor = TensorV("a_string");
-  CheckRoundTripFails(
-      string_tensor,
-      StatusIs(
-          absl::StatusCode::kInvalidArgument,
-          HasSubstr("Unsupported type in DataTypeToPrimitiveType: 'string'")));
+  federated_language::Array array_pb = TFF_ASSERT_OK(
+      testing::CreateArray(federated_language::DataType::DT_STRING,
+                           testing::CreateArrayShape({}), {"a"}));
+  v0::Value value_pb;
+  value_pb.mutable_array()->Swap(&array_pb);
+  CheckRoundTripFails(value_pb, StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_F(XLAExecutorTest, CreateStructOneElement) {
-  v0::Value input = TensorV(5);
-  TFF_ASSERT_OK_AND_ASSIGN(auto value, test_executor_->CreateValue(input));
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {1}));
+  v0::Value value_pb;
+  value_pb.mutable_array()->Swap(&array_pb);
+  TFF_ASSERT_OK_AND_ASSIGN(auto value, test_executor_->CreateValue(value_pb));
   TFF_ASSERT_OK_AND_ASSIGN(auto struct_, test_executor_->CreateStruct({value}));
-  CheckMaterializeEqual(struct_, StructV({input}));
+  CheckMaterializeEqual(struct_, StructV({value_pb}));
 }
 
 TEST_F(XLAExecutorTest, CreateStructSeveralElements) {
-  v0::Value t1 = TensorV(5);
-  v0::Value t2 = TensorV(6);
-  v0::Value t3 = TensorV(7);
-  v0::Value struct_ = StructV({TensorV(5), TensorV(6), TensorV(7)});
-  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(t1));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(t2));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t3id, test_executor_->CreateValue(t3));
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {1}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  federated_language::Array array2_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {2}));
+  v0::Value value2_pb;
+  value2_pb.mutable_array()->Swap(&array2_pb);
+  federated_language::Array array3_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {3}));
+  v0::Value value3_pb;
+  value3_pb.mutable_array()->Swap(&array3_pb);
+  v0::Value struct_ = StructV({value1_pb, value2_pb, value3_pb});
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(value1_pb));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(value2_pb));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t3id, test_executor_->CreateValue(value3_pb));
   TFF_ASSERT_OK_AND_ASSIGN(auto structid,
                            test_executor_->CreateStruct({t1id, t2id, t3id}));
   CheckMaterializeEqual(structid, struct_);
 }
 
 TEST_F(XLAExecutorTest, CreateSelectionFromCreateValue) {
-  v0::Value input = StructV({TensorV(1), TensorV(2)});
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {1}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  federated_language::Array array2_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {2}));
+  v0::Value value2_pb;
+  value2_pb.mutable_array()->Swap(&array2_pb);
+  v0::Value input = StructV({value1_pb, value2_pb});
   TFF_ASSERT_OK_AND_ASSIGN(auto vid, test_executor_->CreateValue(input));
   TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateSelection(vid, 1));
-  CheckMaterializeEqual(t1id, TensorV(2));
+  CheckMaterializeEqual(t1id, value2_pb);
 }
 
 TEST_F(XLAExecutorTest, CreateSelectionFromCreateStruct) {
-  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(TensorV(1)));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(TensorV(2)));
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {1}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  federated_language::Array array2_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {2}));
+  v0::Value value2_pb;
+  value2_pb.mutable_array()->Swap(&array2_pb);
+  v0::Value input = StructV({value1_pb, value2_pb});
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(value1_pb));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(value2_pb));
   TFF_ASSERT_OK_AND_ASSIGN(auto structid,
                            test_executor_->CreateStruct({t1id, t2id}));
   TFF_ASSERT_OK_AND_ASSIGN(auto selectedid,
                            test_executor_->CreateSelection(structid, 1));
-  CheckMaterializeEqual(selectedid, TensorV(2));
+  CheckMaterializeEqual(selectedid, value2_pb);
 }
 
 TEST_F(XLAExecutorTest, CreateSelectionNonStructImmediate) {
-  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(TensorV(1)));
-  CheckMaterializeEqual(id, TensorV(1));
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
+                                         testing::CreateArrayShape({}), {1}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(value1_pb));
+  CheckMaterializeEqual(id, value1_pb);
   EXPECT_THAT(
       test_executor_->CreateSelection(id, 0),
       StatusIs(absl::StatusCode::kInvalidArgument,
@@ -376,8 +415,9 @@ TEST_F(XLAExecutorTest,
        CreateValueComputationTensorParameterKnownRankUnknownDimsFails) {
   int num_dims = 3;
   xla::XlaBuilder builder("float_unk_shape_tensor_identity");
-  xla::Parameter(&builder, 0,
-                 XLAShapeWithUnknownDims(tensorflow::DT_FLOAT, num_dims), "x");
+  xla::Shape shape = TFF_ASSERT_OK(
+      ShapeWithUnknownDims(federated_language::DataType::DT_FLOAT, num_dims));
+  xla::Parameter(&builder, 0, shape, "x");
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   federated_language::Type float_unk_shape_tensor;
@@ -403,8 +443,9 @@ TEST_F(XLAExecutorTest,
 
 TEST_F(XLAExecutorTest, CreateValueComputationTensorParameterUnknownRankFails) {
   xla::XlaBuilder builder("float_unk_rank_tensor_identity");
-  xla::Parameter(&builder, 0, UnknownRankShapeWithDtype(tensorflow::DT_FLOAT),
-                 "x");
+  xla::Shape shape = TFF_ASSERT_OK(
+      ShapeWithUnknownRank(federated_language::DataType::DT_FLOAT));
+  xla::Parameter(&builder, 0, shape, "x");
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   federated_language::Type float_unk_rank_tensor;
@@ -440,13 +481,14 @@ TEST_F(XLAExecutorTest, CreateValueComputationLiteralReturnsResult) {
   const OwnedValueId& embedded_fn =
       TFF_ASSERT_OK(test_executor_->CreateValue(value_pb));
 
-  const v0::Value& expected_pb = TensorV(1);
+  v0::Value expected_pb;
+  expected_pb.mutable_array()->Swap(&array_pb);
   CheckMaterializeEqual(embedded_fn, expected_pb);
 }
 
 TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallSingleTensor) {
-  xla::XlaBuilder builder("return_two");
-  xla::XlaOp constant = xla::ConstantR0<float>(&builder, 2.0);
+  xla::XlaBuilder builder("return_one");
+  xla::XlaOp constant = xla::ConstantR0<float>(&builder, 1.0);
   // To mimic the Python tracing which always returns tuples, event for single
   // element results, after passing through MLIR
   // results are always in tuples.
@@ -464,9 +506,12 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallSingleTensor) {
   TFF_ASSERT_OK_AND_ASSIGN(
       OwnedValueId called_fn,
       test_executor_->CreateCall(embedded_fn.ref(), std::nullopt));
-  v0::Value expected_result = TensorV(2.0f);
-
-  CheckMaterializeEqual(called_fn, expected_result);
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  v0::Value expected_pb;
+  expected_pb.mutable_array()->Swap(&array_pb);
+  CheckMaterializeEqual(called_fn, expected_pb);
 }
 
 TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallTensorStructure) {
@@ -490,7 +535,17 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallTensorStructure) {
   TFF_ASSERT_OK_AND_ASSIGN(
       OwnedValueId called_fn,
       test_executor_->CreateCall(embedded_fn.ref(), std::nullopt));
-  v0::Value expected_result = StructV({TensorV(1.0f), TensorV(2.0f)});
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  federated_language::Array array2_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {2.0}));
+  v0::Value value2_pb;
+  value2_pb.mutable_array()->Swap(&array2_pb);
+  v0::Value expected_result = StructV({value1_pb, value2_pb});
   CheckMaterializeEqual(called_fn, expected_result);
 }
 
@@ -518,8 +573,23 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallNestedTensorStructure) {
   TFF_ASSERT_OK_AND_ASSIGN(
       OwnedValueId called_fn,
       test_executor_->CreateCall(embedded_fn.ref(), std::nullopt));
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  federated_language::Array array2_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {2.0}));
+  v0::Value value2_pb;
+  value2_pb.mutable_array()->Swap(&array2_pb);
+  federated_language::Array array3_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {3.0}));
+  v0::Value value3_pb;
+  value3_pb.mutable_array()->Swap(&array3_pb);
   v0::Value expected_result =
-      StructV({TensorV(1.0f), StructV({TensorV(2.0f), TensorV(3.0f)})});
+      StructV({value1_pb, StructV({value2_pb, value3_pb})});
 
   CheckMaterializeEqual(called_fn, expected_result);
 }
@@ -542,15 +612,19 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityScalar) {
       // Identical parameter and result bindings.
       binding, binding, std::move(*xla_computation), function_type);
 
-  v0::Value arg_value = TensorV(2.0f);
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  v0::Value value_pb;
+  value_pb.mutable_array()->Swap(&array_pb);
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
                            test_executor_->CreateValue(computation));
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
-                           test_executor_->CreateValue(arg_value));
+                           test_executor_->CreateValue(value_pb));
   TFF_ASSERT_OK_AND_ASSIGN(
       OwnedValueId called_fn,
       test_executor_->CreateCall(embedded_fn.ref(), embedded_arg));
-  CheckMaterializeEqual(called_fn, arg_value);
+  CheckMaterializeEqual(called_fn, value_pb);
 }
 
 TEST_F(XLAExecutorTest, CreateAndMaterializeIdentitySingletonStruct) {
@@ -572,7 +646,12 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentitySingletonStruct) {
       // Identical parameter and result bindings.
       binding, binding, std::move(*xla_computation), function_type);
 
-  v0::Value arg_value = StructV({TensorV(2.0f)});
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  v0::Value value_pb;
+  value_pb.mutable_array()->Swap(&array_pb);
+  v0::Value arg_value = StructV({value_pb});
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
                            test_executor_->CreateValue(computation));
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
@@ -604,8 +683,22 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityNestedStruct) {
   v0::Value computation = ComputationV(
       binding, binding, std::move(*xla_computation), function_type);
 
-  v0::Value arg_value =
-      StructV({TensorV(1.0f), StructV({TensorV(2.0f), TensorV(3.0f)})});
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  federated_language::Array array2_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {2.0}));
+  v0::Value value2_pb;
+  value2_pb.mutable_array()->Swap(&array2_pb);
+  federated_language::Array array3_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {3.0}));
+  v0::Value value3_pb;
+  value3_pb.mutable_array()->Swap(&array3_pb);
+  v0::Value arg_value = StructV({value1_pb, StructV({value2_pb, value3_pb})});
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
                            test_executor_->CreateValue(computation));
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
@@ -617,14 +710,11 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityNestedStruct) {
 }
 
 TEST_F(XLAExecutorTest, CallAndMaterializeIdentityPartiallyNonScalarStruct) {
-  tensorflow::TensorShape non_scalar_tf_shape =
-      tensorflow::TensorShape({10, 10});
-  xla::Shape non_scalar_shape =
-      tensorflow::TensorShapeToXLAShape(xla::F32, non_scalar_tf_shape);
   xla::XlaBuilder builder("partially_non_scalar_struct_identity");
   auto x = xla::Parameter(&builder, 0,
                           xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
-  auto y = xla::Parameter(&builder, 1, non_scalar_shape, "y");
+  auto y = xla::Parameter(&builder, 1,
+                          xla::ShapeUtil::MakeShape(xla::F32, {2, 3}), "y");
   xla::Tuple(&builder, {x, y});
   absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
@@ -633,15 +723,24 @@ TEST_F(XLAExecutorTest, CallAndMaterializeIdentityPartiallyNonScalarStruct) {
   federated_language::Type scalar =
       TensorT(federated_language::DataType::DT_FLOAT);
   federated_language::Type matrix =
-      TensorT(federated_language::DataType::DT_FLOAT, {10, 10});
+      TensorT(federated_language::DataType::DT_FLOAT, {2, 3});
   federated_language::Type struct_type = StructT({scalar, matrix});
   federated_language::Type function_type = IdentityFunctionT(struct_type);
   auto binding = std::get<0>(TFF_ASSERT_OK(BindingFromType(struct_type, 0)));
   v0::Value computation = ComputationV(
       binding, binding, std::move(*xla_computation), function_type);
 
-  v0::Value arg_value = StructV(
-      {TensorV(1.0f), TensorV(tensorflow::DT_FLOAT, non_scalar_tf_shape)});
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  federated_language::Array array2_pb = TFF_ASSERT_OK(testing::CreateArray(
+      federated_language::DataType::DT_FLOAT, testing::CreateArrayShape({2, 3}),
+      {1.0, 2.0, 3.0, 4.0, 5.0, 6.0}));
+  v0::Value value2_pb;
+  value2_pb.mutable_array()->Swap(&array2_pb);
+  v0::Value arg_value = StructV({value1_pb, value2_pb});
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
                            test_executor_->CreateValue(computation));
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
@@ -678,8 +777,22 @@ TEST_F(XLAExecutorTest,
       ComputationV(parameter_binding, result_binding,
                    std::move(*xla_computation), function_type);
 
-  v0::Value arg_value =
-      StructV({TensorV(1.0f), StructV({TensorV(2.0f), TensorV(3.0f)})});
+  federated_language::Array array1_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {1.0}));
+  v0::Value value1_pb;
+  value1_pb.mutable_array()->Swap(&array1_pb);
+  federated_language::Array array2_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {2.0}));
+  v0::Value value2_pb;
+  value2_pb.mutable_array()->Swap(&array2_pb);
+  federated_language::Array array3_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {3.0}));
+  v0::Value value3_pb;
+  value3_pb.mutable_array()->Swap(&array3_pb);
+  v0::Value arg_value = StructV({value1_pb, StructV({value2_pb, value3_pb})});
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
                            test_executor_->CreateValue(computation));
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
@@ -687,7 +800,12 @@ TEST_F(XLAExecutorTest,
   TFF_ASSERT_OK_AND_ASSIGN(
       OwnedValueId called_fn,
       test_executor_->CreateCall(embedded_fn.ref(), embedded_arg));
-  v0::Value expected_result = StructV({TensorV(1.0f), TensorV(5.0f)});
+  federated_language::Array array5_pb =
+      TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
+                                         testing::CreateArrayShape({}), {5.0}));
+  v0::Value value5_pb;
+  value5_pb.mutable_array()->Swap(&array5_pb);
+  v0::Value expected_result = StructV({value1_pb, value5_pb});
   CheckMaterializeEqual(called_fn, expected_result);
 }
 

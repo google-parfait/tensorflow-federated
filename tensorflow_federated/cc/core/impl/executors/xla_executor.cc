@@ -24,7 +24,6 @@ limitations under the License
 #include <variant>
 #include <vector>
 
-#include "google/protobuf/any.pb.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -32,8 +31,6 @@ limitations under the License
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
-#include "tensorflow/compiler/tf2xla/literal_util.h"
-#include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/xla/client/client.h"
 #include "tensorflow/compiler/xla/client/client_library.h"
 #include "tensorflow/compiler/xla/client/xla_computation.h"
@@ -44,14 +41,8 @@ limitations under the License
 #include "tensorflow/compiler/xla/stream_executor/platform.h"
 #include "tensorflow/compiler/xla/xla.pb.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
-#include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor.pb.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/tensor_shape.pb.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/xla_utils.h"
 
@@ -452,30 +443,16 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   xla::Client* xla_client_;
 
   absl::StatusOr<XLAExecutorValue> CreateValueArray(const v0::Value& value_pb) {
-    tensorflow::Tensor t = TFF_TRY(DeserializeTensorValue(value_pb));
-    xla::BorrowingLiteral tensor_literal;
-    absl::Status to_literal_status =
-        tensorflow::HostTensorToBorrowingLiteral(t, &tensor_literal);
-    if (!to_literal_status.ok()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Failed to convert v0::Value proto to XLA literal. Message: ",
-          to_literal_status.message()));
-    }
+    xla::Literal literal = TFF_TRY(LiteralFromArray(value_pb.array()));
     absl::StatusOr<std::unique_ptr<xla::GlobalData>> data_in_server =
-        xla_client_->TransferToServer(tensor_literal);
+        xla_client_->TransferToServer(literal);
     if (!data_in_server.ok()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Failed to transfer XLA literal to local server. Message: ",
-          to_literal_status.message()));
+          data_in_server.status().message()));
     }
-    xla::PrimitiveType element_type;
-    absl::Status status =
-        tensorflow::DataTypeToPrimitiveType(t.dtype(), &element_type);
-    if (!status.ok()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Failure to convert tensorflow::DataType to XLA primitive: ",
-          status.message()));
-    }
+    xla::PrimitiveType element_type =
+        TFF_TRY(PrimitiveTypeFromDataType(value_pb.array().dtype()));
     return XLAExecutorValue(std::move(*data_in_server), element_type);
   }
 
@@ -581,25 +558,16 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         return tasks.add_task([&executor_value, value_pb, this]() {
           std::shared_ptr<ServiceTensor> tensor_in_service =
               executor_value.tensor();
-          absl::StatusOr<xla::Literal> result_literal =
+          absl::StatusOr<xla::Literal> literal =
               xla_client_->Transfer(*(tensor_in_service->global_data()));
-          if (!result_literal.ok()) {
+          if (!literal.ok()) {
             return absl::InternalError(absl::StrCat(
                 "Error transferring tensor from XLA service to host. Message: ",
-                result_literal.status().message()));
+                literal.status().message()));
           }
-          tensorflow::Tensor tensor_out;
-          absl::Status tensor_conversion = tensorflow::LiteralToHostTensor(
-              *result_literal,
-              TFF_TRY(tensorflow::EncodePrimitiveTypeAsDataType(
-                  tensor_in_service->dtype())),
-              &tensor_out);
-          if (!tensor_conversion.ok()) {
-            return absl::InternalError(absl::StrCat(
-                "Error converting XLA literal to tensor. Message: ",
-                tensor_conversion.message()));
-          }
-          TFF_TRY(SerializeTensorValue(tensor_out, value_pb));
+          federated_language::Array array_pb =
+              TFF_TRY(ArrayFromLiteral(*literal));
+          value_pb->mutable_array()->Swap(&array_pb);
           return absl::OkStatus();
         });
       }

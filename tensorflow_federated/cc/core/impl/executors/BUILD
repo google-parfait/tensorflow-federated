@@ -1148,7 +1148,6 @@ cc_library(
     deps = [
         ":executor",
         ":status_macros",
-        ":tensor_serialization",
         ":threading",
         ":xla_utils",
         "@com_google_absl//absl/log",
@@ -1159,7 +1158,6 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@org_tensorflow//tensorflow/compiler/jit:xla_cpu_jit",  # buildcleaner: keep # Linking in this dependency ensures that XLA can compile its code for the CPU host.
-        "@org_tensorflow//tensorflow/compiler/tf2xla:common",
         "@org_tensorflow//tensorflow/compiler/xla:literal",
         "@org_tensorflow//tensorflow/compiler/xla:shape_util",
         "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
@@ -1172,8 +1170,6 @@ cc_library(
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor:multi_platform_manager",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor:platform",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
     ],
 )
 
@@ -1189,6 +1185,7 @@ tff_cc_cpu_gpu_test(
         ":type_test_utils",
         ":value_test_utils",
         ":xla_executor",
+        ":xla_utils",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
@@ -1200,16 +1197,12 @@ tff_cc_cpu_gpu_test(
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/compiler/tf2xla:common",
         "@org_tensorflow//tensorflow/compiler/xla:shape_util",
         "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
         "@org_tensorflow//tensorflow/compiler/xla/service:platform_util",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor:platform",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/platform:statusor",
     ],
 )
 
@@ -1229,6 +1222,7 @@ cc_test(
         ":type_test_utils",
         ":value_test_utils",
         ":xla_executor",
+        ":xla_utils",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
@@ -1241,7 +1235,6 @@ cc_test(
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
         "@org_tensorflow//tensorflow/compiler/jit:xla_gpu_jit",  # buildcleaner: keep # Linking in this dependency ensures that XLA can compile its code for the GPU.
-        "@org_tensorflow//tensorflow/compiler/tf2xla:common",
         "@org_tensorflow//tensorflow/compiler/xla:shape_util",
         "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
@@ -1249,9 +1242,6 @@ cc_test(
         "@org_tensorflow//tensorflow/compiler/xla/service:platform_util",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor:platform",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor/cuda:cuda_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on GPU.
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/platform:statusor",
     ],
 )
 
