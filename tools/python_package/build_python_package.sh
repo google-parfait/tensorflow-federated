@@ -49,12 +49,29 @@ main() {
   fi
 
   # Check the GLIBC version.
-  local expected_glibc="2.31"
-  if ! ldd --version | grep --quiet "${expected_glibc}"; then
-    echo "error: expected GLIBC version to be '${expected_glibc}', found:" 1>&2
-    ldd --version 1>&2
+  glibc_version=$(ldd --version 2>&1 | grep "GLIBC" | awk '{print $NF}')
+
+  # Error handling if GLIBC version couldn't be determined.
+  if [[ -z "$glibc_version" ]]; then
+    echo "error: Could not determine GLIBC version." 1>&2
     exit 1
   fi
+
+  echo "Detected GLIBC version: $glibc_version"
+
+  # Extract major and minor version numbers for manylinux tag.
+  IFS='.' read -r glibc_major glibc_minor <<< "$glibc_version"
+  manylinux_version="${glibc_major}_${glibc_minor}"
+
+  # Detect architecture.
+  arch=$(uname -m)
+  case "$arch" in
+    aarch64|x86_64) ;; # Supported architectures
+    *) echo "error: Unsupported architecture: $arch" >&2; exit 1 ;;
+  esac
+
+  plat_name="manylinux_${manylinux_version}_${arch}"
+
 
   # Create a temp directory.
   local temp_dir="$(mktemp --directory)"
@@ -68,7 +85,10 @@ main() {
   pip --version
 
   # Build the Python package.
-  pip install --upgrade "build"
+  pip install --upgrade "build" "toml-cli"
+
+  # Update wheel platform
+  toml set --toml-path "pyproject.toml" "tool.distutils.bdist_wheel.plat-name" "$plat_name"
   pip freeze
   python -m build --outdir "${output_dir}"
 }
