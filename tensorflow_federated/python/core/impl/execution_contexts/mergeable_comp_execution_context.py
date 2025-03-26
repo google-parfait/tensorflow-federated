@@ -687,11 +687,10 @@ class MergeableCompExecutionContext(
         else len(self._async_execution_contexts)
     )
     if compiler_fn is not None:
-      self._compiler_pipeline = federated_language.framework.CompilerPipeline(
-          compiler_fn
-      )
+      cache_decorator = functools.lru_cache()
+      self._compiler = cache_decorator(compiler_fn)
     else:
-      self._compiler_pipeline = None
+      self._compiler = None
 
   def invoke(
       self,
@@ -703,13 +702,13 @@ class MergeableCompExecutionContext(
     )
 
     if isinstance(comp, federated_language.framework.Computation):
-      if self._compiler_pipeline is None:
+      if self._compiler is None:
         raise ValueError(
             'Without a compiler, mergeable comp execution context '
             'can only invoke instances of MergeableCompForm. '
             'Encountered a `federated_language.Computation`.'
         )
-      comp = self._compiler_pipeline.compile(comp)
+      comp = self._compiler(comp)
       if not isinstance(comp, MergeableCompForm):
         raise ValueError(
             'Expected compilation in mergeable comp execution '
