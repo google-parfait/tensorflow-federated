@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-// This file contains the pybind11 defintions for exposing the C++ Executor
+// This file contains the pybind11 definitions for exposing the C++ Executor
 // interface in Python.
 //
 // General principles:
@@ -47,10 +47,8 @@ limitations under the License
 #include "tensorflow/c/safe_ptr.h"
 #include "tensorflow/c/tf_tensor.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/platform/strcat.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
-#include "tensorflow/python/lib/core/safe_pyobject_ptr.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -60,7 +58,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
-#include "tensorflow_federated/cc/core/impl/executors/xla_executor.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow {
@@ -74,7 +71,7 @@ namespace py = ::pybind11;
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-// The Python module defintion `executor_bindings`.
+// The Python module definition `executor_bindings`.
 //
 // This will be used with `import executor_bindings` on the Python side. This
 // module should _not_ be directly imported into the public pip API. The methods
@@ -114,9 +111,7 @@ PYBIND11_MODULE(executor_bindings, m) {
   //
   // Note: no `init<>()` method defined, must be constructed useing the create_*
   // methods defined below.
-  py::class_<Executor,
-             // PyExecutor trampoline goes here when ready
-             std::shared_ptr<Executor>>(m, "Executor")
+  py::class_<Executor, std::shared_ptr<Executor>>(m, "Executor")
       .def("create_value", &Executor::CreateValue, py::arg("value_pb"),
            py::return_value_policy::move,
            py::call_guard<py::gil_scoped_release>())
@@ -169,8 +164,6 @@ PYBIND11_MODULE(executor_bindings, m) {
                         const CardinalityMap&>(&CreateStreamingRemoteExecutor),
       py::arg("channel"), py::arg("cardinalities"),
       "Creates a StreamingRemoteExecutor.");
-  m.def("create_xla_executor", &CreateXLAExecutor,
-        py::arg("platform_name") = "Host", "Creates an XlaExecutor.");
   m.def("create_sequence_executor", &CreateSequenceExecutor,
         py::arg("target_executor"), "Creates a SequenceExecutor.");
 

@@ -1,5 +1,6 @@
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_binary")
+load("//third_party/bazel_rules/rules_cc/cc:cc_library.bzl", "cc_library")
 load("//tools:build_defs.bzl", "tff_cc_cpu_gpu_test")
 
 package(
@@ -346,7 +347,6 @@ pybind_extension(
         ":sequence_executor",
         ":streaming_remote_executor",
         ":tensorflow_executor",
-        ":xla_executor",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/log",
@@ -355,7 +355,6 @@ pybind_extension(
         "@com_google_absl//absl/strings",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core/platform:strcat",
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_headers",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
@@ -1138,6 +1137,22 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
+    ],
+)
+
+pybind_extension(
+    name = "xla_bindings",
+    srcs = ["xla_bindings.cc"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
+    deps = [
+        ":xla_executor",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@federated_language//federated_language/proto:computation_cc_proto",
+        "@pybind11_abseil//pybind11_abseil:absl_casters",
+        "@pybind11_abseil//pybind11_abseil:status_casters",
+        "@pybind11_protobuf//pybind11_protobuf:native_proto_caster",
     ],
 )
 
