@@ -13,10 +13,6 @@
 # limitations under the License.
 """Python interface to XLA C++ Executor implementations."""
 
-# TODO: b/305743962 - Remove the tensorflow dependency.
-# Required to load TF Python extension.
-import tensorflow as tf  # pylint: disable=unused-import
-
 from tensorflow_federated.cc.core.impl.executors import executor_bindings
 
 

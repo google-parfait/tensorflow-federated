@@ -29,7 +29,9 @@ py_library(
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
-    deps = ["//tensorflow_federated/cc/core/impl/executors:executor_bindings"],
+    deps = [
+        "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
+    ],
 )
 
 py_test(
