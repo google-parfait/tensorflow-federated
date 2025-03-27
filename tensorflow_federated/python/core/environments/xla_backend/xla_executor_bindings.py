@@ -13,7 +13,7 @@
 # limitations under the License.
 """Python interface to XLA C++ Executor implementations."""
 
-from tensorflow_federated.cc.core.impl.executors import executor_bindings
+from tensorflow_federated.cc.core.impl.executors import xla_bindings
 
 
-create_xla_executor = executor_bindings.create_xla_executor
+create_xla_executor = xla_bindings.create_xla_executor
