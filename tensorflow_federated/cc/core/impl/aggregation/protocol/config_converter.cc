@@ -48,6 +48,8 @@ namespace {
 // TensorShapes in the input and output TensorSpecs from {} to {-1} so that code
 // that validates the input and output tensors match the specs will be able to
 // properly account for the fact that the dimension is unknown.
+// In the special case of DPQuantileAggregator, leave shape of output_spec as {}
+// because the output known to be a single scalar value.
 // TODO: b/285201184 - Revisit the design decision to perform this
 // transformation in this class; as it requires this class to have special
 // knowledge about FedSQL intrinsics.
@@ -59,7 +61,8 @@ void TransformFedSqlSpecs(Intrinsic& intrinsic) {
     }
   }
   for (auto& output_spec : intrinsic.outputs) {
-    if (output_spec.shape() == TensorShape{}) {
+    if (output_spec.shape() == TensorShape{} &&
+        intrinsic.uri != kDPQuantileUri) {
       output_spec =
           TensorSpec(output_spec.name(), output_spec.dtype(), TensorShape{-1});
     }
@@ -117,8 +120,7 @@ StatusOr<std::vector<Intrinsic>> ParseFromConfig(
                      != std::string::npos;              // NOLINT
     // Ensure that the specs are flexible enough to handle the case where the
     // dimensionality of input and output tensors is unknown.
-    bool flexible_dimension = is_fedsql && intrinsic.uri != kDPQuantileUri;
-    if (flexible_dimension) {
+    if (is_fedsql) {
       TransformFedSqlSpecs(intrinsic);
     }
     if (is_fedsql && need_fedsql_wrapper) {

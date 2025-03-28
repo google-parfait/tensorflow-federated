@@ -207,18 +207,6 @@ TEST(DPQuantileAggregatorTest, NonScalarInputOrOutputSpecs) {
   EXPECT_THAT(aggregator_status1.status().message(),
               HasSubstr("Expected a scalar output tensor, but got a tensor with"
                         " 2 elements."));
-
-  Intrinsic vector_input_intrinsic =
-      Intrinsic{kDPQuantileUri,
-                {TensorSpec("value", DT_INT32, {2})},
-                {CreateTensorSpec("value", DT_DOUBLE)},
-                {CreateDPQuantileParameters(0.5)},
-                {}};
-  auto aggregator_status2 = CreateTensorAggregator(vector_input_intrinsic);
-  EXPECT_THAT(aggregator_status2, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(aggregator_status2.status().message(),
-              HasSubstr("Expected a scalar input tensor, but got a tensor with"
-                        " 2 elements."));
 }
 
 // Input and output types must be numeric.

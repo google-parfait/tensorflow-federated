@@ -348,6 +348,7 @@ cc_library(
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
     ],
+    alwayslink = 1,
 )
 
 cc_library(
@@ -369,6 +370,7 @@ cc_library(
         "@com_google_absl//absl/random",
         "@com_google_cc_differential_privacy//algorithms:numerical-mechanisms",
     ],
+    alwayslink = 1,
 )
 
 cc_library(
