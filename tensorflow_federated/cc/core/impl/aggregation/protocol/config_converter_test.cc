@@ -618,7 +618,7 @@ TEST_F(ConfigConverterTest, ConvertFedSqlDp_TensorAggregatorBundlePresent) {
   ASSERT_THAT(parsed_intrinsics.value(), SizeIs(1));
   Intrinsic expected_inner =
       Intrinsic{"GoogleSQL:$differential_privacy_percentile_cont",
-                {TensorSpec{"the_input", DT_INT32, {}}},  // not transformed
+                {TensorSpec{"the_input", DT_INT32, {-1}}},
                 {TensorSpec{"the_output", DT_DOUBLE, {}}},
                 {},
                 {}};

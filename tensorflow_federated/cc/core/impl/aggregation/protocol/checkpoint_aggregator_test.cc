@@ -1258,10 +1258,10 @@ TEST(CheckpointAggregatorTest,
   for (int i = 0; i < 100; i++) {
     MockCheckpointParser parser;
     EXPECT_CALL(parser, GetTensor(StrEq("L0"))).WillOnce(Invoke([] {
-      return Tensor::Create(DT_INT32, {}, CreateTestData({1}));
+      return Tensor::Create(DT_INT32, {1}, CreateTestData({1}));
     }));
     EXPECT_CALL(parser, GetTensor(StrEq("L1_1"))).WillOnce(Invoke([] {
-      return Tensor::Create(DT_DOUBLE, {}, CreateTestData({0.1}));
+      return Tensor::Create(DT_DOUBLE, {1}, CreateTestData({0.1}));
     }));
     TFF_EXPECT_OK(aggregator->Accumulate(parser));
   }

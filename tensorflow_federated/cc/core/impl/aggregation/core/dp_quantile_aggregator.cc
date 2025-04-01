@@ -271,16 +271,6 @@ DPQuantileAggregatorFactory::CreateInternal(
   }
   const TensorSpec& input_spec_tensor = intrinsic.inputs[0];
 
-  // Ensure that the input spec's tensor is a scalar.
-  TFF_ASSIGN_OR_RETURN(auto num_elements_in_tensor,
-                       input_spec_tensor.shape().NumElements());
-  if (num_elements_in_tensor != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregatorFactory::CreateInternal: Expected a scalar "
-              "input tensor, but got a tensor with "
-           << num_elements_in_tensor << " elements.";
-  }
-
   // Ensure that output spec has exactly one tensor.
   if (intrinsic.outputs.size() != 1) {
     return TFF_STATUS(INVALID_ARGUMENT)
@@ -291,7 +281,7 @@ DPQuantileAggregatorFactory::CreateInternal(
   const TensorSpec& output_spec_tensor = intrinsic.outputs[0];
 
   // Ensure that the output spec's tensor is a scalar.
-  TFF_ASSIGN_OR_RETURN(num_elements_in_tensor,
+  TFF_ASSIGN_OR_RETURN(int num_elements_in_tensor,
                        output_spec_tensor.shape().NumElements());
   if (num_elements_in_tensor != 1) {
     return TFF_STATUS(INVALID_ARGUMENT)

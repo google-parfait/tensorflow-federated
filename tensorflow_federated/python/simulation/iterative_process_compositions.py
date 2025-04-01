@@ -219,7 +219,7 @@ def compose_dataset_computation_with_computation(
             'No sequence parameter assignable from expected dataset computation'
             ' result type found in `computation_body`. \nList of sequences in'
             ' argument signature: {}\nExpected sequence type: {}'.format(
-                sequence_types, dataset_return_type
+                sequence_types, repr(dataset_return_type)
             )
         )
       else:
@@ -227,7 +227,7 @@ def compose_dataset_computation_with_computation(
             'No sequence parameter found in `computation_body`, but '
             'composition with a computation yielding sequences requested.'
             '\nArgument signature: {}\nExpected sequence type: {}'.format(
-                comp_body_param_type, dataset_return_type
+                repr(comp_body_param_type), repr(dataset_return_type)
             )
         )
 
@@ -274,7 +274,9 @@ def compose_dataset_computation_with_computation(
         'signature of `dataset_computation` result signature, nor a struct '
         'of arguments.\n'
         'Argument signature: {}\n'
-        'Result signature: {}'.format(comp_body_param_type, dataset_return_type)
+        'Result signature: {}'.format(
+            repr(comp_body_param_type), repr(dataset_return_type)
+        )
     )
 
 
@@ -355,7 +357,7 @@ def compose_dataset_computation_with_iterative_process(
         'Can only construct a new iterative process if '
         '`dataset_computation` accepts a non-None arg; the '
         'type {} accepts no argument.'.format(
-            dataset_computation.type_signature
+            repr(dataset_computation.type_signature)
         )
     )
 
@@ -367,7 +369,7 @@ def compose_dataset_computation_with_iterative_process(
     raise TypeError(
         'Cannot construct a new iterative process if a dataset is '
         'returned by `initialize`; initialize has result type '
-        '{}.'.format(init_fn.type_signature.result)
+        '{}.'.format(repr(init_fn.type_signature.result))
     )
 
   new_next_comp = compose_dataset_computation_with_computation(
