@@ -23,6 +23,7 @@ limitations under the License
 #include <variant>
 #include <vector>
 
+#include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -35,7 +36,6 @@ limitations under the License
 #include "federated_language/proto/computation.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
@@ -396,7 +396,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
           // executor.
         }
       }
-        TF_FALLTHROUGH_INTENDED;
+        ABSL_FALLTHROUGH_INTENDED;
       default: {
         return ExecutorValue::CreateUnplaced(
             std::make_shared<UnplacedInner>(value_pb));

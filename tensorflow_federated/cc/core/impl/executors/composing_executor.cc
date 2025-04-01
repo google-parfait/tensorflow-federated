@@ -28,6 +28,7 @@ limitations under the License
 #include <variant>
 #include <vector>
 
+#include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
@@ -38,7 +39,6 @@ limitations under the License
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
-#include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -337,7 +337,7 @@ class ExecutorValue {
               value_pb.computation().type().function()});
         }
       }
-        TF_FALLTHROUGH_INTENDED;
+        ABSL_FALLTHROUGH_INTENDED;
       default: {
         return ExecutorValue::CreateUnplaced(
             std::make_shared<UnplacedInner>(value_pb));

@@ -86,7 +86,6 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@org_tensorflow//tensorflow/core/platform:macros",
     ],
 )
 
@@ -109,7 +108,6 @@ cc_test(
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/core:tensorflow",
     ],
 )
 
@@ -473,7 +471,6 @@ cc_library(
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/platform:macros",
     ],
 )
 
@@ -915,7 +912,6 @@ cc_library(
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
-        "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -928,7 +924,6 @@ cc_library(
         "@org_tensorflow//tensorflow/core/common_runtime:core",
         "@org_tensorflow//tensorflow/core/common_runtime:session",
         "@org_tensorflow//tensorflow/core/data:standalone",
-        "@org_tensorflow//tensorflow/core/platform:macros",
     ],
 )
 

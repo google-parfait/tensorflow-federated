@@ -27,10 +27,10 @@ limitations under the License
 #include <vector>
 
 #include "google/protobuf/any.pb.h"
+#include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
-#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -47,7 +47,6 @@ limitations under the License
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/macros.h"
 #include "tensorflow/core/public/session.h"
 #include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_from_tensor_structures.h"
@@ -605,7 +604,7 @@ class ExecutorValue {
       case federated_language::TensorFlow::Binding::kSequence: {
         is_sequence = true;
       }
-        TF_FALLTHROUGH_INTENDED;
+        ABSL_FALLTHROUGH_INTENDED;
       case federated_language::TensorFlow::Binding::kTensor: {
         if (tensors->empty()) {
           return absl::InternalError(
