@@ -97,7 +97,7 @@ jobs:
   build-package:
     name: Build Package
     needs: [publish-release]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
 
@@ -149,7 +149,7 @@ jobs:
   test-package:
     name: Test Package
     needs: [build-package]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
 
