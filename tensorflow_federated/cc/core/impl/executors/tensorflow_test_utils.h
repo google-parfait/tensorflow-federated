@@ -40,7 +40,7 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -51,7 +51,7 @@ template <typename... Ts>
 v0::Value TensorV(Ts... tensor_constructor_args) {
   tensorflow::Tensor tensor(tensor_constructor_args...);
   v0::Value value_proto;
-  absl::Status status = SerializeTensorValue(tensor, &value_proto);
+  *value_proto.mutable_array() = ArrayFromTensor(tensor).value();
   return value_proto;
 }
 
