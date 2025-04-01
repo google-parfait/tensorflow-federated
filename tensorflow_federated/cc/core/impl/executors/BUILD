@@ -453,7 +453,6 @@ cc_library(
         ":executor",
         ":federated_intrinsics",
         ":status_macros",
-        ":tensor_serialization",
         ":threading",
         ":value_validation",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -466,8 +465,9 @@ cc_library(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
+        "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@org_tensorflow//tensorflow/core:framework",
+        "@federated_language//federated_language/proto:data_type_cc_proto",
     ],
 )
 
@@ -475,12 +475,13 @@ cc_test(
     name = "federating_executor_test",
     srcs = ["federating_executor_test.cc"],
     deps = [
+        ":array_shape_test_utils",
+        ":array_test_utils",
         ":executor",
         ":executor_test_base",
         ":federating_executor",
         ":mock_executor",
         ":status_macros",
-        ":tensorflow_test_utils",
         ":value_test_utils",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
@@ -488,7 +489,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:tensorflow",
     ],
 )
@@ -1000,7 +1000,7 @@ cc_library(
     deps = [
         ":dataset_utils",
         ":status_macros",
-        ":tensor_serialization",
+        ":tensorflow_utils",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
