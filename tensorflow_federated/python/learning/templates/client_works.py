@@ -31,6 +31,7 @@ class ClientResult(NamedTuple):
     update: The local update to model weights produced by clients.
     update_weight: A weight for weighted aggregation of the `update`.
   """
+
   update: Any
   update_weight: Any
 
@@ -46,6 +47,8 @@ class ClientResultTypeError(TypeError):
 # TODO: b/240314933 - Move this (or refactor this) to a more general location.
 def _is_allowed_client_data_type(type_spec: federated_language.Type) -> bool:
   """Determines whether a given type is a (possibly nested) sequence type."""
+  if isinstance(type_spec, federated_language.TensorType):
+    return True
   if isinstance(type_spec, federated_language.SequenceType):
     return tensorflow_types.is_tensorflow_compatible_type(type_spec.element)
   elif isinstance(type_spec, federated_language.StructType):

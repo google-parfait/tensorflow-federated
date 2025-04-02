@@ -411,25 +411,6 @@ class ClientWorkTest(absltest.TestCase):
     with self.assertRaises(errors.TemplatePlacementError):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
-  def test_non_sequence_or_struct_next_data_param_raises(self):
-
-    @federated_language.federated_computation(
-        SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT
-    )
-    def next_fn(state, weights, data):
-      return MeasuredProcessOutput(
-          state,
-          federated_language.federated_zip(
-              client_works.ClientResult(
-                  federated_add(weights.trainable, data), client_one()
-              )
-          ),
-          server_zero(),
-      )
-
-    with self.assertRaises(client_works.ClientDataTypeError):
-      client_works.ClientWorkProcess(test_initialize_fn, next_fn)
-
   def test_non_clients_placed_next_result_raises(self):
 
     @federated_language.federated_computation(
