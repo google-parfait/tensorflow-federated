@@ -616,9 +616,7 @@ cc_test(
         "@federated_language//federated_language/proto:data_type_cc_proto",
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:math_ops",
-        "@org_tensorflow//tensorflow/cc:scope",
         "@org_tensorflow//tensorflow/core:core_cpu_base",
-        "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
     ],
 )

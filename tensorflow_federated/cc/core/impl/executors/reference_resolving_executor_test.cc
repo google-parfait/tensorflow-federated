@@ -43,11 +43,6 @@ limitations under the License
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
-#include "tensorflow/cc/framework/scope.h"
-#include "tensorflow/cc/ops/array_ops.h"
-#include "tensorflow/cc/ops/math_ops.h"
-#include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/graph/graph.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
@@ -60,8 +55,6 @@ namespace tensorflow_federated {
 namespace {
 
 constexpr char kTestPlacement[] = "TEST";
-
-namespace tf = tensorflow;
 
 using ::absl::StatusCode;
 using ::testing::_;
@@ -89,80 +82,6 @@ MATCHER_P(HasValueId, expected_id,
           absl::StrCat("matches ValueId ", expected_id)) {
   *result_listener << "where the ValueId is " << arg.ref();
   return arg.ref() == expected_id;
-}
-
-// Constructs simple graphs for testing Tensorflow backend computations.
-inline v0::Value NoArgConstantTfComputationV() {
-  v0::Value value_pb;
-  federated_language::Computation* computation_pb =
-      value_pb.mutable_computation();
-  // Build the graph.
-  tensorflow::Scope root = tensorflow::Scope::NewRootScope();
-  tf::ops::OnesLike ones(root, tf::Tensor(1.0));
-  tensorflow::GraphDef graphdef_pb;
-  QCHECK_OK(root.ToGraphDef(&graphdef_pb));
-  federated_language::TensorFlow* tensorflow_pb =
-      computation_pb->mutable_tensorflow();
-  tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
-  // Build the tensor bindings.
-  federated_language::TensorFlow::TensorBinding* result_binding_pb =
-      tensorflow_pb->mutable_result()->mutable_tensor();
-  result_binding_pb->set_tensor_name(ones.node()->name());
-  return value_pb;
-}
-
-inline v0::Value UnarySquareTfComputationV() {
-  v0::Value value_pb;
-  federated_language::Computation* computation_pb =
-      value_pb.mutable_computation();
-  // Build the graph.
-  tensorflow::Scope root = tensorflow::Scope::NewRootScope();
-  tf::ops::Placeholder x(root, tf::DT_FLOAT);
-  tf::ops::Square square(root, x);
-  tensorflow::GraphDef graphdef_pb;
-  QCHECK_OK(root.ToGraphDef(&graphdef_pb));
-  federated_language::TensorFlow* tensorflow_pb =
-      computation_pb->mutable_tensorflow();
-  tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
-  // Build the tensor bindings.
-  federated_language::TensorFlow::StructBinding* struct_paramter_pb =
-      tensorflow_pb->mutable_parameter()->mutable_struct_();
-  federated_language::TensorFlow::Binding* x_binding_pb =
-      struct_paramter_pb->add_element();
-  x_binding_pb->mutable_tensor()->set_tensor_name(x.node()->name());
-  federated_language::TensorFlow::TensorBinding* result_binding_pb =
-      tensorflow_pb->mutable_result()->mutable_tensor();
-  result_binding_pb->set_tensor_name(square.node()->name());
-  return value_pb;
-}
-
-inline v0::Value BinaryAddTfComputationV() {
-  v0::Value value_pb;
-  federated_language::Computation* computation_pb =
-      value_pb.mutable_computation();
-  // Build the graph.
-  tensorflow::Scope root = tensorflow::Scope::NewRootScope();
-  tf::ops::Placeholder x(root, tf::DT_FLOAT);
-  tf::ops::Placeholder y(root, tf::DT_FLOAT);
-  tf::ops::AddV2 sum(root, x, y);
-  tensorflow::GraphDef graphdef_pb;
-  QCHECK_OK(root.ToGraphDef(&graphdef_pb));
-  federated_language::TensorFlow* tensorflow_pb =
-      computation_pb->mutable_tensorflow();
-  tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
-  // Build the tensor bindings.
-  federated_language::TensorFlow::StructBinding* struct_paramter_pb =
-      tensorflow_pb->mutable_parameter()->mutable_struct_();
-  federated_language::TensorFlow::Binding* x_binding_pb =
-      struct_paramter_pb->add_element();
-  x_binding_pb->mutable_tensor()->set_tensor_name(x.node()->name());
-  federated_language::TensorFlow::Binding* y_binding_pb =
-      struct_paramter_pb->add_element();
-  y_binding_pb->mutable_tensor()->set_tensor_name(y.node()->name());
-  federated_language::TensorFlow::TensorBinding* result_binding_pb =
-      tensorflow_pb->mutable_result()->mutable_tensor();
-  result_binding_pb->set_tensor_name(sum.node()->name());
-  return value_pb;
 }
 
 class ReferenceResolvingExecutorTest : public ExecutorTestBase {
@@ -279,9 +198,10 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedStructOfTensor) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationTensorflow) {
-  v0::Value computation_value_pb = BinaryAddTfComputationV();
-  mock_executor_->ExpectCreateValue(computation_value_pb);
-  EXPECT_THAT(test_executor_->CreateValue(computation_value_pb),
+  v0::Value tensorflow_value_pb;
+  tensorflow_value_pb.mutable_computation()->mutable_tensorflow();
+  mock_executor_->ExpectCreateValue(tensorflow_value_pb);
+  EXPECT_THAT(test_executor_->CreateValue(tensorflow_value_pb),
               IsOkAndHolds(HasValueId(0)));
 }
 
@@ -587,7 +507,8 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallFailsNonFunction) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgComp) {
-  v0::Value no_arg_computation_pb = NoArgConstantTfComputationV();
+  v0::Value no_arg_computation_pb;
+  no_arg_computation_pb.mutable_computation()->mutable_tensorflow();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
   EXPECT_CALL(*mock_executor_, Dispose(0));
@@ -601,8 +522,8 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgComp) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgCompWithArg) {
-  // Create a no-arg computation.
-  v0::Value no_arg_computation_pb = NoArgConstantTfComputationV();
+  v0::Value no_arg_computation_pb;
+  no_arg_computation_pb.mutable_computation()->mutable_tensorflow();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
   EXPECT_CALL(*mock_executor_, Dispose(0));
@@ -628,8 +549,8 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgCompWithArg) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallSingleArg) {
-  // Create a one-arg computation.
-  v0::Value no_arg_computation_pb = UnarySquareTfComputationV();
+  v0::Value no_arg_computation_pb;
+  no_arg_computation_pb.mutable_computation()->mutable_tensorflow();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
   EXPECT_CALL(*mock_executor_, Dispose(0));
@@ -653,8 +574,8 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallSingleArg) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallLazyStructMultiArg) {
-  // Create a one-arg computation.
-  v0::Value no_arg_computation_pb = BinaryAddTfComputationV();
+  v0::Value no_arg_computation_pb;
+  no_arg_computation_pb.mutable_computation()->mutable_tensorflow();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
   EXPECT_CALL(*mock_executor_, Dispose(0));
