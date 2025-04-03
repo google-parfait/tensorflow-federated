@@ -16,6 +16,6 @@
 # Required to load TF Python extension.
 import tensorflow as tf  # pylint: disable=unused-import
 
-from tensorflow_federated.cc.core.impl.executors import executor_bindings
+from tensorflow_federated.cc.core.impl.executors import tensorflow_bindings
 
-create_tensorflow_executor = executor_bindings.create_tensorflow_executor
+create_tensorflow_executor = tensorflow_bindings.create_tensorflow_executor
