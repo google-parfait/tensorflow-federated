@@ -592,6 +592,8 @@ cc_test(
     timeout = "short",
     srcs = ["reference_resolving_executor_test.cc"],
     deps = [
+        ":array_shape_test_utils",
+        ":array_test_utils",
         ":executor",
         ":executor_test_base",
         ":mock_executor",
