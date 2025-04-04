@@ -18,35 +18,19 @@ limitations under the License
 
 #include <sys/types.h>
 
-#include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <string>
 #include <tuple>
-#include <utility>
 #include <vector>
 
 #include "google/protobuf/any.pb.h"
-#include "googlemock/include/gmock/gmock.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
-#include "tensorflow/core/data/standalone.h"
-#include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor.pb.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
-#include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
-#include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -93,25 +77,6 @@ inline v0::Value ClientsV(const absl::Span<const v0::Value> client_values,
     *values_pb->Add() = client_value;
   }
   return value_proto;
-}
-
-template <typename... Ts>
-v0::Value TensorV(Ts... tensor_constructor_args) {
-  tensorflow::Tensor tensor(tensor_constructor_args...);
-  v0::Value value_proto;
-  absl::Status status = SerializeTensorValue(tensor, &value_proto);
-  return value_proto;
-}
-
-inline v0::Value TensorVFromIntList(absl::Span<const int32_t> elements) {
-  size_t num_elements = elements.size();
-  tensorflow::TensorShape shape({static_cast<int64_t>(num_elements)});
-  tensorflow::Tensor tensor(tensorflow::DT_INT32, shape);
-  auto flat = tensor.flat<int32_t>();
-  for (size_t i = 0; i < num_elements; i++) {
-    flat(i) = elements[i];
-  }
-  return TensorV(tensor);
 }
 
 inline v0::Value StructV(const absl::Span<const v0::Value> elements) {
@@ -180,48 +145,6 @@ inline federated_language::Type MakeInt64ScalarType() {
   tensor_type->set_dtype(federated_language::DataType::DT_INT64);
   tensor_type->add_dims(1);
   return type;
-}
-
-inline absl::StatusOr<std::vector<std::vector<tensorflow::Tensor>>>
-SequenceValueToList(const tensorflow::Tensor& graph_def_tensor) {
-  std::unique_ptr<tensorflow::data::standalone::Dataset> dataset =
-      TFF_TRY(DatasetFromGraphDefTensor(graph_def_tensor));
-  std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
-  absl::Status status = dataset->MakeIterator(&iterator);
-  if (!status.ok()) {
-    return absl::InternalError(absl::StrCat(
-        "Unable to make iterator from sequence dataset: ", status.message()));
-  }
-  std::vector<std::vector<tensorflow::Tensor>> outputs;
-  while (true) {
-    bool end_of_input;
-    std::vector<tensorflow::Tensor> output;
-    status = iterator->GetNext(&output, &end_of_input);
-    if (!status.ok()) {
-      return absl::InternalError(
-          absl::StrCat("Failed to get the ", outputs.size(),
-                       "th element of the sequence: ", status.message()));
-    }
-    if (end_of_input) {
-      break;
-    }
-    outputs.push_back(std::move(output));
-  }
-  return outputs;
-}
-
-MATCHER(TensorsProtoEqual,
-        absl::StrCat(negation ? "aren't" : "are",
-                     " tensors equal under proto comparison")) {
-  const tensorflow::Tensor& first = std::get<0>(arg);
-  const tensorflow::Tensor& second = std::get<1>(arg);
-  tensorflow::TensorProto first_proto;
-  first.AsProtoTensorContent(&first_proto);
-  tensorflow::TensorProto second_proto;
-  second.AsProtoTensorContent(&second_proto);
-  return testing::EqualsProto(second_proto)
-      .impl()
-      .MatchAndExplain(first_proto, result_listener);
 }
 
 namespace intrinsic {

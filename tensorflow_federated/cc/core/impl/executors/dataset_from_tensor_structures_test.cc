@@ -33,7 +33,7 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
-#include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 ABSL_FLAG(std::string, reduce_graph_path, "",
