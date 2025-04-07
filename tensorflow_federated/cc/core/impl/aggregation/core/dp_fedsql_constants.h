@@ -33,7 +33,6 @@ constexpr char kDPSumUri[] = "GoogleSQL:$differential_privacy_sum";
 // URI of DPQuantileAggregator
 constexpr char kDPQuantileUri[] =
     "GoogleSQL:$differential_privacy_percentile_cont";
-
 constexpr char kDPTensorAggregatorBundleUri[] =
     "differential_privacy_tensor_aggregator_bundle";
 
