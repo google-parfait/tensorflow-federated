@@ -50,6 +50,7 @@ py_library(
         "@com_google_protobuf//:protobuf_python",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
+        "@org_tensorflow//tensorflow/compiler/xla/python:xla_client",
     ],
 )
 
