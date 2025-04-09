@@ -194,6 +194,9 @@ class _AdafactorOptimizer(
     # `copy.deepcopy`) to ensure that this can be called within a
     # `federated_language.Computation`.
     return structure.update_struct(state['hparams'], **hparams)
+    state = dict(state)
+    state['hparams'].update(**hparams)
+    return state
 
 
 def build_adafactor(

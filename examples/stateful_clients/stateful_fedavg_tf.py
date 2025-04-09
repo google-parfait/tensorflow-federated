@@ -204,13 +204,12 @@ def server_update(
   )
 
   # Create a new state based on the updated model.
-  return tff.structure.update_struct(
-      server_state,
-      model_weights=model_weights,
-      optimizer_state=server_optimizer.variables(),
-      round_num=server_state.round_num + 1,
-      total_iters_count=total_iters_count,
-  )
+  server_state = dict(server_state)
+  server_state['model_weights'] = model_weights
+  server_state['optimizer_state'] = server_optimizer.variables()
+  server_state['round_num'] = server_state.round_num + 1  # pytype: disable=attribute-error
+  server_state['total_iters_count'] = total_iters_count
+  return server_state
 
 
 @tf.function

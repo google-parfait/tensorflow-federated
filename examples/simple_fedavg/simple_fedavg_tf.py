@@ -119,12 +119,11 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   )
 
   # Create a new state based on the updated model.
-  return tff.structure.update_struct(
-      server_state,
-      model=model_weights,
-      optimizer_state=server_optimizer.variables(),
-      round_num=server_state.round_num + 1,
-  )
+  server_state = dict(server_state)
+  server_state['mode'] = model_weights
+  server_state['optimizer_state'] = server_optimizer.variables()
+  server_state['round_num'] = server_state.round_num + 1  # pytype: disable=attribute-error
+  return server_state
 
 
 @tf.function

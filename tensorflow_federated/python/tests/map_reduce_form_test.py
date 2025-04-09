@@ -163,14 +163,6 @@ class MapReduceFormTest(tf.test.TestCase):
     ip_1_next_result = ip_1.next(state_1, [client_data])
     server_state_1 = ip_1_next_result.state
     server_output_1 = ip_1_next_result.metrics
-    # The serialized representation of `ip` loses the Python containers, so we
-    # assert that it matches the odict_or_tuple-ified representations.
-    server_state_1 = tff.structure.to_odict_or_tuple(
-        tff.structure.from_container(server_state_1, recursive=True)
-    )
-    server_output_1 = tff.structure.to_odict_or_tuple(
-        tff.structure.from_container(server_output_1, recursive=True)
-    )
     server_state_1_arrays = tf.nest.flatten(server_state_1)
     server_output_1_arrays = tf.nest.flatten(server_output_1)
     state_2 = ip_2.initialize()
