@@ -94,7 +94,8 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   elif isinstance(parameter_type, federated_language.StructType):
     # The parameter_type could be a StructTypeWithPyContainer, however, we
     # ignore that for now. Instead, the proper containers will be inserted at
-    # call time by federated_language.framework.wrap_as_zero_or_one_arg_callable.
+    # call time by federated_language.framework.wrap_as_zero_or_one_arg
+    # _callable.
     if not parameter_type:
       # Stamps whimsy element to "populate" graph, as TensorFlow does not
       # support empty graphs.
@@ -533,7 +534,7 @@ def _assemble_result_from_graph(type_spec, binding, output_map):
           'Expected a struct binding, found {}.'.format(binding_oneof)
       )
     else:
-      type_elements = structure.to_elements(type_spec)
+      type_elements = type_spec.items()
       if len(binding.struct.element) != len(type_elements):
         raise ValueError(
             'Mismatching tuple sizes in type ({}) and binding ({}).'.format(
@@ -601,7 +602,7 @@ def _make_empty_list_structure_for_element_type_spec(type_spec):
   if isinstance(type_spec, federated_language.TensorType):
     return []
   elif isinstance(type_spec, federated_language.StructType):
-    elements = structure.to_elements(type_spec)
+    elements = type_spec.items()
     if all(k is not None for k, _ in elements):
       return collections.OrderedDict([
           (k, _make_empty_list_structure_for_element_type_spec(v))
@@ -684,7 +685,7 @@ def _make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
       return np.empty(whimsy_shape, dtype=np.str_)
     return np.zeros(whimsy_shape, type_spec.dtype)
   elif isinstance(type_spec, federated_language.StructType):
-    elements = structure.to_elements(type_spec)
+    elements = type_spec.items()
     elem_list = []
     for _, elem_type in elements:
       elem_list.append(_make_whimsy_element_for_type_spec(elem_type))
@@ -735,7 +736,7 @@ def _append_to_list_structure_for_element_type_spec(nested, value, type_spec):
     # tf.data.Dataset.from_tensor_slices.
     nested.append(tf.convert_to_tensor(value, type_spec.dtype))
   elif isinstance(type_spec, federated_language.StructType):
-    elements = structure.to_elements(type_spec)
+    elements = type_spec.items()
     if isinstance(nested, collections.OrderedDict):
       if isinstance(value, py_typecheck.SupportsNamedTuple):
         # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather
@@ -814,7 +815,7 @@ def _replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
     else:
       return np.array([], dtype=type_spec.dtype)
   elif isinstance(type_spec, federated_language.StructType):
-    elements = structure.to_elements(type_spec)
+    elements = type_spec.items()
     if isinstance(lists, collections.OrderedDict):
       to_return = []
       for elem_name, elem_type in elements:
@@ -1074,7 +1075,7 @@ def coerce_dataset_elements_to_tff_type_spec(
           return py_type(*values)
         return py_type(values)  # pylint: disable=too-many-function-args
     elif isinstance(type_spec, federated_language.StructType):
-      field_types = structure.to_elements(type_spec)
+      field_types = type_spec.items()
       is_all_named = all([name is not None for name, _ in field_types])
       if is_all_named:
         if isinstance(elements, py_typecheck.SupportsNamedTuple):

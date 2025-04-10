@@ -74,7 +74,6 @@ py_library(
     name = "training_loop",
     srcs = ["training_loop.py"],
     deps = [
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "@federated_language//federated_language",
     ],

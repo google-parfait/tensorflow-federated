@@ -22,7 +22,6 @@ from typing import Any, Optional
 from absl import logging
 import federated_language
 
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.templates import iterative_process
 
 MetricsType = MutableMapping[str, Any]
@@ -45,7 +44,7 @@ def _run_training(
   logging.info('Running training at round %d', round_num)
   training_time_start = time.time()
   training_data = client_selection_fn(round_num)
-  state, metrics = structure.from_container(training_fn(state, training_data))
+  state, metrics = training_fn(state, training_data)
   training_time = time.time() - training_time_start
   metrics[TRAINING_TIME_KEY] = training_time
   metrics[ROUND_NUMBER_KEY] = round_num
