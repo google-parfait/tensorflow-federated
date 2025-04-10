@@ -17,9 +17,8 @@ The TF functions for sever and client udpates.
 """
 
 import collections
-from typing import Any, Union
+from typing import Any, NamedTuple, Union
 
-import attrs
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -98,8 +97,7 @@ def keras_evaluate(model, test_data, metric):
   return metric.result()
 
 
-@attrs.define(eq=False, frozen=True)
-class ClientState:
+class ClientState(NamedTuple):
   """Structure for state on the client.
 
   Fields:
@@ -113,8 +111,7 @@ class ClientState:
   iters_count: int
 
 
-@attrs.define(eq=False, frozen=True)
-class ClientOutput:
+class ClientOutput(NamedTuple):
   """Structure for outputs returned from clients during federated optimization.
 
   Fields:
@@ -135,8 +132,7 @@ class ClientOutput:
   client_state: ClientState
 
 
-@attrs.define(eq=False, frozen=True)
-class ServerState:
+class ServerState(NamedTuple):
   """Structure for state on the server.
 
   Fields:
@@ -152,8 +148,7 @@ class ServerState:
   total_iters_count: int
 
 
-@attrs.define(eq=False, frozen=True)
-class BroadcastMessage:
+class BroadcastMessage(NamedTuple):
   """Structure for tensors broadcasted by server during federated optimization.
 
   Fields:
@@ -204,8 +199,7 @@ def server_update(
   )
 
   # Create a new state based on the updated model.
-  return tff.structure.update_struct(
-      server_state,
+  return ServerState(
       model_weights=model_weights,
       optimizer_state=server_optimizer.variables(),
       round_num=server_state.round_num + 1,

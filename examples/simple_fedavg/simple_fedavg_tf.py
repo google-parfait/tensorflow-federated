@@ -26,17 +26,15 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
-from typing import Any
+from typing import Any, NamedTuple
 
-import attrs
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
 
 # TODO: b/295181362 - Update from `Any` to a more specific type.
-@attrs.define(eq=False, frozen=True)
-class ClientOutput:
+class ClientOutput(NamedTuple):
   """Structure for outputs returned from clients during federated optimization.
 
   Attributes:
@@ -53,8 +51,7 @@ class ClientOutput:
   model_output: Any
 
 
-@attrs.define(eq=False, frozen=True)
-class ServerState:
+class ServerState(NamedTuple):
   """Structure for state on the server.
 
   Attributes:
@@ -69,8 +66,7 @@ class ServerState:
   round_num: int
 
 
-@attrs.define(eq=False, frozen=True)
-class BroadcastMessage:
+class BroadcastMessage(NamedTuple):
   """Structure for tensors broadcasted by server during federated optimization.
 
   Attributes:
@@ -119,8 +115,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   )
 
   # Create a new state based on the updated model.
-  return tff.structure.update_struct(
-      server_state,
+  return ServerState(
       model=model_weights,
       optimizer_state=server_optimizer.variables(),
       round_num=server_state.round_num + 1,
