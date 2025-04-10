@@ -377,7 +377,7 @@ def _evaluate_to_tensorflow(
     return _evaluate_to_tensorflow(comp.source, bindings)[comp.as_index()]
   if isinstance(comp, federated_language.framework.Struct):
     elements = []
-    for name, element in structure.iter_elements(comp):
+    for name, element in comp.items():
       elements.append((name, _evaluate_to_tensorflow(element, bindings)))
     return structure.Struct(elements)
   if isinstance(comp, federated_language.framework.Literal):

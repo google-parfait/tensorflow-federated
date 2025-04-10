@@ -20,7 +20,6 @@ from typing import Optional, Union
 import federated_language
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 
@@ -226,7 +225,7 @@ def create_generic_constant(
     elements = []
     for i, _ in enumerate(type_spec):
       elements.append(create_generic_constant(type_spec[i], scalar_value))
-    names = [name for name, _ in structure.iter_elements(type_spec)]
+    names = [name for name, _ in type_spec.items()]
     packed_elements = federated_language.framework.Struct(elements)
     named_tuple = federated_language.framework.create_named_tuple(
         packed_elements,

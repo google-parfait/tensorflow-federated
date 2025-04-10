@@ -277,9 +277,7 @@ def _structure_from_tensor_type_tree_inner(
       name, nested_type = element
       return (name, _structure_from_tensor_type_tree_inner(fn, nested_type))
 
-    return structure.Struct(
-        map(_map_element, structure.iter_elements(type_spec))
-    )
+    return structure.Struct(map(_map_element, type_spec.items()))
   elif isinstance(type_spec, federated_language.TensorType):
     return fn(type_spec)
   else:

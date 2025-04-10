@@ -107,7 +107,7 @@ def _make_xla_binding_for_type(
 
     if isinstance(type_spec, federated_language.StructType):
       elements = []
-      for _, v in structure.iter_elements(type_spec):
+      for _, v in type_spec.items():
         binding, idx = _make_starting_at_index(v, idx)
         elements.append(binding)
       return pb.Xla.Binding(struct=pb.Xla.StructBinding(element=elements)), idx
@@ -153,8 +153,13 @@ def _remove_struct_element_names_from_tff_type(type_spec: _T) -> _T:
     return type_spec
   py_typecheck.check_type(type_spec, federated_language.StructType)
   return federated_language.StructType([
-      (None, _remove_struct_element_names_from_tff_type(v))
-      for _, v in structure.iter_elements(type_spec)
+      (
+          None,
+          _remove_struct_element_names_from_tff_type(
+              v  # pytype: disable=wrong-arg-types
+          ),
+      )
+      for _, v in type_spec.items()
   ])
 
 

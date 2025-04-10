@@ -133,7 +133,6 @@ py_library(
     name = "remote_executor",
     srcs = ["remote_executor.py"],
     deps = [
-        ":executors_errors",
         ":remote_executor_stub",
         ":value_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",

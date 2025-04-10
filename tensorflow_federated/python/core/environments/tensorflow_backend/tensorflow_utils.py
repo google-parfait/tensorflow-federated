@@ -102,11 +102,11 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
       del whimsy_tensor  # Unused
     element_name_value_pairs = []
     element_bindings = []
-    for e in structure.iter_elements(parameter_type):
+    for name, element_type in parameter_type.items():
       e_val, e_binding = stamp_parameter_in_graph(
-          '{}_{}'.format(parameter_name, e[0]), e[1], graph
+          '{}_{}'.format(parameter_name, name), element_type, graph
       )
-      element_name_value_pairs.append((e[0], e_val))
+      element_name_value_pairs.append((name, e_val))
       element_bindings.append(e_binding)
     return (
         structure.Struct(element_name_value_pairs),
@@ -1058,7 +1058,7 @@ def coerce_dataset_elements_to_tff_type_spec(
       if py_type is tf.RaggedTensor or py_type is tf.sparse.SparseTensor:
         return elements
 
-      field_types = structure.iter_elements(type_spec)
+      field_types = type_spec.items()
       if issubclass(py_type, Mapping) or attrs.has(py_type):
         values = collections.OrderedDict(
             (name, _to_representative_value(field_type, elements[name]))

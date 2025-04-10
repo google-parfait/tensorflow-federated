@@ -150,14 +150,11 @@ def create_constant(
       elements = []
       if isinstance(inferred_value_type, federated_language.StructType):
         # Copy the leaf values according to the type_spec structure.
-        for (name, elem_type), value in zip(
-            structure.iter_elements(type_spec),
-            value,
-        ):
+        for (name, elem_type), value in zip(type_spec.items(), value):
           elements.append((name, _create_result_tensor(elem_type, value)))
       else:
         # "Broadcast" the value to each level of the type_spec structure.
-        for _, elem_type in structure.iter_elements(type_spec):  # pytype: disable=wrong-arg-types
+        for _, elem_type in type_spec.items():  # pytype: disable=attribute-error
           elements.append((None, _create_result_tensor(elem_type, value)))
       result = structure.Struct(elements)
     return result
@@ -360,10 +357,9 @@ def create_binary_operator_with_upcast(
   def _pack_into_type(to_pack: tf.Tensor, type_spec: federated_language.Type):
     """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
     if isinstance(type_spec, federated_language.StructType):
-      elem_iter = structure.iter_elements(type_spec)
       return structure.Struct([
           (elem_name, _pack_into_type(to_pack, elem_type))
-          for elem_name, elem_type in elem_iter
+          for elem_name, elem_type in type_spec.items()
       ])
     elif isinstance(type_spec, federated_language.TensorType):
       value_tensor_type = type_conversions.tensorflow_infer_type(to_pack)

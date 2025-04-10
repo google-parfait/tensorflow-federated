@@ -268,7 +268,7 @@ def _partition_value(
     result_container = []
     for (_, val_elem), (name, type_elem) in zip(
         structure.iter_elements(struct_val),
-        structure.iter_elements(type_signature),
+        type_signature.items(),
     ):
       partitioning_val_elem = _PartitioningValue(
           val_elem,
@@ -391,9 +391,7 @@ def _repackage_partitioned_values(
         structure.from_container(x) for x in after_merge_results
     ]
     result_container = []
-    for idx, (name, elem_type) in enumerate(
-        structure.iter_elements(result_type_spec)
-    ):
+    for idx, (name, elem_type) in enumerate(result_type_spec.items()):
       result_container.append((
           name,
           _repackage_partitioned_values(
