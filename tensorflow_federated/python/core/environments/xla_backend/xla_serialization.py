@@ -18,10 +18,10 @@ from typing import Optional, TypeVar, Union
 
 import federated_language
 from federated_language.proto import computation_pb2 as pb
-from jax.lib import xla_client
 import numpy as np
 
 from google.protobuf import any_pb2
+from jax.lib import xla_client
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 
