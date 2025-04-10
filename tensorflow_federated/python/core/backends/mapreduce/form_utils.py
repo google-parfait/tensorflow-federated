@@ -1329,7 +1329,7 @@ def get_distribute_aggregate_form_for_computation(
     # Add a reference to the injected broadcast call in the result so that it
     # does not get pruned by various tree transformations. We will remove this
     # additional element in the result after the first split operation.
-    revised_block_result = structure.to_elements(comp_tree.result.result) + [
+    revised_block_result = comp_tree.result.result.items() + [
         federated_language.framework.Reference(
             'injected_broadcast_ref',
             injected_broadcast.type_signature,
@@ -1438,7 +1438,7 @@ def get_distribute_aggregate_form_for_computation(
         federated_language.framework.Block(
             after_broadcast.result.locals,
             federated_language.framework.Struct(
-                structure.to_elements(after_broadcast.result.result)[:-1]
+                after_broadcast.result.result.items()[:-1]
             ),
         ),
     )
