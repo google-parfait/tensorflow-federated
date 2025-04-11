@@ -134,7 +134,7 @@ def _tff_type_to_xla_serializer_arg(
       return obj, next_unused_tensor_index
     elif isinstance(type_spec, federated_language.StructType):
       elements = []
-      for k, v in structure.to_elements(type_spec):
+      for k, v in type_spec.items():
         obj, next_unused_tensor_index = _make(v, next_unused_tensor_index)
         elements.append((k, obj))
       obj = _XlaSerializerStructArg(type_spec, elements)

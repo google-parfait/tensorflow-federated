@@ -60,7 +60,7 @@ def _stamp_value_into_graph(
     if isinstance(value, (list, dict)):
       value = structure.from_container(value)
     stamped_elements = []
-    named_type_signatures = structure.to_elements(type_signature)
+    named_type_signatures = type_signature.items()
     for (name, type_signature), element in zip(named_type_signatures, value):
       stamped_element = _stamp_value_into_graph(element, type_signature, graph)
       stamped_elements.append((name, stamped_element))

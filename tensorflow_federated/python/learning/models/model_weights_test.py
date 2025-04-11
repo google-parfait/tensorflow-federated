@@ -271,11 +271,9 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
         lambda item: self.assertIsInstance(item, np.ndarray),
         converted.non_trainable,
     )
+    self.assertAllEqual(converted.trainable, [(None, np.array([1.0]))])
     self.assertAllEqual(
-        structure.to_elements(converted.trainable), [(None, np.array([1.0]))]
-    )
-    self.assertAllEqual(
-        structure.to_elements(converted.non_trainable),
+        converted.non_trainable,
         [(None, np.array([2.0])), (None, np.array([3.0]))],
     )
 
@@ -296,7 +294,7 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
         converted.trainable,
     )
     self.assertAllEqual(
-        structure.to_elements(converted.trainable),
+        converted.trainable,
         [
             ('a', 1),
             ('b', 2.0),

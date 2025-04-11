@@ -19,7 +19,6 @@ import federated_language
 from federated_language.proto import computation_pb2
 import numpy as np
 
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
@@ -751,7 +750,7 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
         transformed_comp.parameter_type, len(original_comp.parameter_type) + 1
     )
     self.assertEqual(
-        structure.to_elements(transformed_comp.parameter_type)[
+        transformed_comp.parameter_type.items()[
             len(transformed_comp.parameter_type) - 1
         ][0],
         lambda_parameter_extension_name,
@@ -1011,7 +1010,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         before.type_signature.result, federated_language.StructType
     )
     self.assertEqual(
-        [x for x, _ in structure.to_elements(before.type_signature.result)],
+        [x for x, _ in before.type_signature.result.items()],
         ['intrinsic_args_from_before_comp', 'intermediate_state'],
     )
     self.assertIsInstance(
@@ -1025,7 +1024,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         len(intrinsic.type_signature.parameter) - 1
     )
     intrinsic_arg_names = [
-        x for x, _ in structure.to_elements(intrinsic.type_signature.parameter)
+        x for x, _ in intrinsic.type_signature.parameter.items()
     ]
     self.assertEqual(
         intrinsic_arg_names[intrinsic_args_from_before_comp_index],
@@ -1047,7 +1046,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     intrinsic_results_index = len(after.type_signature.parameter) - 2
     intermediate_state_index = len(after.type_signature.parameter) - 1
     after_comp_parameter_names = [
-        x for x, _ in structure.to_elements(after.type_signature.parameter)
+        x for x, _ in after.type_signature.parameter.items()
     ]
     self.assertEqual(
         after_comp_parameter_names[intrinsic_results_index], 'intrinsic_results'
