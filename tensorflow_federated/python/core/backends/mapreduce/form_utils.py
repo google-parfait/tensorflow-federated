@@ -613,7 +613,8 @@ def _as_function_of_some_federated_subparameters(
         py_typecheck.check_type(index, str)
         if not structure.has_field(selected_type, index):
           raise tree_transformations.ParameterSelectionError(path, bb)
-        int_path.append(structure.name_to_index_map(selected_type)[index])
+        names = [n for n, _ in selected_type.items()]
+        int_path.append(names.index(index))
       selected_type = selected_type[index]
     if not isinstance(selected_type, federated_language.FederatedType):
       raise _NonFederatedSelectionError(
