@@ -167,7 +167,7 @@ def _serialize_sequence_value(
         )
 
       result = []
-      for v, (_, t) in zip(value, structure.iter_elements(type_spec)):
+      for v, (_, t) in zip(value, type_spec.items()):
         result.extend(_flatten(v, t))
       return result
     else:
@@ -204,10 +204,9 @@ def _serialize_struct_type(
         f'requiring {len(type_spec)} elements. Trying to serialize'
         f'\n{struct_typed_value!r}\nto\n{type_spec}.'
     )
-  type_elem_iter = structure.iter_elements(type_spec)
   val_elem_iter = structure.iter_elements(value_structure)
   elements = []
-  for (e_name, e_type), (_, e_val) in zip(type_elem_iter, val_elem_iter):
+  for (e_name, e_type), (_, e_val) in zip(type_spec.items(), val_elem_iter):
     e_value, _ = serialize_value(e_val, e_type)
     if e_name:
       element = executor_pb2.Value.Struct.Element(name=e_name, value=e_value)

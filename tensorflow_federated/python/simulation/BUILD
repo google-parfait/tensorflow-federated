@@ -39,7 +39,6 @@ py_library(
     srcs = ["iterative_process_compositions.py"],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",

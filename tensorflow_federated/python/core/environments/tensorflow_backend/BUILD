@@ -115,7 +115,6 @@ py_library(
         ":tensorflow_computation_factory",
         ":type_conversions",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
     ],
 )

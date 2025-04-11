@@ -15,7 +15,6 @@
 
 import federated_language
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.templates import learning_process
 
@@ -182,9 +181,7 @@ def compose_dataset_computation_with_computation(
       """
       nonlocal dataset_index_path
       new_param_elements = []
-      for idx, (elem_name, elem_type) in enumerate(
-          structure.iter_elements(struct_param_type)
-      ):
+      for idx, (elem_name, elem_type) in enumerate(struct_param_type.items()):
         if isinstance(
             elem_type, federated_language.FederatedType
         ) and isinstance(elem_type.member, federated_language.SequenceType):

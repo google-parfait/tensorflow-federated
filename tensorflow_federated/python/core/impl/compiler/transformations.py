@@ -143,7 +143,7 @@ def to_call_dominant(
       )
     elif isinstance(comp, federated_language.framework.Struct):
       elements = []
-      for name, value in structure.iter_elements(comp):
+      for name, value in comp.items():
         value = _build(value, scope)
         elements.append((name, value))
       return federated_language.framework.Struct(elements)

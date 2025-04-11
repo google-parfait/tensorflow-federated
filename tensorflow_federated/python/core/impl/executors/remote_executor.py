@@ -24,7 +24,6 @@ import grpc
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 from tensorflow_federated.python.core.impl.executors import value_serialization
 
@@ -199,7 +198,7 @@ class RemoteExecutor(federated_language.framework.Executor):
 
     value_refs = []
     for (value_elem_name, value_elem), (type_elem_name, type_elem) in zip(
-        structure.iter_elements(value), structure.iter_elements(type_spec)
+        structure.iter_elements(value), type_spec.items()
     ):
       if value_elem_name not in [type_elem_name, None]:
         raise TypeError(
@@ -302,9 +301,7 @@ class RemoteExecutor(federated_language.framework.Executor):
       value = await self._compute(select_response.reference, element_spec)
       return value
 
-    for index, (_, element_spec) in enumerate(
-        structure.iter_elements(type_spec)
-    ):
+    for index, (_, element_spec) in enumerate(type_spec.items()):
       values.append(per_element(source, index, element_spec))
 
     values = await asyncio.gather(*values)

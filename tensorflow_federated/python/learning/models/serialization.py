@@ -21,7 +21,6 @@ from federated_language.proto import computation_pb2
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
@@ -199,8 +198,7 @@ def _deserialize_type_spec(serialize_type_variable, python_container=None):
       and python_container is not None
   ):
     type_spec = federated_language.StructWithPythonType(
-        structure.iter_elements(type_spec),
-        python_container,
+        type_spec.items(), python_container
     )
   return type_conversions.type_to_tf_structure(type_spec)
 
