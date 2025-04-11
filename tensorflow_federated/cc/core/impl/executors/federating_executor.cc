@@ -33,13 +33,13 @@ limitations under the License
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
-#include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
-#include "federated_language/proto/data_type.pb.h"
+#include "tensorflow/core/framework/tensor.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -703,23 +703,24 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       // these materialize calls don't block.
       v0::Value keys_for_client_pb =
           TFF_TRY(client_child_->Materialize(keys_child_id->ref()));
-      federated_language::Array array_pb = keys_for_client_pb.array();
-      if (array_pb.dtype() != federated_language::DataType::DT_INT32) {
+      tensorflow::Tensor keys_for_client_tensor =
+          TFF_TRY(DeserializeTensorValue(keys_for_client_pb));
+      if (keys_for_client_tensor.dtype() != tensorflow::DT_INT32) {
         return absl::InvalidArgumentError(
             absl::StrCat("Expected int32_t key, found key of tensor dtype ",
-                         array_pb.dtype()));
+                         keys_for_client_tensor.dtype()));
       }
-      if (array_pb.shape().dim().size() != 1) {
+      if (keys_for_client_tensor.dims() != 1) {
         return absl::InvalidArgumentError(absl::StrCat(
             "Expected key tensor to be rank one, but found tensor of rank ",
-            array_pb.shape().dim().size()));
+            keys_for_client_tensor.dims()));
       }
-      int64_t num_keys = array_pb.shape().dim()[0];
+      int64_t num_keys = keys_for_client_tensor.NumElements();
       std::vector<int32_t> keys_for_client;
       keys_for_client.reserve(num_keys);
-      auto keys_for_client_eigen = array_pb.int32_list().value();
+      auto keys_for_client_eigen = keys_for_client_tensor.flat<int32_t>();
       for (int64_t i = 0; i < num_keys; i++) {
-        int32_t key = keys_for_client_eigen[i];
+        int32_t key = keys_for_client_eigen(i);
         keys_for_client.push_back(key);
         keys.all.insert(key);
       }
@@ -731,12 +732,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   absl::StatusOr<OwnedValueId> SelectSliceForKey(int32_t key,
                                                  ValueId server_val_child_id,
                                                  ValueId select_fn_child_id) {
-    federated_language::Array array_pb;
-    array_pb.set_dtype(federated_language::DataType::DT_INT32);
-    array_pb.mutable_shape();
-    array_pb.mutable_int32_list()->add_value(key);
     v0::Value key_pb;
-    *key_pb.mutable_array() = array_pb;
+    TFF_TRY(SerializeTensorValue(tensorflow::Tensor(key), &key_pb));
     OwnedValueId key_id = TFF_TRY(server_child_->CreateValue(key_pb));
     OwnedValueId arg_id =
         TFF_TRY(server_child_->CreateStruct({server_val_child_id, key_id}));

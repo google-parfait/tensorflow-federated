@@ -782,7 +782,15 @@ absl::Status MaterializeSequence(const tensorflow::Tensor& graph_def_tensor,
 
     v0::Value::Sequence::Element* element_pb = sequence_value_pb->add_element();
     for (const tensorflow::Tensor& tensor : tensors) {
-      element_pb->mutable_flat_value()->Add(TFF_TRY(ArrayFromTensor(tensor)));
+      // Repeated fields are used for strings and constants to maintain
+      // compatibility with TensorFlow.
+      if (!tensorflow::TensorShapeUtils::IsScalar(tensor.shape()) &&
+          tensor.dtype() != tensorflow::DataType::DT_STRING) {
+        element_pb->mutable_flat_value()->Add(
+            TFF_TRY(ArrayContentFromTensor(tensor)));
+      } else {
+        element_pb->mutable_flat_value()->Add(TFF_TRY(ArrayFromTensor(tensor)));
+      }
     }
   }
   return absl::OkStatus();
@@ -832,7 +840,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CreateValueArray(const v0::Value& value_pb) {
-    return ExecutorValue(TFF_TRY(TensorFromArray(value_pb.array())));
+    return ExecutorValue(TFF_TRY(DeserializeTensorValue(value_pb)));
   }
 
   absl::StatusOr<ExecutorValue> CreateValueComputation(
@@ -916,8 +924,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
     switch (value.type()) {
       case ExecutorValue::ValueType::TENSOR: {
         return tasks.add_task([&value, value_pb]() {
-          *value_pb->mutable_array() = TFF_TRY(ArrayFromTensor(value.tensor()));
-          return absl::OkStatus();
+          return SerializeTensorValue(value.tensor(), value_pb);
         });
       }
       case ExecutorValue::ValueType::SEQUENCE: {
