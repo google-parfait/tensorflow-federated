@@ -87,7 +87,7 @@ py_test(
     name = "remote_runtime_stream_structs_test",
     size = "large",
     srcs = ["remote_runtime_stream_structs_test.py"],
-    tags = ["requires-mem:20g"],
+    tags = ["requires-mem:28g"],
     deps = [
         ":test_contexts",
         "//tensorflow_federated",
