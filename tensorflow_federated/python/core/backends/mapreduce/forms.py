@@ -467,7 +467,7 @@ class MapReduceForm(federated_language.TypedObject):
     self._secure_modular_sum_modulus = secure_modular_sum_modulus
     self._update = update
 
-    parameter_names = structure.name_list_with_nones(type_signature.parameter)  # pytype: disable=wrong-arg-types
+    parameter_names = [n for n, _ in type_signature.parameter.items()]  # pytype: disable=attribute-error
     self._server_state_label, self._client_data_label = parameter_names
 
   @property
