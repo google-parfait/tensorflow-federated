@@ -131,7 +131,7 @@ def _type_to_tf_dtypes_and_shapes(type_spec: federated_language.Type):
     shape = tf.TensorShape(type_spec.shape)
     return (type_spec.dtype, shape)
   elif isinstance(type_spec, federated_language.StructType):
-    elements = structure.to_elements(type_spec)
+    elements = list(type_spec.items())
     if not elements:
       output_dtypes = []
       output_shapes = []
@@ -238,7 +238,7 @@ def type_to_tf_structure(type_spec: federated_language.Type):
   if isinstance(type_spec, federated_language.TensorType):
     return tf.TensorSpec(type_spec.shape, type_spec.dtype)
   elif isinstance(type_spec, federated_language.StructType):
-    elements = structure.to_elements(type_spec)
+    elements = list(type_spec.items())
     if not elements:
       return ()
     element_outputs = [(k, type_to_tf_structure(v)) for k, v in elements]

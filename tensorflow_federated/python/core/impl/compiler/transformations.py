@@ -24,7 +24,6 @@ import attrs
 import federated_language
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 
 
@@ -1041,13 +1040,12 @@ class UnavailableRequiredInputsError(ValueError):
   pass
 
 
-# Helper function to replace references with a given name with a different
-# computation.
 def _replace_references(
     comp: federated_language.framework.ComputationBuildingBlock,
     ref_name: str,
     replacement: federated_language.framework.ComputationBuildingBlock,
 ) -> federated_language.framework.ComputationBuildingBlock:
+  """Replace references with a given name with a different computation."""
   def _replace(comp):
     if (
         isinstance(comp, federated_language.framework.Reference)
@@ -1444,9 +1442,7 @@ def divisive_force_align_and_split_by_intrinsics(
   ]
 
   # Update the before comp result to produce the extended intermediate state.
-  before_result_elements = structure.to_elements(
-      preliminary_before_comp.result.result
-  )
+  before_result_elements = list(preliminary_before_comp.result.result.items())
   intermediate_state_index_in_before_result = 1
   intermediate_state_name, intermediate_state_vals = before_result_elements[
       intermediate_state_index_in_before_result
@@ -1461,8 +1457,7 @@ def divisive_force_align_and_split_by_intrinsics(
       for local_name, local_value in duplicated_locals
   ]
   extended_intermediate_state_vals = federated_language.framework.Struct(
-      structure.to_elements(intermediate_state_vals)
-      + duplicate_intermediate_state_vals
+      list(intermediate_state_vals.items()) + duplicate_intermediate_state_vals
   )
   before_result_elements[intermediate_state_index_in_before_result] = (
       intermediate_state_name,

@@ -39,7 +39,6 @@ py_library(
     deps = [
         ":tree_transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
     ],
 )
