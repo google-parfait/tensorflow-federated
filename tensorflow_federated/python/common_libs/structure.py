@@ -28,5 +28,4 @@ is_same_structure = structure.is_same_structure
 map_structure = structure.map_structure
 from_container = structure.from_container
 has_field = structure.has_field
-name_to_index_map = structure.name_to_index_map
 update_struct = structure.update_struct
