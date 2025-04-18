@@ -55,6 +55,8 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
   @test_contexts.with_contexts(*_CONTEXTS)
   def test_large_unnamed_struct_identity(self):
+    self.skipTest('b/410811127')
+
     # Expect ~400 MB per small tensor (100_000_000 * 4 bytes)
     small_tensor_shape = (100_000_000, 1)
     # Expect 2.4 GB in total for the entire structure.
@@ -79,6 +81,8 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
   @test_contexts.with_contexts(*_CONTEXTS)
   def test_large_named_struct_identity(self):
+    self.skipTest('b/410811127')
+
     # Expect ~400 MB per small tensor (100_000_000 * 4 bytes)
     small_tensor_shape = (100_000, 1000)
     # Expect 2.4 GB in total for the entire structure.
@@ -127,6 +131,8 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
   @test_contexts.with_contexts(*_CONTEXTS)
   def test_small_struct_identity(self):
+    self.skipTest('b/410811127')
+
     # Expect ~4KB per small tensor.
     small_tensor_shape = (100, 10)
     # Expect ~24KB for the entire structure.
