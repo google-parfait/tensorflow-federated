@@ -60,9 +60,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     # Expect ~400 MB per small tensor (100_000_000 * 4 bytes)
     small_tensor_shape = (100_000_000, 1)
     # Expect 2.4 GB in total for the entire structure.
-    large_struct = tff.structure.Struct(
-        [(None, tf.zeros(shape=small_tensor_shape, dtype=tf.float32))] * 6
-    )
+    large_struct = [tf.zeros(shape=small_tensor_shape, dtype=tf.float32)] * 6
 
     @tff.tensorflow.computation(
         federated_language.StructType(
@@ -74,7 +72,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         )
     )
     def identity(s):
-      return tff.structure.map_structure(tf.identity, s)
+      return tf.identity(s)
 
     with self.subTest('local'):
       identity(large_struct)
@@ -86,14 +84,14 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     # Expect ~400 MB per small tensor (100_000_000 * 4 bytes)
     small_tensor_shape = (100_000, 1000)
     # Expect 2.4 GB in total for the entire structure.
-    large_struct = tff.structure.Struct([
+    large_struct = [
         ('a', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('b', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('c', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('d', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('e', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('f', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
-    ])
+    ]
 
     @tff.tensorflow.computation(
         federated_language.StructType([
@@ -124,7 +122,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         ])
     )
     def identity(s):
-      return tff.structure.map_structure(tf.identity, s)
+      return tf.identity(s)
 
     with self.subTest('local'):
       identity(large_struct)
@@ -136,11 +134,11 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     # Expect ~4KB per small tensor.
     small_tensor_shape = (100, 10)
     # Expect ~24KB for the entire structure.
-    small_struct = tff.structure.Struct([
+    small_struct = [
         ('a', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         (
             'b',
-            tff.structure.Struct([
+            [
                 (
                     'b0',
                     tf.zeros(shape=small_tensor_shape, dtype=tf.float32),
@@ -149,12 +147,12 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
                     'b1',
                     tf.zeros(shape=small_tensor_shape, dtype=tf.float32),
                 ),
-            ]),
+            ],
         ),
         ('c', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('d', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('e', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
-    ])
+    ]
 
     @tff.tensorflow.computation(
         federated_language.StructType([
@@ -194,7 +192,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         ])
     )
     def identity(s):
-      return tff.structure.map_structure(tf.identity, s)
+      return tf.identity(s)
 
     with self.subTest('local'):
       identity(small_struct)

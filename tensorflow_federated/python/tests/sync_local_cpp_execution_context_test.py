@@ -141,7 +141,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     def foo(x, y):
       return x + y
 
-    result = foo(tff.structure.Struct([(None, 2), (None, 3)]))  # pylint: disable=no-value-for-parameter
+    result = foo([2, 3])  # pylint: disable=no-value-for-parameter
 
     self.assertEqual(result, 5)
 
