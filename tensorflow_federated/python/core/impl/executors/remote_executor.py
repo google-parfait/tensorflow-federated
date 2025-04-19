@@ -305,10 +305,8 @@ class RemoteExecutor(federated_language.framework.Executor):
       values.append(per_element(source, index, element_spec))
 
     values = await asyncio.gather(*values)
-    structure.name_list_with_nones(type_spec)
-    return structure.Struct(
-        zip(structure.name_list_with_nones(type_spec), values)
-    )
+    names = [n for n, _ in type_spec.items()]
+    return structure.Struct(zip(names, values))
 
   @federated_language.framework.trace(span=True)
   async def _compute(self, value_ref, type_spec):

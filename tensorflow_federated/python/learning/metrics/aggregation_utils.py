@@ -20,7 +20,6 @@ from typing import Union
 import federated_language
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.learning.metrics import types
 
@@ -41,7 +40,7 @@ def check_finalizers_matches_unfinalized_metrics(
   """
   metric_names_in_metric_finalizers = set(metric_finalizers.keys())
   metric_names_in_local_unfinalized_metrics = set(
-      structure.name_list(local_unfinalized_metrics_type)
+      local_unfinalized_metrics_type.fields()
   )
   if (
       metric_names_in_metric_finalizers
