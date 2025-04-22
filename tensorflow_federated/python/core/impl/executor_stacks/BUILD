@@ -28,6 +28,7 @@ py_library(
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
+    visibility = ["//visibility:public"],  # DO_NOT_SUBMIT
     deps = [
         ":executor_stack_bindings",
         "//tensorflow_federated/python/common_libs:py_typecheck",

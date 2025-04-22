@@ -1182,6 +1182,7 @@ pybind_extension(
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
+    visibility = ["//visibility:public"],
     deps = [
         ":xla_executor",
         "//tensorflow_federated/proto/v0:executor_cc_proto",

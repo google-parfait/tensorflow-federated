@@ -15,7 +15,7 @@
 
 import sys
 
-# pylint: disable=g-bad-import-order,g-importing-member
+# pylint: disable=g-importing-member
 from tensorflow_federated.python import aggregators
 from tensorflow_federated.python import analytics
 from tensorflow_federated.python import learning
@@ -25,10 +25,9 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core import backends
 from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import templates
-from tensorflow_federated.python.core.environments import jax
 from tensorflow_federated.python.core.environments import tensorflow
 from tensorflow_federated.version import __version__
-# pylint: enable=g-bad-import-order,g-importing-member
+# pylint: enable=g-importing-member
 
 if sys.version_info < (3, 9):
   raise RuntimeError('TFF only supports Python versions 3.9 or later.')
