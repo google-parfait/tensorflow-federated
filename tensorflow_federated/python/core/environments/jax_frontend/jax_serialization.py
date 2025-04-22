@@ -22,7 +22,6 @@ from federated_language.proto import computation_pb2 as pb
 import jax
 import numpy as np
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.jax_frontend import jax_computation_context
 from tensorflow_federated.python.core.environments.xla_backend import xla_serialization
@@ -36,7 +35,6 @@ class _XlaSerializerTensorArg(
   def __init__(
       self, tensor_type: federated_language.TensorType, tensor_index: int
   ):
-    py_typecheck.check_type(tensor_type, federated_language.TensorType)
     jax.ShapeDtypeStruct.__init__(self, tensor_type.shape, tensor_type.dtype)
     self._type_signature = tensor_type
     self._tensor_index = tensor_index
@@ -59,7 +57,6 @@ class _XlaSerializerStructArg(structure.Struct, federated_language.TypedObject):
       type_spec: federated_language.StructType,
       elements: Sequence[tuple[Optional[str], object]],
   ):
-    py_typecheck.check_type(type_spec, federated_language.StructType)
     structure.Struct.__init__(self, elements)
     self._type_signature = type_spec
 
@@ -192,9 +189,6 @@ def serialize_jax_computation(
   Raises:
     TypeError: if the arguments are of the wrong types.
   """
-  py_typecheck.check_type(
-      context_stack, federated_language.framework.ContextStack
-  )
 
   if parameter_type is not None:
     parameter_type = federated_language.to_type(parameter_type)

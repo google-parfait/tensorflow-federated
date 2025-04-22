@@ -18,11 +18,9 @@ from typing import Optional, TypeVar, Union
 
 import federated_language
 from federated_language.proto import computation_pb2 as pb
-import numpy as np
 
 from google.protobuf import any_pb2
 from jax.lib import xla_client
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 
 _HLO_MODULE_PROTO_URI = 'type.googleapis.com/xla.HloModuleProto'
@@ -43,7 +41,6 @@ def pack_xla_computation(
   Raises:
     TypeError: if `xla_computation` is not an `xla_client.XlaComputation`.
   """
-  py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
   return any_pb2.Any(
       type_url=_HLO_MODULE_PROTO_URI,
       value=xla_computation.as_serialized_hlo_module_proto(),
@@ -63,7 +60,6 @@ def unpack_xla_computation(any_pb: any_pb2.Any) -> xla_client.XlaComputation:
     TypeError: if `any_pb` is not an `Any` protocol buffer message.
     ValueError: if the object packed into `any_pb` cannot be unpacked.
   """
-  py_typecheck.check_type(any_pb, any_pb2.Any)
   if any_pb.type_url != _HLO_MODULE_PROTO_URI:
     raise ValueError(
         'Not a serialized `HloModuleProto`: {}.'.format(str(any_pb.type_url))
@@ -90,9 +86,6 @@ def _make_xla_binding_for_type(
   """
   if type_spec is None:
     return None
-
-  py_typecheck.check_type(type_spec, federated_language.Type)
-  py_typecheck.check_type(tensor_indexes, Sequence)
 
   def _make_starting_at_index(
       type_spec: federated_language.Type, idx: int
@@ -151,7 +144,6 @@ def _remove_struct_element_names_from_tff_type(type_spec: _T) -> _T:
     )
   if isinstance(type_spec, federated_language.TensorType):
     return type_spec
-  py_typecheck.check_type(type_spec, federated_language.StructType)
   return federated_language.StructType([
       (
           None,
@@ -183,9 +175,6 @@ def create_xla_tff_computation(
     ValueError: if the arguments are invalid or incompatible with each other,
       e.g., because the TFF types mismatch.
   """
-  py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
-  py_typecheck.check_type(tensor_indexes, Sequence)
-  py_typecheck.check_type(type_spec, federated_language.FunctionType)
   parameter_binding = _make_xla_binding_for_type(
       tensor_indexes, type_spec.parameter
   )
@@ -195,7 +184,6 @@ def create_xla_tff_computation(
   reconstructed_type = xla_computation_and_bindings_to_tff_type(
       xla_computation, parameter_binding, result_binding
   )
-  py_typecheck.check_type(reconstructed_type, federated_language.FunctionType)
   expected_type = _remove_struct_element_names_from_tff_type(type_spec)
   if not reconstructed_type.is_equivalent_to(expected_type):
     raise ValueError(
@@ -231,7 +219,6 @@ def xla_computation_and_bindings_to_tff_type(
   Returns:
     An instance of `federated_language.FunctionType`.
   """
-  py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
   program_shape = xla_computation.program_shape()
   try:
     parameter_type = xla_shapes_and_binding_to_tff_type(
@@ -268,9 +255,6 @@ def xla_shapes_and_binding_to_tff_type(
   Returns:
     An instance of `federated_language.Type` (or `None`).
   """
-  py_typecheck.check_type(xla_shapes, Sequence)
-  if binding is not None:
-    py_typecheck.check_type(binding, pb.Xla.Binding)
   tensor_shapes = []
   for shape in xla_shapes:
     tensor_shapes += flatten_xla_shape(shape)
@@ -325,7 +309,6 @@ def flatten_xla_shape(
   Returns:
     A Python list of `xla_client.Shape` instances representing tensors.
   """
-  py_typecheck.check_type(xla_shape, xla_client.Shape)
   if xla_shape.is_tuple():
     tensor_shapes = []
     for shape in xla_shape.tuple_shapes():
@@ -334,6 +317,4 @@ def flatten_xla_shape(
   else:
     # Must be a tensor (array) type; verify this by probing for dimensions and
     # element_type, since there's no explicit way to check otherwise.
-    py_typecheck.check_type(xla_shape.element_type(), np.dtype)
-    py_typecheck.check_type(xla_shape.dimensions(), tuple)
     return [xla_shape]

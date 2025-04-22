@@ -45,7 +45,6 @@ py_library(
     name = "xla_serialization",
     srcs = ["xla_serialization.py"],
     deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "@com_google_protobuf//:protobuf_python",
         "@federated_language//federated_language",

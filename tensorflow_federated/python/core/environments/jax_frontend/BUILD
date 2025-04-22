@@ -63,7 +63,6 @@ py_library(
     srcs = ["jax_serialization.py"],
     deps = [
         ":jax_computation_context",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/xla_backend:xla_serialization",
         "@federated_language//federated_language",
