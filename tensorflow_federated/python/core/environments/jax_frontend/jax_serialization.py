@@ -88,7 +88,7 @@ class _XlaSerializerStructArg(structure.Struct, federated_language.TypedObject):
   ) -> '_XlaSerializerStructArg':
     return cls(
         type_spec=aux_data,
-        elements=tuple(zip(structure.name_list_with_nones(aux_data), children)),
+        elements=tuple(zip([n for n, _ in aux_data.items()], children)),
     )
 
 

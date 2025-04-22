@@ -1056,9 +1056,7 @@ def get_broadcast_form_for_computation(
       for bb in (compute_server_context, client_processing)
   )
 
-  comp_param_names = structure.name_list_with_nones(
-      comp.type_signature.parameter  # pytype: disable=wrong-arg-types
-  )
+  comp_param_names = [n for n, _ in comp.type_signature.parameter.items()]  # pytype: disable=attribute-error
   server_data_label, client_data_label = comp_param_names
   return forms.BroadcastForm(
       compute_server_context,
