@@ -163,7 +163,7 @@ class JaxComputationTest(parameterized.TestCase):
       ('complex128', federated_language.TensorType(np.complex128)),
       ('str', federated_language.TensorType(np.str_)),
   )
-  async def test_raises_raises_value_error_with_dtype(self, type_spec):
+  def test_raises_raises_value_error_with_dtype(self, type_spec):
     with self.assertRaises(ValueError):
 
       @jax_computation.jax_computation(type_spec)
