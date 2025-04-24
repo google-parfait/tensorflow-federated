@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.templates import measured_process
@@ -156,10 +157,10 @@ class ComposeLearningProcessTest(tf.test.TestCase):
 
     # Reported metrics have the expected fields.
     metrics_type = process.next.type_signature.result.metrics.member
-    self.assertIn('distributor', metrics_type.fields())
-    self.assertIn('client_work', metrics_type.fields())
-    self.assertIn('aggregator', metrics_type.fields())
-    self.assertIn('finalizer', metrics_type.fields())
+    self.assertTrue(structure.has_field(metrics_type, 'distributor'))
+    self.assertTrue(structure.has_field(metrics_type, 'client_work'))
+    self.assertTrue(structure.has_field(metrics_type, 'aggregator'))
+    self.assertTrue(structure.has_field(metrics_type, 'finalizer'))
     self.assertLen(metrics_type, 4)
 
   def test_one_arg_computation_init_raises(self):
