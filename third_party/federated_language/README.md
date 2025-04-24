@@ -18,18 +18,18 @@ $ git checkout <COMMIT>
     1.  Make the changes.
 
     ```shell
-    $ buildozer 'remove deps @pypi//absl_py' //...:*
-    $ buildozer 'remove deps @pypi//attrs' //...:*
-    $ buildozer 'remove deps @pypi//dm_tree' //...:*
-    $ buildozer 'remove deps @pypi//ml_dtypes' //...:*
-    $ buildozer 'remove deps @pypi//numpy' //...:*
-    $ buildozer 'remove deps @pypi//typing_extensions' //...:*
+    $ buildozer 'remove deps @federated_language_pypi//absl_py' //...:*
+    $ buildozer 'remove deps @federated_language_pypi//attrs' //...:*
+    $ buildozer 'remove deps @federated_language_pypi//dm_tree' //...:*
+    $ buildozer 'remove deps @federated_language_pypi//ml_dtypes' //...:*
+    $ buildozer 'remove deps @federated_language_pypi//numpy' //...:*
+    $ buildozer 'remove deps @federated_language_pypi//typing_extensions' //...:*
     ```
 
     1.  Confirm no more changes are required.
 
     ```shell
-    $ find "." -type f -print0 | xargs -0 grep "@pypi"
+    $ find "." -type f -print0 | xargs -0 grep "@federated_language_pypi"
     ```
 
     1.  Create the patch.
