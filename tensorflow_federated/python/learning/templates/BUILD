@@ -128,7 +128,6 @@ py_test(
         ":model_delta_client_work",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:sum_factory",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:measured_process",

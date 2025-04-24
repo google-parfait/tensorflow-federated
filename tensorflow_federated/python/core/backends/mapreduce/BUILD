@@ -94,7 +94,6 @@ py_library(
         ":forms",
         ":intrinsics",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_building_block_factory",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
