@@ -17,7 +17,6 @@ from federated_language.common_libs import structure
 
 Struct = structure.Struct
 name_list = structure.name_list
-name_list_with_nones = structure.name_list_with_nones
 to_elements = structure.to_elements
 iter_elements = structure.iter_elements
 to_odict = structure.to_odict
