@@ -24,7 +24,6 @@ import federated_language
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
@@ -611,7 +610,7 @@ def _as_function_of_some_federated_subparameters(
         int_path.append(index)
       else:
         py_typecheck.check_type(index, str)
-        if not structure.has_field(selected_type, index):
+        if index not in selected_type.fields():
           raise tree_transformations.ParameterSelectionError(path, bb)
         names = [n for n, _ in selected_type.items()]
         int_path.append(names.index(index))
