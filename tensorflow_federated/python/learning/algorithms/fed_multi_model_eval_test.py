@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.environments.tensorflow_frontend import te
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning.algorithms import fed_eval
 from tensorflow_federated.python.learning.algorithms import fed_multi_model_eval
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
@@ -589,6 +590,227 @@ class FunctionalFedMultiModelEvalProcessTest(tf.test.TestCase):
         functional_eval_state, datasets
     )
     self.assertDictEqual(eval_output.metrics, functional_eval_output.metrics)
+
+
+class FedMultiModelEvalProcessFromEvalProcessesTest(tf.test.TestCase):
+
+  def test_multi_model_eval_process_type_properties(
+      self,
+  ):
+    eval_processes = [fed_eval.build_fed_eval(TestModel) for _ in range(2)]
+    eval_process = (
+        fed_multi_model_eval.build_fed_multi_model_eval_from_processes(
+            eval_processes
+        )
+    )
+    self.assertIsInstance(eval_process, learning_process.LearningProcess)
+
+    model_fn = TestModel
+    test_model = model_fn()
+    model_weights_type = model_weights_lib.weights_type_from_model(test_model)
+
+    unfinalized_metrics = test_model.report_local_unfinalized_metrics()
+    local_unfinalized_metrics_type = _get_metrics_type(unfinalized_metrics)
+
+    metric_finalizers = test_model.metric_finalizers()
+    finalized_metrics = collections.OrderedDict()
+    for metric, finalizer in metric_finalizers.items():
+      finalized_metrics[metric] = finalizer(unfinalized_metrics[metric])
+    finalized_metrics_type = _get_metrics_type(finalized_metrics)
+
+    metics_aggregator = sum_aggregation_factory.SumThenFinalizeFactory(
+        metric_finalizers
+    ).create(local_unfinalized_metrics_type)
+    metics_aggregator_state_type = (
+        metics_aggregator.initialize.type_signature.result.member
+    )
+
+    expected_model_weights_type = {
+        'a': model_weights_type,
+        'b': model_weights_type,
+    }
+    expected_state_type = federated_language.FederatedType(
+        composers.LearningAlgorithmState(
+            global_model_weights=expected_model_weights_type,
+            distributor={'a': (), 'b': ()},
+            client_work={
+                'a': metics_aggregator_state_type,
+                'b': metics_aggregator_state_type,
+            },
+            aggregator={
+                'a': collections.OrderedDict(
+                    value_sum_process=(), weight_sum_process=()
+                ),
+                'b': collections.OrderedDict(
+                    value_sum_process=(), weight_sum_process=()
+                ),
+            },
+            finalizer={'a': (), 'b': ()},
+        ),
+        federated_language.SERVER,
+    )
+    expected_metrics_type = federated_language.FederatedType(
+        collections.OrderedDict(
+            distributor={'a': (), 'b': ()},
+            client_work={
+                'a': collections.OrderedDict(
+                    eval=collections.OrderedDict(
+                        current_round_metrics=finalized_metrics_type,
+                        total_rounds_metrics=finalized_metrics_type,
+                    )
+                ),
+                'b': collections.OrderedDict(
+                    eval=collections.OrderedDict(
+                        current_round_metrics=finalized_metrics_type,
+                        total_rounds_metrics=finalized_metrics_type,
+                    )
+                ),
+            },
+            aggregator={
+                'a': collections.OrderedDict(mean_value=(), mean_weight=()),
+                'b': collections.OrderedDict(mean_value=(), mean_weight=()),
+            },
+            finalizer={'a': (), 'b': ()},
+        ),
+        federated_language.SERVER,
+    )
+    self.assertTrue(
+        eval_process.initialize.type_signature.is_equivalent_to(
+            FunctionType(parameter=None, result=expected_state_type),
+        )
+    )
+    self.assertTrue(
+        eval_process.next.type_signature.is_equivalent_to(
+            FunctionType(
+                parameter=StructType([
+                    ('state', expected_state_type),
+                    (
+                        'client_data',
+                        federated_language.FederatedType(
+                            SequenceType(
+                                StructType([(
+                                    'temp',
+                                    TensorType(dtype=np.float32, shape=[None]),
+                                )])
+                            ),
+                            federated_language.CLIENTS,
+                        ),
+                    ),
+                ]),
+                result=learning_process.LearningProcessOutput(
+                    state=expected_state_type, metrics=expected_metrics_type
+                ),
+            )
+        )
+    )
+    self.assertTrue(
+        eval_process.get_model_weights.type_signature.is_equivalent_to(
+            FunctionType(
+                parameter=expected_state_type.member,
+                result=expected_model_weights_type,
+            )
+        )
+    )
+    self.assertTrue(
+        eval_process.set_model_weights.type_signature.is_equivalent_to(
+            FunctionType(
+                parameter=StructType([
+                    ('state', expected_state_type.member),
+                    ('model_weights', expected_model_weights_type),
+                ]),
+                result=expected_state_type.member,
+            )
+        )
+    )
+
+  @tensorflow_test_utils.skip_test_for_multi_gpu
+  def test_multi_model_eval_process_execution(self):
+    eval_process = (
+        fed_multi_model_eval.build_fed_multi_model_eval_from_processes(
+            [fed_eval.build_fed_eval(TestModel) for _ in range(2)]
+        )
+    )
+
+    # Update the state with the model weights to be evaluated, and verify that
+    # the `get_model_weights` method returns the same model weights.
+    state = eval_process.initialize()
+    model_weights = {
+        'a': model_weights_lib.ModelWeights(trainable=[5.0], non_trainable=[]),
+        'b': model_weights_lib.ModelWeights(trainable=[10.0], non_trainable=[]),
+    }
+    new_state = eval_process.set_model_weights(state, model_weights)
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        model_weights,
+        eval_process.get_model_weights(new_state),
+    )
+
+    def _temp_dict(temps):
+      return {'temp': np.array(temps, dtype=np.float32)}
+
+    clients_data = [
+        [_temp_dict([1.0, 10.0, 2.0, 7.0]), _temp_dict([6.0, 11.0, 0.0, 0.0])],
+        [_temp_dict([9.0, 12.0, 13.0, 0.0])],
+        [_temp_dict([1.0, 0.0, 0.0, 0.0]), _temp_dict([22.0, 23.0, 0.0, 0.0])],
+    ]
+
+    output = eval_process.next(new_state, clients_data)
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        model_weights,
+        eval_process.get_model_weights(output.state),
+    )
+    self.assertSequenceEqual(list(output.state.client_work.keys()), ['a', 'b'])
+    self.assertSequenceEqual(
+        list(output.metrics['client_work'].keys()), ['a', 'b']
+    )
+    for (
+        client_work_state_per_model,
+        client_work_metrics_per_model,
+        expected_num_over,
+    ) in zip(
+        output.state.client_work.values(),
+        output.metrics['client_work'].values(),
+        [9.0, 5.0],
+    ):
+      _, accumulated_unfinalized_metrics = client_work_state_per_model
+      self.assertEqual(
+          accumulated_unfinalized_metrics,
+          collections.OrderedDict([('num_over', expected_num_over)]),
+      )
+      self.assertEqual(
+          client_work_metrics_per_model,
+          collections.OrderedDict(
+              eval=collections.OrderedDict(
+                  current_round_metrics=collections.OrderedDict(
+                      num_over=expected_num_over
+                  ),
+                  total_rounds_metrics=collections.OrderedDict(
+                      num_over=expected_num_over
+                  ),
+              )
+          ),
+      )
+
+  def test_multi_model_eval_process_raises_on_less_than_two_eval_processes(
+      self,
+  ):
+    with self.assertRaisesRegex(
+        ValueError, 'At least two evaluation processes must be provided'
+    ):
+      fed_multi_model_eval.build_fed_multi_model_eval_from_processes(
+          [fed_eval.build_fed_eval(TestModel)]
+      )
+
+  def test_multi_model_eval_process_raises_on_inconsistent_dataset_type(self):
+    eval_processes = [
+        fed_eval.build_fed_eval(TestModel),
+        fed_eval.build_fed_eval(model_examples.LinearRegression),
+    ]
+    with self.assertRaisesRegex(ValueError, 'same dataset type'):
+      fed_multi_model_eval.build_fed_multi_model_eval_from_processes(
+          eval_processes
+      )
 
 
 if __name__ == '__main__':

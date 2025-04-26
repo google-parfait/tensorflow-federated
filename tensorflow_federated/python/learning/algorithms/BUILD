@@ -530,6 +530,7 @@ py_cpu_gpu_test(
     name = "fed_multi_model_eval_test",
     srcs = ["fed_multi_model_eval_test.py"],
     deps = [
+        ":fed_eval",
         ":fed_multi_model_eval",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",

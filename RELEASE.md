@@ -53,6 +53,9 @@ and this project adheres to
     `tff.learning.programs.train_model`.
 *   Added a function to build a learning process that evaluates multiple models
     on the same client dataset.
+*   Added a function to build a learning process that evaluates multiple models
+    on the same client dataset from a sequence of single-model evaluation
+    processes.
 
 ### Fixed
 

@@ -591,3 +591,174 @@ def build_fed_multi_model_eval(
       model_aggregator,
       finalizer,
   )
+
+
+def _combine_multi_state(
+    state_dict: dict[str, Any],
+) -> composers.LearningAlgorithmState:
+  """Combines the state of multiple models into a single state."""
+  global_model_weights = federated_language.federated_zip({
+      model_id: state.global_model_weights
+      for model_id, state in state_dict.items()
+  })
+  distributor = federated_language.federated_zip(
+      {model_id: state.distributor for model_id, state in state_dict.items()}
+  )
+  client_work = federated_language.federated_zip(
+      {model_id: state.client_work for model_id, state in state_dict.items()}
+  )
+  aggregator = federated_language.federated_zip(
+      {model_id: state.aggregator for model_id, state in state_dict.items()}
+  )
+  finalizer = federated_language.federated_zip(
+      {model_id: state.finalizer for model_id, state in state_dict.items()}
+  )
+  return federated_language.federated_zip(
+      composers.LearningAlgorithmState(
+          global_model_weights=global_model_weights,
+          distributor=distributor,
+          client_work=client_work,
+          aggregator=aggregator,
+          finalizer=finalizer,
+      )
+  )
+
+
+def _combine_multi_metrics(
+    metrics_dict: dict[str, Any],
+) -> collections.OrderedDict[str, Any]:
+  """Combines the metrics of multiple models into a single metrics."""
+  return federated_language.federated_zip(
+      collections.OrderedDict(
+          distributor=federated_language.federated_zip({
+              model_id: metrics_dict[model_id].distributor
+              for model_id in metrics_dict
+          }),
+          client_work=federated_language.federated_zip({
+              model_id: metrics_dict[model_id].client_work
+              for model_id in metrics_dict
+          }),
+          aggregator=federated_language.federated_zip({
+              model_id: metrics_dict[model_id].aggregator
+              for model_id in metrics_dict
+          }),
+          finalizer=federated_language.federated_zip({
+              model_id: metrics_dict[model_id].finalizer
+              for model_id in metrics_dict
+          }),
+      )
+  )
+
+
+def _get_single_model_state(
+    state: composers.LearningAlgorithmState,
+    model_id: str,
+) -> composers.LearningAlgorithmState:
+  """Returns the state of a single model."""
+  return federated_language.federated_zip(
+      composers.LearningAlgorithmState(
+          global_model_weights=getattr(state.global_model_weights, model_id),
+          distributor=getattr(state.distributor, model_id),
+          client_work=getattr(state.client_work, model_id),
+          aggregator=getattr(state.aggregator, model_id),
+          finalizer=getattr(state.finalizer, model_id),
+      )
+  )
+
+
+def build_fed_multi_model_eval_from_processes(
+    eval_processes: Sequence[learning_process.LearningProcess],
+) -> learning_process.LearningProcess:
+  """Builds a multi-model eval process from a sequence of eval processes.
+
+  The eval processes are assumed to be single-model eval processes that have
+  the same input spec. All eval processes should be
+  `tff.learning.templates.LearningProcess` with the state type of
+  `tff.learning.templates.LearningAlgorithmState`.
+
+  Args:
+    eval_processes: A sequence of single-model eval processes.
+
+  Returns:
+    A multi-model eval process.
+
+  Raises:
+    ValueError: If the eval_processes is empty or if the eval processes have
+      different dataset types.
+  """
+  if len(eval_processes) < 2:
+    raise ValueError(
+        'At least two evaluation processes must be provided for multi-model'
+        ' evaluation.'
+    )
+
+  # Get the type of the client data from the first eval process. It is
+  # required that all models have the same input spec.
+  # pytype: disable=unsupported-operands
+  dataset_type = eval_processes[0].next.type_signature.parameter[1]
+  client_data_matches = lambda process: process.next.type_signature.parameter[
+      1
+  ].is_equivalent_to(dataset_type)
+  # pytype: enable=unsupported-operands
+  if not all(client_data_matches(p) for p in eval_processes[1:]):
+    raise ValueError(
+        'All evaluation processes must have the same dataset type.'
+    )
+
+  @federated_language.federated_computation()
+  def init_fn():
+    multi_state = {
+        model_id: eval_processes.initialize()
+        for model_id, eval_processes in zip(
+            string.ascii_letters, eval_processes
+        )
+    }
+    return _combine_multi_state(multi_state)
+
+  state_type = init_fn.type_signature.result
+
+  @federated_language.federated_computation(
+      state_type,
+      dataset_type,
+  )
+  def next_fn(state, client_data):
+    multi_state = collections.OrderedDict()
+    multi_metrics = collections.OrderedDict()
+
+    for model_id, eval_process in zip(string.ascii_letters, eval_processes):
+      current_state = _get_single_model_state(state, model_id)
+      output = eval_process.next(current_state, client_data)
+      multi_state[model_id] = output.state
+      multi_metrics[model_id] = output.metrics
+
+    return learning_process.LearningProcessOutput(
+        state=_combine_multi_state(multi_state),
+        metrics=_combine_multi_metrics(multi_metrics),
+    )
+
+  @tensorflow_computation.tf_computation(
+      state_type.member,
+  )
+  def get_model_weights_fn(state):
+    return state.global_model_weights
+
+  @tensorflow_computation.tf_computation(
+      state_type.member,
+      get_model_weights_fn.type_signature.result,
+  )
+  def set_model_weights_fn(state, model_weights):
+    return composers.LearningAlgorithmState(
+        global_model_weights=model_weights,
+        distributor=state.distributor,
+        client_work=state.client_work,
+        aggregator=state.aggregator,
+        finalizer=state.finalizer,
+    )
+
+  multi_eval_process = learning_process.LearningProcess(
+      init_fn,
+      next_fn,
+      get_model_weights_fn,
+      set_model_weights_fn,
+  )
+  return multi_eval_process
