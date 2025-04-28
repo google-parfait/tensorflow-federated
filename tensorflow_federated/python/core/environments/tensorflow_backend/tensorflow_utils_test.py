@@ -70,7 +70,7 @@ class GraphUtilsTest(tf.test.TestCase):
       if not isinstance(val, (list, tuple, structure.Struct)):
         self.assertIsInstance(val, dict)
         val = list(val.values())
-      for idx, e in enumerate(structure.to_elements(type_spec)):
+      for idx, e in enumerate(type_spec.items()):
         self._assert_binding_matches_type_and_value(
             binding.struct.element[idx], e[1], val[idx], graph, is_output
         )
