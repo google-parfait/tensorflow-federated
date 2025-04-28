@@ -22,7 +22,6 @@ from absl import logging
 import cachetools
 import federated_language
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.executor_stacks import executor_stack_bindings
 from tensorflow_federated.python.core.impl.executors import cpp_to_python_executor
 from tensorflow_federated.python.core.impl.executors import executor_bindings
@@ -109,7 +108,6 @@ def _log_and_warn_on_sequential_execution(
 
 
 def _check_num_clients_is_valid(default_num_clients: int):
-  py_typecheck.check_type(default_num_clients, int)
   if default_num_clients < 0:
     raise ValueError('Default number of clients must be nonnegative.')
 

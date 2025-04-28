@@ -108,19 +108,6 @@ class CPPExecutorFactoryTest(absltest.TestCase):
             channels=[], default_num_clients=-1
         )
 
-    with self.subTest('local_non_integer'):
-      with self.assertRaisesRegex(TypeError, 'int'):
-        cpp_executor_factory.local_cpp_executor_factory(
-            default_num_clients=1.0,
-            leaf_executor_fn=_create_mock_execution_stack,
-        )
-
-    with self.subTest('remote_non_integer'):
-      with self.assertRaisesRegex(TypeError, 'int'):
-        cpp_executor_factory.remote_cpp_executor_factory(
-            channels=[], default_num_clients=1.0
-        )
-
 
 if __name__ == '__main__':
   absltest.main()
