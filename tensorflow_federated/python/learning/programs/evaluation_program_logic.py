@@ -317,15 +317,19 @@ class EvaluationManager:
     task.result()  # Trigger any potentially stored exceptions.
     self._pending_tasks.remove(task)
 
-  async def resume_from_previous_state(self) -> None:
-    """Load the most recent state and restart in-progress evaluations."""
+  async def resume_from_previous_state(self) -> bool:
+    """Load the most recent state and restart in-progress evaluations.
+
+    Returns:
+      True if there was previous state to resume from, False otherwise.
+    """
     loaded_state = await self._state_manager.load_latest((
         self._evaluating_training_checkpoints,
         self._evaluation_start_timestamp_seconds,
     ))
     if loaded_state is None:
       _logging.info('No previous evaluations found, nothing to resume.')
-      return
+      return False
     (
         self._evaluating_training_checkpoints,
         self._evaluation_start_timestamp_seconds,
@@ -357,6 +361,7 @@ class EvaluationManager:
           state_manager,
           evaluation_end_time,
       )
+    return True
 
   def _start_evaluation_from_saved_model_weights(
       self,

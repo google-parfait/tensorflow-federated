@@ -360,7 +360,8 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         create_process_fn=mock_create_process_fn,
         cohort_size=10,
     )
-    await manager.resume_from_previous_state()
+    has_previous_state = await manager.resume_from_previous_state()
+    self.assertFalse(has_previous_state)
     self.assertEmpty(manager._pending_tasks)
     await manager.wait_for_evaluations_to_finish()
     self.assertEmpty(manager._pending_tasks)
@@ -448,7 +449,8 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     mock_create_state_manager.reset_mock()
     self.assertEmpty(manager._pending_tasks)
-    await manager.resume_from_previous_state()
+    has_previous_state = await manager.resume_from_previous_state()
+    self.assertTrue(has_previous_state)
     self.assertEmpty(manager._pending_tasks)
     mock_create_process_fn.assert_not_called()
     test_model_weights = model_weights.ModelWeights([], [])
@@ -689,7 +691,8 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         duration=datetime.timedelta(milliseconds=10),
     )
     self.assertEmpty(manager._pending_tasks)
-    await manager.resume_from_previous_state()
+    has_previous_state = await manager.resume_from_previous_state()
+    self.assertTrue(has_previous_state)
     self.assertLen(manager._pending_tasks, len(test_train_rounds))
     await manager.wait_for_evaluations_to_finish()
     self.assertEmpty(manager._pending_tasks)

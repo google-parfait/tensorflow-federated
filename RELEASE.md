@@ -27,7 +27,8 @@ and this project adheres to
 *   `DPQuantileAggregator::ReportWithEpsilonAndDelta` implements a DP algorithm
     to find quantiles by looping over a histogram with growing bucket size.
 *   `DPQuantileAggregator::Serialize` and the corresponding
-    `DPQuantileAggregatorFactory::Deserialze` to save and load aggregator state.
+    `DPQuantileAggregatorFactory::Deserialize` to save and load aggregator
+    state.
 *   Ability to disable DP when `epsilon` is sufficiently large in
     `DPQuantileAggregator::ReportWithEpsilonAndDelta`.
 *   `DPTensorAggregatorBundle`, a wrapper around one or more instances of
@@ -82,6 +83,8 @@ and this project adheres to
     `DPQuantileAggregator` and `DPTensorAggregatorBundle` classes.
 *   Updated `EvaluationManager` to support the new `fed_multi_model_eval` task.
 *   Updated `tff.learning.programs.train_model` to release the initial state.
+*   Updates `EvaluationManager.resume_from_previous_state` to return a boolean
+    indicating whether a previous state was loaded.
 
 ### Removed
 
