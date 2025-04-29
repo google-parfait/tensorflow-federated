@@ -326,7 +326,7 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/utility",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@org_tensorflow//tensorflow/core/profiler/lib:traceme",
+        "@org_tensorflow//tensorflow/tsl/profiler/lib:traceme",
     ],
 )
 
