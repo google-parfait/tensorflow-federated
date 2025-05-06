@@ -1134,12 +1134,10 @@ cc_library(
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
-        "@org_tensorflow//tensorflow/core:core_cpu_base",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
     ],
 )
 
