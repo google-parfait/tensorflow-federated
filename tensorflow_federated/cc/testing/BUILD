@@ -31,6 +31,7 @@ cc_library(
     name = "protobuf_matchers",
     testonly = True,
     hdrs = ["protobuf_matchers.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -45,6 +46,7 @@ cc_library(
     testonly = True,
     srcs = ["status_matchers.cc"],
     hdrs = ["status_matchers.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",

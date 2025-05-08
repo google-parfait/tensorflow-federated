@@ -25,6 +25,7 @@ cc_library(
     name = "array_shape_test_utils",
     testonly = True,
     hdrs = ["array_shape_test_utils.h"],
+    visibility = ["//visibility:public"],
     deps = ["@federated_language//federated_language/proto:array_cc_proto"],
 )
 
@@ -38,6 +39,7 @@ cc_library(
     name = "array_test_utils",
     testonly = True,
     hdrs = ["array_test_utils.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -336,6 +338,7 @@ pybind_extension(
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
+    visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
         ":composing_executor",
@@ -1100,6 +1103,7 @@ cc_library(
     name = "type_test_utils",
     testonly = True,
     hdrs = ["type_test_utils.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
