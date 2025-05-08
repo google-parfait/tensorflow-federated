@@ -51,7 +51,7 @@ namespace {
 using TensorMap = absl::flat_hash_map<std::string, Tensor>;
 absl::Status AddInputsToMap(const Intrinsic& intrinsic,
                             CheckpointParser& parser, TensorMap& tensor_map);
-size_t CountInputs(const Intrinsic& intrinsic);
+std::vector<size_t> CountInputs(const std::vector<Intrinsic>& intrinsics);
 absl::StatusOr<size_t> PopulateInputs(const Intrinsic& intrinsic,
                                       const TensorMap& tensor_map, size_t index,
                                       InputTensorList& inputs);
@@ -143,13 +143,16 @@ CheckpointAggregator::CreateInternal(
 CheckpointAggregator::CheckpointAggregator(
     const std::vector<Intrinsic>* intrinsics,
     std::vector<std::unique_ptr<TensorAggregator>> aggregators)
-    : intrinsics_(*intrinsics), aggregators_(std::move(aggregators)) {}
+    : intrinsics_(*intrinsics),
+      input_counts_(CountInputs(intrinsics_)),
+      aggregators_(std::move(aggregators)) {}
 
 CheckpointAggregator::CheckpointAggregator(
     std::vector<Intrinsic> intrinsics,
     std::vector<std::unique_ptr<TensorAggregator>> aggregators)
     : owned_intrinsics_(std::move(intrinsics)),
       intrinsics_(*owned_intrinsics_),
+      input_counts_(CountInputs(intrinsics_)),
       aggregators_(std::move(aggregators)) {}
 
 CheckpointAggregator::~CheckpointAggregator() {
@@ -166,18 +169,23 @@ absl::Status CheckpointAggregator::Accumulate(
     TFF_RETURN_IF_ERROR(
         AddInputsToMap(intrinsic, checkpoint_parser, tensor_map));
   }
+  std::vector<InputTensorList> inputs;
+  for (int i = 0; i < intrinsics_.size(); ++i) {
+    InputTensorList input_list(input_counts_[i]);
+    TFF_RETURN_IF_ERROR(
+        PopulateInputs(intrinsics_[i], tensor_map, 0, input_list));
+    inputs.push_back(std::move(input_list));
+  }
 
   absl::MutexLock lock(&aggregation_mu_);
   if (aggregation_finished_) {
     return absl::AbortedError("Aggregation has already been finished.");
   }
   for (int i = 0; i < intrinsics_.size(); ++i) {
-    const Intrinsic& intrinsic = intrinsics_[i];
-    InputTensorList inputs(CountInputs(intrinsic));
-    TFF_RETURN_IF_ERROR(PopulateInputs(intrinsic, tensor_map, 0, inputs));
     TFF_CHECK(aggregators_[i] != nullptr)
         << "Report() has already been called.";
-    TFF_RETURN_IF_ERROR(aggregators_[i]->Accumulate(std::move(inputs)));
+    auto& input_list = inputs[i];
+    TFF_RETURN_IF_ERROR(aggregators_[i]->Accumulate(std::move(input_list)));
   }
   return absl::OkStatus();
 }
@@ -343,6 +351,14 @@ size_t CountInputs(const Intrinsic& intrinsic) {
     count += CountInputs(nested_intrinsic);
   }
   return count;
+}
+
+std::vector<size_t> CountInputs(const std::vector<Intrinsic>& intrinsics) {
+  std::vector<size_t> counts(intrinsics.size());
+  for (int i = 0; i < intrinsics.size(); ++i) {
+    counts[i] = CountInputs(intrinsics[i]);
+  }
+  return counts;
 }
 
 absl::StatusOr<size_t> PopulateInputs(const Intrinsic& intrinsic,

@@ -20,6 +20,7 @@
 #include <stdbool.h>
 
 #include <atomic>
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -138,6 +139,8 @@ class CheckpointAggregator {
   // The intrinsics vector need not be guarded by the mutex, as accessing
   // immutable state can happen concurrently.
   const std::vector<Intrinsic>& intrinsics_;
+  // Precalculated number of inputs for each intrinsic.
+  const std::vector<size_t> input_counts_;
   // TensorAggregators are not thread safe and must be protected by a mutex.
   std::vector<std::unique_ptr<TensorAggregator>> aggregators_
       ABSL_GUARDED_BY(aggregation_mu_);
