@@ -204,7 +204,7 @@ def _serialize_struct_type(
         f'requiring {len(type_spec)} elements. Trying to serialize'
         f'\n{struct_typed_value!r}\nto\n{type_spec}.'
     )
-  val_elem_iter = structure.iter_elements(value_structure)
+  val_elem_iter = structure.to_elements(value_structure)
   elements = []
   for (e_name, e_type), (_, e_val) in zip(type_spec.items(), val_elem_iter):
     e_value, _ = serialize_value(e_val, e_type)
