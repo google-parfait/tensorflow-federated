@@ -21,6 +21,7 @@ import federated_language
 from federated_language.proto import computation_pb2
 import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -391,13 +392,16 @@ def create_binary_operator_with_upcast(
       # structure, simply re-use operand_2_value as. `tf.nest.map_structure`
       # below will map the binary operator pointwise to the leaves of the
       # structure.
-      if structure.is_same_structure(type_signature[0], type_signature[1]):
+      structure_1 = structure.to_odict_or_tuple(type_signature[0])
+      structure_2 = structure.to_odict_or_tuple(type_signature[1])
+      try:
+        tree.assert_same_structure(structure_1, structure_2)
         second_arg = operand_2_value
-      else:
+      except (ValueError, TypeError) as e:
         raise TypeError(
             'Cannot upcast one structure to a different structure. '
             '{x} -> {y}'.format(x=type_signature[1], y=type_signature[0])
-        )
+        ) from e
     elif type_signature[0].is_assignable_from(type_signature[1]):
       second_arg = operand_2_value
     else:
