@@ -198,7 +198,7 @@ class RemoteExecutor(federated_language.framework.Executor):
 
     value_refs = []
     for (value_elem_name, value_elem), (type_elem_name, type_elem) in zip(
-        structure.iter_elements(value), type_spec.items()
+        structure.to_elements(value), type_spec.items()
     ):
       if value_elem_name not in [type_elem_name, None]:
         raise TypeError(
@@ -256,7 +256,7 @@ class RemoteExecutor(federated_language.framework.Executor):
     constructed_anon_tuple = structure.from_container(elements)
     proto_elem = []
     type_elem = []
-    for k, v in structure.iter_elements(constructed_anon_tuple):
+    for k, v in structure.to_elements(constructed_anon_tuple):
       py_typecheck.check_type(v, RemoteValue)
       proto_elem.append(
           executor_pb2.CreateStructRequest.Element(

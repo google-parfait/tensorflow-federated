@@ -266,7 +266,7 @@ def serialize_jax_computation(
 def _struct_flatten(
     struct: structure.Struct,
 ) -> tuple[tuple[object, ...], tuple[Optional[str], ...]]:
-  child_names, child_values = tuple(zip(*structure.iter_elements(struct)))
+  child_names, child_values = tuple(zip(*structure.to_elements(struct)))
   return (child_values, child_names)
 
 
