@@ -267,7 +267,7 @@ def _partition_value(
     partition_result: Optional[_PartitioningValue] = None
     result_container = []
     for (_, val_elem), (name, type_elem) in zip(
-        structure.iter_elements(struct_val),
+        structure.to_elements(struct_val),
         type_signature.items(),
     ):
       partitioning_val_elem = _PartitioningValue(

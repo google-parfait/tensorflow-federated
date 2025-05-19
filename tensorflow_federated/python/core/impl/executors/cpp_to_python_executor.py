@@ -147,7 +147,7 @@ class CppToPythonExecutorBridge(federated_language.framework.Executor):
     executor_value_struct = structure.from_container(elements)
     id_list = []
     type_list = []
-    for name, value in structure.iter_elements(executor_value_struct):
+    for name, value in structure.to_elements(executor_value_struct):
       id_list.append(value.reference)
       type_list.append((name, value.type_signature))
     try:
