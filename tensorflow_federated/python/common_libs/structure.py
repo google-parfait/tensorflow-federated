@@ -18,7 +18,6 @@ from federated_language.common_libs import structure
 Struct = structure.Struct
 name_list = structure.name_list
 to_elements = structure.to_elements
-to_odict = structure.to_odict
 to_odict_or_tuple = structure.to_odict_or_tuple
 flatten = structure.flatten
 pack_sequence_as = structure.pack_sequence_as
