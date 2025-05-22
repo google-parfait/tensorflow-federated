@@ -2,20 +2,20 @@
 
 1.  Clone the repository.
 
-```shell
-$ git clone https://github.com/google-parfait/federated-language.git "/tmp/federated-language"
-$ cd "/tmp/federated-language"
-```
+    ```shell
+    $ git clone https://github.com/google-parfait/federated-language.git "/tmp/federated-language"
+    $ cd "/tmp/federated-language"
+    ```
 
 1.  Checkout the commit.
 
-```shell
-$ git checkout <COMMIT>
-```
+    ```shell
+    $ git checkout <COMMIT>
+    ```
 
 1.  Create the `python_deps` patch.
 
-    1.  Make the changes.
+    Make the changes.
 
     ```shell
     $ buildozer 'remove deps @federated_language_pypi//absl_py' //...:*
@@ -26,13 +26,13 @@ $ git checkout <COMMIT>
     $ buildozer 'remove deps @federated_language_pypi//typing_extensions' //...:*
     ```
 
-    1.  Confirm no more changes are required.
+    Confirm no more changes are required.
 
     ```shell
     $ find "." -type f -print0 | xargs -0 grep "@federated_language_pypi"
     ```
 
-    1.  Create the patch.
+    Create the patch.
 
     ```shell
     $ git diff --no-prefix \
@@ -43,19 +43,19 @@ $ git checkout <COMMIT>
 
     Note: This patch requires the previous patch to be applied.
 
-    1.  Stage the changes from the previous step.
+    Stage the changes from the previous step.
 
     ```shell
     $ git add .
     ```
 
-    1.  Make the changes.
+    Make the changes.
 
     ```shell
     $ buildozer 'add visibility //visibility:public' //federated_language/common_libs:structure
     ```
 
-    1.  Create the patch.
+    Create the patch.
 
     ```shell
     $ git diff --no-prefix \
