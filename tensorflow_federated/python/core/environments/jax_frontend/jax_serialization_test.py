@@ -22,7 +22,6 @@ import numpy as np
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.jax_frontend import jax_serialization
-from tensorflow_federated.python.core.environments.xla_backend import xla_serialization
 
 
 class JaxSerializationTest(absltest.TestCase):
@@ -77,8 +76,6 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
-    self.assertNotEmpty(xla_comp.as_hlo_text())
     self.assertEqual(str(comp_pb.xla.parameter), '')
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n  index: 0\n}\n')
 
@@ -109,8 +106,6 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
-    self.assertNotEmpty(xla_comp.as_hlo_text())
     self.assertEqual(str(comp_pb.xla.parameter), 'tensor {\n  index: 0\n}\n')
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n  index: 0\n}\n')
 
@@ -140,8 +135,6 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
-    self.assertNotEmpty(xla_comp.as_hlo_text())
     self.assertEqual(str(comp_pb.xla.result), str(comp_pb.xla.parameter))
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n  index: 0\n}\n')
 
@@ -182,8 +175,6 @@ class JaxSerializationTest(absltest.TestCase):
             ),
         ),
     )
-    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
-    self.assertNotEmpty(xla_comp.as_hlo_text())
     self.assertEqual(str(comp_pb.xla.result), str(comp_pb.xla.parameter))
     self.assertEqual(
         str(comp_pb.xla.parameter),
@@ -231,8 +222,6 @@ class JaxSerializationTest(absltest.TestCase):
             parameter=parameter_type, result=np.int32
         ),
     )
-    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
-    self.assertNotEmpty(xla_comp.as_hlo_text())
     self.assertEqual(
         str(comp_pb.xla.parameter),
         (

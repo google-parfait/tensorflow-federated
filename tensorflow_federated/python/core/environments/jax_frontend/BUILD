@@ -77,7 +77,6 @@ py_test(
     deps = [
         ":jax_serialization",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/environments/xla_backend:xla_serialization",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
     ],

@@ -58,28 +58,6 @@ class XlaUtilsTest(absltest.TestCase):
     any_pb = xla_serialization.pack_xla_computation(xla_comp)
     self.assertEqual(type(any_pb), any_pb2.Any)
 
-  def test_pack_unpack_xla_computation_roundtrip(self):
-    xla_comp = _make_test_xla_comp_noarg_to_int32()
-    any_pb = xla_serialization.pack_xla_computation(xla_comp)
-    new_comp = xla_serialization.unpack_xla_computation(any_pb)
-    self.assertEqual(new_comp.as_hlo_text(), xla_comp.as_hlo_text())
-
-  def test_create_xla_tff_computation_noarg(self):
-    xla_comp = _make_test_xla_comp_noarg_to_int32()
-    comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_comp, [], federated_language.FunctionType(None, np.int32)
-    )
-    self.assertIsInstance(comp_pb, pb.Computation)
-    self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
-    type_spec = federated_language.FunctionType.from_proto(comp_pb.type)
-    self.assertEqual(str(type_spec), '( -> int32)')
-    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
-    self.assertIn(
-        'ROOT constant.1 = s32[] constant(10)', xla_comp.as_hlo_text()
-    )
-    self.assertEqual(str(comp_pb.xla.parameter), '')
-    self.assertEqual(str(comp_pb.xla.result), 'tensor {\n  index: 0\n}\n')
-
   def test_create_xla_tff_computation_raises_missing_arg_in_xla(self):
     xla_comp = _make_test_xla_comp_noarg_to_int32()
     with self.assertRaises(ValueError):
@@ -167,7 +145,7 @@ class XlaUtilsTest(absltest.TestCase):
     tensor_shape = _make_xla_shape(
         jax.ShapeDtypeStruct(shape=(10,), dtype=jnp.int32)
     )
-    flattened = xla_serialization.flatten_xla_shape(tensor_shape)
+    flattened = xla_serialization._flatten_xla_shape(tensor_shape)
     self.assertIsInstance(flattened, list)
     self.assertEqual(flattened, [tensor_shape])
 
@@ -175,7 +153,7 @@ class XlaUtilsTest(absltest.TestCase):
     tensor_shape_1 = jax.ShapeDtypeStruct(shape=(10,), dtype=np.int32)
     tensor_shape_2 = jax.ShapeDtypeStruct(shape=(20,), dtype=np.float32)
     tuple_shape = _make_xla_shape((tensor_shape_1, tensor_shape_2))
-    flattened = xla_serialization.flatten_xla_shape(tuple_shape)
+    flattened = xla_serialization._flatten_xla_shape(tuple_shape)
     self.assertIsInstance(flattened, list)
     self.assertEqual(
         flattened,
@@ -186,7 +164,7 @@ class XlaUtilsTest(absltest.TestCase):
     tensor_shape = jax.ShapeDtypeStruct(shape=(10,), dtype=np.int32)
     xla_shapes = [_make_xla_shape(tensor_shape)]
     binding = pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=0))
-    tff_type = xla_serialization.xla_shapes_and_binding_to_tff_type(
+    tff_type = xla_serialization._xla_shapes_and_binding_to_tff_type(
         xla_shapes, binding
     )
     self.assertEqual(str(tff_type), 'int32[10]')
@@ -206,7 +184,7 @@ class XlaUtilsTest(absltest.TestCase):
             ]
         )
     )
-    tff_type = xla_serialization.xla_shapes_and_binding_to_tff_type(
+    tff_type = xla_serialization._xla_shapes_and_binding_to_tff_type(
         xla_shapes, binding
     )
     self.assertEqual(str(tff_type), '<float32[20],int32[10]>')
@@ -216,7 +194,7 @@ class XlaUtilsTest(absltest.TestCase):
     xla_shapes = [_make_xla_shape(tensor_shape)]
     binding = None
     with self.assertRaises(ValueError):
-      xla_serialization.xla_shapes_and_binding_to_tff_type(xla_shapes, binding)
+      xla_serialization._xla_shapes_and_binding_to_tff_type(xla_shapes, binding)
 
   def test_xla_shapes_and_binding_to_tff_type_raises_unused_element(self):
     tensor_shape_1 = jax.ShapeDtypeStruct(shape=(10,), dtype=np.int32)
@@ -227,13 +205,13 @@ class XlaUtilsTest(absltest.TestCase):
     ]
     binding = pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=1))
     with self.assertRaises(ValueError):
-      xla_serialization.xla_shapes_and_binding_to_tff_type(xla_shapes, binding)
+      xla_serialization._xla_shapes_and_binding_to_tff_type(xla_shapes, binding)
 
   def test_xla_computation_and_bindings_to_tff_type_none_binding_to_int32(self):
     xla_computation = _make_test_xla_comp_noarg_to_int32()
     parameter_binding = None
     result_binding = pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=0))
-    tff_type = xla_serialization.xla_computation_and_bindings_to_tff_type(
+    tff_type = xla_serialization._xla_computation_and_bindings_to_tff_type(
         xla_computation, parameter_binding, result_binding
     )
     self.assertEqual(str(tff_type), '( -> int32)')
@@ -242,7 +220,7 @@ class XlaUtilsTest(absltest.TestCase):
     xla_computation = _make_test_xla_comp_noarg_to_int32()
     parameter_binding = pb.Xla.Binding()
     result_binding = pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=0))
-    tff_type = xla_serialization.xla_computation_and_bindings_to_tff_type(
+    tff_type = xla_serialization._xla_computation_and_bindings_to_tff_type(
         xla_computation, parameter_binding, result_binding
     )
     self.assertEqual(str(tff_type), '( -> int32)')
@@ -260,7 +238,7 @@ class XlaUtilsTest(absltest.TestCase):
     )
     parameter_binding = pb.Xla.Binding()
     result_binding = pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=0))
-    tff_type = xla_serialization.xla_computation_and_bindings_to_tff_type(
+    tff_type = xla_serialization._xla_computation_and_bindings_to_tff_type(
         xla_computation, parameter_binding, result_binding
     )
     self.assertEqual(str(tff_type), '( -> int32)')
@@ -281,7 +259,7 @@ class XlaUtilsTest(absltest.TestCase):
         )
     )
     result_binding = pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=0))
-    tff_type = xla_serialization.xla_computation_and_bindings_to_tff_type(
+    tff_type = xla_serialization._xla_computation_and_bindings_to_tff_type(
         xla_computation, parameter_binding, result_binding
     )
     self.assertEqual(str(tff_type), '(<int32[10]> -> int32[10])')
@@ -291,7 +269,7 @@ class XlaUtilsTest(absltest.TestCase):
     parameter_binding = None
     result_binding = pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=0))
     with self.assertRaises(ValueError):
-      xla_serialization.xla_computation_and_bindings_to_tff_type(
+      xla_serialization._xla_computation_and_bindings_to_tff_type(
           xla_computation, parameter_binding, result_binding
       )
 
@@ -315,7 +293,7 @@ class XlaUtilsTest(absltest.TestCase):
     )
     result_binding = pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=0))
     with self.assertRaises(ValueError):
-      xla_serialization.xla_computation_and_bindings_to_tff_type(
+      xla_serialization._xla_computation_and_bindings_to_tff_type(
           xla_computation, parameter_binding, result_binding
       )
 

@@ -47,26 +47,6 @@ def pack_xla_computation(
   )
 
 
-def unpack_xla_computation(any_pb: any_pb2.Any) -> xla_client.XlaComputation:
-  """Unpacks an `Any` proto to an `XlaComputation`.
-
-  Args:
-    any_pb: An instance of `google.protobuf.Any` to unpack.
-
-  Returns:
-    The unpacked instance of `xla_client.XlaComputation`.
-
-  Raises:
-    TypeError: if `any_pb` is not an `Any` protocol buffer message.
-    ValueError: if the object packed into `any_pb` cannot be unpacked.
-  """
-  if any_pb.type_url != _HLO_MODULE_PROTO_URI:
-    raise ValueError(
-        'Not a serialized `HloModuleProto`: {}.'.format(str(any_pb.type_url))
-    )
-  return xla_client.XlaComputation(any_pb.value)
-
-
 def _make_xla_binding_for_type(
     tensor_indexes: Sequence[int], type_spec: Optional[federated_language.Type]
 ) -> Optional[pb.Xla.Binding]:
@@ -181,7 +161,7 @@ def create_xla_tff_computation(
   result_binding = _make_xla_binding_for_type(
       list(range(len(structure.flatten(type_spec.result)))), type_spec.result
   )
-  reconstructed_type = xla_computation_and_bindings_to_tff_type(
+  reconstructed_type = _xla_computation_and_bindings_to_tff_type(
       xla_computation, parameter_binding, result_binding
   )
   expected_type = _remove_struct_element_names_from_tff_type(type_spec)
@@ -200,7 +180,7 @@ def create_xla_tff_computation(
   )
 
 
-def xla_computation_and_bindings_to_tff_type(
+def _xla_computation_and_bindings_to_tff_type(
     xla_computation: xla_client.XlaComputation,
     parameter_binding: Optional[pb.Xla.Binding],
     result_binding: pb.Xla.Binding,
@@ -221,7 +201,7 @@ def xla_computation_and_bindings_to_tff_type(
   """
   program_shape = xla_computation.program_shape()
   try:
-    parameter_type = xla_shapes_and_binding_to_tff_type(
+    parameter_type = _xla_shapes_and_binding_to_tff_type(
         program_shape.parameter_shapes(), parameter_binding
     )
   except ValueError as e:
@@ -230,7 +210,7 @@ def xla_computation_and_bindings_to_tff_type(
         f'{program_shape.parameter_shapes()=}, {parameter_binding=}'
     ) from e
   try:
-    result_type = xla_shapes_and_binding_to_tff_type(
+    result_type = _xla_shapes_and_binding_to_tff_type(
         [program_shape.result_shape()], result_binding
     )
   except ValueError as e:
@@ -241,7 +221,7 @@ def xla_computation_and_bindings_to_tff_type(
   return federated_language.FunctionType(parameter_type, result_type)
 
 
-def xla_shapes_and_binding_to_tff_type(
+def _xla_shapes_and_binding_to_tff_type(
     xla_shapes: Sequence[xla_client.Shape], binding: Optional[pb.Xla.Binding]
 ) -> Optional[
     Union[federated_language.TensorType, federated_language.StructType]
@@ -257,7 +237,7 @@ def xla_shapes_and_binding_to_tff_type(
   """
   tensor_shapes = []
   for shape in xla_shapes:
-    tensor_shapes += flatten_xla_shape(shape)
+    tensor_shapes += _flatten_xla_shape(shape)
   unused_shape_indexes = set(range(len(tensor_shapes)))
 
   def _get_type(
@@ -298,7 +278,7 @@ def xla_shapes_and_binding_to_tff_type(
   return tff_type
 
 
-def flatten_xla_shape(
+def _flatten_xla_shape(
     xla_shape: xla_client.Shape,
 ) -> Sequence[xla_client.Shape]:
   """Flattens a possibly nested tuple XLA shape into a list of tensor shapes.
@@ -312,7 +292,7 @@ def flatten_xla_shape(
   if xla_shape.is_tuple():
     tensor_shapes = []
     for shape in xla_shape.tuple_shapes():
-      tensor_shapes += flatten_xla_shape(shape)
+      tensor_shapes += _flatten_xla_shape(shape)
     return tensor_shapes
   else:
     # Must be a tensor (array) type; verify this by probing for dimensions and
