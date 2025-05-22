@@ -25,7 +25,6 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core import backends
 from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import templates
-from tensorflow_federated.python.core.environments import jax
 from tensorflow_federated.python.core.environments import tensorflow
 from tensorflow_federated.version import __version__
 # pylint: enable=g-bad-import-order,g-importing-member
