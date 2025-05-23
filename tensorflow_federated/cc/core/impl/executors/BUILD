@@ -137,6 +137,7 @@ cc_library(
     name = "data_executor",
     srcs = ["data_executor.cc"],
     hdrs = ["data_executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":data_backend",
         ":executor",
