@@ -74,18 +74,13 @@ http_archive(
     url = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.21.9.tar.gz",
 )
 
-# TODO: b/333391041 - Temporarily disable the direct dependency on
-# `eigen`, for now we pick this dependency up from the TensorFlow workspace.
-# http_archive(
-#     name = "eigen",
-#     url = "https://gitlab.com/libeigen/eigen/archive/refs/tags/3.4.0.tar.gz",
-#     sha256 = "",
-#     strip_prefix = "eigen-3.4.0",
-#     build_file = "//third_party/eigen:eigen.BUILD",
-#     repo_mapping = {
-#         "@eigen": "@eigen_archive",
-#     },
-# )
+http_archive(
+    name = "eigen",
+    build_file = "//third_party:eigen.BUILD",
+    sha256 = "e46255d46747a1d61aecae42414b39e76d8ff1becd1914e67956d2f7e40d1123",
+    strip_prefix = "eigen-8ad4344ca79f2f248bc5ed70eec72e4b9c4d5e88",
+    url = "https://gitlab.com/libeigen/eigen/-/archive/8ad4344ca79f2f248bc5ed70eec72e4b9c4d5e88/eigen-8ad4344ca79f2f248bc5ed70eec72e4b9c4d5e88.zip",
+)
 
 http_archive(
     name = "federated_language",
