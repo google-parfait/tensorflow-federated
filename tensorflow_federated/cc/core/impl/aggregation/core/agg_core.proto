@@ -31,6 +31,9 @@ message GroupByAggregatorState {
   // once.
   repeated TensorProto keys = 2;
   repeated OneDimGroupingAggregatorState nested_aggregators = 3;
+  // The number of contributors to each combination of keys. It should be of the
+  // same length as each of the tensors in keys.
+  repeated uint64 counter_of_contributors = 4;
 }
 
 // Internal state representation of a DPQuantileAggregator.
