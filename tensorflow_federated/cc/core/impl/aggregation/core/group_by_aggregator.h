@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -64,6 +65,12 @@ class GroupByAggregator : public TensorAggregator {
   // Returns the number of inputs that have been accumulated or merged into this
   // GroupByAggregator.
   int GetNumInputs() const override { return num_inputs_; }
+
+  // Returns the number of contributors that have been accumulated or merged
+  // into this GroupByAggregator.
+  const std::vector<int>& GetContributors() const {
+    return contributors_to_groups_;
+  }
 
   // Override CanReport to ensure that outputs of Report will contain all
   // expected output tensors. It is not valid to create empty tensors, so in
@@ -124,7 +131,8 @@ class GroupByAggregator : public TensorAggregator {
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs);
+      int num_inputs,
+      std::optional<int> min_contributors_to_group = std::nullopt);
 
   // Creates a vector of DataTypes that describe the keys in the input & output.
   // A pre-processing function that sets the stage for CompositeKeyCombiners.
@@ -230,6 +238,9 @@ class GroupByAggregator : public TensorAggregator {
   const std::vector<Intrinsic>& intrinsics_;
   const std::vector<TensorSpec>& output_key_specs_;
   std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators_;
+  std::optional<int> min_contributors_to_group_;
+  std::optional<int> max_contributors_to_group_;
+  std::vector<int> contributors_to_groups_;
 };
 
 // Factory class for the GroupByAggregator.
