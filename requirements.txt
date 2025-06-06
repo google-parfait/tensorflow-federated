@@ -32,7 +32,7 @@ dm-tree==0.1.8
 dp-accounting==0.4.3
 google-vizier==0.1.11
 grpcio~=1.46
-ml_dtypes>=0.2.0,==0.2.*
+ml_dtypes>=0.5.0,==0.5.*
 numpy~=1.25
 portpicker~=1.6
 scipy~=1.9.3
