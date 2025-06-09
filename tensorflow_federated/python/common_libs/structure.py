@@ -14,38 +14,13 @@
 """Container for structures with named and/or unnamed fields."""
 
 from federated_language.common_libs import structure
-from tensorflow_federated.python.common_libs import deprecation
 
-
-Struct = deprecation.deprecated(
-    "`tff.structure.Struct` is deprecated, use a Python container instead."
-)(structure.Struct)
-name_list = deprecation.deprecated(
-    "`tff.structure.name_list` is deprecated, use a Python container instead."
-)(structure.name_list)
-to_elements = deprecation.deprecated(
-    "`tff.structure.to_elements` is deprecated, use a Python container instead."
-)(structure.to_elements)
-to_odict_or_tuple = deprecation.deprecated(
-    "`tff.structure.to_odict_or_tuple` is deprecated, use a Python container"
-    " instead."
-)(structure.to_odict_or_tuple)
-flatten = deprecation.deprecated(
-    "`tff.structure.flatten` is deprecated, use a Python container instead."
-)(structure.flatten)
-pack_sequence_as = deprecation.deprecated(
-    "`tff.structure.pack_sequence_as` is deprecated, use a Python container"
-    " instead."
-)(structure.pack_sequence_as)
-map_structure = deprecation.deprecated(
-    "`tff.structure.map_structure` is deprecated, use a Python container"
-    " instead."
-)(structure.map_structure)
-from_container = deprecation.deprecated(
-    "`tff.structure.from_container` is deprecated, use a Python container"
-    " instead."
-)(structure.from_container)
-update_struct = deprecation.deprecated(
-    "`tff.structure.update_struct` is deprecated, use a Python container"
-    " instead."
-)(structure.update_struct)
+Struct = structure.Struct
+name_list = structure.name_list
+to_elements = structure.to_elements
+to_odict_or_tuple = structure.to_odict_or_tuple
+flatten = structure.flatten
+pack_sequence_as = structure.pack_sequence_as
+map_structure = structure.map_structure
+from_container = structure.from_container
+update_struct = structure.update_struct

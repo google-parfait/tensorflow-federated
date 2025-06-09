@@ -82,8 +82,5 @@ py_test(
 py_library(
     name = "structure",
     srcs = ["structure.py"],
-    deps = [
-        ":deprecation",
-        "@federated_language//federated_language/common_libs:structure",
-    ],
+    deps = ["@federated_language//federated_language/common_libs:structure"],
 )
