@@ -17,7 +17,7 @@ import collections
 from collections.abc import Iterable, Mapping
 import itertools
 import typing
-from typing import Optional
+from typing import Optional, Union
 
 import attrs
 import federated_language
@@ -250,6 +250,18 @@ def capture_result_from_graph(
   if isinstance(result, _TENSOR_REPRESENTATION_TYPES):
     with graph.as_default():
       result = tf.constant(result)
+  # TODO: b/224484886 - Downcasting to all handled types.
+  result = typing.cast(
+      Union[
+          py_typecheck.SupportsNamedTuple,
+          structure.Struct,
+          Mapping[str, object],
+          list[object],
+          tuple[object, ...],
+          tf.data.Dataset,
+      ],
+      result,
+  )
   if tf.is_tensor(result):
     if hasattr(result, 'read_value'):
       # We have a tf.Variable-like result, get a proper tensor to fetch.
