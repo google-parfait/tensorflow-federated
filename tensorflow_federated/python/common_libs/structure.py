@@ -23,5 +23,4 @@ flatten = structure.flatten
 pack_sequence_as = structure.pack_sequence_as
 map_structure = structure.map_structure
 from_container = structure.from_container
-has_field = structure.has_field
 update_struct = structure.update_struct
