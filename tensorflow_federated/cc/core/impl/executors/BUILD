@@ -421,7 +421,7 @@ cc_library(
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )
 
@@ -540,8 +540,8 @@ cc_library(
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest",
         "@federated_language//federated_language/proto:computation_cc_proto",
+        "@googletest//:gtest",
     ],
 )
 
@@ -558,7 +558,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )
 
@@ -572,7 +572,7 @@ cc_library(
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc_security_base",
         "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )
 
@@ -1011,10 +1011,10 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@com_google_googletest//:gtest",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+        "@googletest//:gtest",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/data:standalone",
