@@ -15,7 +15,6 @@
 import asyncio
 import collections
 import datetime
-from typing import Optional
 import unittest
 from unittest import mock
 
@@ -167,7 +166,6 @@ def _create_mock_train_process() -> mock.Mock:
 def _create_metrics_release_call(
     *,
     key: int,
-    round_end_timestamp: Optional[float] = None,
     num_retries: int = 0,
 ):
   return mock.call(
@@ -178,9 +176,6 @@ def _create_metrics_release_call(
           'finalizer': mock.ANY,
           'model_metrics': mock.ANY,
           'program_metrics': {
-              'round_end_timestamp': (
-                  round_end_timestamp if round_end_timestamp else mock.ANY
-              ),
               'num_retries': num_retries,
           },
       },
@@ -487,12 +482,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Assert that training metrics were released every round.
     self.assertSequenceEqual(
         [
-            _create_metrics_release_call(
-                key=round_num,
-                round_end_timestamp=round_end_timestamps[
-                    round_num - 1
-                ].timestamp(),
-            )
+            _create_metrics_release_call(key=round_num)
             for round_num in range(1, training_rounds + 1)
         ],
         mock_train_metrics_manager.release.call_args_list,

@@ -36,7 +36,6 @@ from tensorflow_federated.python.learning.templates import learning_process
 
 
 _PROGRAM_METRICS_KEY = 'program_metrics'
-_ROUND_END_TIMESTAMP_KEY = 'round_end_timestamp'
 _NUM_RETRIES_KEY = 'num_retries'
 
 
@@ -94,7 +93,6 @@ class TaskManager:
 
 def _add_program_metrics(
     metrics: Mapping[str, Any],
-    round_end_time: datetime.datetime,
     num_retries: int = 0,
 ) -> federated_language.program.ReleasableStructure:
   """Adds program performance metrics to the metrics."""
@@ -104,7 +102,6 @@ def _add_program_metrics(
     )
   metrics_with_program_metrics = dict(metrics)
   metrics_with_program_metrics[_PROGRAM_METRICS_KEY] = {
-      _ROUND_END_TIMESTAMP_KEY: round_end_time.timestamp(),
       _NUM_RETRIES_KEY: num_retries,
   }
   return metrics_with_program_metrics
@@ -387,11 +384,8 @@ async def train_model(
             '`federated_language.Computation` whose result signature was: '
             f'{train_process.next.type_signature.result}'
         ) from e
-      # TODO: b/371431768 - Clean up the timestamps in the metrics once min sep
-      # policy is fixed.
       released_train_metrics = _add_program_metrics(
           released_train_metrics,
-          train_round_finished_time,
           num_retries,
       )
       task_manager.add_task(

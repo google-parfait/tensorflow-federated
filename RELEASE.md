@@ -85,6 +85,8 @@ and this project adheres to
 *   Updated `tff.learning.programs.train_model` to release the initial state.
 *   Updates `EvaluationManager.resume_from_previous_state` to return a boolean
     indicating whether a previous state was loaded.
+*   Removed no longer needed round end timestamp metric in training program
+    logic.
 
 ### Removed
 
