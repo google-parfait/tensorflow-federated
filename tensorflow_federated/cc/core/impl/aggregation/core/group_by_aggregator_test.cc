@@ -1698,6 +1698,51 @@ TEST(GroupByFactoryTest, SubIntrinsicNotGroupingAggregator) {
               HasSubstr("Nested intrinsic URIs must start with 'GoogleSQL:'"));
 }
 
+TEST(GroupByFactoryDeathTest, MinContributorsToGroupTensorNotScalar) {
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  intrinsic.parameters.push_back(
+      Tensor::Create(DT_INT32, {3}, CreateTestData({0, 0, 0})).value());
+  EXPECT_DEATH(CreateTensorAggregator(intrinsic).IgnoreError(),
+               "used on scalar tensors");
+}
+
+TEST(GroupByFactoryTest, TooManyParameters) {
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  intrinsic.parameters.push_back(
+      Tensor::Create(DT_INT32, {}, CreateTestData({5})).value());
+  intrinsic.parameters.push_back(
+      Tensor::Create(DT_INT32, {}, CreateTestData({5})).value());
+  Status s = CreateTensorAggregator(intrinsic).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), HasSubstr("At most one input parameter expected"));
+}
+
+TEST(GroupByFactoryTest, MinContributorsToGroupNegative) {
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  intrinsic.parameters.push_back(
+      Tensor::Create(DT_INT32, {}, CreateTestData({-5})).value());
+  Status s = CreateTensorAggregator(intrinsic).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), HasSubstr("must be positive"));
+}
+
+TEST(GroupByFactoryTest, MinContributorsToGroupZero) {
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  intrinsic.parameters.push_back(
+      Tensor::Create(DT_INT32, {}, CreateTestData({0})).value());
+  Status s = CreateTensorAggregator(intrinsic).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), HasSubstr("must be positive"));
+}
+
+TEST(GroupByFactoryTest, MinContributorsToGroupSetDoesNotCauseError) {
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  intrinsic.parameters.push_back(
+      Tensor::Create(DT_INT32, {}, CreateTestData({5})).value());
+  Status s = CreateTensorAggregator(intrinsic).status();
+  EXPECT_THAT(s, StatusIs(OK));
+}
+
 TEST(GroupByAggregatorTest, Deserialize_FailToParseProto) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   std::string invalid_state("invalid_state");

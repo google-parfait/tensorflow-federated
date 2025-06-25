@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -51,13 +52,14 @@ GroupByAggregator::GroupByAggregator(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    int num_inputs)
+    int num_inputs, std::optional<int> min_contributors_to_group)
     : num_inputs_(num_inputs),
       num_keys_per_input_(input_key_specs.size()),
       key_combiner_(std::move(key_combiner)),
       intrinsics_(*intrinsics),
       output_key_specs_(*output_key_specs),
-      aggregators_(std::move(aggregators)) {
+      aggregators_(std::move(aggregators)),
+      min_contributors_to_group_(min_contributors_to_group) {
   // Most invariants on construction of the GroupByAggregator such as which
   // nested intrinsics are supported should be enforced in the factory class.
   // This constructor just performs a few backup checks.
@@ -73,6 +75,12 @@ GroupByAggregator::GroupByAggregator(
   TFF_CHECK(num_keys_per_input_ == output_key_specs->size())
       << "GroupByAggregator: Size of input_key_specs must match size of "
          "output_key_specs.";
+
+  if (min_contributors_to_group.has_value()) {
+    TFF_CHECK(*min_contributors_to_group > 0)
+        << "GroupByAggregator: min_contributors_to_group must be positive.";
+    max_contributors_to_group_ = min_contributors_to_group;
+  }
 }
 
 std::unique_ptr<CompositeKeyCombiner> GroupByAggregator::CreateKeyCombiner(
@@ -522,10 +530,19 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
   // Check that the configuration is valid for fedsql_group_by.
   TFF_RETURN_IF_ERROR(CheckIntrinsic(intrinsic, kGroupByUri));
 
-  // The GroupByAggregator expects no parameters
-  if (!intrinsic.parameters.empty()) {
+  // The GroupByAggregator expects at most one parameters
+  if (intrinsic.parameters.size() > 1) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByFactory: No input parameters expected.";
+           << "GroupByFactory: At most one input parameter expected.";
+  }
+  std::optional<int> min_contributors_to_group = std::nullopt;
+  if (intrinsic.parameters.size() == 1) {
+    min_contributors_to_group = intrinsic.parameters[0].CastToScalar<int>();
+    if (*min_contributors_to_group <= 0) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "GroupByFactory: The min_contributors_to_group parameter must "
+                "be positive if provided.";
+    }
   }
 
   // The nested intrinsics' URIs should begin with kFedSqlPrefix
@@ -558,7 +575,8 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
   // add a dependency on absl::WrapUnique.
   return std::unique_ptr<GroupByAggregator>(new GroupByAggregator(
       intrinsic.inputs, &intrinsic.outputs, &intrinsic.nested_intrinsics,
-      std::move(key_combiner), std::move(nested_aggregators), num_inputs));
+      std::move(key_combiner), std::move(nested_aggregators), num_inputs,
+      min_contributors_to_group));
 }
 
 // TODO: b/266497896 - Revise the registration mechanism below.
