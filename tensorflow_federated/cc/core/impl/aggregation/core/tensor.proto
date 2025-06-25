@@ -79,6 +79,9 @@ message TensorProto {
   // Shape of the tensor.
   TensorShapeProto shape = 2;
 
+  // Name field to identify what the tensor represents.
+  string name = 10;
+
   // Optional descriptor of sparse index encoding.
   SparsityEncoding sparsity_encoding = 3;
 

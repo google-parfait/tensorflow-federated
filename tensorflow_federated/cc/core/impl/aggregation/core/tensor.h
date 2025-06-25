@@ -52,7 +52,8 @@ class Tensor final {
   Tensor(Tensor&& other)
       : dtype_(other.dtype_),
         shape_(std::move(other.shape_)),
-        data_(std::move(other.data_)) {
+        data_(std::move(other.data_)),
+        name_(std::move(other.name_)) {
     other.dtype_ = DT_INVALID;
   }
 
@@ -61,6 +62,7 @@ class Tensor final {
     dtype_ = other.dtype_;
     shape_ = std::move(other.shape_);
     data_ = std::move(other.data_);
+    name_ = std::move(other.name_);
     other.dtype_ = DT_INVALID;
     return *this;
   }
@@ -69,11 +71,12 @@ class Tensor final {
   // to enable creation of a vector of Tensors.
   // A tensor created with the default constructor is not valid and thus should
   // not actually be used.
-  Tensor() : dtype_(DT_INVALID), shape_{}, data_(nullptr) {}
+  Tensor() : dtype_(DT_INVALID), shape_{}, data_(nullptr), name_("") {}
 
   // Validates parameters and creates a Tensor instance.
   static StatusOr<Tensor> Create(DataType dtype, TensorShape shape,
-                                 std::unique_ptr<TensorData> data);
+                                 std::unique_ptr<TensorData> data,
+                                 std::string name = "");
 
   // Creates a Tensor instance from a TensorProto.
   static StatusOr<Tensor> FromProto(const TensorProto& tensor_proto);
@@ -98,6 +101,9 @@ class Tensor final {
 
   // Readonly access to the tensor data.
   const TensorData& data() const { return *data_; }
+
+  // Readonly access to the tensor name.
+  const std::string& name() const { return name_; }
 
   // Returns true is the current tensor data is dense.
   // TODO: b/266974165 - Implement sparse tensors.
@@ -173,8 +179,11 @@ class Tensor final {
 
  private:
   Tensor(DataType dtype, TensorShape shape, size_t num_elements,
-         std::unique_ptr<TensorData> data)
-      : dtype_(dtype), shape_(std::move(shape)), data_(std::move(data)) {}
+         std::unique_ptr<TensorData> data, std::string name = "")
+      : dtype_(dtype),
+        shape_(std::move(shape)),
+        data_(std::move(data)),
+        name_(std::move(name)) {}
 
   // Returns a pointer to the tensor data.
   template <typename T>
@@ -202,6 +211,8 @@ class Tensor final {
   TensorShape shape_;
   // The underlying tensor data.
   std::unique_ptr<TensorData> data_;
+  // Name field to identify what the tensor represents.
+  std::string name_;
 };
 
 }  // namespace aggregation

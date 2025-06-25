@@ -62,10 +62,14 @@ Status Tensor::CheckValid() const {
   return TFF_STATUS(OK);
 }
 
+// Note that name has a default value of empty string specified in the
+// declaration.
 StatusOr<Tensor> Tensor::Create(DataType dtype, TensorShape shape,
-                                std::unique_ptr<TensorData> data) {
+                                std::unique_ptr<TensorData> data,
+                                std::string name) {
   TFF_ASSIGN_OR_RETURN(size_t num_elements, shape.NumElements());
-  Tensor tensor(dtype, std::move(shape), num_elements, std::move(data));
+  Tensor tensor(dtype, std::move(shape), num_elements, std::move(data),
+                std::move(name));
   TFF_RETURN_IF_ERROR(tensor.CheckValid());
   return std::move(tensor);
 }
@@ -355,7 +359,8 @@ StatusOr<Tensor> Tensor::FromProto(const TensorProto& tensor_proto) {
     }
     data = std::make_unique<ZeroTensorData>();
   }
-  return Create(tensor_proto.dtype(), std::move(shape), std::move(data));
+  return Create(tensor_proto.dtype(), std::move(shape), std::move(data),
+                tensor_proto.name());
 }
 
 StatusOr<Tensor> Tensor::FromProto(TensorProto&& tensor_proto) {
@@ -369,8 +374,8 @@ StatusOr<Tensor> Tensor::FromProto(TensorProto&& tensor_proto) {
       tensor_proto.dtype(), T,
       data = DecodeContent<T>(MakeAligned<T>(std::move(content)), num_values));
   TFF_RETURN_IF_ERROR(data);
-  return Create(tensor_proto.dtype(), std::move(shape),
-                std::move(data).value());
+  return Create(tensor_proto.dtype(), std::move(shape), std::move(data).value(),
+                std::move(tensor_proto.name()));
 }
 
 TensorProto Tensor::ToProto() const {
@@ -383,6 +388,7 @@ TensorProto Tensor::ToProto() const {
       dtype_, T,
       content = EncodeContent<T>(data_.get(), shape_.NumElements().value()));
   *(tensor_proto.mutable_content()) = std::move(content);
+  tensor_proto.set_name(name_);
   return tensor_proto;
 }
 

@@ -81,6 +81,14 @@ TEST(TensorTest, Create_StringTensor) {
   EXPECT_THAT(t->AsAggVector<string_view>().size(), Eq(2));
 }
 
+TEST(TensorTest, TensorCreate_WithName_Success) {
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor t,
+      Tensor::Create(/*dtype=*/DT_INT32, /*shape=*/{1},
+                     /*data=*/CreateTestData<int>({1}), /*name=*/"test_name"));
+  EXPECT_EQ(t.name(), "test_name");
+}
+
 TEST(TensorTest, Create_ShapeWithUnknownDimensions) {
   auto t = Tensor::Create(DT_FLOAT, {-1}, CreateTestData<float>({1, 2, 3}));
   EXPECT_THAT(t, StatusIs(INVALID_ARGUMENT));
@@ -250,6 +258,17 @@ TEST(TensorTest, ToProto_String_Success) {
   EXPECT_THAT(t->ToProto(), testing::EqualsProto(expected_proto));
 }
 
+TEST(TensorTest, ToProto_WithName_Success) {
+  std::initializer_list<int32_t> values{1};
+  auto t = Tensor::Create(DT_INT32, {1}, CreateTestData(values), "test_name");
+  TensorProto expected_proto;
+  expected_proto.set_dtype(DT_INT32);
+  expected_proto.mutable_shape()->add_dim_sizes(1);
+  expected_proto.set_content(ToProtoContent(values));
+  expected_proto.set_name("test_name");
+  EXPECT_THAT(t->ToProto(), testing::EqualsProto(expected_proto));
+}
+
 TEST(TensorTest, FromProto_Int32_Success) {
   std::initializer_list<int32_t> values{5, 6, 7, 8, 9, 10};
   TensorProto tensor_proto;
@@ -324,6 +343,18 @@ TEST(TensorTest, FromProto_String_WithoutContent_Success) {
   }
   auto t = Tensor::FromProto(tensor_proto);
   EXPECT_THAT(t, IsOkAndHolds(IsTensor({4}, values)));
+}
+
+TEST(TensorTest, FromProto_WithName_Success) {
+  std::initializer_list<int32_t> values{1};
+  TensorProto tensor_proto;
+  tensor_proto.set_dtype(DT_INT32);
+  tensor_proto.mutable_shape()->add_dim_sizes(1);
+  tensor_proto.set_content(ToProtoContent(values));
+  tensor_proto.set_name("test_name");
+  auto t = Tensor::FromProto(tensor_proto);
+  EXPECT_THAT(t, IsOkAndHolds(IsTensor({1}, values)));
+  EXPECT_EQ(t->name(), "test_name");
 }
 
 TEST(TensorTest, LargeStringValuesSerialization) {
