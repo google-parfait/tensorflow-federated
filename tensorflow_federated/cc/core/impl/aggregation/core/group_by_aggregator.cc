@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/algorithm/container.h"
 #include "absl/strings/match.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
@@ -179,6 +180,34 @@ OutputTensorList GroupByAggregator::TakeOutputs() && {
     outputs.push_back(std::move(internal_outputs[j]));
   }
   return outputs;
+}
+
+Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
+  if (ordinals.dtype() != DT_INT64) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::AddOneContributor: Expected int64 ordinals "
+              "but got "
+           << ordinals.dtype();
+  }
+  if (!max_contributors_to_group_.has_value()) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::AddOneContributor: Expected "
+              "max_contributors_to_group_ to be set but it is not.";
+  }
+  auto ordinals_span = ordinals.AsSpan<int64_t>();
+  if (ordinals_span.empty()) {
+    return TFF_STATUS(OK);
+  }
+  int64_t max_ordinal = *absl::c_max_element(ordinals_span);
+  if (max_ordinal >= contributors_to_groups_.size()) {
+    contributors_to_groups_.resize(max_ordinal + 1);
+  }
+  for (auto& ordinal : ordinals_span) {
+    if (contributors_to_groups_[ordinal] < max_contributors_to_group_) {
+      contributors_to_groups_[ordinal]++;
+    }
+  }
+  return TFF_STATUS(OK);
 }
 
 inline Status GroupByAggregator::ValidateInputTensor(

@@ -80,6 +80,7 @@ class GroupByAggregator : public TensorAggregator {
 
  protected:
   friend class GroupByFactory;
+  friend class GroupByAggregatorPeer;
 
   // Constructs a GroupByAggregator.
   //
@@ -176,6 +177,10 @@ class GroupByAggregator : public TensorAggregator {
   //
   // Once this function is called, CheckValid will return false.
   OutputTensorList TakeOutputs() && override;
+
+  // Increments the number of contributors to each of the groups represented by
+  // an ordinal in the ordinals tensor.
+  Status AddOneContributor(const Tensor& ordinals);
 
   // The virtual function below enables a distinction between creating ordinals
   // within MergeTensorsInternal and within AggregateTensorsInternal.

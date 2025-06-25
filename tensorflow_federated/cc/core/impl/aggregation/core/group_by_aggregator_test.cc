@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+#include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
+
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
@@ -36,6 +39,24 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
+
+class GroupByAggregatorPeer {
+ public:
+  explicit GroupByAggregatorPeer(GroupByAggregator* aggregator)
+      : aggregator_(aggregator) {}
+
+  Status AddOneContributor(Tensor ordinals) {
+    return aggregator_->AddOneContributor(std::move(ordinals));
+  }
+
+  const std::vector<int>& GetContributors() const {
+    return aggregator_->GetContributors();
+  }
+
+ private:
+  GroupByAggregator* aggregator_;
+};
+
 namespace {
 
 using ::testing::Eq;
@@ -82,6 +103,14 @@ Intrinsic CreateDefaultIntrinsic() {
                       {}};
   intrinsic.nested_intrinsics.push_back(
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
+  return intrinsic;
+}
+
+// Creates a default intrinsic and adds the min_contributors_to_group parameter.
+Intrinsic CreateIntrinsicWithMinContributors(int min_contributors) {
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  intrinsic.parameters.push_back(
+      Tensor::Create(DT_INT32, {}, CreateTestData({min_contributors})).value());
   return intrinsic;
 }
 
@@ -1607,6 +1636,88 @@ TEST(GroupByAggregatorTest, FailsAfterBeingConsumed_WhenNoKeys) {
   auto aggregator3 = CreateTensorAggregator(intrinsic).value();
   EXPECT_THAT(aggregator3->MergeWith(std::move(*aggregator1)),  // NOLINT
               StatusIs(FAILED_PRECONDITION));
+}
+
+TEST(GroupByAggregatorTest, AddOneContributor_Success) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(10);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  Tensor ordinals =
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({2, 0, 3})).value();
+
+  EXPECT_THAT(peer.AddOneContributor(std::move(ordinals)), IsOk());
+
+  EXPECT_THAT(peer.GetContributors(),
+              testing::ContainerEq(std::vector<int>{1, 0, 1, 1}));
+}
+
+TEST(GroupByAggregatorTest, AddOneContributor_StopsAtMaxValue) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(2);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  Tensor ordinals_1 =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 1})).value();
+  Tensor ordinals_2 =
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({0})).value();
+
+  EXPECT_THAT(peer.AddOneContributor(std::move(ordinals_1)), IsOk());
+  EXPECT_THAT(peer.AddOneContributor(std::move(ordinals_2)), IsOk());
+  EXPECT_THAT(peer.GetContributors(),
+              testing::ContainerEq(std::vector<int>{2, 1}));
+
+  // Add one more contributor; the count for group 0 should not increase.
+  Tensor ordinals_3 =
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({0})).value();
+  EXPECT_THAT(peer.AddOneContributor(std::move(ordinals_3)), IsOk());
+
+  // The count for group 0 should not increase further.
+  EXPECT_THAT(peer.GetContributors(),
+              testing::ContainerEq(std::vector<int>{2, 1}));
+}
+
+TEST(GroupByAggregatorTest, AddOneContributor_HandlesEmptyTensor) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(5);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  Tensor empty_ordinals =
+      Tensor::Create(DT_INT64, {0}, CreateTestData<int64_t>({})).value();
+  EXPECT_THAT(peer.AddOneContributor(std::move(empty_ordinals)), IsOk());
+  EXPECT_TRUE(peer.GetContributors().empty());
+}
+
+TEST(GroupByAggregatorTest, AddOneContributor_FailsWithInvalidDtype) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(5);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  Tensor ordinals =
+      Tensor::Create(DT_INT32, {2}, CreateTestData({0, 1})).value();
+
+  EXPECT_THAT(peer.AddOneContributor(std::move(ordinals)),
+              StatusIs(INVALID_ARGUMENT, HasSubstr("Expected int64 ordinals")));
+}
+
+TEST(GroupByAggregatorTest, AddOneContributor_FailsWhenMaxContributorsNotSet) {
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  Tensor ordinals =
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({0, 1, 2})).value();
+
+  EXPECT_THAT(
+      peer.AddOneContributor(std::move(ordinals)),
+      StatusIs(
+          INVALID_ARGUMENT,
+          HasSubstr("max_contributors_to_group_ to be set but it is not")));
 }
 
 TEST(GroupByFactoryTest, WrongUri) {
