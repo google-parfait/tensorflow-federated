@@ -49,6 +49,11 @@ class GroupByAggregatorPeer {
     return aggregator_->AddOneContributor(std::move(ordinals));
   }
 
+  Status AddMultipleContributors(Tensor ordinals,
+                                 std::vector<int> num_contributors) {
+    return aggregator_->AddMultipleContributors(ordinals, num_contributors);
+  }
+
   const std::vector<int>& GetContributors() const {
     return aggregator_->GetContributors();
   }
@@ -1718,6 +1723,136 @@ TEST(GroupByAggregatorTest, AddOneContributor_FailsWhenMaxContributorsNotSet) {
       StatusIs(
           INVALID_ARGUMENT,
           HasSubstr("max_contributors_to_group_ to be set but it is not")));
+}
+
+TEST(GroupByAggregatorTest, AddMultipleContributors_Success) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(10);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  Tensor ordinals =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
+  std::vector<int> num_contributors = std::vector<int>{2, 5};
+
+  EXPECT_THAT(
+      peer.AddMultipleContributors(std::move(ordinals), num_contributors),
+      IsOk());
+  EXPECT_THAT(peer.GetContributors(),
+              testing::ContainerEq(std::vector<int>{2, 0, 5}));
+}
+
+TEST(GroupByAggregatorTest, AddMultipleContributors_SuccessWithMultipleCalls) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(20);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  // First, add 3 contributors to group 0 and 5 contributors to group 2.
+  Tensor ordinals1 =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
+  std::vector<int> num_contributors1 = {3, 5};
+  EXPECT_THAT(
+      peer.AddMultipleContributors(std::move(ordinals1), num_contributors1),
+      IsOk());
+
+  // Verify the intermediate state.
+  EXPECT_THAT(peer.GetContributors(),
+              testing::ContainerEq(std::vector<int>{3, 0, 5}));
+
+  // Second, add 2 contributors to group 0, 4 to group 1, and 1 to group 2.
+  Tensor ordinals2 =
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({0, 1, 2})).value();
+  std::vector<int> num_contributors2 = {2, 4, 1};
+  EXPECT_THAT(
+      peer.AddMultipleContributors(std::move(ordinals2), num_contributors2),
+      IsOk());
+
+  // Verify the final accumulated state.
+  // Group 0 should have 3 + 2 = 5 contributors.
+  // Group 1 should have 0 + 4 = 4 contributors.
+  // Group 2 should have 5 + 1 = 6 contributors.
+  EXPECT_THAT(peer.GetContributors(),
+              testing::ContainerEq(std::vector<int>{5, 4, 6}));
+}
+
+TEST(GroupByAggregatorTest, AddMultipleContributors_ClampsToMaxContributors) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(5);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  // First, add 3 contributors to group 0.
+  Tensor ordinals1 =
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({0})).value();
+  std::vector<int> num_contributors1 = {3};
+  EXPECT_THAT(
+      peer.AddMultipleContributors(std::move(ordinals1), num_contributors1),
+      IsOk());
+
+  // Second, add 4 contributors to each of group 0 and 1.
+  Tensor ordinals2 =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 1})).value();
+  std::vector<int> num_contributors2 = {4, 4};
+  EXPECT_THAT(
+      peer.AddMultipleContributors(std::move(ordinals2), num_contributors2),
+      IsOk());
+
+  // Verify that the number of contributors for group 0 is clamped to 5 and
+  // the number of contributors for group 1 is set correctly.
+  EXPECT_THAT(peer.GetContributors(),
+              testing::ContainerEq(std::vector<int>{5, 4}));
+}
+
+TEST(GroupByAggregatorTest,
+     AddMultipleContributors_FailsWhenMaxContributorsNotSet) {
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  Tensor ordinals =
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({0})).value();
+  std::vector<int> num_contributors = {1};
+
+  EXPECT_THAT(
+      peer.AddMultipleContributors(std::move(ordinals), num_contributors),
+      StatusIs(
+          INVALID_ARGUMENT,
+          HasSubstr("max_contributors_to_group_ to be set but it is not")));
+}
+
+TEST(GroupByAggregatorTest, AddMultipleContributors_FailsOnSizeMismatch) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(10);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  // Ordinals tensor has 2 elements, but num_contributors vector has 3.
+  Tensor ordinals =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 1})).value();
+  std::vector<int> num_contributors = {1, 1, 1};
+
+  EXPECT_THAT(
+      peer.AddMultipleContributors(std::move(ordinals), num_contributors),
+      StatusIs(INVALID_ARGUMENT,
+               HasSubstr("same number of ordinals and contributor counts")));
+}
+
+TEST(GroupByAggregatorTest, AddMultipleContributors_HandlesEmptyInputs) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(5);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  Tensor empty_ordinals =
+      Tensor::Create(DT_INT64, {0}, CreateTestData<int64_t>({})).value();
+  std::vector<int> empty_num_contributors = {};
+
+  EXPECT_THAT(peer.AddMultipleContributors(std::move(empty_ordinals),
+                                           empty_num_contributors),
+              IsOk());
+  EXPECT_TRUE(peer.GetContributors().empty());
 }
 
 TEST(GroupByFactoryTest, WrongUri) {

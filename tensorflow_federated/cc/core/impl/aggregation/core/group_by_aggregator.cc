@@ -210,6 +210,51 @@ Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
   return TFF_STATUS(OK);
 }
 
+Status GroupByAggregator::AddMultipleContributors(
+    const Tensor& ordinals, const std::vector<int>& other_contributors) {
+  if (ordinals.dtype() != DT_INT64) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::AddMultipleContributor: Expected int64 "
+              "ordinals but got "
+           << ordinals.dtype();
+  }
+  if (!max_contributors_to_group_.has_value()) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::AddMultipleContributor: Expected "
+              "max_contributors_to_group_ to be set but it is not.";
+  }
+  TensorShape shape = ordinals.shape();
+  if (shape.dim_sizes().size() != 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::AddMultipleContributor: Expected 1D tensor "
+              "of ordinals.";
+  }
+  int64_t num_ordinals = shape.dim_sizes()[0];
+  if (num_ordinals != other_contributors.size()) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::AddMultipleContributor: Expected the same "
+              "number of ordinals and contributor counts but got "
+           << num_ordinals << " ordinals and " << other_contributors.size()
+           << " contributor counts.";
+  }
+  if (num_ordinals == 0) {
+    return TFF_STATUS(OK);
+  }
+  auto ordinals_span = ordinals.AsSpan<int64_t>();
+  int64_t max_ordinal = *absl::c_max_element(ordinals_span);
+  if (max_ordinal >= contributors_to_groups_.size()) {
+    contributors_to_groups_.resize(max_ordinal + 1);
+  }
+  for (int i = 0; i < num_ordinals; ++i) {
+    int64_t ordinal = ordinals_span[i];
+    contributors_to_groups_[ordinal] += other_contributors[i];
+    if (contributors_to_groups_[ordinal] > max_contributors_to_group_) {
+      contributors_to_groups_[ordinal] = *max_contributors_to_group_;
+    }
+  }
+  return TFF_STATUS(OK);
+}
+
 inline Status GroupByAggregator::ValidateInputTensor(
     const InputTensorList& tensors, size_t input_index,
     const TensorSpec& expected_tensor_spec, const TensorShape& key_shape) {

@@ -182,6 +182,13 @@ class GroupByAggregator : public TensorAggregator {
   // an ordinal in the ordinals tensor.
   Status AddOneContributor(const Tensor& ordinals);
 
+  // Increases the number of contributors (as recorded in the
+  // contributors_to_groups_ vector) to each of the groups represented by an
+  // ordinal in the ordinals tensor by the amount given in the corresponding
+  // entry of contributors.
+  Status AddMultipleContributors(const Tensor& ordinals,
+                                 const std::vector<int>& contributors);
+
   // The virtual function below enables a distinction between creating ordinals
   // within MergeTensorsInternal and within AggregateTensorsInternal.
   // Refer to CreateOrdinalsByGroupingKeys for the latter.
