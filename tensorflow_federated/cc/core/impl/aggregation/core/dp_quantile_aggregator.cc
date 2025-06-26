@@ -166,11 +166,7 @@ StatusOr<OutputTensorList> DPQuantileAggregator<T>::ReportWithEpsilonAndDelta(
     // Identify the bucket that the element belongs to.
     int bucket = GetBucket(element);
 
-    if (histogram.contains(bucket)) {
-      histogram[bucket]++;
-    } else {
-      histogram[bucket] = 1;
-    }
+    histogram[bucket]++;
   }
 
   // Calculate the rank of the target quantile in the buffer. It will serve as
@@ -219,8 +215,9 @@ StatusOr<int> DPQuantileAggregator<T>::PrefixSumAboveThreshold(
   int bucket = 0;
   for (; bucket <= max_bucket; ++bucket) {
     // Update prefix_sum by consulting the histogram.
-    if (histogram.contains(bucket)) {
-      prefix_sum += histogram[bucket];
+    absl::flat_hash_map<int, int>::iterator it = histogram.find(bucket);
+    if (it != histogram.end()) {
+      prefix_sum += it->second;
     }
 
     // If the noisy prefix_sum is above the noisy threshold, stop the loop.
