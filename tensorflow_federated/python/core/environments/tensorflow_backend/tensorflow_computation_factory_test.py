@@ -137,7 +137,7 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
       ),
       (
           'abs_unnamed_tuple',
-          lambda x: structure.map_structure(tf.math.abs, x),
+          lambda x: structure._map_structure(tf.math.abs, x),  # pylint: disable=protected-access
           federated_language.StructType([
               federated_language.TensorType(np.int32, [2]),
               federated_language.TensorType(np.float32, [2]),
@@ -147,7 +147,7 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
       ),
       (
           'abs_named_tuple',
-          lambda x: structure.map_structure(tf.math.abs, x),
+          lambda x: structure._map_structure(tf.math.abs, x),  # pylint: disable=protected-access
           federated_language.StructType([
               ('a', federated_language.TensorType(np.int32, [2])),
               ('b', federated_language.TensorType(np.float32, [2])),
@@ -226,12 +226,12 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
        federated_language.TensorType(np.float32), None,
        [1.0, 2.25], 3.25),
       ('add_unnamed_tuple',
-       lambda x, y: structure.map_structure(tf.math.add, x, y),
+       lambda x, y: structure._map_structure(tf.math.add, x, y),  # pylint: disable=protected-access
        federated_language.StructType([np.int32, np.float32]), None,
        [[1, 1.0], [2, 2.25]],
        structure.Struct([(None, 3), (None, 3.25)])),
       ('add_named_tuple',
-       lambda x, y: structure.map_structure(tf.math.add, x, y),
+       lambda x, y: structure._map_structure(tf.math.add, x, y),  # pylint: disable=protected-access
        federated_language.StructType([('a', np.int32), ('b', np.float32)]), None,
        [[1, 1.0], [2, 2.25]],
        structure.Struct([('a', 3), ('b', 3.25)])),
@@ -251,7 +251,7 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
        federated_language.TensorType(np.int32), None,
        [1, 0], np.inf),
       ('different_structure',
-       lambda x, y: structure.map_structure(lambda v: tf.math.divide(v, y), x),
+       lambda x, y: structure._map_structure(lambda v: tf.math.divide(v, y), x),  # pylint: disable=protected-access
        federated_language.StructType([np.float32, np.float32]),
        federated_language.TensorType(np.float32),
        [[1, 2], 2],

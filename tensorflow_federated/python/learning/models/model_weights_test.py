@@ -263,14 +263,14 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
         structure.Struct.unnamed(1.0), structure.Struct.unnamed(2.0, 3.0)
     )
     converted = w.convert_variables_to_arrays()
-    structure.map_structure(
+    structure._map_structure(
         lambda item: self.assertIsInstance(item, np.ndarray),
         converted.trainable,
-    )
-    structure.map_structure(
+    )  # pylint: disable=protected-access
+    structure._map_structure(
         lambda item: self.assertIsInstance(item, np.ndarray),
         converted.non_trainable,
-    )
+    )  # pylint: disable=protected-access
     self.assertAllEqual(
         structure.to_elements(converted.trainable), [(None, np.array([1.0]))]
     )
@@ -291,10 +291,10 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
         structure.Struct.unnamed(0.0),
     )
     converted = w.convert_variables_to_arrays()
-    structure.map_structure(
+    structure._map_structure(
         lambda item: self.assertIsInstance(item, np.ndarray),
         converted.trainable,
-    )
+    )  # pylint: disable=protected-access
     self.assertAllEqual(
         structure.to_elements(converted.trainable),
         [

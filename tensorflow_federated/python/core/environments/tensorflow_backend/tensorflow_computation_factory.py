@@ -413,7 +413,7 @@ def create_binary_operator_with_upcast(
     if isinstance(type_signature[0], federated_language.TensorType):
       result_value = operator(first_arg, second_arg)
     elif isinstance(type_signature[0], federated_language.StructType):
-      result_value = structure.map_structure(
+      result_value = structure._map_structure(  # pylint: disable=protected-access
           operator,
           first_arg,  # pytype: disable=wrong-arg-types
           second_arg,  # pytype: disable=wrong-arg-types
@@ -483,7 +483,10 @@ def create_identity(
   ):
     identity_fn = tf.identity
   elif isinstance(type_signature, federated_language.StructType):
-    identity_fn = functools.partial(structure.map_structure, tf.identity)
+    identity_fn = functools.partial(
+        structure._map_structure,  # pylint: disable=protected-access
+        tf.identity,
+    )
   else:
     raise NotImplementedError(
         f'TensorFlow identity cannot be created for type {type_signature}'

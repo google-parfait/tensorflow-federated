@@ -37,7 +37,7 @@ pack_sequence_as = deprecation.deprecated(
     "`tff.structure.pack_sequence_as` is deprecated, use a Python container"
     " instead."
 )(structure.pack_sequence_as)
-map_structure = deprecation.deprecated(
+_map_structure = deprecation.deprecated(
     "`tff.structure.map_structure` is deprecated, use a Python container"
     " instead."
 )(structure.map_structure)

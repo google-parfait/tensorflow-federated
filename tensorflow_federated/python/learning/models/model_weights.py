@@ -92,12 +92,12 @@ class ModelWeights(NamedTuple):
       )
 
     if isinstance(self.trainable, structure.Struct):
-      new_trainable = structure.map_structure(np.array, self.trainable)
+      new_trainable = structure._map_structure(np.array, self.trainable)  # pylint: disable=protected-access
     else:
       new_trainable = tf.nest.map_structure(np.array, self.trainable)
 
     if isinstance(self.non_trainable, structure.Struct):
-      new_non_trainable = structure.map_structure(np.array, self.non_trainable)
+      new_non_trainable = structure._map_structure(np.array, self.non_trainable)  # pylint: disable=protected-access
     else:
       new_non_trainable = tf.nest.map_structure(np.array, self.non_trainable)
 

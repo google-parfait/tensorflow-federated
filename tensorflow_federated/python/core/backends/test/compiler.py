@@ -37,7 +37,7 @@ def _ensure_structure(
     return int_or_structure
   else:
     # Broadcast int_or_structure to the same structure as the struct type
-    return structure.map_structure(
+    return structure._map_structure(  # pylint: disable=protected-access
         lambda *args: int_or_structure, possible_struct_type
     )
 
@@ -110,13 +110,13 @@ def _get_secure_intrinsic_reductions() -> dict[
         )
 
       assert_ops = structure.flatten(
-          structure.map_structure(
+          structure._map_structure(  # pylint: disable=protected-access
               assert_all_coordinates_less_equal, summand, max_input
           )
       )
       with tf.control_dependencies(assert_ops):
         return (
-            structure.map_structure(tf.add, summation, summand),
+            structure._map_structure(tf.add, summation, summand),  # pylint: disable=protected-access
             original_max_input,
         )
 
@@ -135,7 +135,7 @@ def _get_secure_intrinsic_reductions() -> dict[
     )
 
     def nested_plus(a, b):
-      return structure.map_structure(tf.add, a, b)
+      return structure._map_structure(tf.add, a, b)  # pylint: disable=protected-access
 
     plus_proto, plus_type = (
         tensorflow_computation_factory.create_binary_operator(
@@ -194,7 +194,7 @@ def _get_secure_intrinsic_reductions() -> dict[
               tf.math.pow(tf.constant(2, tf.int64), tf.cast(bits, tf.int64)) - 1
           )
 
-      return structure.map_structure(compute_max_input, bitwidth)
+      return structure._map_structure(compute_max_input, bitwidth)  # pylint: disable=protected-access
 
     proto, type_signature = (
         tensorflow_computation_factory.create_unary_operator(
@@ -246,7 +246,7 @@ def _get_secure_intrinsic_reductions() -> dict[
           unplaced_modulus.type_signature,
           raw_summed_values.type_signature.member,  # pytype: disable=attribute-error
       )
-      return structure.map_structure(tf.math.mod, summed_values, modulus)
+      return structure._map_structure(tf.math.mod, summed_values, modulus)  # pylint: disable=protected-access
 
     proto, type_signature = (
         tensorflow_computation_factory.create_binary_operator(

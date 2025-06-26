@@ -55,7 +55,7 @@ def _cast(
       return tf.cast(element, type_signature.dtype)
 
     if isinstance(comp.type_signature, federated_language.StructType):
-      return structure.map_structure(cast_element, value, type_signature)
+      return structure._map_structure(cast_element, value, type_signature)  # pylint: disable=protected-access
     return cast_element(value, type_signature)
 
   cast_proto, cast_type = tensorflow_computation_factory.create_unary_operator(
@@ -149,7 +149,7 @@ def create_federated_secure_modular_sum(
   )
 
   def structural_modulus(value, mod):
-    return structure.map_structure(tf.math.floormod, value, mod)
+    return structure._map_structure(tf.math.floormod, value, mod)  # pylint: disable=protected-access
 
   structural_modulus_proto, structural_modulus_type = (
       tensorflow_computation_factory.create_binary_operator(
@@ -267,7 +267,7 @@ def federated_secure_modular_sum(value, modulus):
       value_member_type, federated_language.StructType
   ):
     modulus_value = federated_language.to_value(
-        structure.map_structure(lambda _: modulus, value_member_type),
+        structure._map_structure(lambda _: modulus, value_member_type),  # pylint: disable=protected-access
         type_spec=None,
     )
   comp = create_federated_secure_modular_sum(value.comp, modulus_value.comp)

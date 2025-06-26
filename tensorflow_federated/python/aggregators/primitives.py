@@ -354,8 +354,8 @@ def _normalize_secure_quantized_sum_args(
   bound_member = lower_bound.type_signature.member  # pytype: disable=attribute-error
   if isinstance(bound_member, federated_language.StructType):
     if not isinstance(client_value_member, federated_language.StructType) or (
-        structure.map_structure(lambda v: v.dtype, bound_member)
-        != structure.map_structure(lambda v: v.dtype, client_value_member)
+        structure._map_structure(lambda v: v.dtype, bound_member)  # pylint: disable=protected-access
+        != structure._map_structure(lambda v: v.dtype, client_value_member)  # pylint: disable=protected-access
     ):
       raise StructuredBoundsTypeMismatchError(client_value_member, bound_member)
   else:
@@ -665,7 +665,7 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   if isinstance(secagg_value_type, federated_language.TensorType):
     bitwidths = 32
   else:
-    bitwidths = structure.map_structure(lambda t: 32, secagg_value_type)
+    bitwidths = structure._map_structure(lambda t: 32, secagg_value_type)  # pylint: disable=protected-access
 
   value = federated_language.federated_secure_sum_bitwidth(
       value, bitwidth=bitwidths
