@@ -159,11 +159,11 @@ SimpleAggregationProtocol::GetClientState(int64_t client_id) const {
   return all_clients_[client_id].state;
 }
 
-int64_t SimpleAggregationProtocol::AddPendingClients(size_t num_clients) {
+int64_t SimpleAggregationProtocol::AddPendingClients(size_t num_clients,
+                                                     absl::Time now) {
   int64_t start_index = all_clients_.size();
   int64_t end_index = start_index + num_clients;
   all_clients_.resize(end_index, {CLIENT_PENDING, std::nullopt});
-  absl::Time now = clock_->Now();
   for (int64_t client_id = start_index; client_id < end_index; ++client_id) {
     pending_clients_.emplace(client_id, now);
   }
@@ -230,12 +230,13 @@ absl::Status SimpleAggregationProtocol::Start(int64_t num_clients) {
   if (num_clients < 0) {
     return absl::InvalidArgumentError("Number of clients cannot be negative.");
   }
+  absl::Time now = clock_->Now();
   {
     absl::MutexLock lock(&state_mu_);
     TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_CREATED));
     SetProtocolState(PROTOCOL_STARTED);
     TFF_CHECK(all_clients_.empty());
-    AddPendingClients(num_clients);
+    AddPendingClients(num_clients, now);
   }
   ScheduleOutlierDetection();
   return absl::OkStatus();
@@ -243,6 +244,7 @@ absl::Status SimpleAggregationProtocol::Start(int64_t num_clients) {
 
 absl::StatusOr<int64_t> SimpleAggregationProtocol::AddClients(
     int64_t num_clients) {
+  absl::Time now = clock_->Now();
   int64_t start_index;
   {
     absl::MutexLock lock(&state_mu_);
@@ -250,7 +252,7 @@ absl::StatusOr<int64_t> SimpleAggregationProtocol::AddClients(
     if (num_clients <= 0) {
       return absl::InvalidArgumentError("Non-zero number of clients required");
     }
-    start_index = AddPendingClients(num_clients);
+    start_index = AddPendingClients(num_clients, now);
   }
   return start_index;
 }
@@ -268,16 +270,16 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
         "Only inline_bytes or uri type of input is supported");
   }
 
-  absl::Duration client_latency;
-
   // Verify the state.
+  absl::Time client_start_time;
   {
-    absl::MutexLock lock(&state_mu_);
+    absl::ReleasableMutexLock lock(&state_mu_);
     if (protocol_state_ == PROTOCOL_CREATED) {
       return absl::FailedPreconditionError("The protocol hasn't been started");
     }
     TFF_ASSIGN_OR_RETURN(auto client_state, GetClientState(client_id));
     if (client_state != CLIENT_PENDING) {
+      lock.Release();
       // TODO: b/252825568 - Decide whether the logging level should be INFO or
       // WARNING, or perhaps it should depend on the client state (e.g. WARNING
       // for COMPLETED and INFO for other states).
@@ -286,9 +288,10 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
                     << ClientStateDebugString(client_state);
       return absl::OkStatus();
     }
-    client_latency = clock_->Now() - pending_clients_[client_id];
+    client_start_time = pending_clients_[client_id];
     SetClientState(client_id, CLIENT_RECEIVED_INPUT_AND_PENDING);
   }
+  absl::Duration client_latency = clock_->Now() - client_start_time;
 
   absl::Status client_completion_status = absl::OkStatus();
   ClientState client_completion_state = CLIENT_COMPLETED;
@@ -339,12 +342,12 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
   }
 
   // Update the state post aggregation.
+  ServerMessage close_message =
+      MakeCloseClientMessage(client_completion_status);
   {
     absl::MutexLock lock(&state_mu_);
     SetClientState(client_id, client_completion_state);
     latency_aggregator_.Add(client_latency);
-    ServerMessage close_message =
-        MakeCloseClientMessage(client_completion_status);
     all_clients_[client_id].server_message = std::move(close_message);
   }
   return absl::OkStatus();
@@ -367,6 +370,7 @@ SimpleAggregationProtocol::PollServerMessage(int64_t client_id) {
 
 absl::Status SimpleAggregationProtocol::CloseClient(
     int64_t client_id, absl::Status client_status) {
+  bool closed_client = false;
   {
     absl::MutexLock lock(&state_mu_);
     if (protocol_state_ == PROTOCOL_CREATED) {
@@ -375,12 +379,13 @@ absl::Status SimpleAggregationProtocol::CloseClient(
     TFF_ASSIGN_OR_RETURN(auto client_state, GetClientState(client_id));
     // Close the client only if the client is currently pending.
     if (client_state == CLIENT_PENDING) {
-      TFF_LOG(INFO) << "Closing client " << client_id << " with the status "
-                    << client_status;
+      closed_client = true;
       SetClientState(client_id,
                      client_status.ok() ? CLIENT_DISCARDED : CLIENT_FAILED);
     }
   }
+  TFF_LOG_IF(INFO, closed_client)
+      << "Closing client " << client_id << " with the status " << client_status;
 
   return absl::OkStatus();
 }
@@ -442,10 +447,16 @@ void SimpleAggregationProtocol::AwaitAggregationQueueEmpty() {
 
 absl::Status SimpleAggregationProtocol::Complete() {
   StopOutlierDetection();
-  absl::Cord result;
-  absl::MutexLock lock(&state_mu_);
-  TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_STARTED));
+  {
+    absl::MutexLock lock(&state_mu_);
+    TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_STARTED));
+  }
+
   auto report = CreateReport();
+
+  absl::MutexLock lock(&state_mu_);
+  // Make sure the protocol wasn't aborted while creating the report.
+  TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_STARTED));
   if (report.ok()) {
     SetProtocolState(PROTOCOL_COMPLETED);
     result_ = std::move(report.value());
@@ -536,6 +547,7 @@ void SimpleAggregationProtocol::PerformOutlierDetection() {
   std::vector<int64_t> client_ids_to_close;
   // Perform this part of the algorithm under the lock to ensure exclusive
   // access to the all_clients_ and pending_clients_
+  absl::Time now = clock_->Now();
   {
     absl::MutexLock lock(&state_mu_);
     TFF_CHECK(CheckProtocolState(PROTOCOL_STARTED).ok())
@@ -554,24 +566,18 @@ void SimpleAggregationProtocol::PerformOutlierDetection() {
 
     absl::Duration six_sigma_threshold =
         latency_aggregator_.GetMean() + 6 * latency_standard_deviation.value();
-    // TODO: b/291007187 - Remove this logging once the outlier detection
-    // algorithm has been validated.
-    TFF_LOG(INFO) << "SimpleAggregationProtocol: num_latency_samples = "
-                  << latency_aggregator_.GetCount()
-                  << ", mean_latency = " << latency_aggregator_.GetMean()
-                  << ", six_sigma_threshold = " << six_sigma_threshold
-                  << ", num_pending_clients = " << pending_clients_.size();
+    TFF_VLOG(1) << "SimpleAggregationProtocol: num_latency_samples = "
+                << latency_aggregator_.GetCount()
+                << ", mean_latency = " << latency_aggregator_.GetMean()
+                << ", six_sigma_threshold = " << six_sigma_threshold
+                << ", num_pending_clients = " << pending_clients_.size();
 
     absl::Duration outlier_threshold = six_sigma_threshold + grace_period;
-    absl::Time now = clock_->Now();
-
     for (auto [client_id, start_time] : pending_clients_) {
       if (now - start_time > outlier_threshold) {
-        // TODO: b/291007187 - Remove this logging once the outlier detection
-        // algorithm has been validated.
-        TFF_LOG(INFO) << "SimpleAggregationProtocol: client " << client_id
-                      << " is outlier: elapsed time = " << now - start_time
-                      << ", outlier_threshold = " << outlier_threshold;
+        TFF_VLOG(1) << "SimpleAggregationProtocol: client " << client_id
+                    << " is outlier: elapsed time = " << now - start_time
+                    << ", outlier_threshold = " << outlier_threshold;
         client_ids_to_close.push_back(client_id);
       }
     }

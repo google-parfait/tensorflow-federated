@@ -177,7 +177,7 @@ class SimpleAggregationProtocol final : public AggregationProtocol {
 
   // Add clients and initialize their state to CLIENT_PENDING.
   // Returns the first index of newly added clients.
-  int64_t AddPendingClients(size_t num_clients)
+  int64_t AddPendingClients(size_t num_clients, absl::Time now)
       ABSL_EXCLUSIVE_LOCKS_REQUIRED(state_mu_);
 
   // Gets the client state for the given client ID.
