@@ -175,6 +175,17 @@ class Tensor final {
     return absl::Span<const T>(GetData<T>(), num_elements());
   }
 
+  // Adds a name to an unnamed tensor, returns error if tensor already has a
+  // name.
+  Status set_name(std::string name) {
+    if (name_ != "") {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "Tensor already has a name: " << name_;
+    }
+    name_ = std::move(name);
+    return TFF_STATUS(OK);
+  }
+
   // TODO: b/222605809 - Add serialization functions.
 
  private:

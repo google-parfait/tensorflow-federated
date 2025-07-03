@@ -86,21 +86,21 @@ std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
       CreateTestData<EpsilonType>({epsilon});
   parameters.push_back(
       Tensor::Create(internal::TypeTraits<EpsilonType>::kDataType, {},
-                     std::move(epsilon_tensor))
+                     std::move(epsilon_tensor), "epsilon")
           .value());
 
   std::unique_ptr<MutableVectorData<DeltaType>> delta_tensor =
       CreateTestData<DeltaType>({delta});
   parameters.push_back(
       Tensor::Create(internal::TypeTraits<DeltaType>::kDataType, {},
-                     std::move(delta_tensor))
+                     std::move(delta_tensor), "delta")
           .value());
 
   std::unique_ptr<MutableVectorData<L0_BoundType>> l0_bound_tensor =
       CreateTestData<L0_BoundType>({l0_bound});
   parameters.push_back(
       Tensor::Create(internal::TypeTraits<L0_BoundType>::kDataType, {},
-                     std::move(l0_bound_tensor))
+                     std::move(l0_bound_tensor), "l0_bound")
           .value());
 
   // First tensor contains the names of keys
@@ -110,22 +110,27 @@ std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
     key_names->Add(absl::StrCat("key", i));
   }
   parameters.push_back(
-      Tensor::Create(DT_STRING, {num_keys}, std::move(key_names)).value());
+      Tensor::Create(DT_STRING, {num_keys}, std::move(key_names), "key_names")
+          .value());
 
   // The ith tensor contains the domain of values that the ith key can take.
+  int key_type_index = 0;
   for (auto& dtype : key_types) {
     if (dtype == DT_STRING) {
       parameters.push_back(
           Tensor::Create(DT_STRING, {kNumValues},
-                         CreateTestData<string_view>({"a", "b", "c"}))
+                         CreateTestData<string_view>({"a", "b", "c"}),
+                         absl::StrCat("key", key_type_index))
               .value());
     } else {
       NUMERICAL_ONLY_DTYPE_CASES(
           dtype, T,
           parameters.push_back(
-              Tensor::Create(dtype, {kNumValues}, CreateTestData<T>({0, 1, 2}))
+              Tensor::Create(dtype, {kNumValues}, CreateTestData<T>({0, 1, 2}),
+                             absl::StrCat("key", key_type_index))
                   .value()));
     }
+    key_type_index++;
   }
 
   return parameters;
@@ -231,11 +236,12 @@ TEST(DPClosedDomainHistogramTest, CatchWrongNumberOfParameters) {
 TEST(DPClosedDomainHistogramTest, CatchWrongKeyNameType) {
   Intrinsic intrinsic = CreateIntrinsic<int64_t, int64_t>();
   intrinsic.parameters[3] =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1}), "key_names")
+          .value();
   auto wrong_key_name_type_status = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(wrong_key_name_type_status, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(wrong_key_name_type_status.message(),
-              HasSubstr("First domain tensor should have string type"));
+              HasSubstr("Key names should be of type string"));
 }
 
 TEST(DPClosedDomainHistogramTest, CatchWrongKeyTypes) {
@@ -249,8 +255,8 @@ TEST(DPClosedDomainHistogramTest, CatchWrongKeyTypes) {
   auto wrong_key_types_status = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(wrong_key_types_status, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(wrong_key_types_status.message(),
-              HasSubstr(absl::StrCat("tensor for key 0 should have type ",
-                                     DataType_Name(DT_STRING), " but got ",
+              HasSubstr(absl::StrCat("for 0th key key0 should have type ",
+                                     DataType_Name(DT_STRING), " but has type ",
                                      DataType_Name(DT_DOUBLE), " instead")));
 }
 
@@ -261,6 +267,47 @@ std::vector<Tensor> CreateNParameters(int n) {
         Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({10})).value());
   }
   return parameters;
+}
+
+TEST(DPClosedDomainHistogramTest, CatchMisnamedParameters) {
+  std::vector<DataType> key_types = {DT_STRING, DT_STRING};
+  auto parameters = CreateTopLevelParameters(1.0, 0.01, 10, key_types);
+  parameters[5] = Tensor::Create(DT_STRING, {kNumValues},
+                                 CreateTestData<string_view>({"a", "b", "c"}),
+                                 "wrong key name")
+                      .value();
+  Intrinsic invalid_key_name{kDPGroupByUri,
+                             {CreateTensorSpec("key0", DT_STRING),
+                              CreateTensorSpec("key1", DT_STRING)},
+                             {CreateTensorSpec("key0_out", DT_STRING),
+                              CreateTensorSpec("key1_out", DT_STRING)},
+                             {std::move(parameters)},
+                             {}};
+  auto invalid_key_name_status =
+      CreateTensorAggregator(invalid_key_name).status();
+  EXPECT_THAT(invalid_key_name_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(invalid_key_name_status.message(),
+              HasSubstr("does not match the key name provided"));
+}
+
+TEST(DPClosedDomainHistogramTest, CatchUnnamedParameter) {
+  std::vector<DataType> key_types = {DT_STRING, DT_STRING};
+  auto parameters = CreateTopLevelParameters(1.0, 0.01, 10, key_types);
+  parameters[1] = Tensor::Create(internal::TypeTraits<double>::kDataType, {},
+                                 CreateTestData<double>({0.01}), "")
+                      .value();
+  Intrinsic unnamed_delta{kDPGroupByUri,
+                          {CreateTensorSpec("key0", DT_STRING),
+                           CreateTensorSpec("key1", DT_STRING)},
+                          {CreateTensorSpec("key0_out", DT_STRING),
+                           CreateTensorSpec("key1_out", DT_STRING)},
+                          {std::move(parameters)},
+                          {}};
+  auto unnamed_delta_status = CreateTensorAggregator(unnamed_delta).status();
+  EXPECT_THAT(unnamed_delta_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(unnamed_delta_status.message(),
+              HasSubstr("For all DP histograms, epsilon, delta, and L0 "
+                        "bound must be provided"));
 }
 
 TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongNumber) {
