@@ -6,9 +6,13 @@ licenses(["notice"])
 
 cc_library(
     name = "eigen",
-    srcs = [],
-    hdrs = glob(["Eigen/**"]),
-    defines = ["EIGEN_MPL2_ONLY"],
+    hdrs = glob([
+        "Eigen/**",
+        "unsupported/Eigen/**",
+    ]),
+    defines = [
+        "EIGEN_MAX_ALIGN_BYTES=64",
+    ],
     includes = ["."],
     visibility = ["//visibility:public"],
 )

@@ -25,7 +25,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "third_party/eigen3/Eigen/Core"
+#include "Eigen/Core"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
 #include "tensorflow/core/framework/numeric_types.h"

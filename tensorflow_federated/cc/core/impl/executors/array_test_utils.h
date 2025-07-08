@@ -25,7 +25,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "third_party/eigen3/Eigen/Core"
+#include "Eigen/Core"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/data_type.pb.h"
 

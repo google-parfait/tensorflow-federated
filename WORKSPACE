@@ -77,9 +77,9 @@ http_archive(
 http_archive(
     name = "eigen",
     build_file = "//third_party:eigen.BUILD",
-    sha256 = "e46255d46747a1d61aecae42414b39e76d8ff1becd1914e67956d2f7e40d1123",
-    strip_prefix = "eigen-8ad4344ca79f2f248bc5ed70eec72e4b9c4d5e88",
-    url = "https://gitlab.com/libeigen/eigen/-/archive/8ad4344ca79f2f248bc5ed70eec72e4b9c4d5e88/eigen-8ad4344ca79f2f248bc5ed70eec72e4b9c4d5e88.zip",
+    sha256 = "1a432ccbd597ea7b9faa1557b1752328d6adc1a3db8969f6fe793ff704be3bf0",
+    strip_prefix = "eigen-4c38131a16803130b66266a912029504f2cf23cd",
+    url = "https://gitlab.com/libeigen/eigen/-/archive/4c38131a16803130b66266a912029504f2cf23cd/eigen-4c38131a16803130b66266a912029504f2cf23cd.tar.gz",
 )
 
 http_archive(
