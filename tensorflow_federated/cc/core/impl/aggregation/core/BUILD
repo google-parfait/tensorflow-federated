@@ -63,6 +63,7 @@ cc_library(
         "tensor.cc",
         "tensor_data.cc",
         "tensor_shape.cc",
+        "tensor_slice_data.cc",
         "tensor_spec.cc",
     ],
     hdrs = [
@@ -74,6 +75,7 @@ cc_library(
         "tensor.h",
         "tensor_data.h",
         "tensor_shape.h",
+        "tensor_slice_data.h",
         "tensor_spec.h",
         "vector_string_data.h",
     ],
@@ -556,6 +558,19 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "tensor_slice_data_test",
+    srcs = ["tensor_slice_data_test.cc"],
+    deps = [
+        ":tensor",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/status",
     ],
 )
 
