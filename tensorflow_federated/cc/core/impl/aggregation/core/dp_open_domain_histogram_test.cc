@@ -82,21 +82,21 @@ std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
       CreateTestData<EpsilonType>({epsilon});
   parameters.push_back(
       Tensor::Create(internal::TypeTraits<EpsilonType>::kDataType, {},
-                     std::move(epsilon_tensor))
+                     std::move(epsilon_tensor), "epsilon")
           .value());
 
   std::unique_ptr<MutableVectorData<DeltaType>> delta_tensor =
       CreateTestData<DeltaType>({delta});
   parameters.push_back(
       Tensor::Create(internal::TypeTraits<DeltaType>::kDataType, {},
-                     std::move(delta_tensor))
+                     std::move(delta_tensor), "delta")
           .value());
 
   std::unique_ptr<MutableVectorData<L0_BoundType>> l0_bound_tensor =
       CreateTestData<L0_BoundType>({l0_bound});
   parameters.push_back(
       Tensor::Create(internal::TypeTraits<L0_BoundType>::kDataType, {},
-                     std::move(l0_bound_tensor))
+                     std::move(l0_bound_tensor), "l0_bound")
           .value());
   return parameters;
 }
@@ -113,7 +113,8 @@ std::vector<Tensor> CreateFewTopLevelParameters() {
 
   auto epsilon_tensor = CreateTestData({1.0});
   parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, std::move(epsilon_tensor)).value());
+      Tensor::Create(DT_DOUBLE, {}, std::move(epsilon_tensor), "epsilon")
+          .value());
 
   return parameters;
 }

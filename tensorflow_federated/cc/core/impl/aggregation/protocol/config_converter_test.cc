@@ -14,6 +14,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/config_converter.h"
 
+#include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <string>
@@ -515,6 +516,443 @@ TEST_F(ConfigConverterTest, ConvertFedSqlDp_GroupByAlreadyPresent) {
   expected.nested_intrinsics.push_back(std::move(expected_sum_1));
   expected.nested_intrinsics.push_back(std::move(expected_sum_2));
   ASSERT_THAT(parsed_intrinsics.value()[0], EqIntrinsic(std::move(expected)));
+}
+
+TEST_F(ConfigConverterTest, ConvertFedSqlDp_GroupByAddsNames) {
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "fedsql_dp_group_by"
+      intrinsic_args {
+        input_tensor {
+          name: "foo"
+          dtype: DT_INT32
+          shape { dim_sizes: -1 }
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 1.0
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 0.01
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_INT64
+          shape { dim_sizes: 1 }
+          int64_val: 5
+        }
+      }
+      output_tensors {
+        name: "foo_out"
+        dtype: DT_INT32
+        shape { dim_sizes: -1 }
+      }
+    }
+  )pb");
+  StatusOr<std::vector<Intrinsic>> parsed_intrinsics = ParseFromConfig(config);
+  ASSERT_THAT(parsed_intrinsics, IsOk());
+  ASSERT_THAT(parsed_intrinsics.value(), SizeIs(1));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor epsilon,
+      Tensor::Create(DT_DOUBLE, {1}, CreateTestData<double>({1.0}), "epsilon"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor delta,
+      Tensor::Create(DT_DOUBLE, {1}, CreateTestData<double>({0.01}), "delta"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor max_groups_contributed,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({5}),
+                     "max_groups_contributed"));
+  std::vector<Tensor> parameters;
+  parameters.push_back(std::move(epsilon));
+  parameters.push_back(std::move(delta));
+  parameters.push_back(std::move(max_groups_contributed));
+  Intrinsic expected{"fedsql_dp_group_by",
+                     {TensorSpec{"foo", DT_INT32, {-1}}},
+                     {TensorSpec{"foo_out", DT_INT32, {-1}}},
+                     {std::move(parameters)},
+                     {}};
+  ASSERT_THAT(parsed_intrinsics.value()[0], EqIntrinsic(std::move(expected)));
+}
+
+TEST_F(ConfigConverterTest, ConvertFedSqlDp_GroupByAddsKeyNames) {
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "fedsql_dp_group_by"
+      intrinsic_args {
+        input_tensor {
+          name: "foo"
+          dtype: DT_INT32
+          shape { dim_sizes: -1 }
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 1.0
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 0.01
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_INT64
+          shape { dim_sizes: 1 }
+          int64_val: 5
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_STRING
+          shape { dim_sizes: 2 }
+          string_val: "key1"
+          string_val: "key2"
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_STRING
+          shape { dim_sizes: 3 }
+          string_val: "key1a"
+          string_val: "key1b"
+          string_val: "key1c"
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_INT64
+          shape { dim_sizes: 2 }
+          int64_val: 2
+          int64_val: 3
+        }
+      }
+      output_tensors {
+        name: "foo_out"
+        dtype: DT_INT32
+        shape { dim_sizes: -1 }
+      }
+    }
+  )pb");
+  StatusOr<std::vector<Intrinsic>> parsed_intrinsics = ParseFromConfig(config);
+  ASSERT_THAT(parsed_intrinsics, IsOk());
+  ASSERT_THAT(parsed_intrinsics.value(), SizeIs(1));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor epsilon,
+      Tensor::Create(DT_DOUBLE, {1}, CreateTestData<double>({1.0}), "epsilon"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor delta,
+      Tensor::Create(DT_DOUBLE, {1}, CreateTestData<double>({0.01}), "delta"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor max_groups_contributed,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({5}),
+                     "max_groups_contributed"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key_names,
+      Tensor::Create(DT_STRING, {2},
+                     CreateTestData<string_view>({"key1", "key2"}),
+                     "key_names"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key_1,
+      Tensor::Create(DT_STRING, {3},
+                     CreateTestData<string_view>({"key1a", "key1b", "key1c"}),
+                     "key_1"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key_2,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({2, 3}), "key_2"));
+  std::vector<Tensor> parameters;
+  parameters.push_back(std::move(epsilon));
+  parameters.push_back(std::move(delta));
+  parameters.push_back(std::move(max_groups_contributed));
+  parameters.push_back(std::move(key_names));
+  parameters.push_back(std::move(key_1));
+  parameters.push_back(std::move(key_2));
+  Intrinsic expected{"fedsql_dp_group_by",
+                     {TensorSpec{"foo", DT_INT32, {-1}}},
+                     {TensorSpec{"foo_out", DT_INT32, {-1}}},
+                     {std::move(parameters)},
+                     {}};
+  ASSERT_THAT(parsed_intrinsics.value()[0], EqIntrinsic(std::move(expected)));
+}
+
+TEST_F(ConfigConverterTest,
+       ConvertFedSqlDp_GroupByLeavesAlreadyNamedParametersAlone) {
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "fedsql_dp_group_by"
+      intrinsic_args {
+        input_tensor {
+          name: "foo"
+          dtype: DT_INT32
+          shape { dim_sizes: -1 }
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 0.01
+          name: "delta"
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 1.0
+          name: "epsilon"
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_INT64
+          shape { dim_sizes: 1 }
+          int64_val: 10
+          name: "weird_new_parameter"
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_INT64
+          shape { dim_sizes: 1 }
+          int64_val: 5
+          name: "max_groups_contributed"
+        }
+      }
+      output_tensors {
+        name: "foo_out"
+        dtype: DT_INT32
+        shape { dim_sizes: -1 }
+      }
+    }
+  )pb");
+  StatusOr<std::vector<Intrinsic>> parsed_intrinsics = ParseFromConfig(config);
+  ASSERT_THAT(parsed_intrinsics, IsOk());
+  ASSERT_THAT(parsed_intrinsics.value(), SizeIs(1));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor delta,
+      Tensor::Create(DT_DOUBLE, {1}, CreateTestData<double>({0.01}), "delta"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor epsilon,
+      Tensor::Create(DT_DOUBLE, {1}, CreateTestData<double>({1.0}), "epsilon"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor weird_new_parameter,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({10}),
+                     "weird_new_parameter"));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor max_groups_contributed,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({5}),
+                     "max_groups_contributed"));
+  std::vector<Tensor> parameters;
+  parameters.push_back(std::move(delta));
+  parameters.push_back(std::move(epsilon));
+  parameters.push_back(std::move(weird_new_parameter));
+  parameters.push_back(std::move(max_groups_contributed));
+  Intrinsic expected{"fedsql_dp_group_by",
+                     {TensorSpec{"foo", DT_INT32, {-1}}},
+                     {TensorSpec{"foo_out", DT_INT32, {-1}}},
+                     {std::move(parameters)},
+                     {}};
+  ASSERT_THAT(parsed_intrinsics.value()[0], EqIntrinsic(std::move(expected)));
+}
+
+TEST_F(ConfigConverterTest,
+       ConvertFedSqlDp_GroupByRejectsPartiallyNamedParameters) {
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "fedsql_dp_group_by"
+      intrinsic_args {
+        input_tensor {
+          name: "foo"
+          dtype: DT_INT32
+          shape { dim_sizes: -1 }
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 1.0
+          name: "epsilon"
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 0.01
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_INT64
+          shape { dim_sizes: 1 }
+          int64_val: 5
+        }
+      }
+      output_tensors {
+        name: "foo_out"
+        dtype: DT_INT32
+        shape { dim_sizes: -1 }
+      }
+    }
+  )pb");
+  Status s = ParseFromConfig(config).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      s.message(),
+      ::testing::HasSubstr(
+          "Either all parameters must be named or none of them may be."));
+}
+
+TEST_F(ConfigConverterTest, ConvertFedSqlDp_GroupByRejectsTooFewKeyNames) {
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "fedsql_dp_group_by"
+      intrinsic_args {
+        input_tensor {
+          name: "foo"
+          dtype: DT_INT32
+          shape { dim_sizes: -1 }
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 1.0
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 0.01
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_INT64
+          shape { dim_sizes: 1 }
+          int64_val: 5
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_STRING
+          shape { dim_sizes: 1 }
+          string_val: "key1"
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_STRING
+          shape { dim_sizes: 3 }
+          string_val: "key1a"
+          string_val: "key1b"
+          string_val: "key1c"
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_INT64
+          shape { dim_sizes: 2 }
+          int64_val: 2
+          int64_val: 3
+        }
+      }
+      output_tensors {
+        name: "foo_out"
+        dtype: DT_INT32
+        shape { dim_sizes: -1 }
+      }
+    }
+  )pb");
+  Status s = ParseFromConfig(config).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      s.message(),
+      ::testing::HasSubstr("Number of key names must be equal to the number of "
+                           "remaining parameters."));
+}
+
+TEST_F(ConfigConverterTest, ConvertFedSqlDp_GroupByRejectsTooManyKeyNames) {
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "fedsql_dp_group_by"
+      intrinsic_args {
+        input_tensor {
+          name: "foo"
+          dtype: DT_INT32
+          shape { dim_sizes: -1 }
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 1.0
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_DOUBLE
+          shape { dim_sizes: 1 }
+          double_val: 0.01
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_INT64
+          shape { dim_sizes: 1 }
+          int64_val: 5
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_STRING
+          shape { dim_sizes: 2 }
+          string_val: "key1"
+          string_val: "key2"
+        }
+      }
+      intrinsic_args {
+        parameter {
+          dtype: DT_STRING
+          shape { dim_sizes: 3 }
+          string_val: "key1a"
+          string_val: "key1b"
+          string_val: "key1c"
+        }
+      }
+      output_tensors {
+        name: "foo_out"
+        dtype: DT_INT32
+        shape { dim_sizes: -1 }
+      }
+    }
+  )pb");
+  Status s = ParseFromConfig(config).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      s.message(),
+      ::testing::HasSubstr("Number of key names must be equal to the number of "
+                           "remaining parameters."));
 }
 
 TEST_F(ConfigConverterTest, ConvertFedSqlDp_GroupByNotPresent) {
