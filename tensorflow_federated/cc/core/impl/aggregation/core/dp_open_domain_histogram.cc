@@ -40,8 +40,8 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_slice_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/vector_string_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -104,46 +104,60 @@ StatusOr<Tensor> NoiseAndThreshold(
                         std::move(noisy_values));
 }
 
-// Given a column tensor, copy elements whose indices belong to a set of
-// survivors to a new tensor.
-template <typename OutputType>
-StatusOr<Tensor> CopyOnlySurvivors(
-    const Tensor& column_tensor,
+// Look for the first index greater than the start index that is not a survivor.
+int FindNonSurvivorWithLargerIndex(
+    int start_index, size_t num_elements,
     const absl::flat_hash_set<size_t>& survivor_indices) {
-  auto column_span = column_tensor.AsSpan<OutputType>();
-  auto dest = std::make_unique<MutableVectorData<OutputType>>();
-  dest->reserve(survivor_indices.size());
-  for (size_t i = 0; i < column_span.size(); i++) {
-    if (!survivor_indices.contains(i)) {
-      continue;
-    }
-    dest->push_back(column_span[i]);
+  int index = start_index + 1;
+  while (index < num_elements && survivor_indices.contains(index)) {
+    index++;
   }
-  return Tensor::Create(internal::TypeTraits<OutputType>::kDataType,
-                        {static_cast<int64_t>(survivor_indices.size())},
-                        std::move(dest));
+  return index;
 }
-// Specialization for string_view. First make a vector of surviving std::strings
-// from the string_views and survivor_indices, then create a Tensor by moving
-// the contents to an intermediate VectorStringData object.
-template <>
-StatusOr<Tensor> CopyOnlySurvivors<string_view>(
-    const Tensor& column_tensor,
+
+// Look for the first index smaller than the start index that is a survivor.
+int FindSurvivorWithSmallerIndex(
+    int start_index, const absl::flat_hash_set<size_t>& survivor_indices) {
+  int index = start_index - 1;
+  while (index >= 0 && !survivor_indices.contains(index)) {
+    index--;
+  }
+  return index;
+}
+
+// Given a column tensor and a set of survivor indices, create a new Tensor with
+// only the survivors.
+template <typename OutputType>
+StatusOr<Tensor> ShrinkToSurvivors(
+    Tensor&& column_tensor, size_t num_elements,
     const absl::flat_hash_set<size_t>& survivor_indices) {
-  auto column_span = column_tensor.AsSpan<string_view>();
-  std::vector<std::string> strings_for_output;
-  strings_for_output.reserve(survivor_indices.size());
-  for (size_t i = 0; i < column_span.size(); i++) {
-    if (!survivor_indices.contains(i)) {
-      continue;
-    }
-    strings_for_output.push_back(std::string(column_span[i]));
+  // Using a TensorSliceData wrapping, reorder the tensor values such that the
+  // survivors form a prefix. This is done by swapping non-survivors on the left
+  // with survivors on the right.
+  auto tensor_slice_data =
+      std::make_unique<TensorSliceData>(std::move(column_tensor));
+  TFF_ASSIGN_OR_RETURN(absl::Span<OutputType> column_span,
+                       tensor_slice_data->AsSpan<OutputType>());
+  int left_index = FindNonSurvivorWithLargerIndex(
+      /*start_index=*/-1, num_elements, survivor_indices);
+  int right_index = FindSurvivorWithSmallerIndex(/*start_index=*/num_elements,
+                                                 survivor_indices);
+  while (left_index < right_index) {
+    std::swap(column_span[left_index], column_span[right_index]);
+    left_index = FindNonSurvivorWithLargerIndex(left_index, num_elements,
+                                                survivor_indices);
+    right_index = FindSurvivorWithSmallerIndex(right_index, survivor_indices);
   }
 
-  return Tensor::Create(
-      DT_STRING, {static_cast<int64_t>(survivor_indices.size())},
-      std::make_unique<VectorStringData>(std::move(strings_for_output)));
+  // Now that the survivors are in the front, reduce the byte size of the tensor
+  // to only include the survivors.
+  TFF_RETURN_IF_ERROR(tensor_slice_data->ReduceByteSize(
+      survivor_indices.size() * sizeof(OutputType)));
+  return Tensor::Create(internal::TypeTraits<OutputType>::kDataType,
+                        {static_cast<int64_t>(survivor_indices.size())},
+                        std::move(tensor_slice_data));
 }
+
 }  // namespace internal
 
 DPOpenDomainHistogram::DPOpenDomainHistogram(
@@ -262,14 +276,16 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
   final_histogram.reserve(noiseless_aggregate.size());
   for (size_t j = 0; j < noiseless_aggregate.size(); j++) {
     // First batch of Tensors are for keys, second are for the values
-    const Tensor& column_tensor = (j < num_output_keys)
-                                      ? noiseless_aggregate[j]
-                                      : noisy_values[j - num_output_keys];
+    Tensor& column_tensor = (j < num_output_keys)
+                                ? noiseless_aggregate[j]
+                                : noisy_values[j - num_output_keys];
+    size_t num_elements = column_tensor.shape().NumElements().value();
     StatusOr<Tensor> tensor;
     DTYPE_CASES(
         column_tensor.dtype(), OutputType,
-        TFF_ASSIGN_OR_RETURN(tensor, internal::CopyOnlySurvivors<OutputType>(
-                                         column_tensor, survivor_indices)));
+        TFF_ASSIGN_OR_RETURN(tensor, internal::ShrinkToSurvivors<OutputType>(
+                                         std::move(column_tensor), num_elements,
+                                         survivor_indices)));
     final_histogram.push_back(std::move(tensor.value()));
   }
   return final_histogram;
