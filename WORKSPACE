@@ -24,6 +24,13 @@ http_archive(
 )
 
 http_archive(
+    name = "rules_cc",
+    sha256 = "0d3b4f984c4c2e1acfd1378e0148d35caf2ef1d9eb95b688f8e19ce0c41bdf5b",
+    strip_prefix = "rules_cc-0.1.4",
+    url = "https://github.com/bazelbuild/rules_cc/releases/download/0.1.4/rules_cc-0.1.4.tar.gz",
+)
+
+http_archive(
     name = "com_github_grpc_grpc",
     sha256 = "76900ab068da86378395a8e125b5cc43dfae671e09ff6462ddfef18676e2165a",
     strip_prefix = "grpc-1.50.0",
