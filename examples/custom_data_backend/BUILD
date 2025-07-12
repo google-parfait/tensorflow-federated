@@ -1,3 +1,5 @@
+load("//third_party/bazel_rules/rules_cc/cc:cc_library.bzl", "cc_library")
+
 licenses(["notice"])
 
 cc_library(
