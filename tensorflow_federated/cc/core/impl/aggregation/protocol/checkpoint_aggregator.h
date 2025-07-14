@@ -43,7 +43,7 @@ namespace aggregation {
 
 class CheckpointAggregator {
  public:
-  ~CheckpointAggregator();
+  ~CheckpointAggregator() = default;
 
   // Not copyable or moveable.
   CheckpointAggregator(const CheckpointAggregator&) = delete;

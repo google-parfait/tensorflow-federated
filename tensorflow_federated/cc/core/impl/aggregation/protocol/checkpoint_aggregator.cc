@@ -155,13 +155,6 @@ CheckpointAggregator::CheckpointAggregator(
       input_counts_(CountInputs(intrinsics_)),
       aggregators_(std::move(aggregators)) {}
 
-CheckpointAggregator::~CheckpointAggregator() {
-  aggregation_finished_ = true;
-  // Enter the lock to ensure that the destructor waits for any ongoing
-  // operations that require *this* instance.
-  absl::MutexLock lock(&aggregation_mu_);
-}
-
 absl::Status CheckpointAggregator::Accumulate(
     CheckpointParser& checkpoint_parser) {
   TensorMap tensor_map;
