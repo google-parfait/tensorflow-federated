@@ -54,14 +54,16 @@ GroupByAggregator::GroupByAggregator(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    int num_inputs, std::optional<int> min_contributors_to_group)
+    int num_inputs, std::optional<int> min_contributors_to_group,
+    std::vector<int> contributors_to_groups)
     : num_inputs_(num_inputs),
       num_keys_per_input_(input_key_specs.size()),
       key_combiner_(std::move(key_combiner)),
       intrinsics_(*intrinsics),
       output_key_specs_(*output_key_specs),
       aggregators_(std::move(aggregators)),
-      min_contributors_to_group_(min_contributors_to_group) {
+      min_contributors_to_group_(min_contributors_to_group),
+      contributors_to_groups_(std::move(contributors_to_groups)) {
   // Most invariants on construction of the GroupByAggregator such as which
   // nested intrinsics are supported should be enforced in the factory class.
   // This constructor just performs a few backup checks.
@@ -82,6 +84,12 @@ GroupByAggregator::GroupByAggregator(
     TFF_CHECK(*min_contributors_to_group > 0)
         << "GroupByAggregator: min_contributors_to_group must be positive.";
     max_contributors_to_group_ = min_contributors_to_group;
+  }
+
+  if (!contributors_to_groups_.empty() &&
+      !min_contributors_to_group_.has_value()) {
+    TFF_CHECK(false) << "GroupByAggregator: contributors_to_groups can only be "
+                        "set if min_contributors_to_group is set.";
   }
 }
 
@@ -141,10 +149,11 @@ Status GroupByAggregator::MergeWith(TensorAggregator&& other) {
   OutputTensorList other_output_tensors =
       std::move(*other_ptr).TakeOutputsInternal();
   InputTensorList tensors(other_output_tensors.size());
+  std::vector<int> other_contributors = other_ptr->GetContributors();
   for (int i = 0; i < other_output_tensors.size(); ++i)
     tensors[i] = &other_output_tensors[i];
-  TFF_RETURN_IF_ERROR(
-      MergeTensorsInternal(std::move(tensors), other_num_inputs));
+  TFF_RETURN_IF_ERROR(MergeTensorsInternal(std::move(tensors), other_num_inputs,
+                                           std::move(other_contributors)));
   num_inputs_ += other_num_inputs;
   return absl::OkStatus();
 }
@@ -299,6 +308,11 @@ StatusOr<std::string> GroupByAggregator::Serialize() && {
   for (auto const& nested_aggregator : aggregators_) {
     nested_aggregators_proto->Add(nested_aggregator->ToProto());
   }
+  // Store contributors to groups.
+  state.mutable_counter_of_contributors()->Reserve(
+      contributors_to_groups_.size());
+  state.mutable_counter_of_contributors()->Add(contributors_to_groups_.begin(),
+                                               contributors_to_groups_.end());
   return state.SerializeAsString();
 }
 
@@ -333,6 +347,10 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
 
   TFF_ASSIGN_OR_RETURN(Tensor ordinals, CreateOrdinalsByGroupingKeys(tensors));
 
+  if (min_contributors_to_group_.has_value()) {
+    TFF_RETURN_IF_ERROR(AddOneContributor(ordinals));
+  }
+
   input_index = num_keys_per_input_;
   for (int i = 0; i < intrinsics_.size(); ++i) {
     InputTensorList intrinsic_inputs(intrinsics_[i].inputs.size() + 1);
@@ -354,8 +372,9 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
   return absl::OkStatus();
 }
 
-Status GroupByAggregator::MergeTensorsInternal(InputTensorList tensors,
-                                               int num_merged_inputs) {
+Status GroupByAggregator::MergeTensorsInternal(
+    InputTensorList tensors, int num_merged_inputs,
+    std::vector<int> other_contributors) {
   if (tensors.size() != num_tensors_per_input_) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "GroupByAggregator::MergeTensorsInternal should operate on "
@@ -386,6 +405,10 @@ Status GroupByAggregator::MergeTensorsInternal(InputTensorList tensors,
 
   TFF_ASSIGN_OR_RETURN(Tensor ordinals,
                        CreateOrdinalsByGroupingKeysForMerge(tensors));
+
+  if (min_contributors_to_group_.has_value()) {
+    TFF_RETURN_IF_ERROR(AddMultipleContributors(ordinals, other_contributors));
+  }
 
   input_index = num_keys_per_input_;
   for (int i = 0; i < intrinsics_.size(); ++i) {
@@ -462,6 +485,12 @@ Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
   }
   if (this_has_no_combiner) {
     return absl::OkStatus();
+  }
+  if (min_contributors_to_group_ != other.min_contributors_to_group_) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::MergeWith: "
+              "Expected other GroupByAggregator to have the same "
+              "min_contributors_to_group";
   }
   // The constructor validates that input key types match output key types, so
   // checking that the output key types of both aggregators match is sufficient
@@ -635,12 +664,24 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
                        CreateAggregators(intrinsic, aggregator_state));
 
   // Create the key combiner, and only populate the key combiner with state if
-  // there are keys.
+  // there are keys. Also populate the contributor counts if there is an
+  // aggregator state and min_contributors_to_group is set.
   auto key_combiner = GroupByAggregator::CreateKeyCombiner(intrinsic.inputs,
                                                            &intrinsic.outputs);
-  if (aggregator_state != nullptr && key_combiner != nullptr) {
-    TFF_RETURN_IF_ERROR(
-        PopulateKeyCombinerFromState(*key_combiner, *aggregator_state));
+  std::vector<int> contributors_to_groups;
+  if (aggregator_state != nullptr) {
+    if (key_combiner != nullptr) {
+      TFF_RETURN_IF_ERROR(
+          PopulateKeyCombinerFromState(*key_combiner, *aggregator_state));
+    }
+    if (min_contributors_to_group.has_value()) {
+      int num_groups = aggregator_state->counter_of_contributors().size();
+      contributors_to_groups.reserve(num_groups);
+      for (int i = 0; i < num_groups; ++i) {
+        contributors_to_groups.push_back(
+            aggregator_state->counter_of_contributors(i));
+      }
+    }
   }
 
   int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
@@ -651,7 +692,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
   return std::unique_ptr<GroupByAggregator>(new GroupByAggregator(
       intrinsic.inputs, &intrinsic.outputs, &intrinsic.nested_intrinsics,
       std::move(key_combiner), std::move(nested_aggregators), num_inputs,
-      min_contributors_to_group));
+      min_contributors_to_group, std::move(contributors_to_groups)));
 }
 
 // TODO: b/266497896 - Revise the registration mechanism below.
