@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -160,7 +161,7 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
 
     ResizeDataVector(ordinals_vector);
     MergeVectorByOrdinals(ordinals_vector, value_vector);
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
   int GetNumInputs() const override { return num_inputs_; }
@@ -171,7 +172,7 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
              << "OneDimGroupingAggregator::CheckValid: Output has already been "
                 "consumed.";
     }
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
   OneDimGroupingAggregatorState ToProto() override {
@@ -206,7 +207,7 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
 
     ResizeDataVector(ordinals_vector);
     AggregateVectorByOrdinals(ordinals_vector, value_vector);
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
   OutputTensorList TakeOutputs() && override {
@@ -282,7 +283,7 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
              << "OneDimGroupingAggregator::AggregateTensors: Only dense "
                 "tensors are supported.";
     }
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
   void ResizeDataVector(const AggVector<int64_t>& ordinals_vector) {

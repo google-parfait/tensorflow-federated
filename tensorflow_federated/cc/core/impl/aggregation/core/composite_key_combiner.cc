@@ -202,8 +202,7 @@ CompositeKeyCombiner::CreateOrdinals(
     absl::flat_hash_map<CompositeKey, int64_t>& composite_key_map,
     int64_t& current_ordinal) {
   // Initialize the ordinals vector
-  auto ordinals = std::make_unique<MutableVectorData<int64_t>>();
-  ordinals->reserve(num_elements);
+  auto ordinals = std::make_unique<MutableVectorData<int64_t>>(num_elements);
 
   // To set up the creation of composite keys, make a vector of pointers to the
   // data held in the tensors.
@@ -213,7 +212,7 @@ CompositeKeyCombiner::CreateOrdinals(
     iterators.push_back(t->data().data());
   }
 
-  while (ordinals->size() != num_elements) {
+  for (int64_t& ordinal : *ordinals) {
     CompositeKey composite_key = NewCompositeKey();
     // Construct a composite key by iterating through tensors and copying the
     // representation of data elements.
@@ -227,13 +226,10 @@ CompositeKeyCombiner::CreateOrdinals(
     }
 
     // Get the ordinal associated with the composite key
-    // (or make new mapping if none exists)
-    auto ordinal = SaveCompositeKeyAndGetOrdinal(
-        std::move(composite_key), composite_key_map, current_ordinal);
-
-    // Insert the ordinal representing the composite key into the
-    // correct position in the output tensor.
-    ordinals->push_back(ordinal);
+    // (or make new mapping if none exists) and insert the ordinal representing
+    // the composite key into the correct position in the output tensor.
+    ordinal = SaveCompositeKeyAndGetOrdinal(std::move(composite_key),
+                                            composite_key_map, current_ordinal);
   }
   return ordinals;
 }

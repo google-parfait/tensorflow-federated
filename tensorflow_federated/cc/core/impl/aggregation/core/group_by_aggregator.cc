@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "absl/algorithm/container.h"
+#include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
@@ -145,7 +146,7 @@ Status GroupByAggregator::MergeWith(TensorAggregator&& other) {
   TFF_RETURN_IF_ERROR(
       MergeTensorsInternal(std::move(tensors), other_num_inputs));
   num_inputs_ += other_num_inputs;
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 bool GroupByAggregator::CanReport() const { return CheckValid().ok(); }
@@ -153,7 +154,7 @@ bool GroupByAggregator::CanReport() const { return CheckValid().ok(); }
 Status GroupByAggregator::AggregateTensors(InputTensorList tensors) {
   TFF_RETURN_IF_ERROR(AggregateTensorsInternal(std::move(tensors)));
   num_inputs_++;
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 Status GroupByAggregator::CheckValid() const {
@@ -162,7 +163,7 @@ Status GroupByAggregator::CheckValid() const {
            << "GroupByAggregator::CheckValid: Output has already been "
               "consumed.";
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 OutputTensorList GroupByAggregator::TakeOutputs() && {
@@ -196,7 +197,7 @@ Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
   }
   auto ordinals_span = ordinals.AsSpan<int64_t>();
   if (ordinals_span.empty()) {
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
   int64_t max_ordinal = *absl::c_max_element(ordinals_span);
   if (max_ordinal >= contributors_to_groups_.size()) {
@@ -207,7 +208,7 @@ Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
       contributors_to_groups_[ordinal]++;
     }
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 Status GroupByAggregator::AddMultipleContributors(
@@ -238,7 +239,7 @@ Status GroupByAggregator::AddMultipleContributors(
            << " contributor counts.";
   }
   if (num_ordinals == 0) {
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
   auto ordinals_span = ordinals.AsSpan<int64_t>();
   int64_t max_ordinal = *absl::c_max_element(ordinals_span);
@@ -252,7 +253,7 @@ Status GroupByAggregator::AddMultipleContributors(
       contributors_to_groups_[ordinal] = *max_contributors_to_group_;
     }
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 inline Status GroupByAggregator::ValidateInputTensor(
@@ -276,7 +277,7 @@ inline Status GroupByAggregator::ValidateInputTensor(
     return TFF_STATUS(INVALID_ARGUMENT)
            << "GroupByAggregator: Only dense tensors are supported.";
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 StatusOr<std::string> GroupByAggregator::Serialize() && {
@@ -350,7 +351,7 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
         << "GroupByAggregator::AggregateTensorsInternal "
         << aggregation_status.message();
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 Status GroupByAggregator::MergeTensorsInternal(InputTensorList tensors,
@@ -404,7 +405,7 @@ Status GroupByAggregator::MergeTensorsInternal(InputTensorList tensors,
         << "GroupByAggregator::MergeTensorsInternal "
         << aggregation_status.message();
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 OutputTensorList GroupByAggregator::TakeOutputsInternal() {
@@ -460,7 +461,7 @@ Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
               "output specs";
   }
   if (this_has_no_combiner) {
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
   // The constructor validates that input key types match output key types, so
   // checking that the output key types of both aggregators match is sufficient
@@ -491,7 +492,7 @@ Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
                 "outputs.";
     }
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 // Check that the configuration is valid for SQL grouping aggregators.
@@ -526,7 +527,7 @@ Status GroupByFactory::CheckIntrinsic(const Intrinsic& intrinsic,
                 "unknown size. TensorShape should be {-1}";
     }
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 // Create a vector of OneDimBaseGroupingAggregators based upon nested intrinsics
@@ -572,7 +573,7 @@ Status GroupByFactory::PopulateKeyCombinerFromState(
     CompositeKeyCombiner& key_combiner,
     const GroupByAggregatorState& aggregator_state) {
   if (aggregator_state.num_inputs() == 0) {
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
   std::vector<Tensor> key_tensors(aggregator_state.keys().size());
   InputTensorList keys(aggregator_state.keys().size());

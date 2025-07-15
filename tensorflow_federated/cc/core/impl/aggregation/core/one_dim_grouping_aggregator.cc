@@ -18,6 +18,7 @@
 
 #include <cstddef>
 
+#include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -69,7 +70,7 @@ Status OneDimBaseGroupingAggregator::ValidateTensorInputs(
            << "OneDimGroupingAggregator::AggregateTensors: Only dense "
               "tensors are supported.";
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 }  // namespace aggregation

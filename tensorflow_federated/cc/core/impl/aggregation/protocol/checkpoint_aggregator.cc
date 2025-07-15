@@ -49,15 +49,20 @@ namespace aggregation {
 // Forward declaration of implementation utilities.
 namespace {
 using TensorMap = absl::flat_hash_map<std::string, Tensor>;
+struct OutputTensorInfo {
+  std::string name;
+  Tensor tensor;
+};
+
 absl::Status AddInputsToMap(const Intrinsic& intrinsic,
                             CheckpointParser& parser, TensorMap& tensor_map);
 std::vector<size_t> CountInputs(const std::vector<Intrinsic>& intrinsics);
 absl::StatusOr<size_t> PopulateInputs(const Intrinsic& intrinsic,
                                       const TensorMap& tensor_map, size_t index,
                                       InputTensorList& inputs);
-absl::StatusOr<int> AddOutputsToCheckpoint(
-    const Intrinsic& intrinsic, const OutputTensorList& outputs,
-    int output_index, CheckpointBuilder& checkpoint_builder);
+absl::StatusOr<int> CollectOutputTensorInfos(
+    const Intrinsic& intrinsic, OutputTensorList& outputs, int output_index,
+    std::vector<OutputTensorInfo>& collected_tensors);
 absl::Status CheckCompatible(const std::vector<Intrinsic>& intrinsics,
                              const std::vector<Intrinsic>& other);
 }  // namespace
@@ -170,15 +175,17 @@ absl::Status CheckpointAggregator::Accumulate(
     inputs.push_back(std::move(input_list));
   }
 
-  absl::MutexLock lock(&aggregation_mu_);
-  if (aggregation_finished_) {
-    return absl::AbortedError("Aggregation has already been finished.");
-  }
-  for (int i = 0; i < intrinsics_.size(); ++i) {
-    TFF_CHECK(aggregators_[i] != nullptr)
-        << "Report() has already been called.";
-    auto& input_list = inputs[i];
-    TFF_RETURN_IF_ERROR(aggregators_[i]->Accumulate(std::move(input_list)));
+  {
+    absl::MutexLock lock(&aggregation_mu_);
+    if (aggregation_finished_) {
+      return absl::AbortedError("Aggregation has already been finished.");
+    }
+    for (int i = 0; i < intrinsics_.size(); ++i) {
+      TFF_CHECK(aggregators_[i] != nullptr)
+          << "Report() has already been called.";
+      auto& input_list = inputs[i];
+      TFF_RETURN_IF_ERROR(aggregators_[i]->Accumulate(std::move(input_list)));
+    }
   }
   return absl::OkStatus();
 }
@@ -235,36 +242,44 @@ bool CheckpointAggregator::CanReport() const {
 
 absl::Status CheckpointAggregator::Report(
     CheckpointBuilder& checkpoint_builder) {
-  absl::MutexLock lock(&aggregation_mu_);
-  if (aggregation_finished_) {
-    return absl::AbortedError("Aggregation has already been finished.");
-  }
+  std::vector<OutputTensorInfo> collected_tensors;
+  {
+    absl::MutexLock lock(&aggregation_mu_);
+    if (aggregation_finished_) {
+      return absl::AbortedError("Aggregation has already been finished.");
+    }
 
-  aggregation_finished_ = true;
+    aggregation_finished_ = true;
 
-  for (const auto& aggregator : aggregators_) {
-    TFF_CHECK(aggregator != nullptr)
-        << "CreateReport() has already been called.";
-    if (!aggregator->CanReport()) {
-      return absl::FailedPreconditionError(
-          "The aggregation can't be completed due to failed preconditions.");
+    for (const auto& aggregator : aggregators_) {
+      TFF_CHECK(aggregator != nullptr)
+          << "CreateReport() has already been called.";
+      if (!aggregator->CanReport()) {
+        return absl::FailedPreconditionError(
+            "The aggregation can't be completed due to failed preconditions.");
+      }
+    }
+
+    for (int i = 0; i < intrinsics_.size(); ++i) {
+      auto tensor_aggregator = std::move(aggregators_[i]);
+      TFF_ASSIGN_OR_RETURN(OutputTensorList output_tensors,
+                           std::move(*tensor_aggregator).Report());
+      const Intrinsic& intrinsic = intrinsics_[i];
+      TFF_ASSIGN_OR_RETURN(int num_outputs,
+                           CollectOutputTensorInfos(intrinsic, output_tensors,
+                                                    0, collected_tensors));
+      TFF_CHECK(num_outputs == output_tensors.size())
+          << "Number of tensors produced by TensorAggregator "
+          << output_tensors.size()
+          << " does not match number of output tensors with nonempty names "
+          << num_outputs << ".";
     }
   }
-
-  for (int i = 0; i < intrinsics_.size(); ++i) {
-    auto tensor_aggregator = std::move(aggregators_[i]);
-    TFF_ASSIGN_OR_RETURN(OutputTensorList output_tensors,
-                         std::move(*tensor_aggregator).Report());
-    const Intrinsic& intrinsic = intrinsics_[i];
-    TFF_ASSIGN_OR_RETURN(int num_outputs,
-                         AddOutputsToCheckpoint(intrinsic, output_tensors, 0,
-                                                checkpoint_builder));
-    TFF_CHECK(num_outputs == output_tensors.size())
-        << "Number of tensors produced by TensorAggregator "
-        << output_tensors.size()
-        << " does not match number of output tensors with nonempty names "
-        << num_outputs << ".";
+  // Add all collected tensors to the checkpoint builder outside the mutex.
+  for (auto& [name, tensor] : collected_tensors) {
+    TFF_RETURN_IF_ERROR(checkpoint_builder.Add(name, std::move(tensor)));
   }
+
   return absl::OkStatus();
 }
 
@@ -373,9 +388,9 @@ absl::StatusOr<size_t> PopulateInputs(const Intrinsic& intrinsic,
   return num_inputs;
 }
 
-absl::StatusOr<int> AddOutputsToCheckpoint(
-    const Intrinsic& intrinsic, const OutputTensorList& outputs,
-    int output_index, CheckpointBuilder& checkpoint_builder) {
+absl::StatusOr<int> CollectOutputTensorInfos(
+    const Intrinsic& intrinsic, OutputTensorList& outputs, int output_index,
+    std::vector<OutputTensorInfo>& collected_tensors) {
   int num_outputs = 0;
   for (const TensorSpec& output_spec : intrinsic.outputs) {
     if (output_spec.name().empty()) {
@@ -383,7 +398,7 @@ absl::StatusOr<int> AddOutputsToCheckpoint(
       continue;
     }
     num_outputs++;
-    const Tensor& tensor = outputs[output_index++];
+    Tensor tensor = std::move(outputs[output_index++]);
     if (tensor.dtype() != output_spec.dtype()) {
       return absl::InternalError(absl::StrCat(
           "Output tensor spec mismatch for output tensor ", output_spec.name(),
@@ -397,13 +412,13 @@ absl::StatusOr<int> AddOutputsToCheckpoint(
           tensor.shape().ToProto().DebugString(), " and output spec has shape ",
           output_spec.shape().ToProto().DebugString()));
     }
-    TFF_RETURN_IF_ERROR(checkpoint_builder.Add(output_spec.name(), tensor));
+    collected_tensors.push_back({output_spec.name(), std::move(tensor)});
   }
   for (const Intrinsic& nested_intrinsic : intrinsic.nested_intrinsics) {
     TFF_ASSIGN_OR_RETURN(
         int nested_num_outputs,
-        AddOutputsToCheckpoint(nested_intrinsic, outputs, output_index,
-                               checkpoint_builder));
+        CollectOutputTensorInfos(nested_intrinsic, outputs, output_index,
+                                 collected_tensors));
     output_index += nested_num_outputs;
     num_outputs += nested_num_outputs;
   }

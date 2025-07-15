@@ -111,6 +111,7 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/synchronization",
     ],
 )
@@ -197,6 +198,7 @@ cc_library(
         ":intrinsic",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/status",
     ],
 )
 
@@ -231,6 +233,7 @@ cc_library(
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
     alwayslink = 1,
