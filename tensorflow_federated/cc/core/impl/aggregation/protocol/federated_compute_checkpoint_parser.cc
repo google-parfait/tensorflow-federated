@@ -119,6 +119,12 @@ FederatedComputeCheckpointParserFactory::Create(
     }
     stream.PopLimit(limit);
 
+    // Clients may not set the name on the tensor itself, but we have the name
+    // from the checkpoint.
+    if (tensor_proto.name().empty()) {
+      tensor_proto.set_name(name);
+    }
+
     TFF_ASSIGN_OR_RETURN(Tensor aggregation_tensor,
                          Tensor::FromProto(std::move(tensor_proto)));
     tensors.emplace(name, std::move(aggregation_tensor));

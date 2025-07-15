@@ -66,6 +66,9 @@ TEST(FederatedComputeCheckpointParserTest, GetTensors) {
   EXPECT_THAT(*tensor1, IsTensor<int64_t>({3}, {1, 2, 3}));
   EXPECT_THAT(*tensor2, IsTensor<absl::string_view>({2}, {"value1", "value2"}));
   EXPECT_THAT(*tensor3, IsTensor<int32_t>({2}, {1, 2}));
+  EXPECT_EQ((*tensor1).name(), "t1");
+  EXPECT_EQ((*tensor2).name(), "t2");
+  EXPECT_EQ((*tensor3).name(), "t3");
 }
 
 }  // namespace
