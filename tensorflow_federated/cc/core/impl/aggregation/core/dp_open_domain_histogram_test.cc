@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
+
 #include <cmath>
 #include <cstdint>
 #include <initializer_list>
@@ -24,6 +26,7 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
@@ -36,6 +39,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_slice_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
@@ -1023,6 +1027,21 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
   ASSERT_EQ(result.value().size(), 2);
   EXPECT_THAT(result.value()[0], IsTensor<int64_t>({1}, {8001}));
   EXPECT_THAT(result.value()[1], IsTensor<int64_t>({1}, {9001}));
+}
+
+TEST_P(DPOpenDomainHistogramTest, ShrinkToSurvivors) {
+  Tensor t =
+      Tensor::Create(DT_INT32, {10},
+                     CreateTestData<int32_t>({0, 1, 2, 3, 4, 5, 6, 7, 8, 9}))
+          .value();
+  TensorSliceData column = TensorSliceData::Create(std::move(t), 40).value();
+  EXPECT_THAT(
+      DPOpenDomainHistogram::ShrinkToSurvivors<int32_t>(column, {0, 2, 4, 6}),
+      IsOk());
+  auto column_span_status = column.AsSpan<int32_t>();
+  TFF_ASSERT_OK(column_span_status);
+  EXPECT_THAT(column_span_status.value(),
+              testing::UnorderedElementsAre(0, 2, 4, 6));
 }
 
 INSTANTIATE_TEST_SUITE_P(

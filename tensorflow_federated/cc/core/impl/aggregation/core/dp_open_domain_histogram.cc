@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
-#include "absl/types/span.h"
+#include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -40,8 +40,8 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_slice_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/vector_string_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -50,11 +50,11 @@ using ::differential_privacy::sign;
 
 namespace internal {
 
-// Noise is added to each value stored in a column tensor. If the noised value
+// Noise is added to each value of a column. If the noised value
 // falls below a given threshold, then the index of that value is removed from a
 // set of survivors.
 // NoiseAndThreshold will be called by DPOpenDomainHistogram::Report on multiple
-// tensors. Upon completion, Report will copy a value at index i in an output
+// columns. Upon completion, Report will copy a value at index i in an output
 // tensor of NoiseAndThreshold if i is in the set of survivors.
 // NB: It is possible to write NoiseAndThreshold to cull values that lie below
 // a threshold, but the i-th item of column 1 might not correspond to the i-th
@@ -65,11 +65,11 @@ namespace internal {
 // proof for the case where inputs are positive; our use of sign() generalizes
 // the analysis to the non-positive case.
 template <typename OutputType>
-StatusOr<Tensor> NoiseAndThreshold(
-    double epsilon, double delta, int64_t l0_bound, OutputType linfinity_bound,
-    double l1_bound, double l2_bound, const Tensor& column_tensor,
-    absl::flat_hash_set<size_t>& survivor_indices,
-    std::vector<bool>& laplace_was_used) {
+Status NoiseAndThreshold(double epsilon, double delta, int64_t l0_bound,
+                         OutputType linfinity_bound, double l1_bound,
+                         double l2_bound, TensorSliceData& column,
+                         absl::flat_hash_set<size_t>& survivor_indices,
+                         std::vector<bool>& laplace_was_used) {
   TFF_ASSIGN_OR_RETURN(
       auto bundle,
       CreateDPHistogramBundle(epsilon, delta, l0_bound, linfinity_bound,
@@ -81,69 +81,25 @@ StatusOr<Tensor> NoiseAndThreshold(
       << "NoiseAndThreshold: threshold was not set.";
   OutputType threshold = static_cast<OutputType>(bundle.threshold.value());
 
-  auto column_span = column_tensor.AsSpan<OutputType>();
-  auto noisy_values = std::make_unique<MutableVectorData<OutputType>>();
-  noisy_values->reserve(column_span.size());
+  TFF_ASSIGN_OR_RETURN(auto column_span, column.AsSpan<OutputType>());
 
   // For every value in the column,
-  for (size_t i = 0; i < column_span.size(); i++) {
-    OutputType value = column_span[i];
+  for (size_t i = 0; i < column_span.size(); ++i) {
+    OutputType original_value = column_span[i];
 
     // Add noise and store noisy value
-    OutputType noisy_value = (bundle.mechanism)->AddNoise(value);
-    noisy_values->push_back(noisy_value);
+    OutputType noisy_value = (bundle.mechanism)->AddNoise(original_value);
+    column_span[i] = noisy_value;
 
     // If threshold is not crossed, index does not belong in survivor_indices
-    OutputType sign_of_value = sign<OutputType>(value);
+    OutputType sign_of_value = sign<OutputType>(original_value);
     if (sign_of_value * noisy_value < threshold) {
       survivor_indices.erase(i);
     }
   }
-  return Tensor::Create(internal::TypeTraits<OutputType>::kDataType,
-                        {static_cast<int64_t>(column_span.size())},
-                        std::move(noisy_values));
+  return absl::OkStatus();
 }
 
-// Given a column tensor, copy elements whose indices belong to a set of
-// survivors to a new tensor.
-template <typename OutputType>
-StatusOr<Tensor> CopyOnlySurvivors(
-    const Tensor& column_tensor,
-    const absl::flat_hash_set<size_t>& survivor_indices) {
-  auto column_span = column_tensor.AsSpan<OutputType>();
-  auto dest = std::make_unique<MutableVectorData<OutputType>>();
-  dest->reserve(survivor_indices.size());
-  for (size_t i = 0; i < column_span.size(); i++) {
-    if (!survivor_indices.contains(i)) {
-      continue;
-    }
-    dest->push_back(column_span[i]);
-  }
-  return Tensor::Create(internal::TypeTraits<OutputType>::kDataType,
-                        {static_cast<int64_t>(survivor_indices.size())},
-                        std::move(dest));
-}
-// Specialization for string_view. First make a vector of surviving std::strings
-// from the string_views and survivor_indices, then create a Tensor by moving
-// the contents to an intermediate VectorStringData object.
-template <>
-StatusOr<Tensor> CopyOnlySurvivors<string_view>(
-    const Tensor& column_tensor,
-    const absl::flat_hash_set<size_t>& survivor_indices) {
-  auto column_span = column_tensor.AsSpan<string_view>();
-  std::vector<std::string> strings_for_output;
-  strings_for_output.reserve(survivor_indices.size());
-  for (size_t i = 0; i < column_span.size(); i++) {
-    if (!survivor_indices.contains(i)) {
-      continue;
-    }
-    strings_for_output.push_back(std::string(column_span[i]));
-  }
-
-  return Tensor::Create(
-      DT_STRING, {static_cast<int64_t>(survivor_indices.size())},
-      std::make_unique<VectorStringData>(std::move(strings_for_output)));
-}
 }  // namespace internal
 
 DPOpenDomainHistogram::DPOpenDomainHistogram(
@@ -213,6 +169,19 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
     return noiseless_aggregate;
   }
 
+  // Log the histogram's Tensor types and migrate to TensorSliceData.
+  int num_columns = noiseless_aggregate.size();
+  std::vector<std::unique_ptr<TensorSliceData>> column_data(num_columns);
+  std::vector<DataType> column_dtypes(num_columns);
+  size_t num_rows;
+  for (size_t i = 0; i < num_columns; ++i) {
+    column_dtypes[i] = noiseless_aggregate[i].dtype();
+    TFF_ASSIGN_OR_RETURN(num_rows,
+                         noiseless_aggregate[i].shape().NumElements());
+    column_data[i] =
+        std::make_unique<TensorSliceData>(std::move(noiseless_aggregate[i]));
+  }
+
   size_t num_aggregations = intrinsics().size();
 
   // TakeOutputs only includes a key if its name is in output_key_spec
@@ -224,13 +193,12 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
 
   // Create a set of indices, one for each composite key in the histogram.
   absl::flat_hash_set<size_t> survivor_indices;
-  for (size_t i = 0; i < noiseless_aggregate[0].num_elements(); i++) {
+  for (size_t i = 0; i < num_rows; i++) {
     survivor_indices.insert(i);
   }
 
-  // For each aggregation, run NoiseAndThreshold to populate a list of Tensors
-  OutputTensorList noisy_values;
-  noisy_values.reserve(num_aggregations);
+  // For each aggregation, run NoiseAndThreshold to noise the aggregates and
+  // identify which of them that should survive.
   for (int j = 0; j < num_aggregations; ++j) {
     const auto& inner_parameters = intrinsics()[j].parameters;
     const Tensor& linfinity_tensor = inner_parameters[kLinfinityIndex];
@@ -239,14 +207,11 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
     size_t column = num_output_keys + j;
     StatusOr<Tensor> tensor;
     NUMERICAL_ONLY_DTYPE_CASES(
-        noiseless_aggregate[column].dtype(), OutputType,
-        TFF_ASSIGN_OR_RETURN(
-            tensor, internal::NoiseAndThreshold<OutputType>(
-                        epsilon_per_agg_, delta_per_agg_, l0_bound_,
-                        linfinity_tensor.CastToScalar<OutputType>(), l1_bound,
-                        l2_bound, noiseless_aggregate[column], survivor_indices,
-                        laplace_was_used_)));
-    noisy_values.push_back(std::move(tensor.value()));
+        column_dtypes[column], OutputType,
+        TFF_RETURN_IF_ERROR(internal::NoiseAndThreshold<OutputType>(
+            epsilon_per_agg_, delta_per_agg_, l0_bound_,
+            linfinity_tensor.CastToScalar<OutputType>(), l1_bound, l2_bound,
+            *column_data[column], survivor_indices, laplace_was_used_)));
   }
 
   // When there are no grouping keys, aggregation will be scalar. Hence, the
@@ -259,18 +224,17 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
   // Produce a new list of tensors containing only the survivors of
   // thresholding
   OutputTensorList final_histogram;
-  final_histogram.reserve(noiseless_aggregate.size());
-  for (size_t j = 0; j < noiseless_aggregate.size(); j++) {
-    // First batch of Tensors are for keys, second are for the values
-    const Tensor& column_tensor = (j < num_output_keys)
-                                      ? noiseless_aggregate[j]
-                                      : noisy_values[j - num_output_keys];
-    StatusOr<Tensor> tensor;
-    DTYPE_CASES(
-        column_tensor.dtype(), OutputType,
-        TFF_ASSIGN_OR_RETURN(tensor, internal::CopyOnlySurvivors<OutputType>(
-                                         column_tensor, survivor_indices)));
-    final_histogram.push_back(std::move(tensor.value()));
+  final_histogram.reserve(num_columns);
+  for (int i = 0; i < column_data.size(); ++i) {
+    DTYPE_CASES(column_dtypes[i], OutputType,
+                TFF_RETURN_IF_ERROR(ShrinkToSurvivors<OutputType>(
+                    *(column_data[i]), survivor_indices)));
+    TFF_ASSIGN_OR_RETURN(
+        Tensor tensor,
+        Tensor::Create(column_dtypes[i],
+                       {static_cast<int64_t>(survivor_indices.size())},
+                       std::move(column_data[i])));
+    final_histogram.push_back(std::move(tensor));
   }
   return final_histogram;
 }

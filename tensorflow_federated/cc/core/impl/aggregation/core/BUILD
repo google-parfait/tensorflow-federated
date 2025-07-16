@@ -298,6 +298,7 @@ cc_library(
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -653,6 +654,7 @@ cc_test(
         ":dp_fedsql_constants",
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
+        ":dp_open_domain_histogram",
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
@@ -661,6 +663,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
