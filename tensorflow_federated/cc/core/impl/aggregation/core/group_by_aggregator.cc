@@ -333,6 +333,10 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
 
   TFF_ASSIGN_OR_RETURN(Tensor ordinals, CreateOrdinalsByGroupingKeys(tensors));
 
+  if (min_contributors_to_group_.has_value()) {
+    TFF_RETURN_IF_ERROR(AddOneContributor(ordinals));
+  }
+
   input_index = num_keys_per_input_;
   for (int i = 0; i < intrinsics_.size(); ++i) {
     InputTensorList intrinsic_inputs(intrinsics_[i].inputs.size() + 1);

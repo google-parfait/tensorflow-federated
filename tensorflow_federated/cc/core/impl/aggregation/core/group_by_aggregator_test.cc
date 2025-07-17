@@ -27,6 +27,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
@@ -1853,6 +1854,71 @@ TEST(GroupByAggregatorTest, AddMultipleContributors_HandlesEmptyInputs) {
                                            empty_num_contributors),
               IsOk());
   EXPECT_TRUE(peer.GetContributors().empty());
+}
+
+TEST(GroupByAggregatorTest,
+     AccumulateDoesNotUpdateContributorsWithoutMinContributors) {
+  // Create an intrinsic for a sum aggregator without the
+  // min_contributors_to_group parameter.
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+
+  Tensor key =
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"foo"}))
+          .value();
+  Tensor value =
+      Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})).value();
+
+  EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
+
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  // AddOneContributor should not be called if min_contributors_to_group_ is not
+  // set, thus contributors should remain empty.
+  EXPECT_THAT(peer.GetContributors(), testing::IsEmpty());
+}
+
+TEST(GroupByAggregatorTest, AccumulateUpdatesContributorsWithMinContributors) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(2);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+
+  Tensor key =
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"foo"}))
+          .value();
+  Tensor value =
+      Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})).value();
+
+  EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
+
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  // The call should succeed because max_contributors_to_group is derived from
+  // min_contributors_to_group, which allows the call to AddOneContributor to
+  // succeed.
+  EXPECT_THAT(peer.GetContributors(),
+              testing::ContainerEq(std::vector<int>{1}));
+}
+
+TEST(GroupByAggregatorTest, AccumulateDoesNotUpdateContributorsWithEmptyInput) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(10);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+
+  // Use empty input tensors.
+  Tensor key =
+      Tensor::Create(DT_STRING, {0}, CreateTestData<string_view>({})).value();
+  Tensor value =
+      Tensor::Create(DT_INT32, {0}, CreateTestData<int32_t>({})).value();
+
+  EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
+
+  GroupByAggregatorPeer peer(
+      dynamic_cast<GroupByAggregator*>(aggregator.get()));
+
+  // AddOneContributor was given no inputs os the contributors should still be
+  // empty.
+  EXPECT_THAT(peer.GetContributors(), testing::IsEmpty());
 }
 
 TEST(GroupByFactoryTest, WrongUri) {
