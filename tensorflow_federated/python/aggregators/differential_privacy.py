@@ -15,13 +15,19 @@
 
 import collections
 from collections.abc import Collection
+import functools
+import time
 import typing
 from typing import Any, NamedTuple, Optional
 import warnings
 
 from absl import logging
 import dp_accounting
-import federated_language
+import federated_language as flang
+import jax
+from jax.experimental import jax2tf
+import jax.numpy as jnp
+from jax_privacy.stream_privatization import gradient_privatizer as gradient_privatizer_lib
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
@@ -514,59 +520,49 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         lambda event: event.to_named_tuple(), dp_event_type
     )
 
-    @federated_language.federated_computation()
+    @flang.federated_computation()
     def init_fn():
-      query_initial_state = federated_language.federated_eval(
-          query_initial_state_fn, federated_language.SERVER
+      query_initial_state = flang.federated_eval(
+          query_initial_state_fn, flang.SERVER
       )
-      query_sample_state = federated_language.federated_eval(
-          query_sample_state_fn, federated_language.SERVER
+      query_sample_state = flang.federated_eval(
+          query_sample_state_fn, flang.SERVER
       )
-      _, _, dp_event = federated_language.federated_map(
+      _, _, dp_event = flang.federated_map(
           get_noised_result, (query_sample_state, query_initial_state)
       )
-      dp_event = federated_language.federated_map(convert_dp_event, dp_event)
-      is_init_state = federated_language.federated_value(
-          True, federated_language.SERVER
-      )
+      dp_event = flang.federated_map(convert_dp_event, dp_event)
+      is_init_state = flang.federated_value(True, flang.SERVER)
       init_state = DPAggregatorState(
           query_initial_state,
           record_agg_process.initialize(),
           dp_event,
           is_init_state,
       )
-      return federated_language.federated_zip(init_state)
+      return flang.federated_zip(init_state)
 
-    @federated_language.federated_computation(
+    @flang.federated_computation(
         init_fn.type_signature.result,
-        federated_language.FederatedType(
-            value_type, federated_language.CLIENTS
-        ),
+        flang.FederatedType(value_type, flang.CLIENTS),
     )
     def next_fn(state, value):
       query_state, agg_state, _, _ = state
 
-      params = federated_language.federated_broadcast(
-          federated_language.federated_map(derive_sample_params, query_state)
+      params = flang.federated_broadcast(
+          flang.federated_map(derive_sample_params, query_state)
       )
-      record = federated_language.federated_map(
-          get_query_record, (params, value)
-      )
+      record = flang.federated_map(get_query_record, (params, value))
 
       record_agg_output = record_agg_process.next(agg_state, record)
 
-      result, new_query_state, dp_event = federated_language.federated_map(
+      result, new_query_state, dp_event = flang.federated_map(
           get_noised_result, (record_agg_output.result, query_state)
       )
-      dp_event = federated_language.federated_map(convert_dp_event, dp_event)
+      dp_event = flang.federated_map(convert_dp_event, dp_event)
 
-      is_init_state = federated_language.federated_value(
-          False, federated_language.SERVER
-      )
+      is_init_state = flang.federated_value(False, flang.SERVER)
 
-      query_metrics = federated_language.federated_map(
-          derive_metrics, new_query_state
-      )
+      query_metrics = flang.federated_map(derive_metrics, new_query_state)
 
       new_state = DPAggregatorState(
           new_query_state,
@@ -578,9 +574,205 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
           dp_query_metrics=query_metrics, dp=record_agg_output.measurements
       )
       return measured_process.MeasuredProcessOutput(
-          federated_language.federated_zip(new_state),
+          flang.federated_zip(new_state),
           result,
-          federated_language.federated_zip(measurements),
+          flang.federated_zip(measurements),
+      )
+
+    return aggregation_process.AggregationProcess(init_fn, next_fn)
+
+
+def _shapes_dtypes_from_typespec(typespec: flang.Type):
+  """Converts a spec to a tree of shapes and dtypes."""
+  return type_conversions.structure_from_tensor_type_tree(
+      lambda x: jax.ShapeDtypeStruct(shape=x.shape, dtype=x.dtype),
+      typespec,
+  )
+
+
+_jax2tf_convert_cpu_native = functools.partial(
+    jax2tf.convert,
+    native_serialization=True,
+    native_serialization_platforms=['cpu'],
+)
+
+
+class DPMFAggregatorFactory(factory.UnweightedAggregationFactory):
+  """Aggregation factory for Differentially Private mean across clients.
+
+  This factory expecs a GradientPrivatizer from the `jax_privacy` to be created,
+  supporting methods such as those from [Scaling up the Banded Matrix
+  Factorization Mechanism for Differentially Private
+  ML](https://arxiv.org/abs/2405.15913).
+  """
+
+  def __init__(
+      self,
+      *,
+      gradient_privatizer: gradient_privatizer_lib.GradientPrivatizer,
+      clients_per_round: int,
+      l2_clip_norm: float = 1.0,
+      initial_rng_key: int | None = None,
+  ):
+    """Initializes `DPMFAggregatorFactory`."""
+    if clients_per_round <= 0.0:
+      raise ValueError('clients_per_round must be a positive float.')
+    if l2_clip_norm <= 0.0:
+      raise ValueError('l2_clip_norm must be a positive float.')
+    if initial_rng_key is None:
+      # Generate a noise seed based on the current time in milliseconds.
+      self._initial_rng_key = int(time.time() * 1_000)
+    else:
+      self._initial_rng_key = initial_rng_key
+
+    self._grad_privatizer = gradient_privatizer
+    self._l2_clip_norm = l2_clip_norm
+    self._clients_per_round = clients_per_round
+
+  def create(
+      self, value_type: flang.TensorType | flang.StructType
+  ) -> aggregation_process.AggregationProcess:
+    """Creates a `tff.templates.AggregationProcess` for DP MF mean."""
+
+    @flang.federated_computation()
+    def init_fn():
+
+      @tensorflow_computation.tf_computation
+      def init_privatizer():
+
+        def jax_init_privatizer():
+          return (
+              jax.random.key_data(jax.random.key(self._initial_rng_key)),
+              self._grad_privatizer.init(
+                  _shapes_dtypes_from_typespec(value_type)
+              ),
+          )
+
+        return _jax2tf_convert_cpu_native(jax_init_privatizer)()
+
+      return flang.federated_eval(init_privatizer, flang.SERVER)
+
+    @flang.federated_computation(
+        init_fn.type_signature.result,
+        flang.FederatedType(value_type, flang.CLIENTS),
+    )
+    def next_fn(state, value):
+
+      @tensorflow_computation.tf_computation
+      def build_zero():
+
+        def jax_zero():
+          accumulator_zero = type_conversions.structure_from_tensor_type_tree(
+              lambda arr: jnp.zeros(shape=arr.shape, dtype=arr.dtype),
+              value_type,
+          )
+          metrics_zero = {'num_clipped_updates': jnp.zeros([], dtype=jnp.int32)}
+          return (accumulator_zero, metrics_zero)
+
+        return _jax2tf_convert_cpu_native(jax_zero)()
+
+      @tensorflow_computation.tf_computation(
+          build_zero.type_signature.result, value_type
+      )
+      def clipped_sum(state, client_updates):
+        """Clips the updates by the global l2 norm and adds them to the sum."""
+
+        def jax_clipped_sum(state, client_updates):
+
+          def _clip_by_global_l2_norm(global_l2_norm, updates):
+            clip_rescale_factor = self._l2_clip_norm / global_l2_norm
+            clipped_updates = jax.tree.map(
+                lambda update: update * clip_rescale_factor, updates
+            )
+            metrics = {'num_clipped_updates': 1}
+            return clipped_updates, metrics
+
+          global_l2_norm = jnp.sqrt(
+              sum(
+                  jnp.sum(jnp.square(x))
+                  for x in jax.tree.leaves(client_updates)
+              )
+          )
+          # Conditionally clip the updates if updates' norm is above the
+          # clipnorm.
+          # NOTE: jax_privacy will have an improved method for this, migrate to
+          # that when ready.
+          clipped_updates, new_metrics = jax.lax.cond(
+              global_l2_norm > self._l2_clip_norm,
+              _clip_by_global_l2_norm,
+              lambda norm, updates: (updates, {'num_clipped_updates': 0}),
+              global_l2_norm,
+              client_updates,
+          )
+          accumulator_pytree, metrics_pytree = state
+          new_accumulators = jax.tree_util.tree_map(
+              jnp.add, accumulator_pytree, clipped_updates
+          )
+          new_metrics = jax.tree_util.tree_map(
+              jnp.add, new_metrics, metrics_pytree
+          )
+          return new_accumulators, new_metrics
+
+        return _jax2tf_convert_cpu_native(jax_clipped_sum)(
+            state, client_updates
+        )
+
+      @tensorflow_computation.tf_computation
+      def add(a, b):
+        """Merge two partial clipped sums."""
+        return tf.nest.map_structure(tf.add, a, b)
+
+      @tensorflow_computation.tf_computation
+      def identity(a):
+        return a
+
+      unnoised_sum, metrics = flang.federated_aggregate(
+          value,
+          build_zero(),
+          accumulate=clipped_sum,
+          merge=add,
+          report=identity,
+      )
+
+      @tensorflow_computation.tf_computation
+      def finalize_noise(state, unnoised_aggregate):
+        """Compute the noised mean.
+
+        Adds noise to the unnoised sum and divides by number of clients that
+        participated in the round.
+
+        Args:
+          state: The 2-tuple of (rng_key, noise state). The state used to create
+            a noise slice to add to the unnoised sum this round.
+          unnoised_aggregate: The unnoised sum to add noise to.
+
+        Returns:
+          The noised mean.
+        """
+
+        def jax_finalize_noise(state, unnoised_aggregate):
+          rng_key, noise_state = state
+          rng_key = jax.random.wrap_key_data(rng_key)
+          noised_aggregate, new_noise_state = self._grad_privatizer.privatize(
+              sum_of_clipped_grads=unnoised_aggregate,
+              noise_state=noise_state,
+              prng_key=rng_key,
+          )
+          # Advance the RNG key for the next round.
+          rng_key, _ = jax.random.split(rng_key)
+          return (jax.random.key_data(rng_key), new_noise_state), jax.tree.map(
+              lambda arr: arr / self._clients_per_round, noised_aggregate
+          )
+
+        return _jax2tf_convert_cpu_native(jax_finalize_noise)(
+            state, unnoised_aggregate
+        )
+
+      new_state, noised_aggregate = flang.federated_map(
+          finalize_noise, (state, unnoised_sum)
+      )
+      return measured_process.MeasuredProcessOutput(
+          new_state, noised_aggregate, metrics
       )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
