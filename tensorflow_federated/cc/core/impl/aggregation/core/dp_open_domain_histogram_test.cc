@@ -86,21 +86,21 @@ std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
       CreateTestData<EpsilonType>({epsilon});
   parameters.push_back(
       Tensor::Create(internal::TypeTraits<EpsilonType>::kDataType, {},
-                     std::move(epsilon_tensor))
+                     std::move(epsilon_tensor), "epsilon")
           .value());
 
   std::unique_ptr<MutableVectorData<DeltaType>> delta_tensor =
       CreateTestData<DeltaType>({delta});
   parameters.push_back(
       Tensor::Create(internal::TypeTraits<DeltaType>::kDataType, {},
-                     std::move(delta_tensor))
+                     std::move(delta_tensor), "delta")
           .value());
 
   std::unique_ptr<MutableVectorData<L0_BoundType>> l0_bound_tensor =
       CreateTestData<L0_BoundType>({l0_bound});
   parameters.push_back(
       Tensor::Create(internal::TypeTraits<L0_BoundType>::kDataType, {},
-                     std::move(l0_bound_tensor))
+                     std::move(l0_bound_tensor), "max_groups_contributed")
           .value());
   return parameters;
 }
@@ -117,7 +117,8 @@ std::vector<Tensor> CreateFewTopLevelParameters() {
 
   auto epsilon_tensor = CreateTestData({1.0});
   parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, std::move(epsilon_tensor)).value());
+      Tensor::Create(DT_DOUBLE, {}, std::move(epsilon_tensor), "epsilon")
+          .value());
 
   return parameters;
 }
@@ -171,16 +172,16 @@ Intrinsic CreateIntrinsic(double epsilon = kEpsilonThreshold,
 }
 
 // First batch of tests validate the intrinsic(s)
-TEST(DPOpenDomainHistogramTest, CatchWrongNumberOfParameters) {
+TEST(DPOpenDomainHistogramTest, CatchTooFewParameters) {
   Intrinsic too_few{kDPGroupByUri,
                     {CreateTensorSpec("key", DT_STRING)},
                     {CreateTensorSpec("key_out", DT_STRING)},
                     {CreateFewTopLevelParameters()},
                     {}};
-  auto too_few_status = CreateTensorAggregator(too_few).status();
-  EXPECT_THAT(too_few_status, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(too_few_status.message(),
-              HasSubstr("Expected at least 3 parameters but got 1 of them"));
+  EXPECT_THAT(CreateTensorAggregator(too_few),
+              StatusIs(INVALID_ARGUMENT,
+                       HasSubstr("For all DP histograms, epsilon, delta, and "
+                                 "max_groups_contributed must be provided")));
 }
 
 TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
@@ -229,7 +230,8 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
   Intrinsic intrinsic2 = CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, -1);
   auto bad_l0_bound = CreateTensorAggregator(intrinsic2).status();
   EXPECT_THAT(bad_l0_bound, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(bad_l0_bound.message(), HasSubstr("L0 bound must be positive"));
+  EXPECT_THAT(bad_l0_bound.message(),
+              HasSubstr("max_groups_contributed must be positive"));
 }
 
 TEST(DPOpenDomainHistogramTest, CatchInvalidLinfinityBound) {

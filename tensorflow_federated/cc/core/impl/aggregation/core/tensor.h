@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -174,6 +175,10 @@ class Tensor final {
         << "Incompatible tensor dtype()";
     return absl::Span<const T>(GetData<T>(), num_elements());
   }
+
+  // Adds a name to an unnamed tensor, returns error if tensor already has a
+  // name.
+  Status set_name(absl::string_view name);
 
   // TODO: b/222605809 - Add serialization functions.
 
