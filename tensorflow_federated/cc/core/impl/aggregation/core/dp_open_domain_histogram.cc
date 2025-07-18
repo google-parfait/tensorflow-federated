@@ -170,17 +170,12 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
   }
 
   // Log the histogram's Tensor types and migrate to TensorSliceData.
-  int num_columns = noiseless_aggregate.size();
-  std::vector<std::unique_ptr<TensorSliceData>> column_data(num_columns);
-  std::vector<DataType> column_dtypes(num_columns);
-  size_t num_rows;
-  for (size_t i = 0; i < num_columns; ++i) {
-    column_dtypes[i] = noiseless_aggregate[i].dtype();
-    TFF_ASSIGN_OR_RETURN(num_rows,
-                         noiseless_aggregate[i].shape().NumElements());
-    column_data[i] =
-        std::make_unique<TensorSliceData>(std::move(noiseless_aggregate[i]));
-  }
+  TFF_ASSIGN_OR_RETURN(HistogramAsSliceData histogram_as_slice_data,
+                       ConvertHistogramToSliceData(noiseless_aggregate));
+  std::vector<std::unique_ptr<TensorSliceData>>& column_data =
+      histogram_as_slice_data.column_data;
+  std::vector<DataType>& column_dtypes = histogram_as_slice_data.column_dtypes;
+  size_t num_rows = histogram_as_slice_data.num_rows;
 
   size_t num_aggregations = intrinsics().size();
 
@@ -223,20 +218,8 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
 
   // Produce a new list of tensors containing only the survivors of
   // thresholding
-  OutputTensorList final_histogram;
-  final_histogram.reserve(num_columns);
-  for (int i = 0; i < column_data.size(); ++i) {
-    DTYPE_CASES(column_dtypes[i], OutputType,
-                TFF_RETURN_IF_ERROR(ShrinkToSurvivors<OutputType>(
-                    *(column_data[i]), survivor_indices)));
-    TFF_ASSIGN_OR_RETURN(
-        Tensor tensor,
-        Tensor::Create(column_dtypes[i],
-                       {static_cast<int64_t>(survivor_indices.size())},
-                       std::move(column_data[i])));
-    final_histogram.push_back(std::move(tensor));
-  }
-  return final_histogram;
+  return ShrinkHistogramToSurvivors(std::move(histogram_as_slice_data),
+                                    survivor_indices);
 }
 
 }  // namespace aggregation
