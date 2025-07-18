@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "absl/algorithm/container.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
@@ -43,6 +44,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_slice_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
@@ -54,14 +56,16 @@ GroupByAggregator::GroupByAggregator(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    int num_inputs, std::optional<int> min_contributors_to_group)
+    int num_inputs, std::optional<int> min_contributors_to_group,
+    std::vector<int> contributors_to_groups)
     : num_inputs_(num_inputs),
       num_keys_per_input_(input_key_specs.size()),
       key_combiner_(std::move(key_combiner)),
       intrinsics_(*intrinsics),
       output_key_specs_(*output_key_specs),
       aggregators_(std::move(aggregators)),
-      min_contributors_to_group_(min_contributors_to_group) {
+      min_contributors_to_group_(min_contributors_to_group),
+      contributors_to_groups_(std::move(contributors_to_groups)) {
   // Most invariants on construction of the GroupByAggregator such as which
   // nested intrinsics are supported should be enforced in the factory class.
   // This constructor just performs a few backup checks.
@@ -82,6 +86,12 @@ GroupByAggregator::GroupByAggregator(
     TFF_CHECK(*min_contributors_to_group > 0)
         << "GroupByAggregator: min_contributors_to_group must be positive.";
     max_contributors_to_group_ = min_contributors_to_group;
+  }
+
+  if (!contributors_to_groups_.empty() &&
+      !min_contributors_to_group_.has_value()) {
+    TFF_CHECK(false) << "GroupByAggregator: contributors_to_groups can only be "
+                        "set if min_contributors_to_group is set.";
   }
 }
 
@@ -141,15 +151,42 @@ Status GroupByAggregator::MergeWith(TensorAggregator&& other) {
   OutputTensorList other_output_tensors =
       std::move(*other_ptr).TakeOutputsInternal();
   InputTensorList tensors(other_output_tensors.size());
+  std::vector<int> other_contributors = other_ptr->GetContributors();
   for (int i = 0; i < other_output_tensors.size(); ++i)
     tensors[i] = &other_output_tensors[i];
-  TFF_RETURN_IF_ERROR(
-      MergeTensorsInternal(std::move(tensors), other_num_inputs));
+  TFF_RETURN_IF_ERROR(MergeTensorsInternal(std::move(tensors), other_num_inputs,
+                                           std::move(other_contributors)));
   num_inputs_ += other_num_inputs;
   return absl::OkStatus();
 }
 
 bool GroupByAggregator::CanReport() const { return CheckValid().ok(); }
+
+StatusOr<OutputTensorList> GroupByAggregator::Report() && {
+  TFF_RETURN_IF_ERROR(CheckValid());
+  if (!CanReport()) {
+    return TFF_STATUS(FAILED_PRECONDITION)
+           << "GroupByAggregator::Report: the report goal isn't met";
+  }
+  OutputTensorList unthresholded_histogram = std::move(*this).TakeOutputs();
+
+  if (!min_contributors_to_group_.has_value()) {
+    return unthresholded_histogram;
+  }
+
+  absl::flat_hash_set<size_t> survivor_indices;
+  for (size_t i = 0; i < contributors_to_groups_.size(); i++) {
+    if (contributors_to_groups_[i] >= min_contributors_to_group_) {
+      survivor_indices.insert(i);
+    }
+  }
+
+  TFF_ASSIGN_OR_RETURN(HistogramAsSliceData histogram_as_slice_data,
+                       ConvertHistogramToSliceData(unthresholded_histogram));
+
+  return ShrinkHistogramToSurvivors(std::move(histogram_as_slice_data),
+                                    survivor_indices);
+}
 
 Status GroupByAggregator::AggregateTensors(InputTensorList tensors) {
   TFF_RETURN_IF_ERROR(AggregateTensorsInternal(std::move(tensors)));
@@ -256,6 +293,86 @@ Status GroupByAggregator::AddMultipleContributors(
   return absl::OkStatus();
 }
 
+StatusOr<std::string> GroupByAggregator::Serialize() && {
+  GroupByAggregatorState state;
+  state.set_num_inputs(num_inputs_);
+  // If keys are being used, store the current list of output keys into state.
+  if (key_combiner_ != nullptr) {
+    OutputTensorList keys = key_combiner_->GetOutputKeys();
+    google::protobuf::RepeatedPtrField<TensorProto>* keys_proto = state.mutable_keys();
+    keys_proto->Reserve(keys.size());
+    for (int i = 0; i < keys.size(); ++i) {
+      keys_proto->Add(keys[i].ToProto());
+    }
+  }
+  // Store the state of the nested aggregators.
+  google::protobuf::RepeatedPtrField<OneDimGroupingAggregatorState>*
+      nested_aggregators_proto = state.mutable_nested_aggregators();
+  nested_aggregators_proto->Reserve(aggregators_.size());
+  for (auto const& nested_aggregator : aggregators_) {
+    nested_aggregators_proto->Add(nested_aggregator->ToProto());
+  }
+  // Store contributors to groups.
+  state.mutable_counter_of_contributors()->Reserve(
+      contributors_to_groups_.size());
+  state.mutable_counter_of_contributors()->Add(contributors_to_groups_.begin(),
+                                               contributors_to_groups_.end());
+  return state.SerializeAsString();
+}
+
+StatusOr<GroupByAggregator::HistogramAsSliceData>
+GroupByAggregator::ConvertHistogramToSliceData(OutputTensorList& histogram) {
+  int num_columns = histogram.size();
+  std::vector<std::unique_ptr<TensorSliceData>> column_data(num_columns);
+  std::vector<DataType> column_dtypes(num_columns);
+  size_t num_rows = 0;
+  for (size_t i = 0; i < num_columns; ++i) {
+    column_dtypes[i] = histogram[i].dtype();
+    TFF_ASSIGN_OR_RETURN(size_t current_rows,
+                         histogram[i].shape().NumElements());
+    column_data[i] = std::make_unique<TensorSliceData>(std::move(histogram[i]));
+    if (i == 0) {
+      num_rows = current_rows;
+    }
+    if (num_rows != current_rows) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "GroupByAggregator::ConvertHistogramToSliceData: Expected "
+                "histogram to be a list of tensors of the same size but first "
+                "tensor has size "
+             << num_rows << " and tensor at index " << i << " has size "
+             << current_rows;
+    }
+  }
+  return HistogramAsSliceData{std::move(column_data), std::move(column_dtypes),
+                              num_rows};
+}
+
+StatusOr<OutputTensorList> GroupByAggregator::ShrinkHistogramToSurvivors(
+    HistogramAsSliceData histogram_as_slice_data,
+    const absl::flat_hash_set<size_t>& survivor_indices) {
+  std::vector<std::unique_ptr<TensorSliceData>>& column_data =
+      histogram_as_slice_data.column_data;
+  std::vector<DataType>& column_dtypes = histogram_as_slice_data.column_dtypes;
+
+  // Log the histogram's Tensor types and migrate to TensorSliceData.
+  OutputTensorList shrunk_histogram;
+  shrunk_histogram.reserve(column_data.size());
+  for (int i = 0; i < column_data.size(); ++i) {
+    DTYPE_CASES(column_dtypes[i], OutputType,
+                TFF_RETURN_IF_ERROR(
+                    GroupByAggregator::ShrinkTensorSliceToSurvivors<OutputType>(
+                        *(column_data[i]), survivor_indices)));
+    TFF_ASSIGN_OR_RETURN(
+        Tensor tensor,
+        Tensor::Create(column_dtypes[i],
+                       {static_cast<int64_t>(survivor_indices.size())},
+                       std::move(column_data[i])));
+    shrunk_histogram.push_back(std::move(tensor));
+  }
+
+  return shrunk_histogram;
+}
+
 inline Status GroupByAggregator::ValidateInputTensor(
     const InputTensorList& tensors, size_t input_index,
     const TensorSpec& expected_tensor_spec, const TensorShape& key_shape) {
@@ -278,28 +395,6 @@ inline Status GroupByAggregator::ValidateInputTensor(
            << "GroupByAggregator: Only dense tensors are supported.";
   }
   return absl::OkStatus();
-}
-
-StatusOr<std::string> GroupByAggregator::Serialize() && {
-  GroupByAggregatorState state;
-  state.set_num_inputs(num_inputs_);
-  // If keys are being used, store the current list of output keys into state.
-  if (key_combiner_ != nullptr) {
-    OutputTensorList keys = key_combiner_->GetOutputKeys();
-    google::protobuf::RepeatedPtrField<TensorProto>* keys_proto = state.mutable_keys();
-    keys_proto->Reserve(keys.size());
-    for (int i = 0; i < keys.size(); ++i) {
-      keys_proto->Add(keys[i].ToProto());
-    }
-  }
-  // Store the state of the nested aggregators.
-  google::protobuf::RepeatedPtrField<OneDimGroupingAggregatorState>*
-      nested_aggregators_proto = state.mutable_nested_aggregators();
-  nested_aggregators_proto->Reserve(aggregators_.size());
-  for (auto const& nested_aggregator : aggregators_) {
-    nested_aggregators_proto->Add(nested_aggregator->ToProto());
-  }
-  return state.SerializeAsString();
 }
 
 Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
@@ -358,8 +453,9 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
   return absl::OkStatus();
 }
 
-Status GroupByAggregator::MergeTensorsInternal(InputTensorList tensors,
-                                               int num_merged_inputs) {
+Status GroupByAggregator::MergeTensorsInternal(
+    InputTensorList tensors, int num_merged_inputs,
+    std::vector<int> other_contributors) {
   if (tensors.size() != num_tensors_per_input_) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "GroupByAggregator::MergeTensorsInternal should operate on "
@@ -390,6 +486,10 @@ Status GroupByAggregator::MergeTensorsInternal(InputTensorList tensors,
 
   TFF_ASSIGN_OR_RETURN(Tensor ordinals,
                        CreateOrdinalsByGroupingKeysForMerge(tensors));
+
+  if (min_contributors_to_group_.has_value()) {
+    TFF_RETURN_IF_ERROR(AddMultipleContributors(ordinals, other_contributors));
+  }
 
   input_index = num_keys_per_input_;
   for (int i = 0; i < intrinsics_.size(); ++i) {
@@ -466,6 +566,12 @@ Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
   }
   if (this_has_no_combiner) {
     return absl::OkStatus();
+  }
+  if (min_contributors_to_group_ != other.min_contributors_to_group_) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::MergeWith: "
+              "Expected other GroupByAggregator to have the same "
+              "min_contributors_to_group";
   }
   // The constructor validates that input key types match output key types, so
   // checking that the output key types of both aggregators match is sufficient
@@ -639,12 +745,20 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
                        CreateAggregators(intrinsic, aggregator_state));
 
   // Create the key combiner, and only populate the key combiner with state if
-  // there are keys.
+  // there are keys. Also populate the contributor counts if there is an
+  // aggregator state and min_contributors_to_group is set.
   auto key_combiner = GroupByAggregator::CreateKeyCombiner(intrinsic.inputs,
                                                            &intrinsic.outputs);
-  if (aggregator_state != nullptr && key_combiner != nullptr) {
-    TFF_RETURN_IF_ERROR(
-        PopulateKeyCombinerFromState(*key_combiner, *aggregator_state));
+  std::vector<int> contributors_to_groups;
+  if (aggregator_state != nullptr) {
+    if (key_combiner != nullptr) {
+      TFF_RETURN_IF_ERROR(
+          PopulateKeyCombinerFromState(*key_combiner, *aggregator_state));
+    }
+    if (min_contributors_to_group.has_value()) {
+      const auto& counters = aggregator_state->counter_of_contributors();
+      contributors_to_groups.assign(counters.begin(), counters.end());
+    }
   }
 
   int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
@@ -655,7 +769,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
   return std::unique_ptr<GroupByAggregator>(new GroupByAggregator(
       intrinsic.inputs, &intrinsic.outputs, &intrinsic.nested_intrinsics,
       std::move(key_combiner), std::move(nested_aggregators), num_inputs,
-      min_contributors_to_group));
+      min_contributors_to_group, std::move(contributors_to_groups)));
 }
 
 // TODO: b/266497896 - Revise the registration mechanism below.
