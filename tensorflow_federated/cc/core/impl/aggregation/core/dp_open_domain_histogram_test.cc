@@ -1046,6 +1046,45 @@ TEST_P(DPOpenDomainHistogramTest, ShrinkToSurvivors) {
               testing::UnorderedElementsAre(0, 2, 4, 6));
 }
 
+TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
+  // We will simulate 26000 clients each contributing to the count of 1 letter.
+  std::string alphabet[26] = {"a", "b", "c", "d", "e", "f", "g", "h", "i",
+                              "j", "k", "l", "m", "n", "o", "p", "q", "r",
+                              "s", "t", "u", "v", "w", "x", "y", "z"};
+
+  // We perform DP aggregation with a large epsilon, so that the standard
+  // deviation of each random variable is small.
+  Intrinsic intrinsic = CreateIntrinsic<int32_t, int32_t>(50.0, 0.01, 1, 1);
+  auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
+
+  for (int i = 0; i < 26000; i++) {
+    Tensor keys =
+        Tensor::Create(DT_STRING, {},
+                       CreateTestData<string_view>({alphabet[i % 26]}))
+            .value();
+
+    Tensor value_tensor =
+        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    TFF_EXPECT_OK(group_by_aggregator->Accumulate({&keys, &value_tensor}));
+  }
+  if (GetParam()) {
+    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    group_by_aggregator =
+        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+            .value();
+  }
+  auto report = std::move(*group_by_aggregator).Report();
+  TFF_ASSERT_OK(report.status());
+  ASSERT_EQ(report.value().size(), 2);
+
+  // Because each letter receives 1000 contributions and the stdev is small, it
+  // is likely that all keys survive NoiseAndThreshold. The output is some
+  // permutation of the alphabet; the chance of being identical is 1/(26!).
+  auto report_span = report.value()[0].AsSpan<string_view>();
+  EXPECT_THAT(report_span, testing::UnorderedElementsAreArray(alphabet));
+  EXPECT_THAT(report_span, testing::Not(testing::ElementsAreArray(alphabet)));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     DPOpenDomainHistogramTestInstantiation, DPOpenDomainHistogramTest,
     testing::ValuesIn<bool>({false, true}),
