@@ -16,6 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/config_converter.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -174,6 +175,47 @@ StatusOr<Intrinsic> ParseFromConfig(
       }
     }
   }
+
+  // If all parameters are unnamed on a DPGroupBy config,then the input is an
+  // old config. Which parameter is which is determined by order. We
+  // name them here so that the resulting intrinsics are consistent with the new
+  // practice of parameters being named.
+  bool any_unnamed =
+      std::any_of(params.begin(), params.end(),
+                  [](const Tensor& param) { return param.name().empty(); });
+  bool all_unnamed =
+      std::all_of(params.begin(), params.end(),
+                  [](const Tensor& param) { return param.name().empty(); });
+  if (any_unnamed && !all_unnamed) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "Either all parameters must be named or none of them may be.";
+  }
+  if (intrinsic_config.intrinsic_uri() == kDPGroupByUri && any_unnamed) {
+    if (params.size() < 3) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "Insufficient parameters provided for DPGroupBy.";
+    }
+    TFF_RETURN_IF_ERROR(params[0].set_name("epsilon"));
+    TFF_RETURN_IF_ERROR(params[1].set_name("delta"));
+    TFF_RETURN_IF_ERROR(params[2].set_name("max_groups_contributed"));
+    if (params.size() > 3) {
+      TFF_RETURN_IF_ERROR(params[3].set_name("key_names"));
+      TFF_ASSIGN_OR_RETURN(int num_key_names, params[3].shape().NumElements());
+      if (params.size() != num_key_names + 4) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "Number of key names must be equal to the number of "
+                  "remaining parameters.";
+      }
+      if (params[3].dtype() != DT_STRING) {
+        return TFF_STATUS(INVALID_ARGUMENT) << "Key names must be strings.";
+      }
+      auto key_names = params[3].ToStringVector();
+      for (int i = 4; i < params.size(); ++i) {
+        TFF_RETURN_IF_ERROR(params[i].set_name(key_names[i - 4]));
+      }
+    }
+  }
+
   std::vector<TensorSpec> output_tensor_specs;
   for (const auto& output_tensor_spec_proto :
        intrinsic_config.output_tensors()) {

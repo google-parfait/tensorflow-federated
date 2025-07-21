@@ -38,6 +38,7 @@ namespace {
 
 using ::testing::Eq;
 using ::testing::HasSubstr;
+using ::testing::IsEmpty;
 
 TEST(TensorTest, Create_Dense) {
   auto t = Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1, 2, 3}));
@@ -509,6 +510,39 @@ TEST(TensorTest, RoundTrip_NoData_String) {
   auto result = Tensor::FromProto(p);
   EXPECT_THAT(result, IsOk());
   EXPECT_THAT(*result, IsTensor({0}, values));
+}
+
+TEST(TensorTest, SetNameSuccess) {
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor,
+      Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1.0f})));
+  // The tensor name should be empty initially.
+  EXPECT_THAT(tensor.name(), IsEmpty());
+
+  // Set the tensor name.
+  TFF_EXPECT_OK(tensor.set_name("my_test_tensor"));
+
+  // Verify the name has been set correctly.
+  EXPECT_THAT(tensor.name(), Eq("my_test_tensor"));
+}
+
+TEST(TensorTest, SetNameFailsIfNameAlreadySet) {
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor,
+      Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1.0f})));
+
+  // Set an initial tensor name.
+  TFF_EXPECT_OK(tensor.set_name("first_name"));
+  EXPECT_THAT(tensor.name(), Eq("first_name"));
+
+  // Attempting to set the name again should return an error.
+  Status status = tensor.set_name("second_name");
+  EXPECT_THAT(status,
+              StatusIs(INVALID_ARGUMENT,
+                       HasSubstr("Tensor already has a name: first_name")));
+
+  // The name should remain unchanged.
+  EXPECT_THAT(tensor.name(), Eq("first_name"));
 }
 
 }  // namespace

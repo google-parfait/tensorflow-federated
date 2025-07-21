@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
@@ -59,6 +60,16 @@ Status Tensor::CheckValid() const {
               "shape.";
   }
 
+  return TFF_STATUS(OK);
+}
+
+Status Tensor::set_name(absl::string_view name) {
+  // This check isn't relied on and could be removed later if needed.
+  if (!name_.empty()) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "Tensor already has a name: " << name_;
+  }
+  name_ = name;
   return TFF_STATUS(OK);
 }
 

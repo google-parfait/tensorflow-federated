@@ -616,6 +616,11 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
   }
   std::optional<int> min_contributors_to_group = std::nullopt;
   if (intrinsic.parameters.size() == 1) {
+    if (intrinsic.parameters[0].name() != "min_contributors_to_group") {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "GroupByFactory: The name of the provided parameter does not "
+                "match an expected parameter.";
+    }
     min_contributors_to_group = intrinsic.parameters[0].CastToScalar<int>();
     if (*min_contributors_to_group <= 0) {
       return TFF_STATUS(INVALID_ARGUMENT)
