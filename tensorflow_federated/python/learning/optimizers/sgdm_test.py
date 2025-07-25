@@ -177,15 +177,20 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     self.assertEqual(momentum, optimizer._momentum)
 
   @parameterized.named_parameters(
-      ('lr_0_1_m_0', 0.1, 0.0), ('lr_0_01_m_0_9', 0.01, 0.9)
+      ('lr_0p1_m_0', 0.1, 0.0, False),
+      ('lr_0p3_m_0p99', 0.3, 0.99, False),
+      ('lr_0p01_m_0p9', 0.01, 0.9, False),
+      ('lr_0p3_m_0p99_nesterov', 0.3, 0.99, True),
+      ('lr_0p01_m_0p9_nesterov', 0.01, 0.9, True),
   )
-  def test_match_keras(self, learning_rate, momentum):
+  def test_match_keras(self, learning_rate, momentum, nesterov):
     weight_spec = [
+        tf.TensorSpec([100, 10], tf.float32),
+        tf.TensorSpec([10], tf.float32),
         tf.TensorSpec([10, 2], tf.float32),
         tf.TensorSpec([2], tf.float32),
     ]
-    steps = 10
-    genarator = tf.random.Generator.from_seed(2021)
+    genarator = tf.random.Generator.from_seed(seed=2021)
 
     def random_vector():
       return [
@@ -194,11 +199,13 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
 
     initial_weight = random_vector()
     model_variables_fn = lambda: [tf.Variable(v) for v in initial_weight]
-    gradients = [random_vector() for _ in range(steps)]
-    tff_optimizer_fn = lambda: sgdm.build_sgdm(learning_rate, momentum)
+    gradients = [random_vector() for _ in range(50)]
+    tff_optimizer_fn = lambda: sgdm.build_sgdm(
+        learning_rate, momentum, nesterov=nesterov
+    )
 
     def keras_optimizer_fn():
-      return tf.keras.optimizers.SGD(learning_rate, momentum)
+      return tf.keras.optimizers.SGD(learning_rate, momentum, nesterov=nesterov)
 
     self.assert_optimizers_numerically_close(
         model_variables_fn, gradients, tff_optimizer_fn, keras_optimizer_fn
