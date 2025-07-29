@@ -54,14 +54,16 @@ GroupByAggregator::GroupByAggregator(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    int num_inputs, std::optional<int> min_contributors_to_group)
+    int num_inputs, std::optional<int> min_contributors_to_group,
+    std::vector<int> contributors_to_groups)
     : num_inputs_(num_inputs),
       num_keys_per_input_(input_key_specs.size()),
       key_combiner_(std::move(key_combiner)),
       intrinsics_(*intrinsics),
       output_key_specs_(*output_key_specs),
       aggregators_(std::move(aggregators)),
-      min_contributors_to_group_(min_contributors_to_group) {
+      min_contributors_to_group_(min_contributors_to_group),
+      contributors_to_groups_(std::move(contributors_to_groups)) {
   // Most invariants on construction of the GroupByAggregator such as which
   // nested intrinsics are supported should be enforced in the factory class.
   // This constructor just performs a few backup checks.
@@ -82,6 +84,12 @@ GroupByAggregator::GroupByAggregator(
     TFF_CHECK(*min_contributors_to_group > 0)
         << "GroupByAggregator: min_contributors_to_group must be positive.";
     max_contributors_to_group_ = min_contributors_to_group;
+  }
+
+  if (!contributors_to_groups_.empty() &&
+      !min_contributors_to_group_.has_value()) {
+    TFF_CHECK(false) << "GroupByAggregator: contributors_to_groups can only be "
+                        "set if min_contributors_to_group is set.";
   }
 }
 
@@ -299,6 +307,11 @@ StatusOr<std::string> GroupByAggregator::Serialize() && {
   for (auto const& nested_aggregator : aggregators_) {
     nested_aggregators_proto->Add(nested_aggregator->ToProto());
   }
+  // Store contributors to groups.
+  state.mutable_counter_of_contributors()->Reserve(
+      contributors_to_groups_.size());
+  state.mutable_counter_of_contributors()->Add(contributors_to_groups_.begin(),
+                                               contributors_to_groups_.end());
   return state.SerializeAsString();
 }
 
@@ -644,12 +657,20 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
                        CreateAggregators(intrinsic, aggregator_state));
 
   // Create the key combiner, and only populate the key combiner with state if
-  // there are keys.
+  // there are keys. Also populate the contributor counts if there is an
+  // aggregator state and min_contributors_to_group is set.
   auto key_combiner = GroupByAggregator::CreateKeyCombiner(intrinsic.inputs,
                                                            &intrinsic.outputs);
-  if (aggregator_state != nullptr && key_combiner != nullptr) {
-    TFF_RETURN_IF_ERROR(
-        PopulateKeyCombinerFromState(*key_combiner, *aggregator_state));
+  std::vector<int> contributors_to_groups;
+  if (aggregator_state != nullptr) {
+    if (key_combiner != nullptr) {
+      TFF_RETURN_IF_ERROR(
+          PopulateKeyCombinerFromState(*key_combiner, *aggregator_state));
+    }
+    if (min_contributors_to_group.has_value()) {
+      const auto& counters = aggregator_state->counter_of_contributors();
+      contributors_to_groups.assign(counters.begin(), counters.end());
+    }
   }
 
   int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
@@ -660,7 +681,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
   return std::unique_ptr<GroupByAggregator>(new GroupByAggregator(
       intrinsic.inputs, &intrinsic.outputs, &intrinsic.nested_intrinsics,
       std::move(key_combiner), std::move(nested_aggregators), num_inputs,
-      min_contributors_to_group));
+      min_contributors_to_group, std::move(contributors_to_groups)));
 }
 
 // TODO: b/266497896 - Revise the registration mechanism below.

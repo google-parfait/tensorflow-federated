@@ -119,6 +119,10 @@ class GroupByAggregator : public TensorAggregator {
   //
   // key_combiner: either nullptr or a smart pointer to a CompositeKeyCombiner.
   //
+  // contributors_to_groups: a vector of ints representing the number of
+  // contributors to each group. Should be empty if `min_contributors_to_group`
+  // is not set.
+  //
   // aggregators: a vector of unique_ptrs to TensorAggregators made by the
   // factory. Used to perform the inner aggregations.
   //
@@ -130,9 +134,9 @@ class GroupByAggregator : public TensorAggregator {
   // release.
   //
   // max_contributors_to_group: the maximum number of contributors to a group
-  // to keep track of. Must not be set if min_contributors_to_group is not set.
-  // If not set (but min_contributors_to_group is set) then will be set to the
-  // same value as min_contributors_to_group.
+  // to keep track of. Must not be set if `min_contributors_to_group` is not
+  // set. If not set (but `min_contributors_to_group` is set) then will be set
+  // to the same value as `min_contributors_to_group`.
   //
   // This class takes ownership of the intrinsics vector and the aggregators
   // vector.
@@ -143,7 +147,8 @@ class GroupByAggregator : public TensorAggregator {
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
       int num_inputs,
-      std::optional<int> min_contributors_to_group = std::nullopt);
+      std::optional<int> min_contributors_to_group = std::nullopt,
+      std::vector<int> contributors_to_groups = {});
 
   // Creates a vector of DataTypes that describe the keys in the input & output.
   // A pre-processing function that sets the stage for CompositeKeyCombiners.
