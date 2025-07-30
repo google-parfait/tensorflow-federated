@@ -234,7 +234,8 @@ class GroupByAggregator : public TensorAggregator {
   // Internal implementation to merge the input tensors into the state of this
   // GroupByAggregator. The num_merged_inputs arg contains the number of inputs
   // that were pre-accumulated into the tensors input param.
-  Status MergeTensorsInternal(InputTensorList tensors, int num_merged_inputs);
+  Status MergeTensorsInternal(InputTensorList tensors, int num_merged_inputs,
+                              const std::vector<int>& other_contributors);
 
   // Internal implementation of TakeOutputs that returns all keys and values,
   // including keys that should not actually be returned in the final output.

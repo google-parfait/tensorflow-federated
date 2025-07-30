@@ -149,10 +149,11 @@ Status GroupByAggregator::MergeWith(TensorAggregator&& other) {
   OutputTensorList other_output_tensors =
       std::move(*other_ptr).TakeOutputsInternal();
   InputTensorList tensors(other_output_tensors.size());
+  std::vector<int> other_contributors = other_ptr->GetContributors();
   for (int i = 0; i < other_output_tensors.size(); ++i)
     tensors[i] = &other_output_tensors[i];
-  TFF_RETURN_IF_ERROR(
-      MergeTensorsInternal(std::move(tensors), other_num_inputs));
+  TFF_RETURN_IF_ERROR(MergeTensorsInternal(std::move(tensors), other_num_inputs,
+                                           other_contributors));
   num_inputs_ += other_num_inputs;
   return absl::OkStatus();
 }
@@ -371,8 +372,9 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
   return absl::OkStatus();
 }
 
-Status GroupByAggregator::MergeTensorsInternal(InputTensorList tensors,
-                                               int num_merged_inputs) {
+Status GroupByAggregator::MergeTensorsInternal(
+    InputTensorList tensors, int num_merged_inputs,
+    const std::vector<int>& other_contributors) {
   if (tensors.size() != num_tensors_per_input_) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "GroupByAggregator::MergeTensorsInternal should operate on "
@@ -403,6 +405,10 @@ Status GroupByAggregator::MergeTensorsInternal(InputTensorList tensors,
 
   TFF_ASSIGN_OR_RETURN(Tensor ordinals,
                        CreateOrdinalsByGroupingKeysForMerge(tensors));
+
+  if (min_contributors_to_group_.has_value()) {
+    TFF_RETURN_IF_ERROR(AddMultipleContributors(ordinals, other_contributors));
+  }
 
   input_index = num_keys_per_input_;
   for (int i = 0; i < intrinsics_.size(); ++i) {
@@ -479,6 +485,12 @@ Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
   }
   if (this_has_no_combiner) {
     return absl::OkStatus();
+  }
+  if (min_contributors_to_group_ != other.min_contributors_to_group_) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::MergeWith: "
+              "Expected other GroupByAggregator to have the same "
+              "min_contributors_to_group";
   }
   // The constructor validates that input key types match output key types, so
   // checking that the output key types of both aggregators match is sufficient
