@@ -46,36 +46,6 @@ namespace aggregation {
 
 namespace {
 
-// DPGroupByAggregator expects parameters
-constexpr int kMinNumParameters = 3;
-
-Status ValidateNumberOfParameters(
-    const Intrinsic& intrinsic,
-    const absl::flat_hash_map<std::string, int>& parameter_name_to_index) {
-  bool open_domain = !parameter_name_to_index.contains("key_names");
-  int64_t num_keys = intrinsic.inputs.size();
-
-  if (open_domain) {
-    if (intrinsic.parameters.size() > kMinNumParameters) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: Received more than kMinNumParameters ("
-             << kMinNumParameters
-             << ") parameters, but none of them were a key_names parameter.";
-    }
-  } else {
-    if (intrinsic.parameters.size() != num_keys + kMinNumParameters + 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: Closed-domain DP histograms should have "
-                "num_keys + kMinNumParameters + 1 parameters, which in this "
-                "case is "
-             << num_keys + kMinNumParameters + 1
-             << " but the number of parameters given is "
-             << intrinsic.parameters.size() << ".";
-    }
-  }
-  return TFF_STATUS(OK);
-}
-
 struct DPParameters {
   double epsilon;
   double delta;
@@ -321,6 +291,23 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic, bool open_domain,
   return TFF_STATUS(OK);
 }
 
+StatusOr<int64_t> FindMinContributorsToGroup(
+    const Intrinsic& intrinsic,
+    const absl::flat_hash_map<std::string, int>& parameter_name_to_index) {
+  int64_t min_contributors_to_group = 0;
+  auto it = parameter_name_to_index.find("min_contributors_to_group");
+  if (it != parameter_name_to_index.end()) {
+    min_contributors_to_group =
+        intrinsic.parameters[it->second].CastToScalar<int64_t>();
+  }
+  if (min_contributors_to_group < 0) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPGroupByFactory: min_contributors_to_group must be "
+              "non-negative.";
+  }
+  return min_contributors_to_group;
+}
+
 }  // namespace
 
 StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Create(
@@ -355,11 +342,13 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
     parameter_name_to_index[intrinsic.parameters[i].name()] = i;
   }
 
-  bool open_domain = !parameter_name_to_index.contains("key_names");
-  int64_t num_keys = intrinsic.inputs.size();
+  TFF_ASSIGN_OR_RETURN(
+      int64_t min_contributors_to_group,
+      FindMinContributorsToGroup(intrinsic, parameter_name_to_index));
 
-  TFF_RETURN_IF_ERROR(
-      ValidateNumberOfParameters(intrinsic, parameter_name_to_index));
+  bool open_domain = min_contributors_to_group > 0 ||
+                     !parameter_name_to_index.contains("key_names");
+  int64_t num_keys = intrinsic.inputs.size();
 
   // For any DP histogram, ensure that we have required DP parameters.
   TFF_ASSIGN_OR_RETURN(DPParameters dp_parameters,

@@ -204,8 +204,20 @@ Intrinsic CreateIntrinsic(double epsilon = kEpsilonThreshold,
   return intrinsic;
 }
 
+template <typename InputType, typename OutputType>
+Intrinsic CreateIntrinsicWithMinContributors(int64_t min_contributors) {
+  Intrinsic intrinsic = CreateIntrinsic<InputType, OutputType>();
+  std::unique_ptr<MutableVectorData<int64_t>> min_contributors_tensor =
+      CreateTestData<int64_t>({min_contributors});
+  intrinsic.parameters.push_back(
+      Tensor::Create(DT_INT64, {}, std::move(min_contributors_tensor),
+                     "min_contributors_to_group")
+          .value());
+  return intrinsic;
+}
+
 // First batch of tests validate the intrinsic(s)
-TEST(DPClosedDomainHistogramTest, CatchWrongNumberOfParameters) {
+TEST(DPClosedDomainHistogramTest, CatchWrongNumberOfKeyNames) {
   // Provide domain spec for one key but there are two keys
   std::vector<DataType> key_types = {DT_STRING};
   Intrinsic too_few{kDPGroupByUri,
@@ -228,37 +240,12 @@ TEST(DPClosedDomainHistogramTest, CatchWrongNumberOfParameters) {
   EXPECT_THAT(
       CreateTensorAggregator(too_few).status(),
       StatusIs(INVALID_ARGUMENT,
-               HasSubstr("case is 6 but the number of parameters given is 5")));
+               HasSubstr("The number of key names provided (1) does not match "
+                         "the number of input tensors provided (2)")));
   EXPECT_THAT(
       CreateTensorAggregator(too_many).status(),
       StatusIs(INVALID_ARGUMENT,
-               HasSubstr("case is 6 but the number of parameters given is 7")));
-}
-
-// First batch of tests validate the intrinsic(s)
-TEST(DPClosedDomainHistogramTest, CatchWrongNumberOfKeyNames) {
-  // Provide domain spec for one key but there are two keys
-  std::vector<DataType> key_types = {DT_STRING, DT_STRING};
-  auto too_few_key_names = std::make_unique<MutableStringData>(1);
-  too_few_key_names->Add("key1");
-  std::vector<Tensor> parameters =
-      CreateTopLevelParameters(1.0, 0.01, 10, key_types);
-  parameters[3] =
-      Tensor::Create(DT_STRING, {1}, std::move(too_few_key_names), "key_names")
-          .value();
-  Intrinsic too_few_key_names_intrinsic{
-      kDPGroupByUri,
-      {CreateTensorSpec("key0", DT_STRING),
-       CreateTensorSpec("key1", DT_STRING)},
-      {CreateTensorSpec("key0_out", DT_STRING),
-       CreateTensorSpec("key1_out", DT_STRING)},
-      {std::move(parameters)},
-      {}};
-
-  EXPECT_THAT(
-      CreateTensorAggregator(too_few_key_names_intrinsic).status(),
-      StatusIs(INVALID_ARGUMENT,
-               HasSubstr("The number of key names provided (1) does not match "
+               HasSubstr("The number of key names provided (3) does not match "
                          "the number of input tensors provided (2)")));
 }
 
@@ -511,6 +498,21 @@ TEST(DPClosedDomainHistogramTest, CreateAggregator_Success) {
   EXPECT_EQ(domain_tensors[0].AsSpan<string_view>()[2], "c");
 }
 
+// Make sure we can successfully create a DPClosedDomainHistogram object with
+// min_contributors_to_group.
+TEST(DPClosedDomainHistogramTest,
+     CreateAggregatorWithZeroMinContributors_Success) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      /*min_contributors=*/0);
+
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+
+  // Check that the returned aggregator is a DPClosedDomainHistogram.
+  auto* dp_closed_domain_histogram =
+      dynamic_cast<DPClosedDomainHistogram*>(aggregator.get());
+  ASSERT_NE(dp_closed_domain_histogram, nullptr);
+}
+
 // Make sure we can successfully create a DPClosedDomainHistogram object with no
 // keys.
 TEST(DPClosedDomainHistogramTest, CreateAggregatorNoKeys_Success) {
@@ -744,6 +746,16 @@ TEST(DPClosedDomainHistogramTest, FloatTest) {
     noisy_value = std::abs(noisy_value);
     EXPECT_THAT(noisy_value - std::floor(noisy_value), testing::Ne(0.0));
   }
+}
+
+TEST(DPClosedDomainHistogramTest,
+     CreateAggregatorWithNegativeMinContributors_Fails) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      /*min_contributors=*/-1);
+  EXPECT_THAT(
+      CreateTensorAggregator(intrinsic),
+      StatusIs(INVALID_ARGUMENT,
+               HasSubstr("min_contributors_to_group must be non-negative")));
 }
 
 }  // namespace

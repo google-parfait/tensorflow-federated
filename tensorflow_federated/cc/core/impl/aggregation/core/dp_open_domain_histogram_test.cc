@@ -26,6 +26,7 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -33,6 +34,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
@@ -57,6 +59,8 @@ using testing::TestWithParam;
 
 using DPOpenDomainHistogramTest = TestWithParam<bool>;
 
+constexpr int kNumValues = 3;
+
 TensorSpec CreateTensorSpec(std::string name, DataType dtype) {
   return TensorSpec(name, dtype, {-1});
 }
@@ -79,7 +83,8 @@ class SumAggregator final : public AggVectorAggregator<T> {
 template <typename EpsilonType, typename DeltaType, typename L0_BoundType>
 std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
                                              DeltaType delta,
-                                             L0_BoundType l0_bound) {
+                                             L0_BoundType l0_bound,
+                                             std::vector<DataType> key_types) {
   std::vector<Tensor> parameters;
 
   std::unique_ptr<MutableVectorData<EpsilonType>> epsilon_tensor =
@@ -102,7 +107,50 @@ std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
       Tensor::Create(internal::TypeTraits<L0_BoundType>::kDataType, {},
                      std::move(l0_bound_tensor), "max_groups_contributed")
           .value());
+
+  if (key_types.empty()) {
+    return parameters;
+  }
+
+  // First tensor contains the names of keys
+  int64_t num_keys = key_types.size();
+  auto key_names = std::make_unique<MutableStringData>(num_keys);
+  for (int i = 0; i < num_keys; i++) {
+    key_names->Add(absl::StrCat("key", i));
+  }
+  parameters.push_back(
+      Tensor::Create(DT_STRING, {num_keys}, std::move(key_names), "key_names")
+          .value());
+
+  // The ith tensor contains the domain of values that the ith key can take.
+  int key_type_index = 0;
+  for (DataType dtype : key_types) {
+    if (dtype == DT_STRING) {
+      parameters.push_back(
+          Tensor::Create(DT_STRING, {kNumValues},
+                         CreateTestData<string_view>({"a", "b", "c"}),
+                         absl::StrCat("key", key_type_index))
+              .value());
+    } else {
+      NUMERICAL_ONLY_DTYPE_CASES(
+          dtype, T,
+          parameters.push_back(
+              Tensor::Create(dtype, {kNumValues}, CreateTestData<T>({0, 1, 2}),
+                             absl::StrCat("key", key_type_index))
+                  .value()));
+    }
+    key_type_index++;
+  }
+
   return parameters;
+}
+
+template <typename EpsilonType, typename DeltaType, typename L0_BoundType>
+std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
+                                             DeltaType delta,
+                                             L0_BoundType l0_bound) {
+  return CreateTopLevelParameters<EpsilonType, DeltaType, L0_BoundType>(
+      epsilon, delta, l0_bound, {});
 }
 
 std::vector<Tensor> CreateTopLevelParameters(double epsilon = 1000.0,
@@ -168,6 +216,27 @@ Intrinsic CreateIntrinsic(double epsilon = kEpsilonThreshold,
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<InputType, OutputType>(linfinity_bound, l1_bound,
                                                   l2_bound));
+  return intrinsic;
+}
+
+template <typename InputType, typename OutputType>
+Intrinsic CreateIntrinsicWithMinContributors(int64_t min_contributors,
+                                             std::vector<DataType> key_types) {
+  Intrinsic intrinsic{
+      kDPGroupByUri,
+      {CreateTensorSpec("key", DT_STRING)},
+      {CreateTensorSpec("key_out", DT_STRING)},
+      {CreateTopLevelParameters(kEpsilonThreshold, 0.001, 100, key_types)},
+      {}};
+  std::unique_ptr<MutableVectorData<int64_t>> min_contributors_tensor =
+      CreateTestData<int64_t>({min_contributors});
+  intrinsic.parameters.push_back(
+      Tensor::Create(internal::TypeTraits<int64_t>::kDataType, {},
+                     std::move(min_contributors_tensor),
+                     "min_contributors_to_group")
+          .value());
+  intrinsic.nested_intrinsics.push_back(
+      CreateInnerIntrinsic<InputType, OutputType>(100, -1, -1));
   return intrinsic;
 }
 
@@ -1083,6 +1152,26 @@ TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
   auto report_span = report.value()[0].AsSpan<string_view>();
   EXPECT_THAT(report_span, testing::UnorderedElementsAreArray(alphabet));
   EXPECT_THAT(report_span, testing::Not(testing::ElementsAreArray(alphabet)));
+}
+
+TEST(DPOpenDomainHistogramTest, CreateAggregatorWithMinContributorsNoKeys) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      /*min_contributors=*/10, /*key_types=*/{});
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+  // Check that the returned aggregator is a DPOpenDomainHistogram.
+  auto* dp_open_domain_histogram =
+      dynamic_cast<DPOpenDomainHistogram*>(aggregator.get());
+  ASSERT_NE(dp_open_domain_histogram, nullptr);
+}
+
+TEST(DPOpenDomainHistogramTest, CreateAggregatorWithMinContributorsWithKeys) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      /*min_contributors=*/10, /*key_types=*/{DT_STRING});
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+  // Check that the returned aggregator is a DPOpenDomainHistogram.
+  auto* dp_open_domain_histogram =
+      dynamic_cast<DPOpenDomainHistogram*>(aggregator.get());
+  ASSERT_NE(dp_open_domain_histogram, nullptr);
 }
 
 INSTANTIATE_TEST_SUITE_P(
