@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
-#include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
@@ -101,19 +100,6 @@ Status NoiseAndThreshold(double epsilon, double delta, int64_t l0_bound,
   return absl::OkStatus();
 }
 
-// Given a column TensorSliceData and a permutation of the indices, apply the
-// reordering to the column.
-template <typename T>
-Status ReorderColumn(TensorSliceData& column,
-                     const std::vector<uint32_t>& new_order) {
-  TFF_ASSIGN_OR_RETURN(auto column_span, column.AsSpan<T>());
-  for (size_t i = 0; i < new_order.size(); ++i) {
-    size_t j = new_order[i];
-    std::swap(column_span[i], column_span[j]);
-  }
-  return absl::OkStatus();
-}
-
 }  // namespace internal
 
 DPOpenDomainHistogram::DPOpenDomainHistogram(
@@ -184,17 +170,12 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
   }
 
   // Log the histogram's Tensor types and migrate to TensorSliceData.
-  int num_columns = noiseless_aggregate.size();
-  std::vector<std::unique_ptr<TensorSliceData>> column_data(num_columns);
-  std::vector<DataType> column_dtypes(num_columns);
-  size_t num_rows;
-  for (size_t i = 0; i < num_columns; ++i) {
-    column_dtypes[i] = noiseless_aggregate[i].dtype();
-    TFF_ASSIGN_OR_RETURN(num_rows,
-                         noiseless_aggregate[i].shape().NumElements());
-    column_data[i] =
-        std::make_unique<TensorSliceData>(std::move(noiseless_aggregate[i]));
-  }
+  TFF_ASSIGN_OR_RETURN(HistogramAsSliceData histogram_as_slice_data,
+                       ConvertHistogramToSliceData(noiseless_aggregate));
+  std::vector<std::unique_ptr<TensorSliceData>>& column_data =
+      histogram_as_slice_data.column_data;
+  std::vector<DataType>& column_dtypes = histogram_as_slice_data.column_dtypes;
+  size_t num_rows = histogram_as_slice_data.num_rows;
 
   size_t num_aggregations = intrinsics().size();
 
@@ -235,38 +216,10 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
     survivor_indices.insert(0);
   }
 
-  // Throw away a group's data if it did not survive thresholding.
-  for (int i = 0; i < column_data.size(); ++i) {
-    DTYPE_CASES(column_dtypes[i], OutputType,
-                TFF_RETURN_IF_ERROR(ShrinkToSurvivors<OutputType>(
-                    *(column_data[i]), survivor_indices)));
-  }
-
-  // Use the Fisher-Yates algorithm to shuffle the groups. Each group
-  // corresponds to one row of the table formed by the columns
-  num_rows = survivor_indices.size();
-  absl::BitGen bitgen;
-  std::vector<uint32_t> new_order(num_rows - 1, num_rows);
-  for (size_t i = 0; i < num_rows - 1; i++) {
-    new_order[i] = absl::Uniform(bitgen, i, num_rows);
-  }
-  for (size_t i = 0; i < num_columns; ++i) {
-    DTYPE_CASES(column_dtypes[i], T,
-                TFF_RETURN_IF_ERROR(
-                    internal::ReorderColumn<T>(*column_data[i], new_order)));
-  }
-
-  // Create the final histogram by moving the data back into Tensors.
-  OutputTensorList final_histogram;
-  final_histogram.reserve(num_columns);
-  for (int i = 0; i < column_data.size(); ++i) {
-    TFF_ASSIGN_OR_RETURN(
-        Tensor tensor,
-        Tensor::Create(column_dtypes[i], {static_cast<int64_t>(num_rows)},
-                       std::move(column_data[i])));
-    final_histogram.push_back(std::move(tensor));
-  }
-  return final_histogram;
+  // Produce a new list of tensors containing only the survivors of
+  // thresholding, in uniformly random order.
+  return ShrinkHistogramToSurvivors(std::move(histogram_as_slice_data),
+                                    survivor_indices);
 }
 
 }  // namespace aggregation

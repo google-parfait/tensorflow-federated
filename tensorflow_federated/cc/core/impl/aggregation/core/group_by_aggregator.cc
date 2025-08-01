@@ -25,6 +25,8 @@
 #include <vector>
 
 #include "absl/algorithm/container.h"
+#include "absl/container/flat_hash_set.h"
+#include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
@@ -43,10 +45,28 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_slice_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
+
+namespace internal {
+
+// Given a column TensorSliceData and a permutation of the indices, apply the
+// reordering to the column.
+template <typename T>
+Status ReorderColumn(TensorSliceData& column,
+                     const std::vector<uint32_t>& new_order) {
+  TFF_ASSIGN_OR_RETURN(auto column_span, column.AsSpan<T>());
+  for (size_t i = 0; i < new_order.size(); ++i) {
+    size_t j = new_order[i];
+    std::swap(column_span[i], column_span[j]);
+  }
+  return absl::OkStatus();
+}
+
+}  // namespace internal
 
 GroupByAggregator::GroupByAggregator(
     const std::vector<TensorSpec>& input_key_specs,
@@ -160,6 +180,28 @@ Status GroupByAggregator::MergeWith(TensorAggregator&& other) {
 
 bool GroupByAggregator::CanReport() const { return CheckValid().ok(); }
 
+StatusOr<OutputTensorList> GroupByAggregator::Report() && {
+  TFF_RETURN_IF_ERROR(CheckValid());
+  OutputTensorList unthresholded_histogram = std::move(*this).TakeOutputs();
+
+  if (!min_contributors_to_group_.has_value()) {
+    return unthresholded_histogram;
+  }
+
+  absl::flat_hash_set<size_t> survivor_indices;
+  for (size_t i = 0; i < contributors_to_groups_.size(); i++) {
+    if (contributors_to_groups_[i] >= min_contributors_to_group_) {
+      survivor_indices.insert(i);
+    }
+  }
+
+  TFF_ASSIGN_OR_RETURN(HistogramAsSliceData histogram_as_slice_data,
+                       ConvertHistogramToSliceData(unthresholded_histogram));
+
+  return ShrinkHistogramToSurvivors(std::move(histogram_as_slice_data),
+                                    survivor_indices);
+}
+
 Status GroupByAggregator::AggregateTensors(InputTensorList tensors) {
   TFF_RETURN_IF_ERROR(AggregateTensorsInternal(std::move(tensors)));
   num_inputs_++;
@@ -265,30 +307,6 @@ Status GroupByAggregator::AddMultipleContributors(
   return absl::OkStatus();
 }
 
-inline Status GroupByAggregator::ValidateInputTensor(
-    const InputTensorList& tensors, size_t input_index,
-    const TensorSpec& expected_tensor_spec, const TensorShape& key_shape) {
-  // Ensure the tensor at input_index has the expected dtype and shape.
-  const Tensor* tensor = tensors[input_index];
-  if (tensor->dtype() != expected_tensor_spec.dtype()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Tensor at position " << input_index
-           << " did not have expected dtype " << expected_tensor_spec.dtype()
-           << " and instead had dtype " << tensor->dtype();
-  }
-  if (tensor->shape() != key_shape) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator: Shape of value tensor at index "
-           << input_index
-           << " does not match the shape of the first key tensor.";
-  }
-  if (!tensor->is_dense()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator: Only dense tensors are supported.";
-  }
-  return absl::OkStatus();
-}
-
 StatusOr<std::string> GroupByAggregator::Serialize() && {
   GroupByAggregatorState state;
   state.set_num_inputs(num_inputs_);
@@ -314,6 +332,107 @@ StatusOr<std::string> GroupByAggregator::Serialize() && {
   state.mutable_counter_of_contributors()->Add(contributors_to_groups_.begin(),
                                                contributors_to_groups_.end());
   return state.SerializeAsString();
+}
+
+StatusOr<GroupByAggregator::HistogramAsSliceData>
+GroupByAggregator::ConvertHistogramToSliceData(OutputTensorList& histogram) {
+  int num_columns = histogram.size();
+  std::vector<std::unique_ptr<TensorSliceData>> column_data(num_columns);
+  std::vector<DataType> column_dtypes(num_columns);
+  size_t num_rows = 0;
+  for (size_t i = 0; i < num_columns; ++i) {
+    column_dtypes[i] = histogram[i].dtype();
+    TFF_ASSIGN_OR_RETURN(size_t current_rows,
+                         histogram[i].shape().NumElements());
+    column_data[i] = std::make_unique<TensorSliceData>(std::move(histogram[i]));
+    if (i == 0) {
+      num_rows = current_rows;
+    }
+    if (num_rows != current_rows) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "GroupByAggregator::ConvertHistogramToSliceData: Expected "
+                "histogram to be a list of tensors of the same size but first "
+                "tensor has size "
+             << num_rows << " and tensor at index " << i << " has size "
+             << current_rows;
+    }
+  }
+  return HistogramAsSliceData{std::move(column_data), std::move(column_dtypes),
+                              num_rows};
+}
+
+StatusOr<OutputTensorList> GroupByAggregator::ShrinkHistogramToSurvivors(
+    HistogramAsSliceData histogram_as_slice_data,
+    const absl::flat_hash_set<size_t>& survivor_indices) {
+  std::vector<std::unique_ptr<TensorSliceData>>& column_data =
+      histogram_as_slice_data.column_data;
+  std::vector<DataType>& column_dtypes = histogram_as_slice_data.column_dtypes;
+  OutputTensorList shrunk_histogram;
+
+  // If there are no survivors, create empty tensors for each column.
+  if (survivor_indices.empty()) {
+    for (int i = 0; i < column_data.size(); ++i) {
+      TFF_ASSIGN_OR_RETURN(
+          Tensor tensor,
+          Tensor::Create(column_dtypes[i], {0},
+                         std::make_unique<MutableVectorData<char>>()));
+      shrunk_histogram.push_back(std::move(tensor));
+    }
+    return shrunk_histogram;
+  }
+
+  // Select a reordering for the surviving rows, using the Fisher-Yates
+  // algorithm.
+  size_t num_rows = survivor_indices.size();
+  absl::BitGen bitgen;
+  std::vector<uint32_t> new_order(num_rows - 1, num_rows);
+  for (size_t i = 0; i < num_rows - 1; i++) {
+    new_order[i] = absl::Uniform(bitgen, i, num_rows);
+  }
+
+  // Shrink each column to only include the survivors, and reorder the rows.
+  shrunk_histogram.reserve(column_data.size());
+  for (int i = 0; i < column_data.size(); ++i) {
+    DTYPE_CASES(column_dtypes[i], OutputType,
+                TFF_RETURN_IF_ERROR(
+                    GroupByAggregator::ShrinkTensorSliceToSurvivors<OutputType>(
+                        *(column_data[i]), survivor_indices)));
+    DTYPE_CASES(column_dtypes[i], OutputType,
+                TFF_RETURN_IF_ERROR(internal::ReorderColumn<OutputType>(
+                    *column_data[i], new_order)));
+    TFF_ASSIGN_OR_RETURN(
+        Tensor tensor,
+        Tensor::Create(column_dtypes[i],
+                       {static_cast<int64_t>(survivor_indices.size())},
+                       std::move(column_data[i])));
+    shrunk_histogram.push_back(std::move(tensor));
+  }
+
+  return shrunk_histogram;
+}
+
+inline Status GroupByAggregator::ValidateInputTensor(
+    const InputTensorList& tensors, size_t input_index,
+    const TensorSpec& expected_tensor_spec, const TensorShape& key_shape) {
+  // Ensure the tensor at input_index has the expected dtype and shape.
+  const Tensor* tensor = tensors[input_index];
+  if (tensor->dtype() != expected_tensor_spec.dtype()) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "Tensor at position " << input_index
+           << " did not have expected dtype " << expected_tensor_spec.dtype()
+           << " and instead had dtype " << tensor->dtype();
+  }
+  if (tensor->shape() != key_shape) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator: Shape of value tensor at index "
+           << input_index
+           << " does not match the shape of the first key tensor.";
+  }
+  if (!tensor->is_dense()) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator: Only dense tensors are supported.";
+  }
+  return absl::OkStatus();
 }
 
 Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {

@@ -61,45 +61,6 @@ class DPOpenDomainHistogram : public GroupByAggregator {
   // If called before Report(), the vector will be empty.
   std::vector<bool> laplace_was_used() const { return laplace_was_used_; }
 
-  // Given a column of data and a set of survivor indices, shrink the column to
-  // only include the survivors.
-  template <typename OutputType>
-  static Status ShrinkToSurvivors(
-      TensorSliceData& column,
-      const absl::flat_hash_set<size_t>& survivor_indices) {
-    TFF_ASSIGN_OR_RETURN(absl::Span<OutputType> column_span,
-                         column.AsSpan<OutputType>());
-    size_t num_elements = column_span.size();
-    // Locate the smallest index of a non-survivor, then the first survivor
-    // after it.
-    int64_t destination;
-    for (destination = 0;
-         destination < num_elements && survivor_indices.contains(destination);
-         destination++) {
-    }
-    int64_t source;
-    for (source = destination + 1;
-         source < num_elements && !survivor_indices.contains(source);
-         source++) {
-    }
-    while (destination < num_elements && source < num_elements) {
-      // Swap to lengthen the prefix of survivors, then advance the destination
-      // and source indexes.
-      std::swap(column_span[destination], column_span[source]);
-      destination++;
-      for (source++;
-           source < num_elements && !survivor_indices.contains(source);
-           source++) {
-      }
-    }
-
-    // Now that the survivors are in the front, reduce the byte size of the
-    // tensor to only include the survivors.
-    TFF_RETURN_IF_ERROR(
-        column.ReduceByteSize(survivor_indices.size() * sizeof(OutputType)));
-    return absl::OkStatus();
-  }
-
  protected:
   friend class DPGroupByFactory;
 

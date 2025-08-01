@@ -18,11 +18,15 @@
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_GROUP_BY_AGGREGATOR_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
+#include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -34,6 +38,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_slice_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
@@ -77,6 +82,10 @@ class GroupByAggregator : public TensorAggregator {
   // order to produce a report containing the expected number of output tensors,
   // at least one input must have been aggregated.
   bool CanReport() const override;
+
+  // Override Report so that we can enforce k-thresholding if
+  // min_contributors_to_group_ is set.
+  StatusOr<OutputTensorList> Report() && override;
 
  protected:
   friend class GroupByFactory;
@@ -212,6 +221,71 @@ class GroupByAggregator : public TensorAggregator {
   inline const std::vector<TensorSpec>& output_key_specs() const {
     return output_key_specs_;
   }
+
+  // Given a column of data and a set of survivor indices, shrink the column to
+  // only include the survivors.
+  template <typename OutputType>
+  static Status ShrinkTensorSliceToSurvivors(
+      TensorSliceData& column,
+      const absl::flat_hash_set<size_t>& survivor_indices) {
+    TFF_ASSIGN_OR_RETURN(absl::Span<OutputType> column_span,
+                         column.AsSpan<OutputType>());
+    size_t num_elements = column_span.size();
+    // Locate the smallest index of a non-survivor, then the first survivor
+    // after it.
+    int64_t destination;
+    for (destination = 0;
+         destination < num_elements && survivor_indices.contains(destination);
+         destination++) {
+    }
+    int64_t source;
+    for (source = destination + 1;
+         source < num_elements && !survivor_indices.contains(source);
+         source++) {
+    }
+    while (destination < num_elements && source < num_elements) {
+      // Swap to lengthen the prefix of survivors, then advance the destination
+      // and source indexes.
+      std::swap(column_span[destination], column_span[source]);
+      destination++;
+      for (source++;
+           source < num_elements && !survivor_indices.contains(source);
+           source++) {
+      }
+    }
+
+    // The number of survivors is equal to destination, check that survivor
+    // indices didn't contain entries outside of [0, num_elements).
+    if (destination != survivor_indices.size()) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "GroupByAggregator::ShrinkTensorSliceToSurvivors: "
+                "survivor_indices contained invalid indices.";
+    }
+
+    // Now that the survivors are in the front, reduce the byte size of the
+    // tensor to only include the survivors.
+    TFF_RETURN_IF_ERROR(
+        column.ReduceByteSize(survivor_indices.size() * sizeof(OutputType)));
+    return absl::OkStatus();
+  }
+
+  // A form of histogram where the column data is in the mutable TensorSliceData
+  // format, along with the column data types and the number of rows metadata.
+  struct HistogramAsSliceData {
+    std::vector<std::unique_ptr<TensorSliceData>> column_data;
+    std::vector<DataType> column_dtypes;
+    size_t num_rows;
+  };
+
+  // Provides mutable access to the column data in the histogram.
+  static StatusOr<HistogramAsSliceData> ConvertHistogramToSliceData(
+      OutputTensorList& histogram);
+
+  // Given a histogram represented as a list of TensorSliceData, shrink each
+  // column to only include the survivors.
+  static StatusOr<OutputTensorList> ShrinkHistogramToSurvivors(
+      HistogramAsSliceData histogram,
+      const absl::flat_hash_set<size_t>& survivor_indices);
 
  private:
   // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending

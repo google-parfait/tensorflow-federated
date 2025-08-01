@@ -16,6 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -24,6 +25,7 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/container/flat_hash_set.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
@@ -35,6 +37,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_slice_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
@@ -63,6 +66,26 @@ class GroupByAggregatorPeer {
 
   const std::vector<int>& GetContributors() const {
     return aggregator_->GetContributors();
+  }
+
+  template <typename OutputType>
+  static Status ShrinkTensorSliceToSurvivors(
+      TensorSliceData& column,
+      const absl::flat_hash_set<size_t>& survivor_indices) {
+    return GroupByAggregator::ShrinkTensorSliceToSurvivors<OutputType>(
+        column, survivor_indices);
+  }
+
+  static StatusOr<GroupByAggregator::HistogramAsSliceData>
+  ConvertHistogramToSliceData(OutputTensorList& histogram) {
+    return GroupByAggregator::ConvertHistogramToSliceData(histogram);
+  }
+
+  static StatusOr<OutputTensorList> ShrinkHistogramToSurvivors(
+      GroupByAggregator::HistogramAsSliceData histogram_as_slice_data,
+      const absl::flat_hash_set<size_t>& survivor_indices) {
+    return GroupByAggregator::ShrinkHistogramToSurvivors(
+        std::move(histogram_as_slice_data), survivor_indices);
   }
 
   // Serializes and then deserializes the aggregator. Used to test serialization
@@ -98,6 +121,7 @@ namespace {
 using ::testing::ContainerEq;
 using ::testing::Eq;
 using ::testing::HasSubstr;
+using testing::IsEmpty;
 using testing::IsFalse;
 using testing::IsTrue;
 using testing::TestWithParam;
@@ -152,6 +176,60 @@ Intrinsic CreateIntrinsicWithMinContributors(int min_contributors) {
                      "min_contributors_to_group")
           .value());
   return intrinsic;
+}
+
+template <typename KeyType, typename ValueType>
+struct KeyValuePair {
+  KeyType key;
+  ValueType value;
+
+  // Define the equality operator to be able to use UnorderedElementsAre
+  bool operator==(const KeyValuePair& other) const {
+    return key == other.key && value == other.value;
+  }
+};
+
+// Helper function to convert output tensors to a vector of key-value pairs.
+template <typename KeyType, typename ValueType>
+StatusOr<std::vector<KeyValuePair<KeyType, ValueType>>> TensorsToKeyValuePairs(
+    const Tensor& keys_tensor, const Tensor& values_tensor) {
+  std::vector<KeyValuePair<KeyType, ValueType>> result;
+  auto keys = keys_tensor.AsSpan<KeyType>();
+  auto values = values_tensor.AsSpan<ValueType>();
+  if (keys.size() != values.size()) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "Keys and values tensors must have the same size.";
+  }
+  for (size_t i = 0; i < keys.size(); ++i) {
+    result.push_back({
+        keys[i],
+        values[i],
+    });
+  }
+  return result;
+}
+
+// Helper function to convert output tensors to a vector of key-value pairs when
+// there are multiple value tensors.
+template <typename KeyType, typename ValueType>
+StatusOr<std::vector<std::vector<KeyValuePair<KeyType, ValueType>>>>
+TensorsToMultipleKeyValuePairs(const Tensor& keys_tensor,
+                               const std::vector<Tensor>& values_tensors) {
+  std::vector<std::vector<KeyValuePair<KeyType, ValueType>>> result;
+  auto keys = keys_tensor.AsSpan<KeyType>();
+  for (const auto& values_tensor : values_tensors) {
+    std::vector<KeyValuePair<KeyType, ValueType>> pairs;
+    auto values = values_tensor.AsSpan<ValueType>();
+    if (keys.size() != values.size()) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "Keys and values tensors must have the same size.";
+    }
+    for (size_t i = 0; i < keys.size(); ++i) {
+      pairs.push_back({keys[i], values[i]});
+    }
+    result.push_back(std::move(pairs));
+  }
+  return result;
 }
 
 TEST_P(GroupByAggregatorTest, EmptyReport) {
@@ -2365,6 +2443,373 @@ TEST(GroupByAggregatorTest, Deserialize_FailToParseProto) {
   Status s = DeserializeTensorAggregator(intrinsic, invalid_state).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Failed to parse"));
+}
+
+TEST(GroupByAggregatorTest, ShrinkTensorSliceToSurvivors_Success) {
+  Tensor t = Tensor::Create(DT_INT32, {10},
+                            CreateTestData<int32_t>({
+                                0,
+                                1,
+                                2,
+                                3,
+                                4,
+                                5,
+                                6,
+                                7,
+                                8,
+                                9,
+                            }))
+                 .value();
+  TensorSliceData column = TensorSliceData::Create(std::move(t), 40).value();
+  EXPECT_THAT(
+      GroupByAggregatorPeer::ShrinkTensorSliceToSurvivors<int32_t>(column,
+                                                                   {
+                                                                       0,
+                                                                       2,
+                                                                       4,
+                                                                       6,
+                                                                   }),
+      IsOk());
+  auto column_span_status = column.AsSpan<int32_t>();
+  TFF_ASSERT_OK(column_span_status);
+  EXPECT_THAT(column_span_status.value(),
+              testing::UnorderedElementsAre(0, 2, 4, 6));
+}
+
+TEST_P(GroupByAggregatorTest,
+       ShrinkTensorSliceToSurvivors_InvalidSurvivorIndex) {
+  Tensor t = Tensor::Create(DT_INT32, {10},
+                            CreateTestData<int32_t>({
+                                0,
+                                1,
+                                2,
+                                3,
+                                4,
+                                5,
+                                6,
+                                7,
+                                8,
+                                9,
+                            }))
+                 .value();
+  TensorSliceData column = TensorSliceData::Create(std::move(t), 40).value();
+
+  // The tensor has 10 elements. The survivor_indices set
+  // contains an out-of-bounds index (11).
+  absl::flat_hash_set<size_t> survivor_indices = {
+      1,
+      5,
+      11,
+  };
+
+  // The method should return an INVALID_ARGUMENT error because one of the
+  // survivor indices is larger than the number of elements in the tensor.
+  EXPECT_THAT(
+      GroupByAggregatorPeer::ShrinkTensorSliceToSurvivors<int32_t>(
+          column, survivor_indices),
+      StatusIs(INVALID_ARGUMENT,
+               HasSubstr("survivor_indices contained invalid indices.")));
+}
+
+TEST(GroupByAggregatorTest, ConvertHistogramToSliceDataSucceeds) {
+  OutputTensorList histogram;
+  histogram.push_back(Tensor::Create(DT_STRING, {3},
+                                     CreateTestData<string_view>({
+                                         "a",
+                                         "b",
+                                         "c",
+                                     }))
+                          .value());
+  histogram.push_back(Tensor::Create(DT_INT64, {3},
+                                     CreateTestData<int64_t>({
+                                         1,
+                                         2,
+                                         3,
+                                     }))
+                          .value());
+
+  auto result = GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram);
+  ASSERT_THAT(result, IsOk());
+
+  const auto& slice_data = result.value();
+  EXPECT_EQ(slice_data.column_data.size(), 2);
+  EXPECT_EQ(slice_data.column_dtypes.size(), 2);
+  EXPECT_EQ(slice_data.column_dtypes[0], DT_STRING);
+  EXPECT_EQ(slice_data.column_dtypes[1], DT_INT64);
+  EXPECT_EQ(slice_data.num_rows, 3);
+}
+
+TEST(GroupByAggregatorTest, ConvertHistogramToSliceData_EmptyHistogram) {
+  OutputTensorList histogram;
+
+  auto result = GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram);
+
+  ASSERT_THAT(result, IsOk());
+  const auto& slice_data = result.value();
+  EXPECT_THAT(slice_data.column_data, IsEmpty());
+  EXPECT_THAT(slice_data.column_dtypes, IsEmpty());
+  EXPECT_EQ(slice_data.num_rows, 0);
+}
+
+TEST(GroupByAggregatorTest,
+     ConvertHistogramToSliceData_InconsistentColumnSizes) {
+  // Create a histogram where the tensors (columns) have different lengths.
+  OutputTensorList histogram;
+  histogram.push_back(
+      Tensor::Create(DT_STRING, {3},
+                     CreateTestData<string_view>({"a", "b", "c"}))
+          .value());
+  histogram.push_back(
+      // This tensor has a different size from the one above.
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value());
+
+  EXPECT_THAT(
+      GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram),
+      StatusIs(
+          INVALID_ARGUMENT,
+          HasSubstr(
+              "Expected histogram to be a list of tensors of the same size")));
+}
+
+TEST(GroupByAggregatorTest, ShrinkHistogramToSurvivorsSucceeds) {
+  OutputTensorList histogram;
+  histogram.push_back(
+      Tensor::Create(DT_STRING, {4},
+                     CreateTestData<string_view>({"a", "b", "c", "d"}))
+          .value());
+  histogram.push_back(
+      Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({10, 20, 30, 40}))
+          .value());
+  auto slice_data_result =
+      GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram);
+  ASSERT_THAT(slice_data_result, IsOk());
+
+  absl::flat_hash_set<size_t> survivor_indices = {0, 2};
+
+  auto result = GroupByAggregatorPeer::ShrinkHistogramToSurvivors(
+      std::move(slice_data_result).value(), survivor_indices);
+  ASSERT_THAT(result, IsOk());
+
+  const auto& shrunk_histogram = result.value();
+  ASSERT_EQ(shrunk_histogram.size(), 2);
+  auto status_or_pairs = TensorsToKeyValuePairs<string_view, int64_t>(
+      shrunk_histogram[0], shrunk_histogram[1]);
+  TFF_ASSERT_OK_AND_ASSIGN(auto pairs, status_or_pairs);
+  EXPECT_THAT(
+      pairs, UnorderedElementsAre(KeyValuePair<string_view, int64_t>{"a", 10},
+                                  KeyValuePair<string_view, int64_t>{"c", 30}));
+}
+
+TEST(GroupByAggregatorTest, ShrinkHistogramToSurvivorsNoSurvivors) {
+  OutputTensorList histogram;
+  histogram.push_back(
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
+          .value());
+  histogram.push_back(
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({10, 20})).value());
+  auto slice_data_result =
+      GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram);
+  ASSERT_THAT(slice_data_result, IsOk());
+
+  absl::flat_hash_set<size_t> survivor_indices = {};
+
+  auto result = GroupByAggregatorPeer::ShrinkHistogramToSurvivors(
+      std::move(slice_data_result).value(), survivor_indices);
+  ASSERT_THAT(result, IsOk());
+
+  const auto& shrunk_histogram = result.value();
+  EXPECT_EQ(shrunk_histogram.size(), 2);
+  EXPECT_THAT(shrunk_histogram[0], IsTensor<string_view>({0}, {}));
+  EXPECT_THAT(shrunk_histogram[1], IsTensor<int64_t>({0}, {}));
+}
+
+TEST(GroupByAggregatorTest, ShrinkHistogramToSurvivorsAllSurvivors) {
+  OutputTensorList histogram;
+  histogram.push_back(
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
+          .value());
+  histogram.push_back(
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({10, 20})).value());
+  auto slice_data_result =
+      GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram);
+  ASSERT_THAT(slice_data_result, IsOk());
+
+  absl::flat_hash_set<size_t> survivor_indices = {0, 1};
+
+  auto result = GroupByAggregatorPeer::ShrinkHistogramToSurvivors(
+      std::move(slice_data_result).value(), survivor_indices);
+  ASSERT_THAT(result, IsOk());
+
+  const auto& shrunk_histogram = result.value();
+  ASSERT_EQ(shrunk_histogram.size(), 2);
+  auto status_or_pairs = TensorsToKeyValuePairs<string_view, int64_t>(
+      shrunk_histogram[0], shrunk_histogram[1]);
+  TFF_ASSERT_OK_AND_ASSIGN(auto pairs, status_or_pairs);
+  EXPECT_THAT(
+      pairs, UnorderedElementsAre(KeyValuePair<string_view, int64_t>{"a", 10},
+                                  KeyValuePair<string_view, int64_t>{"b", 20}));
+}
+
+TEST_P(GroupByAggregatorTest, ReportWithMinContributors) {
+  // Configure the aggregator to require at least 3 contributors per group.
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(3);
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator,
+                           CreateTensorAggregator(intrinsic));
+
+  // Create key tensors once to avoid redundancy.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key_a,
+      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"a"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key_b,
+      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"b"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key_c,
+      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"c"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key_d,
+      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"d"})));
+
+  // Accumulate data for group "a" (3 contributors) -> should survive.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_a1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({10})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_a, &val_a1}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_a2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_a, &val_a2}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_a3, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({5})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_a, &val_a3}));
+
+  // Accumulate data for group "b" (2 contributors) -> should be dropped.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_b1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({20})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_b, &val_b1}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_b2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({2})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_b, &val_b2}));
+
+  // Accumulate data for group "c" (4 contributors) -> should survive.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_c1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({30})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_c, &val_c1}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_c2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_c, &val_c2}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_c3, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_c, &val_c3}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_c4, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_c, &val_c4}));
+
+  // Accumulate data for group "d" (1 contributor) -> should be dropped.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val_d1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({40})));
+  TFF_ASSERT_OK(aggregator->Accumulate({&key_d, &val_d1}));
+
+  // Check that serializing and deserializing doesn't break anything.
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize();
+    ASSERT_THAT(serialized_state, IsOk());
+    aggregator =
+        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+            .value();
+  }
+
+  TFF_ASSERT_OK_AND_ASSIGN(const auto& histogram,
+                           std::move(*aggregator).Report());
+  // Expecting survivors "a" (sum 16) and "c" (sum 39), in any order.
+  ASSERT_EQ(histogram.size(), 2);
+  auto status_or_pairs =
+      TensorsToKeyValuePairs<string_view, int64_t>(histogram[0], histogram[1]);
+  TFF_ASSERT_OK_AND_ASSIGN(auto pairs, status_or_pairs);
+  EXPECT_THAT(
+      pairs, UnorderedElementsAre(KeyValuePair<string_view, int64_t>{"a", 16},
+                                  KeyValuePair<string_view, int64_t>{"c", 39}));
+}
+
+TEST_P(GroupByAggregatorTest, MergeAndReportWithMinContributors) {
+  // Configure two aggregators to require at least 3 contributors per group.
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(3);
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator1,
+                           CreateTensorAggregator(intrinsic));
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator2,
+                           CreateTensorAggregator(intrinsic));
+
+  // Create key tensors once to avoid redundancy.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key_a,
+      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"a"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key_b,
+      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"b"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key_c,
+      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"c"})));
+
+  // In aggregator1, "a" and "b" have 2 contributors each.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val1_a1,
+      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({10})));
+  TFF_ASSERT_OK(aggregator1->Accumulate({&key_a, &val1_a1}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val1_a2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})));
+  TFF_ASSERT_OK(aggregator1->Accumulate({&key_a, &val1_a2}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val1_b1,
+      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({20})));
+  TFF_ASSERT_OK(aggregator1->Accumulate({&key_b, &val1_b1}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val1_b2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({2})));
+  TFF_ASSERT_OK(aggregator1->Accumulate({&key_b, &val1_b2}));
+
+  // In aggregator2, "a" gets 2 more contributors and "c" gets 3.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val2_a1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({5})));
+  TFF_ASSERT_OK(aggregator2->Accumulate({&key_a, &val2_a1}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val2_a2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({4})));
+  TFF_ASSERT_OK(aggregator2->Accumulate({&key_a, &val2_a2}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val2_c1,
+      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({30})));
+  TFF_ASSERT_OK(aggregator2->Accumulate({&key_c, &val2_c1}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val2_c2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  TFF_ASSERT_OK(aggregator2->Accumulate({&key_c, &val2_c2}));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto val2_c3, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  TFF_ASSERT_OK(aggregator2->Accumulate({&key_c, &val2_c3}));
+
+  // Check that serializing and deserializing doesn't break anything.
+  if (GetParam()) {
+    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    aggregator1 =
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+            .value();
+    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    aggregator2 =
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+            .value();
+  }
+
+  // Merge aggregator2 into aggregator1.
+  TFF_ASSERT_OK(aggregator1->MergeWith(std::move(*aggregator2)));
+
+  // After merging:
+  // "a" has 4 contributors (sum 20) -> survives.
+  // "b" has 2 contributors (sum 22) -> is dropped.
+  // "c" has 3 contributors (sum 36) -> survives.
+  TFF_ASSERT_OK_AND_ASSIGN(const auto& histogram,
+                           std::move(*aggregator1).Report());
+  ASSERT_EQ(histogram.size(), 2);
+  auto status_or_pairs =
+      TensorsToKeyValuePairs<string_view, int64_t>(histogram[0], histogram[1]);
+  TFF_ASSERT_OK_AND_ASSIGN(auto pairs, status_or_pairs);
+  EXPECT_THAT(
+      pairs, UnorderedElementsAre(KeyValuePair<string_view, int64_t>{"a", 20},
+                                  KeyValuePair<string_view, int64_t>{"c", 36}));
 }
 
 INSTANTIATE_TEST_SUITE_P(
