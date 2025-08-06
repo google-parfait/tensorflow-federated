@@ -653,6 +653,25 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "dp_histogram_test_utils",
+    testonly = True,
+    srcs = ["dp_histogram_test_utils.cc"],
+    hdrs = ["dp_histogram_test_utils.h"],
+    deps = [
+        ":aggregator",
+        ":dp_fedsql_constants",
+        ":intrinsic",
+        ":mutable_string_data",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
 cc_test(
     name = "dp_open_domain_histogram_test",
     srcs = ["dp_open_domain_histogram_test.cc"],
@@ -661,6 +680,7 @@ cc_test(
         ":dp_fedsql_constants",
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
+        ":dp_histogram_test_utils",
         ":dp_open_domain_histogram",
         ":intrinsic",
         ":tensor",
@@ -684,6 +704,7 @@ cc_test(
         ":dp_fedsql_constants",
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
+        ":dp_histogram_test_utils",
         ":intrinsic",
         ":mutable_string_data",
         ":tensor",
@@ -694,6 +715,25 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "dp_group_by_factory_test",
+    srcs = ["dp_group_by_factory_test.cc"],
+    deps = [
+        ":aggregator",
+        ":dp_closed_domain_histogram",
+        ":dp_fedsql_constants",
+        ":dp_group_by_factory",
+        ":dp_grouping_federated_sum",
+        ":dp_histogram_test_utils",
+        ":dp_open_domain_histogram",
+        ":intrinsic",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
     ],
 )
 

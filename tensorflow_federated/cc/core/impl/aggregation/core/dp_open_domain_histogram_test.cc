@@ -32,6 +32,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_histogram_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -48,135 +49,47 @@ namespace tensorflow_federated {
 namespace aggregation {
 namespace {
 
+using ::testing::ElementsAreArray;
 using ::testing::Eq;
-using testing::Gt;
+using ::testing::Gt;
 using ::testing::HasSubstr;
-using testing::IsTrue;
-using testing::TestWithParam;
+using ::testing::IsTrue;
+using ::testing::Not;
+using ::testing::TestParamInfo;
+using ::testing::TestWithParam;
+using ::testing::UnorderedElementsAreArray;
+using ::testing::ValuesIn;
+
+using ::tensorflow_federated::aggregation::dp_histogram_testing::
+    CreateInnerIntrinsic;
+using ::tensorflow_federated::aggregation::dp_histogram_testing::
+    CreateIntrinsic;
+using ::tensorflow_federated::aggregation::dp_histogram_testing::
+    CreateNestedParameters;
+using ::tensorflow_federated::aggregation::dp_histogram_testing::
+    CreateTensorSpec;
+using ::tensorflow_federated::aggregation::dp_histogram_testing::
+    CreateTopLevelParameters;
 
 using DPOpenDomainHistogramTest = TestWithParam<bool>;
 
-TensorSpec CreateTensorSpec(std::string name, DataType dtype) {
-  return TensorSpec(name, dtype, {-1});
+std::vector<Tensor> CreateTopLevelParameters() {
+  return CreateTopLevelParameters(1000.0, 0.001, 100);
 }
 
-// A simple Sum Aggregator
-template <typename T>
-class SumAggregator final : public AggVectorAggregator<T> {
- public:
-  using AggVectorAggregator<T>::AggVectorAggregator;
-  using AggVectorAggregator<T>::data;
-
- private:
-  void AggregateVector(const AggVector<T>& agg_vector) override {
-    // This aggregator is not expected to actually be used for aggregating in
-    // the current tests.
-    ASSERT_TRUE(false);
-  }
-};
-
-template <typename EpsilonType, typename DeltaType, typename L0_BoundType>
-std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
-                                             DeltaType delta,
-                                             L0_BoundType l0_bound) {
+// First batch of tests validate the intrinsic(s)
+TEST(DPOpenDomainHistogramTest, CatchTooFewParameters) {
   std::vector<Tensor> parameters;
-
-  std::unique_ptr<MutableVectorData<EpsilonType>> epsilon_tensor =
-      CreateTestData<EpsilonType>({epsilon});
-  parameters.push_back(
-      Tensor::Create(internal::TypeTraits<EpsilonType>::kDataType, {},
-                     std::move(epsilon_tensor), "epsilon")
-          .value());
-
-  std::unique_ptr<MutableVectorData<DeltaType>> delta_tensor =
-      CreateTestData<DeltaType>({delta});
-  parameters.push_back(
-      Tensor::Create(internal::TypeTraits<DeltaType>::kDataType, {},
-                     std::move(delta_tensor), "delta")
-          .value());
-
-  std::unique_ptr<MutableVectorData<L0_BoundType>> l0_bound_tensor =
-      CreateTestData<L0_BoundType>({l0_bound});
-  parameters.push_back(
-      Tensor::Create(internal::TypeTraits<L0_BoundType>::kDataType, {},
-                     std::move(l0_bound_tensor), "max_groups_contributed")
-          .value());
-  return parameters;
-}
-
-std::vector<Tensor> CreateTopLevelParameters(double epsilon = 1000.0,
-                                             double delta = 0.001,
-                                             int64_t l0_bound = 100) {
-  return CreateTopLevelParameters<double, double, int64_t>(epsilon, delta,
-                                                           l0_bound);
-}
-
-std::vector<Tensor> CreateFewTopLevelParameters() {
-  std::vector<Tensor> parameters;
-
   auto epsilon_tensor = CreateTestData({1.0});
   parameters.push_back(
       Tensor::Create(DT_DOUBLE, {}, std::move(epsilon_tensor), "epsilon")
           .value());
 
-  return parameters;
-}
-
-template <typename InputType>
-std::vector<Tensor> CreateNestedParameters(InputType linfinity_bound,
-                                           double l1_bound, double l2_bound) {
-  std::vector<Tensor> parameters;
-
-  parameters.push_back(
-      Tensor::Create(internal::TypeTraits<InputType>::kDataType, {},
-                     CreateTestData<InputType>({linfinity_bound}))
-          .value());
-
-  parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({l1_bound}))
-          .value());
-
-  parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({l2_bound}))
-          .value());
-
-  return parameters;
-}
-
-template <typename InputType, typename OutputType>
-Intrinsic CreateInnerIntrinsic(InputType linfinity_bound, double l1_bound,
-                               double l2_bound) {
-  return Intrinsic{
-      kDPSumUri,
-      {CreateTensorSpec("value", internal::TypeTraits<InputType>::kDataType)},
-      {CreateTensorSpec("value", internal::TypeTraits<OutputType>::kDataType)},
-      {CreateNestedParameters<InputType>(linfinity_bound, l1_bound, l2_bound)},
-      {}};
-}
-
-template <typename InputType, typename OutputType>
-Intrinsic CreateIntrinsic(double epsilon = kEpsilonThreshold,
-                          double delta = 0.001, int64_t l0_bound = 100,
-                          InputType linfinity_bound = 100, double l1_bound = -1,
-                          double l2_bound = -1) {
-  Intrinsic intrinsic{kDPGroupByUri,
-                      {CreateTensorSpec("key", DT_STRING)},
-                      {CreateTensorSpec("key_out", DT_STRING)},
-                      {CreateTopLevelParameters(epsilon, delta, l0_bound)},
-                      {}};
-  intrinsic.nested_intrinsics.push_back(
-      CreateInnerIntrinsic<InputType, OutputType>(linfinity_bound, l1_bound,
-                                                  l2_bound));
-  return intrinsic;
-}
-
-// First batch of tests validate the intrinsic(s)
-TEST(DPOpenDomainHistogramTest, CatchTooFewParameters) {
-  Intrinsic too_few{kDPGroupByUri,
-                    {CreateTensorSpec("key", DT_STRING)},
-                    {CreateTensorSpec("key_out", DT_STRING)},
-                    {CreateFewTopLevelParameters()},
-                    {}};
+  Intrinsic too_few = {.uri = kDPGroupByUri,
+                       .inputs = {CreateTensorSpec("key", DT_STRING)},
+                       .outputs = {CreateTensorSpec("key_out", DT_STRING)},
+                       .parameters = {std::move(parameters)},
+                       .nested_intrinsics = {}};
   EXPECT_THAT(CreateTensorAggregator(too_few),
               StatusIs(INVALID_ARGUMENT,
                        HasSubstr("For all DP histograms, epsilon, delta, and "
@@ -185,31 +98,34 @@ TEST(DPOpenDomainHistogramTest, CatchTooFewParameters) {
 
 TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
   Intrinsic intrinsic0{
-      kDPGroupByUri,
-      {CreateTensorSpec("key", DT_STRING)},
-      {CreateTensorSpec("key_out", DT_STRING)},
-      {CreateTopLevelParameters<string_view, double, int64_t>("x", 0.1, 10)},
-      {}};
+      .uri = kDPGroupByUri,
+      .inputs = {CreateTensorSpec("key", DT_STRING)},
+      .outputs = {CreateTensorSpec("key_out", DT_STRING)},
+      .parameters = {CreateTopLevelParameters<string_view, double, int64_t>(
+          "x", 0.1, 10)},
+      .nested_intrinsics = {}};
   auto bad_epsilon = CreateTensorAggregator(intrinsic0).status();
   EXPECT_THAT(bad_epsilon, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(bad_epsilon.message(), HasSubstr("must be numerical"));
 
   Intrinsic intrinsic1{
-      kDPGroupByUri,
-      {CreateTensorSpec("key", DT_STRING)},
-      {CreateTensorSpec("key_out", DT_STRING)},
-      {CreateTopLevelParameters<double, string_view, int64_t>(1.0, "x", 10)},
-      {}};
+      .uri = kDPGroupByUri,
+      .inputs = {CreateTensorSpec("key", DT_STRING)},
+      .outputs = {CreateTensorSpec("key_out", DT_STRING)},
+      .parameters = {CreateTopLevelParameters<double, string_view, int64_t>(
+          1.0, "x", 10)},
+      .nested_intrinsics = {}};
   auto bad_delta = CreateTensorAggregator(intrinsic1).status();
   EXPECT_THAT(bad_delta, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(bad_delta.message(), HasSubstr("must be numerical"));
 
   Intrinsic intrinsic2{
-      kDPGroupByUri,
-      {CreateTensorSpec("key", DT_STRING)},
-      {CreateTensorSpec("key_out", DT_STRING)},
-      {CreateTopLevelParameters<double, double, string_view>(1.0, 0.1, "x")},
-      {}};
+      .uri = kDPGroupByUri,
+      .inputs = {CreateTensorSpec("key", DT_STRING)},
+      .outputs = {CreateTensorSpec("key_out", DT_STRING)},
+      .parameters = {CreateTopLevelParameters<double, double, string_view>(
+          1.0, 0.1, "x")},
+      .nested_intrinsics = {}};
   auto bad_l0_bound = CreateTensorAggregator(intrinsic2).status();
   EXPECT_THAT(bad_l0_bound, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(bad_l0_bound.message(), HasSubstr("must be numerical"));
@@ -218,19 +134,19 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
 TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
   Intrinsic intrinsic0 = CreateIntrinsic<int64_t, int64_t>(-1, 0.001, 10);
   auto bad_epsilon = CreateTensorAggregator(intrinsic0).status();
-  EXPECT_THAT(bad_epsilon, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(bad_epsilon.message(), HasSubstr("Epsilon must be positive"));
+  EXPECT_THAT(bad_epsilon, StatusIs(INVALID_ARGUMENT,
+                                    HasSubstr("Epsilon must be positive")));
 
   Intrinsic intrinsic1 = CreateIntrinsic<int64_t, int64_t>(1.0, -1, 10);
   auto bad_delta = CreateTensorAggregator(intrinsic1).status();
-  EXPECT_THAT(bad_delta, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(bad_delta.message(), HasSubstr("delta must lie between 0 and 1"));
+  EXPECT_THAT(bad_delta, StatusIs(INVALID_ARGUMENT,
+                                  HasSubstr("delta must lie between 0 and 1")));
 
   Intrinsic intrinsic2 = CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, -1);
   auto bad_l0_bound = CreateTensorAggregator(intrinsic2).status();
-  EXPECT_THAT(bad_l0_bound, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(bad_l0_bound.message(),
-              HasSubstr("max_groups_contributed must be positive"));
+  EXPECT_THAT(bad_l0_bound,
+              StatusIs(INVALID_ARGUMENT,
+                       HasSubstr("max_groups_contributed must be positive")));
 }
 
 TEST(DPOpenDomainHistogramTest, CatchInvalidLinfinityBound) {
@@ -251,11 +167,11 @@ TEST(DPOpenDomainHistogramTest, Deserialize_FailToParseProto) {
 }
 
 TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
-  Intrinsic intrinsic = {kDPGroupByUri,
-                         {CreateTensorSpec("key", DT_STRING)},
-                         {CreateTensorSpec("key_out", DT_STRING)},
-                         {CreateTopLevelParameters()},
-                         {}};
+  Intrinsic intrinsic = {.uri = kDPGroupByUri,
+                         .inputs = {CreateTensorSpec("key", DT_STRING)},
+                         .outputs = {CreateTensorSpec("key_out", DT_STRING)},
+                         .parameters = {CreateTopLevelParameters()},
+                         .nested_intrinsics = {}};
   intrinsic.nested_intrinsics.push_back(Intrinsic{
       "GoogleSQL:$not_differential_privacy_sum",
       {CreateTensorSpec("value", internal::TypeTraits<int32_t>::kDataType)},
@@ -429,11 +345,12 @@ Intrinsic CreateIntrinsic2Agg(double epsilon = kEpsilonThreshold,
                               double l1_bound1 = -1, double l2_bound1 = -1,
                               InputType linfinity_bound2 = 100,
                               double l1_bound2 = -1, double l2_bound2 = -1) {
-  Intrinsic intrinsic{kDPGroupByUri,
-                      {CreateTensorSpec("key", DT_STRING)},
-                      {CreateTensorSpec("key_out", DT_STRING)},
-                      {CreateTopLevelParameters(epsilon, delta, l0_bound)},
-                      {}};
+  Intrinsic intrinsic = {
+      .uri = kDPGroupByUri,
+      .inputs = {CreateTensorSpec("key", DT_STRING)},
+      .outputs = {CreateTensorSpec("key_out", DT_STRING)},
+      .parameters = {CreateTopLevelParameters(epsilon, delta, l0_bound)},
+      .nested_intrinsics = {}};
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<InputType, OutputType>(linfinity_bound1, l1_bound1,
                                                   l2_bound1));
@@ -517,13 +434,14 @@ Intrinsic CreateIntrinsic2Key2Agg(double epsilon = kEpsilonThreshold,
                                   InputType linfinity_bound2 = 100,
                                   double l1_bound2 = -1,
                                   double l2_bound2 = -1) {
-  Intrinsic intrinsic{kDPGroupByUri,
-                      {CreateTensorSpec("key1", DT_STRING),
-                       CreateTensorSpec("key2", DT_STRING)},
-                      {CreateTensorSpec("key1_out", DT_STRING),
-                       CreateTensorSpec("key2_out", DT_STRING)},
-                      {CreateTopLevelParameters(epsilon, delta, l0_bound)},
-                      {}};
+  Intrinsic intrinsic = {
+      .uri = kDPGroupByUri,
+      .inputs = {CreateTensorSpec("key1", DT_STRING),
+                 CreateTensorSpec("key2", DT_STRING)},
+      .outputs = {CreateTensorSpec("key1_out", DT_STRING),
+                  CreateTensorSpec("key2_out", DT_STRING)},
+      .parameters = {CreateTopLevelParameters(epsilon, delta, l0_bound)},
+      .nested_intrinsics = {}};
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<InputType, OutputType>(linfinity_bound1, l1_bound1,
                                                   l2_bound1));
@@ -611,11 +529,12 @@ Intrinsic CreateIntrinsicNoKeys(double epsilon = kEpsilonThreshold,
                                 double l1_bound2 = -1, double l2_bound2 = -1,
                                 InputType linfinity_bound3 = 100,
                                 double l1_bound3 = -1, double l2_bound3 = -1) {
-  Intrinsic intrinsic{kDPGroupByUri,
-                      {},
-                      {},
-                      {CreateTopLevelParameters(epsilon, delta, l0_bound)},
-                      {}};
+  Intrinsic intrinsic = {
+      .uri = kDPGroupByUri,
+      .inputs = {},
+      .outputs = {},
+      .parameters = {CreateTopLevelParameters(epsilon, delta, l0_bound)},
+      .nested_intrinsics = {}};
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<InputType, OutputType>(linfinity_bound1, l1_bound1,
                                                   l2_bound1));
@@ -787,15 +706,15 @@ TEST_P(DPOpenDomainHistogramTest, NoKeyNoDrop) {
 TEST_P(DPOpenDomainHistogramTest,
        Accumulate_MultipleKeyTensors_SomeKeysNotInOutput_Succeeds) {
   const TensorShape shape = {4};
-  Intrinsic intrinsic{
-      kDPGroupByUri,
-      {CreateTensorSpec("key1", DT_STRING),
-       CreateTensorSpec("key2", DT_STRING)},
-      // An empty string in the output keys means that the key should not be
-      // included in the output.
-      {CreateTensorSpec("", DT_STRING), CreateTensorSpec("animals", DT_STRING)},
-      {CreateTopLevelParameters(1.0, 1e-8, 3)},
-      {}};
+  Intrinsic intrinsic = {.uri = kDPGroupByUri,
+                         .inputs = {CreateTensorSpec("key1", DT_STRING),
+                                    CreateTensorSpec("key2", DT_STRING)},
+                         // An empty string in the output keys means that the
+                         // key should not be included in the output.
+                         .outputs = {CreateTensorSpec("", DT_STRING),
+                                     CreateTensorSpec("animals", DT_STRING)},
+                         .parameters = {CreateTopLevelParameters(1.0, 1e-8, 3)},
+                         .nested_intrinsics = {}};
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<int32_t, int64_t>(4, 8, -1));
   // L0 = 3, Linf = 4, L1 = 8
@@ -987,11 +906,12 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
 }
 
 TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
-  Intrinsic intrinsic{"fedsql_dp_group_by",
-                      {},
-                      {},
-                      {CreateTopLevelParameters(kEpsilonThreshold, 0.01, 100)},
-                      {}};
+  Intrinsic intrinsic = {
+      .uri = "fedsql_dp_group_by",
+      .inputs = {},
+      .outputs = {},
+      .parameters = {CreateTopLevelParameters(kEpsilonThreshold, 0.01, 100)},
+      .nested_intrinsics = {}};
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<int64_t, int64_t>(10, 9, 8));
   intrinsic.nested_intrinsics.push_back(
@@ -1065,15 +985,16 @@ TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
   // is likely that all keys survive NoiseAndThreshold. The output is some
   // permutation of the alphabet; the chance of being identical is 1/(26!).
   auto report_span = report.value()[0].AsSpan<string_view>();
-  EXPECT_THAT(report_span, testing::UnorderedElementsAreArray(alphabet));
-  EXPECT_THAT(report_span, testing::Not(testing::ElementsAreArray(alphabet)));
+  EXPECT_THAT(report_span, UnorderedElementsAreArray(alphabet));
+  EXPECT_THAT(report_span, Not(ElementsAreArray(alphabet)));
 }
 
 INSTANTIATE_TEST_SUITE_P(
     DPOpenDomainHistogramTestInstantiation, DPOpenDomainHistogramTest,
-    testing::ValuesIn<bool>({false, true}),
-    [](const testing::TestParamInfo<DPOpenDomainHistogramTest::ParamType>&
-           info) { return info.param ? "SerializeDeserialize" : "None"; });
+    ValuesIn<bool>({false, true}),
+    [](const TestParamInfo<DPOpenDomainHistogramTest::ParamType>& info) {
+      return info.param ? "SerializeDeserialize" : "None";
+    });
 
 }  // namespace
 }  // namespace aggregation
