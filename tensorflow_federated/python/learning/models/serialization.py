@@ -428,56 +428,13 @@ def save_functional_model(
   # Serialize predict_on_batch, once for training, once for non-training.
   # TODO: b/198150431 - try making `training` a `tf.Tensor` parameter to remove
   # the need to for serializing two different function graphs.
-  def make_concrete_flat_predict_on_batch(training: bool):
-    """Create a concrete predict_on_batch function that has flattened output.
-
-    Args:
-      training: A boolean indicating whether this is a call in a training loop,
-        or evaluation loop.
-
-    Returns:
-      A 2-tuple of concrete `tf.function` instance and a
-      `federated_language.Type` protocol
-      buffer message documenting the result structure returned by the
-      concrete function.
-    """
-    # Save the un-flattened type spec for deserialization later.
-    # Note: `training` is a Python boolean, which gets "curried", in a sense,
-    # during function conretization. The resulting concrete function only has
-    # parameters for `model_weights` and `batch_input`, which are
-    # `tf.TensorSpec` structures here.
-    concrete_structured_fn = tf.function(
-        functional_model.predict_on_batch
-    ).get_concrete_function(
-        model_weights_tensor_specs,
-        x_spec,
-        # Note: training does not appear in the resulting concrete function.
-        training=training,
-    )
-    output_tensor_spec_structure = tf.nest.map_structure(
-        tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
-    )
-    result_type_spec = tensorflow_types.to_type(
-        output_tensor_spec_structure
-    ).to_proto()
-
-    @tf.function
-    def flat_predict_on_batch(model_weights, x, training):
-      return tf.nest.flatten(
-          functional_model.predict_on_batch(model_weights, x, training)
-      )
-
-    flat_concrete_fn = tf.function(flat_predict_on_batch).get_concrete_function(
-        model_weights_tensor_specs,
-        x_spec,
-        # Note: training does not appear in the resulting concrete function.
-        training=training,
-    )
-    return flat_concrete_fn, result_type_spec
-
   with tf.Graph().as_default():
     predict_training, predict_training_type_spec = (
-        make_concrete_flat_predict_on_batch(training=True)
+        _make_concrete_flat_output_fn(
+            functools.partial(functional_model.predict_on_batch, training=True),
+            model_weights_tensor_specs,
+            x_spec,
+        )
     )
   m.predict_on_batch_training = predict_training
   m.predict_on_batch_training_type_spec = tf.Variable(
@@ -487,7 +444,13 @@ def save_functional_model(
 
   with tf.Graph().as_default():
     predict_inference, predict_inference_type_spec = (
-        make_concrete_flat_predict_on_batch(training=False)
+        _make_concrete_flat_output_fn(
+            functools.partial(
+                functional_model.predict_on_batch, training=False
+            ),
+            model_weights_tensor_specs,
+            x_spec,
+        )
     )
   m.predict_on_batch_inference = predict_inference
   m.predict_on_batch_inference_type_spec = tf.Variable(
@@ -500,45 +463,13 @@ def save_functional_model(
   )
 
   # Serialize the functional graph of loss.
-  def make_concrete_flat_loss():
-    """Create a concrete loss function that has flattened output.
-
-    Returns:
-      A 2-tuple of concrete `tf.function` instance and a
-      `federated_language.Type` protocol
-      buffer message documenting the result structure returned by the concrete
-      function.
-    """
-    # Save the un-flattened type spec for deserialization later.
-    concrete_structured_fn = tf.function(
-        functional_model.loss
-    ).get_concrete_function(
-        output_tensor_specs,
-        y_spec,
-        sample_weight=None,
-    )
-    output_tensor_spec_structure = tf.nest.map_structure(
-        tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
-    )
-    result_type_spec = tensorflow_types.to_type(
-        output_tensor_spec_structure
-    ).to_proto()
-
-    @tf.function
-    def flat_loss(output, label, sample_weight=None):
-      return tf.nest.flatten(
-          functional_model.loss(output, label, sample_weight)
-      )
-
-    flat_concrete_fn = tf.function(flat_loss).get_concrete_function(
-        output_tensor_specs,
-        y_spec,
-        sample_weight=None,
-    )
-    return flat_concrete_fn, result_type_spec
-
   with tf.Graph().as_default():
-    loss_fn, loss_type_spec = make_concrete_flat_loss()
+    loss_fn, loss_type_spec = _make_concrete_flat_output_fn(
+        functional_model.loss,
+        output_tensor_specs,
+        y_spec,
+        sample_weight=None,
+    )
 
   m.loss = loss_fn
   m.loss_type_spec = tf.Variable(
@@ -552,6 +483,62 @@ def save_functional_model(
       tensorflow_types.to_type(functional_model.input_spec)
       .to_proto()
       .SerializeToString(deterministic=True),
+      trainable=False,
+  )
+
+  # Serialize the functional graph of initialize_metrics_state.
+  with tf.Graph().as_default():
+    initialize_metrics_state_fn, initialize_metrics_state_type_spec = (
+        _make_concrete_flat_output_fn(
+            functional_model.initialize_metrics_state,
+        )
+    )
+
+  m.initialize_metrics_state = initialize_metrics_state_fn
+  m.initialize_metrics_state_type_spec = tf.Variable(
+      initialize_metrics_state_type_spec.SerializeToString(deterministic=True),
+      trainable=False,
+  )
+
+  initialize_metrics_state_tensor_specs = _deserialize_type_spec(
+      m.initialize_metrics_state_type_spec, collections.OrderedDict
+  )
+
+  # Serialize the functional graph of update_metrics_state.
+  loss_tensor_specs = _deserialize_type_spec(m.loss_type_spec, tuple)
+  with tf.Graph().as_default():
+    update_metrics_state_fn, update_metrics_state_type_spec = (
+        _make_concrete_flat_output_fn(
+            functional_model.update_metrics_state,
+            initialize_metrics_state_tensor_specs,
+            y_spec,
+            variable.BatchOutput(
+                loss=loss_tensor_specs,
+                predictions=output_tensor_specs,
+                num_examples=tf.TensorSpec(shape=(), dtype=tf.int32),
+            ),
+            sample_weight=None,
+        )
+    )
+
+  m.update_metrics_state = update_metrics_state_fn
+  m.update_metrics_state_type_spec = tf.Variable(
+      update_metrics_state_type_spec.SerializeToString(deterministic=True),
+      trainable=False,
+  )
+
+  # Serialize the functional graph of finalize_metrics.
+  with tf.Graph().as_default():
+    finalize_metrics_fn, finalize_metrics_type_spec = (
+        _make_concrete_flat_output_fn(
+            functional_model.finalize_metrics,
+            initialize_metrics_state_tensor_specs,
+        )
+    )
+
+  m.finalize_metrics = finalize_metrics_fn
+  m.finalize_metrics_type_spec = tf.Variable(
+      finalize_metrics_type_spec.SerializeToString(deterministic=True),
       trainable=False,
   )
 
@@ -574,16 +561,14 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
     )
 
     def unflatten_predict_on_batch_fn(
-        flat_predict_on_batch, serialized_result_type_variable, training
+        flat_predict_on_batch, serialized_result_type_variable
     ):
       result_tensor_specs = _deserialize_type_spec(
           serialized_result_type_variable, tuple
       )
 
       def predict_on_batch(model_weights, x):
-        result = flat_predict_on_batch(
-            model_weights=model_weights, x=x, training=training
-        )
+        result = flat_predict_on_batch(model_weights, x)
         if tf.is_tensor(result):
           return result
         return tf.nest.pack_sequence_as(result_tensor_specs, result)
@@ -593,12 +578,10 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
     self._predict_on_batch_training = unflatten_predict_on_batch_fn(
         loaded_module.predict_on_batch_training,
         loaded_module.predict_on_batch_training_type_spec,
-        True,
     )
     self._predict_on_batch_inference = unflatten_predict_on_batch_fn(
         loaded_module.predict_on_batch_inference,
         loaded_module.predict_on_batch_inference_type_spec,
-        False,
     )
 
     def unflattern_loss_fn(flat_loss, serialized_result_type_variable):
@@ -607,7 +590,7 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
       )
 
       def loss(output, label, sample_weight=None):
-        result = flat_loss(output, label, sample_weight)
+        result = flat_loss(output, label, sample_weight=sample_weight)
         if tf.is_tensor(result):
           return result
         return tf.nest.pack_sequence_as(result_tensor_specs, result)
@@ -616,6 +599,62 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
 
     self._loss_fn = unflattern_loss_fn(
         loaded_module.loss, loaded_module.loss_type_spec
+    )
+
+    def unflattern_initialize_metrics_state_fn(
+        flat_initialize_metrics_state, serialized_result_type_variable
+    ):
+      result_tensor_specs = _deserialize_type_spec(
+          serialized_result_type_variable, collections.OrderedDict
+      )
+
+      def initialize_metrics_state():
+        result = flat_initialize_metrics_state()
+        return tf.nest.pack_sequence_as(result_tensor_specs, result)
+
+      return initialize_metrics_state
+
+    self._initialize_metrics_state = unflattern_initialize_metrics_state_fn(
+        loaded_module.initialize_metrics_state,
+        loaded_module.initialize_metrics_state_type_spec,
+    )
+
+    def unflattern_update_metrics_state_fn(
+        flat_update_metrics_state, serialized_result_type_variable
+    ):
+      result_tensor_specs = _deserialize_type_spec(
+          serialized_result_type_variable, collections.OrderedDict
+      )
+
+      def update_metrics_state(state, labels, batch_output, sample_weight=None):
+        result = flat_update_metrics_state(
+            state, labels, batch_output, sample_weight=sample_weight
+        )
+        return tf.nest.pack_sequence_as(result_tensor_specs, result)
+
+      return update_metrics_state
+
+    self._update_metrics_state = unflattern_update_metrics_state_fn(
+        loaded_module.update_metrics_state,
+        loaded_module.update_metrics_state_type_spec,
+    )
+
+    def unflattern_finalize_metrics_fn(
+        flat_finalize_metrics, serialized_result_type_variable
+    ):
+      result_tensor_specs = _deserialize_type_spec(
+          serialized_result_type_variable, collections.OrderedDict
+      )
+
+      def finalize_metrics(state):
+        result = flat_finalize_metrics(state)
+        return tf.nest.pack_sequence_as(result_tensor_specs, result)
+
+      return finalize_metrics
+
+    self._finalize_metrics = unflattern_finalize_metrics_fn(
+        loaded_module.finalize_metrics,
+        loaded_module.finalize_metrics_type_spec,
     )
 
   @property

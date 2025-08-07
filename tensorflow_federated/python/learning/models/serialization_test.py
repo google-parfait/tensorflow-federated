@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import keras_utils
 from tensorflow_federated.python.learning.models import model_examples
@@ -566,10 +567,18 @@ def create_test_keras_functional_model(input_spec):
           1, kernel_initializer='zeros', bias_initializer='zeros'
       ),
   ])
+
+  def _metrics_constructor():
+    return collections.OrderedDict({
+        'loss': tf.keras.metrics.MeanSquaredError(),
+        'num_examples': counters.NumExamplesCounter(),
+    })
+
   return functional.functional_model_from_keras(
       keras_model,
       loss_fn=tf.keras.losses.MeanSquaredError(),
       input_spec=input_spec,
+      metrics_constructor=_metrics_constructor,
   )
 
 
@@ -658,16 +667,18 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
 
-  @parameterized.named_parameters(
-      ('tf_function', create_test_functional_model),
-      ('keras_model', create_test_keras_functional_model),
-  )
-  def test_save_and_load_functional_model(self, model_fn):
-    dataset = get_dataset()
+  def _save_and_load_functional_model(self, model_fn, dataset):
     functional_model = model_fn(input_spec=dataset.element_spec)
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
     loaded_model = serialization.load_functional_model(path)
+    return loaded_model
+
+  def test_save_and_load_functional_model_tf_function(self):
+    dataset = get_dataset()
+    loaded_model = self._save_and_load_functional_model(
+        create_test_functional_model, dataset
+    )
     model_weights = loaded_model.initial_weights
     example_batch = next(iter(dataset))
 
@@ -687,6 +698,73 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
         ),
         expected_loss,
     )
+
+    initial_state = loaded_model.initialize_metrics_state()
+    self.assertIsInstance(initial_state, collections.OrderedDict)
+    self.assertAllClose(initial_state, {'loss': 0.0, 'num_examples': 0})
+    updated_state = loaded_model.update_metrics_state(
+        initial_state,
+        example_batch[1],
+        variable.BatchOutput(
+            loss=expected_loss,
+            predictions=tf.convert_to_tensor([[0.0]] * 5),
+            num_examples=tf.constant(5),
+        ),
+    )
+    self.assertIsInstance(updated_state, collections.OrderedDict)
+    self.assertAllClose(
+        updated_state, {'loss': expected_loss * 5, 'num_examples': 5}
+    )
+    final_state = loaded_model.finalize_metrics(updated_state)
+    self.assertIsInstance(final_state, collections.OrderedDict)
+    self.assertAllClose(final_state, {'loss': expected_loss, 'num_examples': 5})
+
+  def test_save_and_load_functional_model_keras_model(self):
+    dataset = get_dataset()
+    loaded_model = self._save_and_load_functional_model(
+        create_test_keras_functional_model, dataset
+    )
+    model_weights = loaded_model.initial_weights
+    example_batch = next(iter(dataset))
+
+    self.assertAllClose(
+        loaded_model.predict_on_batch(
+            model_weights=model_weights, x=example_batch[0]
+        ),
+        [[0.0]] * 5,
+    )
+
+    # Loss should be mean square error
+    expected_loss = tf.math.reduce_mean(tf.math.pow(example_batch[1], 2.0))
+
+    self.assertAllClose(
+        loaded_model.loss(
+            output=tf.convert_to_tensor([[0.0]] * 5), label=example_batch[1]
+        ),
+        expected_loss,
+    )
+
+    initial_state = loaded_model.initialize_metrics_state()
+    self.assertIsInstance(initial_state, collections.OrderedDict)
+    self.assertAllClose(
+        initial_state, {'loss': (0.0, 0.0), 'num_examples': (0,)}
+    )
+    updated_state = loaded_model.update_metrics_state(
+        initial_state,
+        example_batch[1],
+        variable.BatchOutput(
+            loss=expected_loss,
+            predictions=tf.convert_to_tensor([[0.0]] * 5),
+            num_examples=tf.constant(5),
+        ),
+    )
+    self.assertIsInstance(updated_state, collections.OrderedDict)
+    self.assertAllClose(
+        updated_state, {'loss': (expected_loss * 5, 5.0), 'num_examples': (5,)}
+    )
+    final_state = loaded_model.finalize_metrics(updated_state)
+    self.assertIsInstance(final_state, collections.OrderedDict)
+    self.assertAllClose(final_state, {'loss': expected_loss, 'num_examples': 5})
 
   @parameterized.named_parameters(
       ('tf_function', create_test_functional_model),

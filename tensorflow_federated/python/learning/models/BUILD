@@ -179,6 +179,7 @@ py_test(
         ":variable",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "//tensorflow_federated/python/learning/metrics:counters",
         "@federated_language//federated_language",
     ],
 )
