@@ -158,12 +158,14 @@ cc_library(
         "tensor_aggregator.h",
     ],
     deps = [
+        ":agg_core_cc_proto",
         ":aggregator",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/status",
     ],
 )
 

@@ -326,8 +326,8 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
       TFF_LOG(WARNING) << "Client " << client_id << " input can't be parsed: "
                        << client_completion_status;
     } else {
-      client_completion_status =
-          checkpoint_aggregator_->Accumulate(*parser_or_status.value());
+      client_completion_status = checkpoint_aggregator_->Accumulate(
+          *parser_or_status.value(), /*metadata=*/std::nullopt);
       if (client_completion_status.code() == StatusCode::kAborted) {
         client_completion_state = CLIENT_DISCARDED;
         TFF_LOG(INFO) << "Client " << client_id

@@ -47,3 +47,7 @@ message DPTensorAggregatorBundleState {
   uint64 num_inputs = 1;
   repeated bytes nested_serialized_states = 2;
 }
+
+message AccumulateMetadata {
+  uint64 privacy_id = 1;
+}

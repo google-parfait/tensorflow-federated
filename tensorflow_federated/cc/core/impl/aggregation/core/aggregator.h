@@ -17,7 +17,10 @@
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_AGGREGATOR_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_AGGREGATOR_H_
 
+#include <optional>
+
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -49,7 +52,8 @@ class Aggregator {
   // Accumulates an input into the intermediate aggregate.
   // The method may fail if the input isn't compatible with the current
   // Aggregator or if the Aggregator instance has already been 'consumed'.
-  virtual Status Accumulate(T input) = 0;
+  virtual Status Accumulate(T input,
+                            std::optional<AccumulateMetadata> metadata) = 0;
 
   // Merges intermediate aggregates from the other Aggregator instance into the
   // current Aggregator instance. Doing so 'consumes' the other Aggregator
