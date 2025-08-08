@@ -17,10 +17,14 @@
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_TENSOR_AGGREGATOR_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_TENSOR_AGGREGATOR_H_
 
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -37,8 +41,16 @@ class TensorAggregator
  public:
   ~TensorAggregator() override = default;
 
+  // Callers should only use this method if accumulate metadata is not needed.
+  // Most non-test callers should use the Accumulate method with the metadata
+  // parameter.
+  Status Accumulate(InputTensorList tensors) {
+    return Accumulate(std::move(tensors), /*metadata=*/std::nullopt);
+  }
+
   // Implementation of the base Aggregator class methods.
-  Status Accumulate(InputTensorList tensors) override;
+  Status Accumulate(InputTensorList tensors,
+                    std::optional<AccumulateMetadata> metadata) override;
   bool CanReport() const override;
   StatusOr<OutputTensorList> Report() && override;
 
@@ -52,9 +64,17 @@ class TensorAggregator
   // Construct TensorAggregator
   explicit TensorAggregator() {}
 
-  // The actual implementation of the tensor aggregation to be provided by
-  // a derived class.
-  virtual Status AggregateTensors(InputTensorList tensors) = 0;
+  // A derived class should override either this method or the one below, but
+  // not both. It should override the one with a metadata parameter if it wants
+  // to use the metadata.
+  virtual Status AggregateTensors(InputTensorList tensors,
+                                  std::optional<AccumulateMetadata> metadata) {
+    return AggregateTensors(std::move(tensors));
+  }
+  virtual Status AggregateTensors(InputTensorList tensors) {
+    return absl::UnimplementedError(
+        "No implementation of AggregateTensors provided.");
+  }
 
   // Checks if the current TensorAggregator is valid e.g. the resulting output
   // hasn't been consumed.
