@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -93,7 +94,9 @@ class AggVectorAggregator : public TensorAggregator {
 
  protected:
   // Implementation of the tensor aggregation.
-  Status AggregateTensors(InputTensorList tensors) override {
+  Status AggregateTensors(
+      InputTensorList tensors,
+      std::optional<google::protobuf::Any> metadata) override {
     TFF_CHECK(tensors.size() == 1)
         << "AggVectorAggregator should operate on a single input tensor";
 

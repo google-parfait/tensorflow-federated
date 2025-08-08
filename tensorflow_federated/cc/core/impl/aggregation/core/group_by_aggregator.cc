@@ -202,8 +202,10 @@ StatusOr<OutputTensorList> GroupByAggregator::Report() && {
                                     survivor_indices);
 }
 
-Status GroupByAggregator::AggregateTensors(InputTensorList tensors) {
-  TFF_RETURN_IF_ERROR(AggregateTensorsInternal(std::move(tensors)));
+Status GroupByAggregator::AggregateTensors(
+    InputTensorList tensors, std::optional<google::protobuf::Any> metadata) {
+  TFF_RETURN_IF_ERROR(
+      AggregateTensorsInternal(std::move(tensors), std::move(metadata)));
   num_inputs_++;
   return absl::OkStatus();
 }
@@ -435,7 +437,8 @@ inline Status GroupByAggregator::ValidateInputTensor(
   return absl::OkStatus();
 }
 
-Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
+Status GroupByAggregator::AggregateTensorsInternal(
+    InputTensorList tensors, std::optional<google::protobuf::Any> metadata) {
   if (tensors.size() != num_tensors_per_input_) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "GroupByAggregator::AggregateTensorsInternal should operate on "
@@ -466,6 +469,8 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
 
   TFF_ASSIGN_OR_RETURN(Tensor ordinals, CreateOrdinalsByGroupingKeys(tensors));
 
+  // TODO: b/423674907 - Track contributors based on the privacy id in the
+  // metadata.
   if (min_contributors_to_group_.has_value()) {
     TFF_RETURN_IF_ERROR(AddOneContributor(ordinals));
   }

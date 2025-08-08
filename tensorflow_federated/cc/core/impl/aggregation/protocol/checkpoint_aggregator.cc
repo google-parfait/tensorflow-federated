@@ -161,7 +161,8 @@ CheckpointAggregator::CheckpointAggregator(
       aggregators_(std::move(aggregators)) {}
 
 absl::Status CheckpointAggregator::Accumulate(
-    CheckpointParser& checkpoint_parser) {
+    CheckpointParser& checkpoint_parser,
+    std::optional<google::protobuf::Any> metadata) {
   TensorMap tensor_map;
   for (const auto& intrinsic : intrinsics_) {
     TFF_RETURN_IF_ERROR(
@@ -184,7 +185,8 @@ absl::Status CheckpointAggregator::Accumulate(
       TFF_CHECK(aggregators_[i] != nullptr)
           << "Report() has already been called.";
       auto& input_list = inputs[i];
-      TFF_RETURN_IF_ERROR(aggregators_[i]->Accumulate(std::move(input_list)));
+      TFF_RETURN_IF_ERROR(
+          aggregators_[i]->Accumulate(std::move(input_list), metadata));
     }
   }
   return absl::OkStatus();

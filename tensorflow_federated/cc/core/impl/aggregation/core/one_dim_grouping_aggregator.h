@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -192,7 +193,9 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
   //
   // Accumulates the values into the positions in the output tensor which are
   // indicated by the corresponding ordinals.
-  Status AggregateTensors(InputTensorList tensors) override {
+  Status AggregateTensors(
+      InputTensorList tensors,
+      std::optional<google::protobuf::Any> metadata) override {
     TFF_RETURN_IF_ERROR(ValidateTensorInputs(tensors));
 
     const Tensor* tensor = tensors[1];

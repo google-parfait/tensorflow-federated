@@ -47,3 +47,11 @@ message DPTensorAggregatorBundleState {
   uint64 num_inputs = 1;
   repeated bytes nested_serialized_states = 2;
 }
+
+message GroupByAccumulateMetadata {
+  // A unique user identifier that can be used to track the number of unique
+  // users that have contributed to a given combination of keys. This is needed
+  // for a correct k-thresholding implementation when multiple Accumulate calls
+  // can be made for data from the same user.
+  bytes privacy_id = 1;
+}

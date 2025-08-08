@@ -1568,7 +1568,9 @@ class FakeAggregator final : public TensorAggregator {
  public:
   explicit FakeAggregator(Tensor output) : output_(std::move(output)) {}
 
-  absl::Status AggregateTensors(InputTensorList tensors) override {
+  absl::Status AggregateTensors(
+      InputTensorList tensors,
+      std::optional<google::protobuf::Any> metadata) override {
     return absl::OkStatus();
   }
 

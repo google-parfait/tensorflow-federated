@@ -18,6 +18,7 @@
 #define TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_TENSOR_AGGREGATOR_BUNDLE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -56,7 +57,9 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
   Status MergeWith(TensorAggregator&& other) override;
 
  protected:
-  Status AggregateTensors(InputTensorList tensors) override;
+  Status AggregateTensors(
+      InputTensorList tensors,
+      std::optional<google::protobuf::Any> metadata) override;
 
   // Checks if the current TensorAggregator is valid e.g. the resulting output
   // hasn't been consumed.

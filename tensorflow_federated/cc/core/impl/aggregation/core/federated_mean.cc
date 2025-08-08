@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -95,7 +96,9 @@ class FederatedMean final : public TensorAggregator {
     return TFF_STATUS(OK);
   }
 
-  Status AggregateTensors(InputTensorList tensors) override {
+  Status AggregateTensors(
+      InputTensorList tensors,
+      std::optional<google::protobuf::Any> metadata) override {
     for (const Tensor* tensor : tensors) {
       if (!tensor->is_dense()) {
         return TFF_STATUS(INVALID_ARGUMENT)

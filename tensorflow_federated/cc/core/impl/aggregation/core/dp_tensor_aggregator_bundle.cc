@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -50,7 +51,8 @@ DPTensorAggregatorBundle::DPTensorAggregatorBundle(
                                            num_tensors_per_agg_.end(), 0);
 }
 
-Status DPTensorAggregatorBundle::AggregateTensors(InputTensorList tensors) {
+Status DPTensorAggregatorBundle::AggregateTensors(
+    InputTensorList tensors, std::optional<google::protobuf::Any> metadata) {
   if (tensors.size() != num_tensors_per_input_) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "DPTensorAggregatorBundle::AggregateTensors: Expected "
