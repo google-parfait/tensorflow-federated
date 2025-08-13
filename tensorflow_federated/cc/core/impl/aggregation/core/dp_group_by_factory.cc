@@ -407,10 +407,14 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
     // Use new rather than make_unique here because the factory function that
     // uses a non-public constructor can't use std::make_unique, and we don't
     // want to add a dependency on absl::WrapUnique.
-    return std::unique_ptr<DPOpenDomainHistogram>(new DPOpenDomainHistogram(
-        intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-        std::move(key_combiner), std::move(nested_aggregators), epsilon_per_agg,
-        delta_per_agg, l0_bound, num_inputs));
+    TFF_ASSIGN_OR_RETURN(
+        auto aggregator,
+        DPOpenDomainHistogram::Create(
+            intrinsic.inputs, &intrinsic.outputs,
+            &(intrinsic.nested_intrinsics), std::move(key_combiner),
+            std::move(nested_aggregators), epsilon_per_agg, delta_per_agg,
+            l0_bound, num_inputs, min_contributors_to_group));
+    return aggregator;
   }
 
   return std::unique_ptr<DPClosedDomainHistogram>(new DPClosedDomainHistogram(

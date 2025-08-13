@@ -16,15 +16,19 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "algorithms/partition-selection.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -46,6 +50,7 @@
 namespace tensorflow_federated {
 namespace aggregation {
 
+using ::differential_privacy::NearTruncatedGeometricPartitionSelection;
 using ::differential_privacy::sign;
 
 namespace internal {
@@ -109,13 +114,61 @@ DPOpenDomainHistogram::DPOpenDomainHistogram(
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
     double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
-    int num_inputs)
+    int num_inputs, std::optional<int64_t> min_contributors_to_group)
     : GroupByAggregator(input_key_specs, output_key_specs, intrinsics,
                         std::move(key_combiner), std::move(aggregators),
-                        num_inputs),
+                        num_inputs, min_contributors_to_group),
       epsilon_per_agg_(epsilon_per_agg),
       delta_per_agg_(delta_per_agg),
       l0_bound_(l0_bound) {}
+
+// Factory method to create DPOpenDomainHistogram
+StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
+    const std::vector<TensorSpec>& input_key_specs,
+    const std::vector<TensorSpec>* output_key_specs,
+    const std::vector<Intrinsic>* intrinsics,
+    std::unique_ptr<CompositeKeyCombiner> key_combiner,
+    std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
+    double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
+    int num_inputs, std::optional<int64_t> min_contributors_to_group) {
+  auto dp_open_domain_histogram = absl::WrapUnique(new DPOpenDomainHistogram(
+      input_key_specs, output_key_specs, intrinsics, std::move(key_combiner),
+      std::move(aggregators), epsilon_per_agg, delta_per_agg, l0_bound,
+      num_inputs, min_contributors_to_group));
+  if (min_contributors_to_group.has_value() &&
+      epsilon_per_agg < kEpsilonThreshold) {
+    // We have to split the privacy budget between k-thresholding and the
+    // noising of the aggregates. These variables are used for noising so they
+    // are halved to the amount assigned noising the aggregates.
+    dp_open_domain_histogram->epsilon_per_agg_ = epsilon_per_agg / 2;
+    dp_open_domain_histogram->delta_per_agg_ = delta_per_agg / 2;
+    double epsilon_for_selector = epsilon_per_agg / 2;
+    double delta_for_selector = delta_per_agg / 2;
+    TFF_ASSIGN_OR_RETURN(auto generic_selector,
+                         NearTruncatedGeometricPartitionSelection::Builder()
+                             .SetEpsilon(epsilon_for_selector)
+                             .SetDelta(delta_for_selector)
+                             .SetMaxPartitionsContributed(l0_bound)
+                             .SetPreThreshold(min_contributors_to_group.value())
+                             .Build());
+    // generic_selector is a unique_ptr to a base class, so we have to cast it
+    // to the derived class in order to access the GetSecondCrossover and
+    // ShouldKeep methods.
+    auto selector = std::unique_ptr<NearTruncatedGeometricPartitionSelection>(
+        dynamic_cast<NearTruncatedGeometricPartitionSelection*>(
+            generic_selector.release()));
+    if (selector == nullptr) {
+      return absl::InternalError(
+          "Failed to cast to NearTruncatedGeometricPartitionSelection");
+    }
+    // The selector publishes every group with strictly greater than second
+    // crossover elements.
+    dp_open_domain_histogram->set_max_contributors_to_group(
+        ceil(selector->GetSecondCrossover()));
+    dp_open_domain_histogram->selector_ = std::move(selector);
+  }
+  return dp_open_domain_histogram;
+}
 
 std::unique_ptr<DPCompositeKeyCombiner>
 DPOpenDomainHistogram::CreateDPKeyCombiner(
