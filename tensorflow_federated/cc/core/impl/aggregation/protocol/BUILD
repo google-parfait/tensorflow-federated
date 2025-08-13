@@ -13,6 +13,8 @@
 # limitations under the License.
 
 load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_proto_library")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
 package(
