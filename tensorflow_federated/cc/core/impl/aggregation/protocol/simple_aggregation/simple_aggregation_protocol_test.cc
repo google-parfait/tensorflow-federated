@@ -1586,7 +1586,7 @@ class FakeAggregator final : public TensorAggregator {
 
   int GetNumInputs() const override { return 0; }
 
-  StatusOr<std::string> Serialize() && override {
+  StatusOr<std::vector<std::string>> Serialize(int num_partitions) && override {
     return TFF_STATUS(UNIMPLEMENTED);
   };
 

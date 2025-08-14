@@ -39,6 +39,7 @@ namespace aggregation {
 
 namespace {
 using ::testing::HasSubstr;
+using ::testing::SizeIs;
 
 TensorSpec CreateTensorSpec(std::string name, DataType dtype) {
   return TensorSpec(name, dtype, {});
@@ -476,9 +477,10 @@ TEST(DPTensorAggregatorBundleTest, ValidSerialization) {
     auto accumulate_status = aggregator1.Accumulate(InputTensorList{&t1, &t2});
     TFF_EXPECT_OK(accumulate_status);
   }
-  auto serialize_status = std::move(aggregator1).Serialize();
-  TFF_EXPECT_OK(serialize_status);
-  std::string serialized_string = serialize_status.value();
+  auto serialize_status =
+      std::move(aggregator1).Serialize(/*num_partitions=*/1);
+  EXPECT_THAT(serialize_status, IsOkAndHolds(SizeIs(1)));
+  std::string serialized_string = serialize_status.value()[0];
   const auto* factory =
       GetAggregatorFactory(kDPTensorAggregatorBundleUri).value();
   auto status2 = factory->Deserialize(CreateBundleOfTwo(), serialized_string);

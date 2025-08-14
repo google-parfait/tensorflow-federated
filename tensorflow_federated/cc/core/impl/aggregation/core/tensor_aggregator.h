@@ -45,8 +45,15 @@ class TensorAggregator
   // Returns the number of aggregated inputs.
   virtual int GetNumInputs() const = 0;
 
-  // Serialize the internal state of the TensorAggregator as a string.
-  virtual StatusOr<std::string> Serialize() && = 0;
+  // Serializes the internal state of the TensorAggregator as a vector of
+  // strings.
+  // When num_partitions == 1, the internal state of the
+  // TensorAggregator will be serialized as a single string.
+  // When num_partitions > 1, the internal state of the TensorAggregator will
+  // be split into multiple partitions and each partition will be serialized as
+  // a string.
+  virtual StatusOr<std::vector<std::string>> Serialize(
+      int num_partitions) && = 0;
 
  protected:
   // Construct TensorAggregator

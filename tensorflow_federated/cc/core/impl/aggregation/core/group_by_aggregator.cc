@@ -307,7 +307,14 @@ Status GroupByAggregator::AddMultipleContributors(
   return absl::OkStatus();
 }
 
-StatusOr<std::string> GroupByAggregator::Serialize() && {
+StatusOr<std::vector<std::string>> GroupByAggregator::Serialize(
+    int num_partitions) && {
+  // TODO: b/437952802 - Support serialization of GroupByAggregator with
+  // num_partitions > 1.
+  if (num_partitions != 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::Serialize: num_partitions must be 1";
+  }
   GroupByAggregatorState state;
   state.set_num_inputs(num_inputs_);
   // If keys are being used, store the current list of output keys into state.
@@ -331,7 +338,7 @@ StatusOr<std::string> GroupByAggregator::Serialize() && {
       contributors_to_groups_.size());
   state.mutable_counter_of_contributors()->Add(contributors_to_groups_.begin(),
                                                contributors_to_groups_.end());
-  return state.SerializeAsString();
+  return std::vector<std::string>{state.SerializeAsString()};
 }
 
 StatusOr<GroupByAggregator::HistogramAsSliceData>

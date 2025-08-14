@@ -46,7 +46,7 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
   int GetNumInputs() const override { return num_inputs_; };
 
   // Serialize the internal state of the TensorAggregator as a string.
-  StatusOr<std::string> Serialize() && override;
+  StatusOr<std::vector<std::string>> Serialize(int num_partitions) && override;
 
   inline double GetEpsilonPerAgg() const { return epsilon_per_agg_; }
   inline double GetDeltaPerAgg() const { return delta_per_agg_; }

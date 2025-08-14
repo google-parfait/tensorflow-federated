@@ -44,6 +44,7 @@ namespace aggregation {
 
 namespace {
 using ::testing::HasSubstr;
+using ::testing::SizeIs;
 
 TensorSpec CreateTensorSpec(std::string name, DataType dtype) {
   return TensorSpec(name, dtype, {});
@@ -567,9 +568,10 @@ TEST(DPQuantileAggregatorTest, SerializeAndDeserialize) {
     auto accumulate_status = aggregator1.Accumulate(InputTensorList({&t}));
     TFF_EXPECT_OK(accumulate_status);
   }
-  auto serialized_state_statusor = std::move(aggregator1).Serialize();
-  TFF_EXPECT_OK(serialized_state_statusor);
-  auto serialized_state = serialized_state_statusor.value();
+  auto serialized_state_statusor =
+      std::move(aggregator1).Serialize(/*num_partitions=*/1);
+  EXPECT_THAT(serialized_state_statusor, IsOkAndHolds(SizeIs(1)));
+  auto serialized_state = serialized_state_statusor.value()[0];
 
   auto factory = dynamic_cast<const DPQuantileAggregatorFactory*>(
       GetAggregatorFactory(kDPQuantileUri).value());

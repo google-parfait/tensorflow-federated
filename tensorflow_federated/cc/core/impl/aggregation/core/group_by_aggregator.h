@@ -209,7 +209,7 @@ class GroupByAggregator : public TensorAggregator {
   virtual StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs);
 
-  StatusOr<std::string> Serialize() && override;
+  StatusOr<std::vector<std::string>> Serialize(int num_partitions) && override;
 
   inline size_t num_keys_per_input() const { return num_keys_per_input_; }
   inline std::unique_ptr<CompositeKeyCombiner>& key_combiner() {

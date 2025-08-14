@@ -45,6 +45,7 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
+using ::testing::SizeIs;
 
 class GroupByAggregatorPeer {
  public:
@@ -91,12 +92,14 @@ class GroupByAggregatorPeer {
   // Serializes and then deserializes the aggregator. Used to test serialization
   // and deserialization preserve state in tests using a peer.
   Status SerializeAndDeserialize(const Intrinsic& intrinsic) {
-    TFF_ASSIGN_OR_RETURN(std::string serialized_state,
-                         std::move(*aggregator_).Serialize());
+    TFF_ASSIGN_OR_RETURN(
+        auto serialized_state,
+        std::move(*aggregator_).Serialize(/*num_partitions=*/1));
+    EXPECT_THAT(serialized_state, SizeIs(1));
     TFF_ASSIGN_OR_RETURN(auto factory, GetAggregatorFactory(intrinsic.uri));
     TFF_ASSIGN_OR_RETURN(
         auto deserialized_aggregator,
-        factory->Deserialize(intrinsic, std::move(serialized_state)));
+        factory->Deserialize(intrinsic, std::move(serialized_state[0])));
     GroupByAggregator* aggregator_raw_ptr =
         dynamic_cast<GroupByAggregator*>(deserialized_aggregator.get());
 
@@ -239,9 +242,11 @@ TEST_P(GroupByAggregatorTest, EmptyReport) {
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -267,9 +272,11 @@ TEST_P(GroupByAggregatorTest, ScalarAggregation_Succeeds) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&key, &t2}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -296,9 +303,11 @@ TEST_P(GroupByAggregatorTest, AggregateOnlyEmptyTensorsSucceeds) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&key, &t1}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -333,9 +342,11 @@ TEST_P(GroupByAggregatorTest, DenseAggregation_Succeeds) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys, &t2}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -387,9 +398,11 @@ TEST_P(GroupByAggregatorTest, AccumulateEmptyInputDoesNotAffectResult) {
   EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(4));
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -429,9 +442,11 @@ TEST_P(GroupByAggregatorTest, DifferentKeysPerAccumulate_Succeeds) {
   // Totals: [9, 26, 27, 2]
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -477,9 +492,11 @@ TEST_P(GroupByAggregatorTest, DifferentShapesPerAccumulate_Succeeds) {
   // Totals: [2, 10, 19, 4]
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -544,9 +561,11 @@ TEST_P(GroupByAggregatorTest, Accumulate_MultipleValueTensors_Succeeds) {
   EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(2));
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -585,9 +604,11 @@ TEST_P(GroupByAggregatorTest, Accumulate_NoValueTensors_Succeeds) {
   EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(2));
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -641,9 +662,11 @@ TEST_P(GroupByAggregatorTest, Accumulate_MultipleKeyTensors_Succeeds) {
   // Totals: [9, 26, 27, 2]
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -726,9 +749,11 @@ TEST_P(GroupByAggregatorTest,
   EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(2));
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -771,9 +796,11 @@ TEST_P(GroupByAggregatorTest,
   EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(2));
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -799,9 +826,11 @@ TEST_P(GroupByAggregatorTest, Accumulate_NoKeyTensors) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&t2}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state = std::move(*group_by_aggregator).Serialize();
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -839,13 +868,17 @@ TEST_P(GroupByAggregatorTest, Merge_Succeeds) {
   EXPECT_THAT(aggregator2->Accumulate({&key, &t5}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -912,13 +945,17 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleValueTensors_Succeeds) {
   EXPECT_THAT(aggregator2->Accumulate({&keys3, &tA3, &tB3}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -970,13 +1007,17 @@ TEST_P(GroupByAggregatorTest, Merge_NoValueTensors_Succeeds) {
   EXPECT_THAT(aggregator2->Accumulate({&keys3}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -1048,13 +1089,17 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleKeyTensors_Succeeds) {
   EXPECT_THAT(aggregator2->Accumulate({&sizeKeys3, &animalKeys3, &t3}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -1135,13 +1180,17 @@ TEST_P(GroupByAggregatorTest,
   EXPECT_THAT(aggregator2->Accumulate({&sizeKeys3, &animalKeys3, &t3}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -1180,13 +1229,17 @@ TEST_P(GroupByAggregatorTest, Merge_NoKeyTensors) {
   EXPECT_THAT(aggregator2->Accumulate({&t3}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -1224,13 +1277,17 @@ TEST_P(GroupByAggregatorTest, MergeThisOutputReceivedNoInputsSucceeds) {
   // aggregator2 totals: [2, 10, 19, 4]
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -1279,13 +1336,17 @@ TEST_P(GroupByAggregatorTest, MergeThisOutputReceivedOnlyEmptyInputsSucceeds) {
   EXPECT_THAT(aggregator1->Accumulate({&empty_keys, &empty_tensor}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -1327,13 +1388,17 @@ TEST_P(GroupByAggregatorTest, MergeOtherAggregatorReceivedNoInputsSucceeds) {
   // aggregator1 totals: [2, 10, 19, 4]
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -1383,13 +1448,17 @@ TEST_P(GroupByAggregatorTest,
   EXPECT_THAT(aggregator2->Accumulate({&empty_keys, &empty_tensor}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -2089,13 +2158,17 @@ TEST_P(GroupByAggregatorTest, MergeWithMinContributors_Succeeds) {
   ASSERT_THAT(aggregator2->Accumulate({&key, &t3}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -2132,13 +2205,17 @@ TEST_P(GroupByAggregatorTest, MergeWithClampsContributorsAtMax) {
   }
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -2192,13 +2269,17 @@ TEST_P(GroupByAggregatorTest, MergeHandlesDifferentGroupOrder) {
   }
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -2253,13 +2334,17 @@ TEST_P(GroupByAggregatorTest, MergeWithClampsMultipleGroupsIndependently) {
   }
 
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 
@@ -2710,10 +2795,11 @@ TEST_P(GroupByAggregatorTest, ReportWithMinContributors) {
 
   // Check that serializing and deserializing doesn't break anything.
   if (GetParam()) {
-    auto serialized_state = std::move(*aggregator).Serialize();
-    ASSERT_THAT(serialized_state, IsOk());
+    auto serialized_state =
+        std::move(*aggregator).Serialize(/*num_partitions=*/1);
+    ASSERT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
     aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
             .value();
   }
 
@@ -2784,13 +2870,17 @@ TEST_P(GroupByAggregatorTest, MergeAndReportWithMinContributors) {
 
   // Check that serializing and deserializing doesn't break anything.
   if (GetParam()) {
-    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state1 =
+        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
     aggregator1 =
-        DeserializeTensorAggregator(intrinsic, serialized_state1.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state1.value()[0])
             .value();
-    auto serialized_state2 = std::move(*aggregator2).Serialize();
+    auto serialized_state2 =
+        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
     aggregator2 =
-        DeserializeTensorAggregator(intrinsic, serialized_state2.value())
+        DeserializeTensorAggregator(intrinsic, serialized_state2.value()[0])
             .value();
   }
 

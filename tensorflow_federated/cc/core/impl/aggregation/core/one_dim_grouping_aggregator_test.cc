@@ -772,7 +772,7 @@ TEST(OneDimGroupingAggregatorTest, FailsAfterBeingConsumed) {
 
 TEST(OneDimGroupingAggregatorTest, Serialize_Unimplmeneted) {
   SumGroupingAggregator<int32_t> aggregator;
-  Status s = std::move(aggregator).Serialize().status();
+  Status s = std::move(aggregator).Serialize(/*num_partitions=*/1).status();
   EXPECT_THAT(s, StatusIs(UNIMPLEMENTED));
 }
 

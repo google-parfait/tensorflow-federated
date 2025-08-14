@@ -295,7 +295,11 @@ absl::StatusOr<std::string> CheckpointAggregator::Serialize() && {
       state.mutable_aggregators();
   aggregators_proto->Reserve(aggregators_.size());
   for (const auto& aggregator : aggregators_) {
-    aggregators_proto->Add(std::move(*aggregator).Serialize().value());
+    TFF_ASSIGN_OR_RETURN(
+        auto serialized_state,
+        std::move(*aggregator).Serialize(/*num_partitions=*/1));
+    TFF_CHECK(serialized_state.size() == 1);
+    aggregators_proto->Add(std::move(serialized_state[0]));
   }
   return state.SerializeAsString();
 }
