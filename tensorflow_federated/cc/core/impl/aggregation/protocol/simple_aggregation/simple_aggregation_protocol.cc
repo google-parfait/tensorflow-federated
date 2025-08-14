@@ -346,9 +346,20 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
       MakeCloseClientMessage(client_completion_status);
   {
     absl::MutexLock lock(&state_mu_);
-    SetClientState(client_id, client_completion_state);
     latency_aggregator_.Add(client_latency);
-    all_clients_[client_id].server_message = std::move(close_message);
+    auto client_state = GetClientState(client_id);
+    // Expect this to succeed because the client_id has already been validated.
+    TFF_CHECK(client_state.ok());
+    // Update the client state only if the client is still in the state
+    // CLIENT_RECEIVED_INPUT_AND_PENDING that was set earlier in this method.
+    // If the state has changed, that means another thread has updated the
+    // client state to a terminal state (e.g. CLIENT_COMPLETED, CLIENT_FAILED,
+    // CLIENT_ABORTED, CLIENT_DISCARDED), and we should not overwrite that
+    // state with the current state.
+    if (*client_state == CLIENT_RECEIVED_INPUT_AND_PENDING) {
+      SetClientState(client_id, client_completion_state);
+      all_clients_[client_id].server_message = std::move(close_message);
+    }
   }
   return absl::OkStatus();
 }
