@@ -97,7 +97,6 @@ cc_library(
     ],
     hdrs = [
         "agg_vector_aggregator.h",
-        "aggregator.h",
         "one_dim_grouping_aggregator.h",
         "tensor_aggregator.h",
         "tensor_aggregator_factory.h",
@@ -113,6 +112,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/synchronization",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -164,6 +164,7 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

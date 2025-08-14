@@ -173,7 +173,9 @@ class GroupByAggregator : public TensorAggregator {
   // first, the key tensors in the order they appear in the input_tensor_specs,
   // and next, the value tensors in the order the inner intrinsics that
   // aggregate each value appear in the intrinsics input vector.
-  Status AggregateTensors(InputTensorList tensors) override;
+  Status AggregateTensors(
+      InputTensorList tensors,
+      std::optional<google::protobuf::Any> metadata) override;
 
   // Ensures that the output has not yet been consumed for this
   // GroupByAggregator.
@@ -303,7 +305,8 @@ class GroupByAggregator : public TensorAggregator {
 
   // Internal implementation to accumulate the input tensors into the state of
   // this GroupByAggregator.
-  Status AggregateTensorsInternal(InputTensorList tensors);
+  Status AggregateTensorsInternal(
+      InputTensorList tensors, std::optional<google::protobuf::Any> metadata);
 
   // Internal implementation to merge the input tensors into the state of this
   // GroupByAggregator. The num_merged_inputs arg contains the number of inputs
