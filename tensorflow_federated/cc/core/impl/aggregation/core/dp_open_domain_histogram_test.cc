@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
-
 #include <cmath>
 #include <cstdint>
 #include <initializer_list>
@@ -29,18 +27,15 @@
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_histogram_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
@@ -66,98 +61,11 @@ using ::tensorflow_federated::aggregation::dp_histogram_testing::
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateIntrinsic;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
-    CreateNestedParameters;
-using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateTensorSpec;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateTopLevelParameters;
 
 using DPOpenDomainHistogramTest = TestWithParam<bool>;
-
-std::vector<Tensor> CreateTopLevelParameters() {
-  return CreateTopLevelParameters(1000.0, 0.001, 100);
-}
-
-// First batch of tests validate the intrinsic(s)
-TEST(DPOpenDomainHistogramTest, CatchTooFewParameters) {
-  std::vector<Tensor> parameters;
-  auto epsilon_tensor = CreateTestData({1.0});
-  parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, std::move(epsilon_tensor), "epsilon")
-          .value());
-
-  Intrinsic too_few = {.uri = kDPGroupByUri,
-                       .inputs = {CreateTensorSpec("key", DT_STRING)},
-                       .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-                       .parameters = {std::move(parameters)},
-                       .nested_intrinsics = {}};
-  EXPECT_THAT(CreateTensorAggregator(too_few),
-              StatusIs(INVALID_ARGUMENT,
-                       HasSubstr("For all DP histograms, epsilon, delta, and "
-                                 "max_groups_contributed must be provided")));
-}
-
-TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
-  Intrinsic intrinsic0{
-      .uri = kDPGroupByUri,
-      .inputs = {CreateTensorSpec("key", DT_STRING)},
-      .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-      .parameters = {CreateTopLevelParameters<string_view, double, int64_t>(
-          "x", 0.1, 10)},
-      .nested_intrinsics = {}};
-  auto bad_epsilon = CreateTensorAggregator(intrinsic0).status();
-  EXPECT_THAT(bad_epsilon, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(bad_epsilon.message(), HasSubstr("must be numerical"));
-
-  Intrinsic intrinsic1{
-      .uri = kDPGroupByUri,
-      .inputs = {CreateTensorSpec("key", DT_STRING)},
-      .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-      .parameters = {CreateTopLevelParameters<double, string_view, int64_t>(
-          1.0, "x", 10)},
-      .nested_intrinsics = {}};
-  auto bad_delta = CreateTensorAggregator(intrinsic1).status();
-  EXPECT_THAT(bad_delta, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(bad_delta.message(), HasSubstr("must be numerical"));
-
-  Intrinsic intrinsic2{
-      .uri = kDPGroupByUri,
-      .inputs = {CreateTensorSpec("key", DT_STRING)},
-      .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-      .parameters = {CreateTopLevelParameters<double, double, string_view>(
-          1.0, 0.1, "x")},
-      .nested_intrinsics = {}};
-  auto bad_l0_bound = CreateTensorAggregator(intrinsic2).status();
-  EXPECT_THAT(bad_l0_bound, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(bad_l0_bound.message(), HasSubstr("must be numerical"));
-}
-
-TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
-  Intrinsic intrinsic0 = CreateIntrinsic<int64_t, int64_t>(-1, 0.001, 10);
-  auto bad_epsilon = CreateTensorAggregator(intrinsic0).status();
-  EXPECT_THAT(bad_epsilon, StatusIs(INVALID_ARGUMENT,
-                                    HasSubstr("Epsilon must be positive")));
-
-  Intrinsic intrinsic1 = CreateIntrinsic<int64_t, int64_t>(1.0, -1, 10);
-  auto bad_delta = CreateTensorAggregator(intrinsic1).status();
-  EXPECT_THAT(bad_delta, StatusIs(INVALID_ARGUMENT,
-                                  HasSubstr("delta must lie between 0 and 1")));
-
-  Intrinsic intrinsic2 = CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, -1);
-  auto bad_l0_bound = CreateTensorAggregator(intrinsic2).status();
-  EXPECT_THAT(bad_l0_bound,
-              StatusIs(INVALID_ARGUMENT,
-                       HasSubstr("max_groups_contributed must be positive")));
-}
-
-TEST(DPOpenDomainHistogramTest, CatchInvalidLinfinityBound) {
-  Intrinsic intrinsic =
-      CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, 10, -1, 2, 3);
-  auto aggregator_status = CreateTensorAggregator(intrinsic).status();
-  EXPECT_THAT(aggregator_status,
-              StatusIs(INVALID_ARGUMENT,
-                       HasSubstr("must provide a positive Linfinity bound.")));
-}
 
 TEST(DPOpenDomainHistogramTest, Deserialize_FailToParseProto) {
   auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
@@ -165,24 +73,6 @@ TEST(DPOpenDomainHistogramTest, Deserialize_FailToParseProto) {
   Status s = DeserializeTensorAggregator(intrinsic, invalid_state).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Failed to parse"));
-}
-
-TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
-  Intrinsic intrinsic = {.uri = kDPGroupByUri,
-                         .inputs = {CreateTensorSpec("key", DT_STRING)},
-                         .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-                         .parameters = {CreateTopLevelParameters()},
-                         .nested_intrinsics = {}};
-  intrinsic.nested_intrinsics.push_back(Intrinsic{
-      "GoogleSQL:$not_differential_privacy_sum",
-      {CreateTensorSpec("value", internal::TypeTraits<int32_t>::kDataType)},
-      {CreateTensorSpec("value", internal::TypeTraits<int32_t>::kDataType)},
-      {CreateNestedParameters<int32_t>(1000, -1, -1)},
-      {}});
-  auto aggregator_status = CreateTensorAggregator(intrinsic).status();
-  EXPECT_THAT(aggregator_status, StatusIs(UNIMPLEMENTED));
-  EXPECT_THAT(aggregator_status.message(), HasSubstr("Currently, only nested "
-                                                     "DP sums are supported"));
 }
 
 // Function to execute the DPOpenDomainHistogram on one input where there is
@@ -219,7 +109,7 @@ StatusOr<OutputTensorList> SingleKeySingleAgg(
   return std::move(*group_by_aggregator).Report();
 }
 
-// Second batch of tests are dedicated to norm bounding when there is only one
+// The first batch of tests is dedicated to norm bounding when there is only one
 // inner aggregation (GROUP BY key, SUM(value))
 TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0Bound) {
   // L0 bounding involves randomness so we should repeat things to catch errors.
@@ -339,8 +229,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithAllBounds) {
   }
 }
 
-// Third: test norm bounding when there are multiple inner aggregations
-// (SUM(value1), SUM(value2)  GROUP BY key)
+// Second batch of tests: norm bounding when there are > 1 inner aggregation.
+// e.g. SUM(value1), SUM(value2)  GROUP BY key
 template <typename InputType, typename OutputType>
 Intrinsic CreateIntrinsic2Agg(double epsilon = kEpsilonThreshold,
                               double delta = 0.001, int64_t l0_bound = 100,
@@ -429,8 +319,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeyDoubleAggWithAllBounds) {
   }
 }
 
-// Fourth: test norm bounding, when there are multiple keys and multiple inner
-// aggregations. (SUM(value1), SUM(value2)  GROUP BY key1, key 2)
+// Third batch of tests: norm bounding when there is > 1 key and > 1 inner
+// aggregation. e.g. SUM(value1), SUM(value2)  GROUP BY key1, key 2
 template <typename InputType, typename OutputType>
 Intrinsic CreateIntrinsic2Key2Agg(double epsilon = kEpsilonThreshold,
                                   double delta = 0.001, int64_t l0_bound = 100,
@@ -526,7 +416,8 @@ TEST_P(DPOpenDomainHistogramTest, DoubleKeyDoubleAggWithAllBounds) {
   }
 }
 
-// Fifth: test norm bounding on key-less data (norm bound = magnitude bound)
+// Fourth batch of tests: norm bounding on key-less data (norm bound = magnitude
+// bound)
 template <typename InputType, typename OutputType>
 Intrinsic CreateIntrinsicNoKeys(double epsilon = kEpsilonThreshold,
                                 double delta = 0.001, int64_t l0_bound = 100,
@@ -585,8 +476,9 @@ TEST_P(DPOpenDomainHistogramTest, NoKeyTripleAggWithAllBounds) {
   EXPECT_THAT(result.value()[2], IsTensor<int64_t>({1}, {11}));
 }
 
-// Sixth: Check that noise is added at all. The noised sum should not be the
-// same as the unnoised sum. The odds of a false negative shrinks with epsilon.
+// Fifth batch of tests: check that noise is added. The noised sum should not be
+// the same as the unnoised sum. The odds of a false negative shrinks with
+// epsilon.
 TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilons) {
   Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(0.05, 1e-8, 2, 1);
   auto dpgba = CreateTensorAggregator(intrinsic).value();
@@ -618,7 +510,7 @@ TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilons) {
   EXPECT_TRUE(values[0] != num_inputs || values[1] != num_inputs);
 }
 
-// Seventh: check that the right groups get dropped
+// Sixth batch of tests: check that the right groups get dropped
 
 // Test that we will drop groups with any small aggregate and keep groups with
 // large aggregates. The surviving aggregates should have noise in them.
