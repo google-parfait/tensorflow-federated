@@ -20,9 +20,6 @@ from tensorflow_federated.python.common_libs import deprecation
 Struct = deprecation.deprecated(
     "`tff.structure.Struct` is deprecated, use a Python container instead."
 )(structure.Struct)
-name_list = deprecation.deprecated(
-    "`tff.structure.name_list` is deprecated, use a Python container instead."
-)(structure.name_list)
 to_elements = deprecation.deprecated(
     "`tff.structure.to_elements` is deprecated, use a Python container instead."
 )(structure.to_elements)
