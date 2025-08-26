@@ -681,7 +681,6 @@ cc_test(
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
         ":dp_histogram_test_utils",
-        ":dp_open_domain_histogram",
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
@@ -706,7 +705,6 @@ cc_test(
         ":dp_grouping_federated_sum",
         ":dp_histogram_test_utils",
         ":intrinsic",
-        ":mutable_string_data",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -714,7 +712,6 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -730,10 +727,13 @@ cc_test(
         ":dp_histogram_test_utils",
         ":dp_open_domain_histogram",
         ":intrinsic",
+        ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/strings",
     ],
 )
 
