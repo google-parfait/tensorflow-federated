@@ -116,14 +116,14 @@ StatusOr<DPParameters> FindDPParameters(
   // directly because StatusOr doesn't support references.
   TFF_ASSIGN_OR_RETURN(int epsilon_index,
                        FindDPParameterLocationByName(
-                           intrinsic, parameter_name_to_index, "epsilon"));
+                           intrinsic, parameter_name_to_index, kEpsilonName));
   TFF_ASSIGN_OR_RETURN(int delta_index,
                        FindDPParameterLocationByName(
-                           intrinsic, parameter_name_to_index, "delta"));
+                           intrinsic, parameter_name_to_index, kDeltaName));
   TFF_ASSIGN_OR_RETURN(
       int l0_bound_index,
       FindDPParameterLocationByName(intrinsic, parameter_name_to_index,
-                                    "max_groups_contributed"));
+                                    kMaxGroupsContributedName));
 
   double epsilon = intrinsic.parameters[epsilon_index].CastToScalar<double>();
   double delta = intrinsic.parameters[delta_index].CastToScalar<double>();

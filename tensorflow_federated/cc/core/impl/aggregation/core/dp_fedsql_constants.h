@@ -33,8 +33,16 @@ constexpr char kDPSumUri[] = "GoogleSQL:$differential_privacy_sum";
 // URI of DPQuantileAggregator
 constexpr char kDPQuantileUri[] =
     "GoogleSQL:$differential_privacy_percentile_cont";
+// URI of a bundle of DPTensorAggregators
 constexpr char kDPTensorAggregatorBundleUri[] =
     "differential_privacy_tensor_aggregator_bundle";
+// Names of parameters in the DP intrinsics.
+constexpr char kEpsilonName[] = "epsilon";
+constexpr char kDeltaName[] = "delta";
+constexpr char kMaxGroupsContributedName[] = "max_groups_contributed";
+constexpr char kLinfName[] = "L_inf";
+constexpr char kL1Name[] = "L_1";
+constexpr char kL2Name[] = "L_2";
 
 // In the DPGroupingFederatedSum intrinsic, the following are the indices of
 // the norm bound parameters.
