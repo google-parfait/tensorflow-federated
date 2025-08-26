@@ -2902,6 +2902,82 @@ TEST_P(GroupByAggregatorTest, MergeAndReportWithMinContributors) {
                                   KeyValuePair<string_view, int64_t>{"c", 36}));
 }
 
+TEST_P(GroupByAggregatorTest,
+       Accumulate_NoKeyTensorsWithMultiplePartitionsFails) {
+  Intrinsic intrinsic{"fedsql_group_by", {}, {}, {}, {}};
+  intrinsic.nested_intrinsics.push_back(
+      CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
+  auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
+
+  Tensor t1 =
+      Tensor::Create(DT_INT32, {4}, CreateTestData({1, 3, 15, 27})).value();
+  EXPECT_THAT(group_by_aggregator->Accumulate({&t1}), IsOk());
+  Tensor t2 = Tensor::Create(DT_INT32, {3}, CreateTestData({10, 5, 1})).value();
+  EXPECT_THAT(group_by_aggregator->Accumulate({&t2}), IsOk());
+
+  if (GetParam()) {
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/3);
+    EXPECT_THAT(
+        serialized_state,
+        StatusIs(
+            INVALID_ARGUMENT,
+            ::testing::HasSubstr(
+                "num_partitions>1 is not supported when keys are not used.")));
+  }
+}
+
+TEST_P(GroupByAggregatorTest, Accumulate_MultiplePartitions_NotSupported) {
+  const TensorShape shape = {4};
+  Intrinsic intrinsic{"fedsql_group_by",
+                      {CreateTensorSpec("key1", DT_STRING),
+                       CreateTensorSpec("key2", DT_STRING)},
+                      {CreateTensorSpec("key1_out", DT_STRING),
+                       CreateTensorSpec("key2_out", DT_STRING)},
+                      {},
+                      {}};
+  intrinsic.nested_intrinsics.push_back(
+      CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
+  auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
+  Tensor sizeKeys1 =
+      Tensor::Create(
+          DT_STRING, shape,
+          CreateTestData<string_view>({"large", "large", "small", "large"}))
+          .value();
+  Tensor animalKeys1 =
+      Tensor::Create(DT_STRING, shape,
+                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
+          .value();
+  Tensor t1 =
+      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
+  EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys1, &animalKeys1, &t1}),
+              IsOk());
+  // Totals: [4, 15, 27]
+  Tensor sizeKeys2 =
+      Tensor::Create(
+          DT_STRING, shape,
+          CreateTestData<string_view>({"small", "large", "small", "small"}))
+          .value();
+  Tensor animalKeys2 =
+      Tensor::Create(DT_STRING, shape,
+                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
+          .value();
+  Tensor t2 =
+      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
+  EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys2, &animalKeys2, &t2}),
+              IsOk());
+  // Totals: [9, 26, 27, 2]
+
+  if (GetParam()) {
+    auto serialized_state =
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/3);
+    EXPECT_THAT(
+        serialized_state,
+        StatusIs(UNIMPLEMENTED, ::testing::HasSubstr(
+                                    "num_partitions>1 is not supported yet.")));
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     GroupByAggregatorTestInstantiation, GroupByAggregatorTest,
     testing::ValuesIn<bool>({false, true}),
