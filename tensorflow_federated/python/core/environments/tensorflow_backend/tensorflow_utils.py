@@ -320,7 +320,9 @@ def capture_result_from_graph(
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(
-        structure.to_elements(result), graph, None
+        structure._to_elements(result),  # pylint: disable=protected-access
+        graph,
+        None,
     )
   elif isinstance(result, Mapping):
     for key in result:
@@ -730,7 +732,7 @@ def _append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   # TODO: b/113116813 - This could be made more efficient, but for now we won't
   # need to worry about it as this is an odd corner case.
   if isinstance(value, structure.Struct):
-    elements = structure.to_elements(value)
+    elements = structure._to_elements(value)  # pylint: disable=protected-access
     if all(k is not None for k, _ in elements):
       value = collections.OrderedDict(elements)
     elif all(k is None for k, _ in elements):

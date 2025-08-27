@@ -272,10 +272,11 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
         converted.non_trainable,
     )  # pylint: disable=protected-access
     self.assertAllEqual(
-        structure.to_elements(converted.trainable), [(None, np.array([1.0]))]
+        structure._to_elements(converted.trainable),  # pylint: disable=protected-access
+        [(None, np.array([1.0]))],
     )
     self.assertAllEqual(
-        structure.to_elements(converted.non_trainable),
+        structure._to_elements(converted.non_trainable),  # pylint: disable=protected-access
         [(None, np.array([2.0])), (None, np.array([3.0]))],
     )
 
@@ -296,7 +297,7 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
         converted.trainable,
     )  # pylint: disable=protected-access
     self.assertAllEqual(
-        structure.to_elements(converted.trainable),
+        structure._to_elements(converted.trainable),  # pylint: disable=protected-access
         [
             ('a', 1),
             ('b', 2.0),
