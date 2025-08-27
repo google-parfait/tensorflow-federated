@@ -45,7 +45,8 @@ class ModelWeights(NamedTuple):
 
   @classmethod
   def from_tff_result(cls, struct):
-    py_typecheck.check_type(struct, structure.Struct)
+    if not isinstance(struct, structure.Struct):
+      struct = structure.from_container(struct, recursive=True)
     return cls(
         [value for _, value in structure._to_elements(struct.trainable)],  # pylint: disable=protected-access
         [value for _, value in structure._to_elements(struct.non_trainable)],  # pylint: disable=protected-access
