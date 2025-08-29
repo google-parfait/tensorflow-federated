@@ -20,11 +20,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "algorithms/partition-selection.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -63,6 +65,7 @@ class DPOpenDomainHistogram : public GroupByAggregator {
 
  protected:
   friend class DPGroupByFactory;
+  friend class DPOpenDomainHistogramPeer;
 
   // Constructs a DPOpenDomainHistogram.
   // This constructor is meant for use by the DPGroupByFactory; most callers
@@ -76,6 +79,27 @@ class DPOpenDomainHistogram : public GroupByAggregator {
   // * l0_bound: the maximum number of composite keys one user can contribute to
   //   (assuming each DPOpenDomainHistogram::AggregateTensorsInternal call
   //    contains data from a unique user)
+  //
+  // The output_key_specs and intrinsics are passed as pointers  as opposed to
+  // references because they are required to outlast the DPOpenDomainHistogram.
+  static StatusOr<std::unique_ptr<DPOpenDomainHistogram>> Create(
+      const std::vector<TensorSpec>& input_key_specs,
+      const std::vector<TensorSpec>* output_key_specs,
+      const std::vector<Intrinsic>* intrinsics,
+      std::unique_ptr<CompositeKeyCombiner> key_combiner,
+      std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
+      double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
+      int num_inputs, std::optional<int64_t> min_contributors_to_group);
+
+  // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
+  // on the input specification
+  static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
+      const std::vector<TensorSpec>& input_key_specs,
+      const std::vector<TensorSpec>* output_key_specs, int64_t l0_bound);
+
+ private:
+  // Constructs a DPOpenDomainHistogram. Only called by the Create() method
+  // above.
   DPOpenDomainHistogram(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
@@ -83,14 +107,7 @@ class DPOpenDomainHistogram : public GroupByAggregator {
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
       double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
-      int num_inputs);
-
- private:
-  // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
-  // on the input specification
-  static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
-      const std::vector<TensorSpec>& input_key_specs,
-      const std::vector<TensorSpec>* output_key_specs, int64_t l0_bound);
+      int num_inputs, std::optional<int64_t> min_contributors_to_group);
 
   // When merging two DPOpenDomainHistograms, norm bounding the aggregates will
   // destroy accuracy and is not needed for privacy. Hence, this function calls
@@ -101,6 +118,9 @@ class DPOpenDomainHistogram : public GroupByAggregator {
   double epsilon_per_agg_;
   double delta_per_agg_;
   int64_t l0_bound_;
+  std::unique_ptr<
+      differential_privacy::NearTruncatedGeometricPartitionSelection>
+      selector_;
 
   // At index i, the boolean in the below vector indicates if laplace noise was
   // used to ensure DP for the i-th aggregation. The vector is empty before

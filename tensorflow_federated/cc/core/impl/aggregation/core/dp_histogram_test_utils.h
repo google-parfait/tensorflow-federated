@@ -214,11 +214,18 @@ Intrinsic CreateIntrinsicWithKeyTypes(
   return intrinsic;
 }
 
+// Creates an intrinsic for use in creating DPHistogram objects with a
+// min_contributors_to_group parameter which is the k for k-thresholding.
+// The key types and the other parameters can be set or the default values can
+// be used for most purposes.
 template <typename InputType, typename OutputType>
 Intrinsic CreateIntrinsicWithMinContributors(
-    int64_t min_contributors, std::vector<DataType> key_types = {}) {
+    int64_t min_contributors, std::vector<DataType> key_types = {},
+    double epsilon = kEpsilonThreshold, double delta = 0.001,
+    int64_t l0_bound = 100, InputType linfinity_bound = 100,
+    double l1_bound = -1, double l2_bound = -1) {
   Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<InputType, OutputType>(
-      kEpsilonThreshold, 0.001, 100, 100, -1, -1, key_types);
+      epsilon, delta, l0_bound, linfinity_bound, l1_bound, l2_bound, key_types);
   std::unique_ptr<MutableVectorData<int64_t>> min_contributors_tensor =
       CreateTestData<int64_t>({min_contributors});
   intrinsic.parameters.push_back(

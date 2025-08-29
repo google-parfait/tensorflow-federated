@@ -16,6 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_factory.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -362,12 +363,6 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   TFF_RETURN_IF_ERROR(
       ValidateDPParameters(epsilon, delta, l0_bound, open_domain));
 
-  auto num_nested_intrinsics = intrinsic.nested_intrinsics.size();
-  double epsilon_per_agg =
-      (epsilon < kEpsilonThreshold ? epsilon / num_nested_intrinsics
-                                   : kEpsilonThreshold);
-  double delta_per_agg = delta / num_nested_intrinsics;
-
   // For the closed-domain case we must find the key tensors to pass on. This is
   // guaranteed to be present by the definition of the open_domain variable.
   TensorSpan key_tensors;
@@ -404,14 +399,17 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
 
   if (open_domain) {
-    // Use new rather than make_unique here because the factory function that
-    // uses a non-public constructor can't use std::make_unique, and we don't
-    // want to add a dependency on absl::WrapUnique.
-    return std::unique_ptr<DPOpenDomainHistogram>(new DPOpenDomainHistogram(
+    return DPOpenDomainHistogram::Create(
         intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-        std::move(key_combiner), std::move(nested_aggregators), epsilon_per_agg,
-        delta_per_agg, l0_bound, num_inputs));
+        std::move(key_combiner), std::move(nested_aggregators), epsilon, delta,
+        l0_bound, num_inputs, min_contributors_to_group);
   }
+
+  size_t num_nested_intrinsics = intrinsic.nested_intrinsics.size();
+  double epsilon_per_agg =
+      (epsilon < kEpsilonThreshold ? epsilon / num_nested_intrinsics
+                                   : kEpsilonThreshold);
+  double delta_per_agg = delta / num_nested_intrinsics;
 
   return std::unique_ptr<DPClosedDomainHistogram>(new DPClosedDomainHistogram(
       intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),

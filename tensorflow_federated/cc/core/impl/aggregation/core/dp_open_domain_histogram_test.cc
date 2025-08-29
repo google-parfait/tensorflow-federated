@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,30 +30,56 @@
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_histogram_test_utils.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
+
+// Peer class for testing private methods of DPOpenDomainHistogram.
+// This allows us to test the creation of the selector, which is not at time of
+// writing exposed in the public API and won't be exposed except through
+// complicated code that should be tested separately.
+class DPOpenDomainHistogramPeer {
+ public:
+  explicit DPOpenDomainHistogramPeer(
+      std::unique_ptr<TensorAggregator> aggregator) {
+    auto* raw_ptr = dynamic_cast<DPOpenDomainHistogram*>(aggregator.get());
+    TFF_CHECK(raw_ptr != nullptr)
+        << "Aggregator must be a DPOpenDomainHistogram";
+    dp_histogram_ = std::unique_ptr<DPOpenDomainHistogram>(
+        dynamic_cast<DPOpenDomainHistogram*>(aggregator.release()));
+  }
+
+  bool HasSelector() const { return dp_histogram_->selector_ != nullptr; }
+
+  std::optional<int64_t> GetMaxContributorsToGroup() const {
+    return dp_histogram_->max_contributors_to_group();
+  }
+
+ private:
+  std::unique_ptr<DPOpenDomainHistogram> dp_histogram_;
+  friend class DPOpenDomainHistogram;
+  friend class GroupByAggregator;
+};
+
 namespace {
 
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Gt;
 using ::testing::HasSubstr;
+using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::Not;
 using ::testing::SizeIs;
@@ -65,6 +92,8 @@ using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateInnerIntrinsic;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateIntrinsic;
+using ::tensorflow_federated::aggregation::dp_histogram_testing::
+    CreateIntrinsicWithMinContributors;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateNestedParameters;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
@@ -1010,6 +1039,35 @@ TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
   auto report_span = report.value()[0].AsSpan<string_view>();
   EXPECT_THAT(report_span, UnorderedElementsAreArray(alphabet));
   EXPECT_THAT(report_span, Not(ElementsAreArray(alphabet)));
+}
+
+TEST(DPOpenDomainHistogramTest,
+     CreateWithMinContributorsSetsSelectorAndMaxContributors) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      /*min_contributors=*/5, /*key_types=*/{}, /*epsilon=*/1.0);
+  auto aggregator_or_status = CreateTensorAggregator(intrinsic);
+  ASSERT_OK(aggregator_or_status);
+  auto group_by_aggregator = *std::move(aggregator_or_status);
+
+  DPOpenDomainHistogramPeer peer(std::move(group_by_aggregator));
+  EXPECT_TRUE(peer.HasSelector());
+  // max_contributors_to_group should be greater than the min_contributors
+  // parameter in the intrinsic, but we don't want to test the exact value just
+  // that it is set and not obviously too low.
+  EXPECT_THAT(peer.GetMaxContributorsToGroup(), Gt(5));
+}
+
+TEST(DPOpenDomainHistogramTest,
+     CreateWithoutMinContributorsDoesNotSetSelectorAndMaxContributors) {
+  Intrinsic intrinsic = CreateIntrinsic<int64_t, int64_t>();
+
+  auto aggregator_or_status = CreateTensorAggregator(intrinsic);
+  ASSERT_OK(aggregator_or_status);
+  auto group_by_aggregator = *std::move(aggregator_or_status);
+
+  DPOpenDomainHistogramPeer peer(std::move(group_by_aggregator));
+  EXPECT_THAT(peer.HasSelector(), IsFalse());
+  EXPECT_THAT(peer.GetMaxContributorsToGroup(), Eq(std::nullopt));
 }
 
 INSTANTIATE_TEST_SUITE_P(

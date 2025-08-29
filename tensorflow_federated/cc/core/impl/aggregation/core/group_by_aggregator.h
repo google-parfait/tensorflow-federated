@@ -221,6 +221,16 @@ class GroupByAggregator : public TensorAggregator {
   inline const std::vector<TensorSpec>& output_key_specs() const {
     return output_key_specs_;
   }
+  inline std::optional<int> min_contributors_to_group() const {
+    return min_contributors_to_group_;
+  }
+  inline std::optional<int> max_contributors_to_group() const {
+    return max_contributors_to_group_;
+  }
+
+  inline void set_max_contributors_to_group(int max_contributors_to_group) {
+    max_contributors_to_group_ = max_contributors_to_group;
+  }
 
   // Given a column of data and a set of survivor indices, shrink the column to
   // only include the survivors.
