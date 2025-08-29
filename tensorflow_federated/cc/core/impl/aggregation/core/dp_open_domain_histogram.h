@@ -89,7 +89,8 @@ class DPOpenDomainHistogram : public GroupByAggregator {
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
       double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
-      int num_inputs, std::optional<int64_t> min_contributors_to_group);
+      int num_inputs, std::optional<int64_t> min_contributors_to_group,
+      std::vector<int> contributors_to_groups);
 
   // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
   // on the input specification
@@ -107,7 +108,8 @@ class DPOpenDomainHistogram : public GroupByAggregator {
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
       double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
-      int num_inputs, std::optional<int64_t> min_contributors_to_group);
+      int num_inputs, std::optional<int64_t> min_contributors_to_group,
+      std::vector<int> contributors_to_groups);
 
   // When merging two DPOpenDomainHistograms, norm bounding the aggregates will
   // destroy accuracy and is not needed for privacy. Hence, this function calls
