@@ -115,7 +115,7 @@ def create_constant(
         )
     )
   if isinstance(inferred_value_type, federated_language.StructType):
-    value = structure.from_container(value, recursive=True)
+    value = structure._from_container(value, recursive=True)  # pylint: disable=protected-access
   tensor_dtypes_in_type_spec = []
 
   def _pack_dtypes(type_signature):

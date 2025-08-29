@@ -290,7 +290,7 @@ class ValueSerializationTest(parameterized.TestCase):
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Don't assert on the Python container since it is lost in serialization.
     self.assertTrue(type_spec.is_equivalent_to(x_type))
-    self.assertEqual(y, structure.from_container(x, recursive=True))
+    self.assertEqual(y, structure._from_container(x, recursive=True))  # pylint: disable=protected-access
 
   def test_serialize_deserialize_nested_tuple_value_without_names(self):
     x = (10, 20)
@@ -299,7 +299,7 @@ class ValueSerializationTest(parameterized.TestCase):
     self.assertEqual(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     self.assertTrue(type_spec.is_equivalent_to(x_type))
-    self.assertEqual(y, structure.from_container((10, 20)))
+    self.assertEqual(y, structure._from_container((10, 20)))  # pylint: disable=protected-access
 
   def test_serialize_deserialize_federated_at_clients(self):
     x = [10, 20]

@@ -121,7 +121,7 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     return collections.OrderedDict([(k, state[k]) for k in self._hparams_keys])
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
-    return structure.update_struct(state, **hparams)
+    return structure._update_struct(state, **hparams)  # pylint: disable=protected-access
 
 
 def build_sgdm(

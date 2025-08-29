@@ -263,7 +263,7 @@ def _partition_value(
 ) -> _PartitioningValue:
   """Partitions value as specified in _split_value_into_subrounds."""
   if isinstance(type_signature, federated_language.StructType):
-    struct_val = structure.from_container(val.payload)
+    struct_val = structure._from_container(val.payload)  # pylint: disable=protected-access
     partition_result: Optional[_PartitioningValue] = None
     result_container = []
     for (_, val_elem), (name, type_elem) in zip(
@@ -388,7 +388,7 @@ def _repackage_partitioned_values(
   py_typecheck.check_type(after_merge_results, (tuple, list))
   if isinstance(result_type_spec, federated_language.StructType):
     after_merge_structs = [
-        structure.from_container(x) for x in after_merge_results
+        structure._from_container(x) for x in after_merge_results  # pylint: disable=protected-access
     ]
     result_container = []
     for idx, (name, elem_type) in enumerate(result_type_spec.items()):

@@ -188,7 +188,7 @@ class RemoteExecutor(federated_language.framework.Executor):
   async def create_value_stream_structs(
       self, value, type_spec: federated_language.StructType
   ):
-    value = structure.from_container(value)
+    value = structure._from_container(value)  # pylint: disable=protected-access
     if len(value) != len(type_spec):
       raise TypeError(
           'Value {} does not match type {}: mismatching tuple length.'.format(
@@ -254,7 +254,7 @@ class RemoteExecutor(federated_language.framework.Executor):
   @federated_language.framework.trace(span=True)
   async def create_struct(self, elements):
     self._check_has_executor_id()
-    constructed_anon_tuple = structure.from_container(elements)
+    constructed_anon_tuple = structure._from_container(elements)  # pylint: disable=protected-access
     proto_elem = []
     type_elem = []
     for k, v in structure._to_elements(constructed_anon_tuple):  # pylint: disable=protected-access

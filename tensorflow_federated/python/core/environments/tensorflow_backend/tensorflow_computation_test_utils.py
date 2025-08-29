@@ -58,7 +58,7 @@ def _stamp_value_into_graph(
         )
   elif isinstance(type_signature, federated_language.StructType):
     if isinstance(value, (list, dict)):
-      value = structure.from_container(value)
+      value = structure._from_container(value)  # pylint: disable=protected-access
     stamped_elements = []
     for (name, type_signature), element in zip(type_signature.items(), value):
       stamped_element = _stamp_value_into_graph(element, type_signature, graph)

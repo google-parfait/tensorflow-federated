@@ -196,7 +196,7 @@ def _serialize_struct_type(
     type_spec: federated_language.StructType,
 ) -> tuple[executor_pb2.Value, federated_language.StructType]:
   """Serializes a value of tuple type."""
-  value_structure = structure.from_container(struct_typed_value)
+  value_structure = structure._from_container(struct_typed_value)  # pylint: disable=protected-access
   if len(value_structure) != len(type_spec):
     raise TypeError(
         'Cannot serialize a struct value of '

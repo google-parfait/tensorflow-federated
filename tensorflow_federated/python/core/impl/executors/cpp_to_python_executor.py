@@ -144,7 +144,7 @@ class CppToPythonExecutorBridge(federated_language.framework.Executor):
   async def create_struct(
       self, elements: Sequence[CppToPythonExecutorValue]
   ) -> CppToPythonExecutorValue:
-    executor_value_struct = structure.from_container(elements)
+    executor_value_struct = structure._from_container(elements)  # pylint: disable=protected-access
     id_list = []
     type_list = []
     for name, value in structure._to_elements(executor_value_struct):  # pylint: disable=protected-access

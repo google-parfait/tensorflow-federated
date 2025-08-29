@@ -38,11 +38,11 @@ _map_structure = deprecation.deprecated(
     "`tff.structure.map_structure` is deprecated, use a Python container"
     " instead."
 )(structure.map_structure)
-from_container = deprecation.deprecated(
+_from_container = deprecation.deprecated(
     "`tff.structure.from_container` is deprecated, use a Python container"
     " instead."
 )(structure.from_container)
-update_struct = deprecation.deprecated(
+_update_struct = deprecation.deprecated(
     "`tff.structure.update_struct` is deprecated, use a Python container"
     " instead."
 )(structure.update_struct)

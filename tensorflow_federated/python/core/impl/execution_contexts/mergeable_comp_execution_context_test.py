@@ -199,7 +199,9 @@ class RepackageResultsTest(absltest.TestCase):
         ),
     ])
     self.assertRoundTripEqual(
-        value, type_signature, structure.from_container(value)
+        value,
+        type_signature,
+        structure._from_container(value),  # pylint: disable=protected-access
     )
 
   def test_roundtrip_with_nonempty_clients_argument(self):
@@ -233,7 +235,9 @@ class RepackageResultsTest(absltest.TestCase):
         ),
     ])
     self.assertRoundTripEqual(
-        value, type_signature, structure.from_container(value)
+        value,
+        type_signature,
+        structure._from_container(value),  # pylint: disable=protected-access
     )
 
 

@@ -346,7 +346,7 @@ def _evaluate_to_tensorflow(
         if isinstance(
             comp.type_signature.result, federated_language.StructType
         ):
-          return structure.from_container(result, recursive=True)
+          return structure._from_container(result, recursive=True)  # pylint: disable=protected-access
         return result
 
       return call_concrete
@@ -458,7 +458,7 @@ def compile_local_computation_to_tensorflow(
     @tensorflow_computation.tf_computation(parameter_type)
     def result_computation(arg):
       if isinstance(parameter_type, federated_language.StructType):
-        arg = structure.from_container(arg, recursive=True)
+        arg = structure._from_container(arg, recursive=True)  # pylint: disable=protected-access
       return _evaluate_to_tensorflow(to_evaluate, {parameter_name: arg})
 
   return result_computation.to_compiled_building_block()

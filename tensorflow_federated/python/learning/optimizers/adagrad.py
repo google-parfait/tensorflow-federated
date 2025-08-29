@@ -111,7 +111,7 @@ class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
-    return structure.update_struct(state, **hparams)
+    return structure._update_struct(state, **hparams)  # pylint: disable=protected-access
 
 
 def build_adagrad(

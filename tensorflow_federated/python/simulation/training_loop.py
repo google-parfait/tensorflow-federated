@@ -45,7 +45,7 @@ def _run_training(
   logging.info('Running training at round %d', round_num)
   training_time_start = time.time()
   training_data = client_selection_fn(round_num)
-  state, metrics = structure.from_container(training_fn(state, training_data))
+  state, metrics = structure._from_container(training_fn(state, training_data))  # pylint: disable=protected-access
   training_time = time.time() - training_time_start
   metrics[TRAINING_TIME_KEY] = training_time
   metrics[ROUND_NUMBER_KEY] = round_num

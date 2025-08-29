@@ -190,10 +190,10 @@ class _AdafactorOptimizer(
   def set_hparams(
       self, state: optimizer.State, hparams: dict[str, optimizer.Float]
   ) -> optimizer.State:
-    # We use `tff.structure.update_struct` (rather than something like
+    # We use `structure._update_struct` (rather than something like
     # `copy.deepcopy`) to ensure that this can be called within a
     # `federated_language.Computation`.
-    return structure.update_struct(state['hparams'], **hparams)
+    return structure._update_struct(state['hparams'], **hparams)  # pylint: disable=protected-access
 
 
 def build_adafactor(

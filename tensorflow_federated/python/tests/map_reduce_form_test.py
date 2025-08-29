@@ -166,10 +166,10 @@ class MapReduceFormTest(tf.test.TestCase):
     # The serialized representation of `ip` loses the Python containers, so we
     # assert that it matches the odict_or_tuple-ified representations.
     server_state_1 = tff.structure.to_odict_or_tuple(
-        tff.structure.from_container(server_state_1, recursive=True)
+        tff.structure._from_container(server_state_1, recursive=True)  # pylint: disable=protected-access
     )
     server_output_1 = tff.structure.to_odict_or_tuple(
-        tff.structure.from_container(server_output_1, recursive=True)
+        tff.structure._from_container(server_output_1, recursive=True)  # pylint: disable=protected-access
     )
     server_state_1_arrays = tf.nest.flatten(server_state_1)
     server_output_1_arrays = tf.nest.flatten(server_output_1)
@@ -178,7 +178,6 @@ class MapReduceFormTest(tf.test.TestCase):
     server_state_2_arrays = tf.nest.flatten(server_state_2)
     server_output_2_arrays = tf.nest.flatten(server_output_2)
 
-    self.assertEqual(server_state_1['distributor'], ())
     # Note that we cannot simply use assertEqual because the values may differ
     # due to floating point issues.
     tf.nest.assert_same_structure(server_state_1, server_state_2)

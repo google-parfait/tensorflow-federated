@@ -165,10 +165,10 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
   def set_hparams(self, state: State, hparams: Hparams) -> State:
     # TODO: b/245962555 - Find an alternative to `update_struct` if it
     # interferes with typing guarantees.
-    # We use `tff.structure.update_struct` (rather than something like
+    # We use `structure._update_struct` (rather than something like
     # `copy.deepcopy`) to ensure that this can be called within a
     # `federated_language.Computation`.
-    return structure.update_struct(state, **hparams)
+    return structure._update_struct(state, **hparams)  # pylint: disable=protected-access
 
 
 def build_yogi(
