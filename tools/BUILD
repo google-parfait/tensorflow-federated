@@ -19,7 +19,10 @@ bzl_library(
     visibility = [
         "//tensorflow_federated:__subpackages__",  # Scheuklappen: keep
     ],
-    deps = ["@rules_python//python:defs.bzl"],
+    deps = [
+        "@rules_cc//cc:core_rules",
+        "@rules_python//python:defs.bzl",
+    ],
 )
 
 py_binary(

@@ -14,6 +14,7 @@
 """TensorFlow Federated build macros and rules."""
 
 load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 def if_static(extra, framework_shared_object = []):  # buildifier: disable=unused-variable
     return_value = {
@@ -66,12 +67,12 @@ def tff_cc_cpu_gpu_test(name, tags = [], **kwargs):
       tags: List of arbitrary text tags.
       **kwargs: `cc_test` keyword arguments.
     """
-    native.cc_test(
+    cc_test(
         name = name + "_cpu",
         tags = tags,
         **kwargs
     )
-    native.cc_test(
+    cc_test(
         name = name + "_gpu",
         tags = tags + ["requires-gpu-nvidia"],
         **kwargs

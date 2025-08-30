@@ -24,6 +24,13 @@ http_archive(
 )
 
 http_archive(
+    name = "rules_cc",
+    sha256 = "b8b918a85f9144c01f6cfe0f45e4f2838c7413961a8ff23bc0c6cdf8bb07a3b6",
+    strip_prefix = "rules_cc-0.1.5",
+    url = "https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz",
+)
+
+http_archive(
     name = "com_github_grpc_grpc",
     sha256 = "76900ab068da86378395a8e125b5cc43dfae671e09ff6462ddfef18676e2165a",
     strip_prefix = "grpc-1.50.0",
@@ -192,7 +199,7 @@ tf_workspace2()
 
 load("@org_tensorflow//tensorflow:workspace1.bzl", "tf_workspace1")
 
-tf_workspace1()
+tf_workspace1(with_rules_cc = False)
 
 load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
 
