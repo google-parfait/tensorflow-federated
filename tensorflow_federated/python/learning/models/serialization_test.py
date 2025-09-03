@@ -632,6 +632,19 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
 
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model),
+  )
+  def test_save_functional_model_with_input_spec_map(self, model_fn):
+    dataset = get_dataset()
+    input_spec = dataset.element_spec
+    # Turn the input spec into a map.
+    input_spec = {'x': input_spec[0], 'y': input_spec[1]}
+    functional_model = model_fn(input_spec=input_spec)
+    path = self.get_temp_dir()
+    serialization.save_functional_model(functional_model, path)
+
   # TODO: b/261852229 - move this test model to `test_save_functional_model`
   # above once FunctionalModel serialization is fixed to not back constant
   # tensors into the initialization graph.

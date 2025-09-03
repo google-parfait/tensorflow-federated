@@ -422,8 +422,11 @@ def save_functional_model(
   model_weights_tensor_specs = tf.nest.map_structure(
       tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
   )
-
-  x_spec, y_spec = functional_model.input_spec
+  if isinstance(functional_model.input_spec, collections.abc.Mapping):
+    x_spec = functional_model.input_spec['x']
+    y_spec = functional_model.input_spec['y']
+  else:
+    x_spec, y_spec = functional_model.input_spec
 
   # Serialize predict_on_batch, once for training, once for non-training.
   # TODO: b/198150431 - try making `training` a `tf.Tensor` parameter to remove
