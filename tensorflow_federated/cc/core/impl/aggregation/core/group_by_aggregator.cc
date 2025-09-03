@@ -21,11 +21,13 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/hash/hash.h"
 #include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
@@ -64,6 +66,33 @@ Status ReorderColumn(TensorSliceData& column,
     std::swap(column_span[i], column_span[j]);
   }
   return absl::OkStatus();
+}
+
+// Combine two hashes together.
+// Similar to boost's hash_combine().
+size_t CombineHashes(size_t a, size_t b) {
+  a ^= b + 0x9e3779b9 + (a << 6) + (a >> 2);
+  return a;
+}
+
+// Hash the output keys.
+StatusOr<std::vector<size_t>> HashKeys(const OutputTensorList& keys, int n) {
+  TFF_CHECK(!keys.empty())
+      << "hash_keys: Expected at least one output key tensor.";
+  int size = keys[0].shape().dim_sizes()[0];
+  std::vector<size_t> hashes(size, 1);
+  for (const auto& key : keys) {
+    DTYPE_CASES(key.dtype(), T, {
+      AggVector<T> data = key.AsAggVector<T>();
+      for (const auto& [index, value] : data) {
+        hashes[index] = CombineHashes(hashes[index], absl::HashOf(value));
+      }
+    });
+  }
+  for (int i = 0; i < size; ++i) {
+    hashes[i] = hashes[i] % n;
+  }
+  return hashes;
 }
 
 }  // namespace internal
@@ -309,36 +338,57 @@ Status GroupByAggregator::AddMultipleContributors(
 
 StatusOr<std::vector<std::string>> GroupByAggregator::Serialize(
     int num_partitions) && {
+  if (num_partitions < 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::Serialize: num_partitions must be >= 1.";
+  }
+
+  // When num_partitions is 1, we serialize the state of the GroupByAggregator
+  // into a single string.
+  if (num_partitions == 1) {
+    GroupByAggregatorState state;
+    state.set_num_inputs(num_inputs_);
+    // If keys are being used, store the current list of output keys into state.
+    if (key_combiner_ != nullptr) {
+      OutputTensorList keys = key_combiner_->GetOutputKeys();
+      google::protobuf::RepeatedPtrField<TensorProto>* keys_proto = state.mutable_keys();
+      keys_proto->Reserve(keys.size());
+      for (int i = 0; i < keys.size(); ++i) {
+        keys_proto->Add(keys[i].ToProto());
+      }
+    }
+    // Store the state of the nested aggregators.
+    google::protobuf::RepeatedPtrField<OneDimGroupingAggregatorState>*
+        nested_aggregators_proto = state.mutable_nested_aggregators();
+    nested_aggregators_proto->Reserve(aggregators_.size());
+    for (auto const& nested_aggregator : aggregators_) {
+      nested_aggregators_proto->Add(nested_aggregator->ToProto());
+    }
+    // Store contributors to groups.
+    state.mutable_counter_of_contributors()->Reserve(
+        contributors_to_groups_.size());
+    state.mutable_counter_of_contributors()->Add(
+        contributors_to_groups_.begin(), contributors_to_groups_.end());
+    return std::vector<std::string>{state.SerializeAsString()};
+  }
+
+  if (key_combiner_ == nullptr) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "GroupByAggregator::Serialize: num_partitions>1 is not "
+              "supported when keys are not used.";
+  }
+
+  // Hashing the output keys and partitioning the state of the GroupByAggregator
+  // when num_partitions > 1 and keys are used.
+  std::vector<std::string> partitions(num_partitions);
+  OutputTensorList keys = key_combiner_->GetOutputKeys();
+  auto hashes = internal::HashKeys(keys, num_partitions);
+  TFF_CHECK(hashes.ok()) << "Failed to hash keys.";
   // TODO: b/437952802 - Support serialization of GroupByAggregator with
   // num_partitions > 1.
-  if (num_partitions != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::Serialize: num_partitions must be 1";
-  }
-  GroupByAggregatorState state;
-  state.set_num_inputs(num_inputs_);
-  // If keys are being used, store the current list of output keys into state.
-  if (key_combiner_ != nullptr) {
-    OutputTensorList keys = key_combiner_->GetOutputKeys();
-    google::protobuf::RepeatedPtrField<TensorProto>* keys_proto = state.mutable_keys();
-    keys_proto->Reserve(keys.size());
-    for (int i = 0; i < keys.size(); ++i) {
-      keys_proto->Add(keys[i].ToProto());
-    }
-  }
-  // Store the state of the nested aggregators.
-  google::protobuf::RepeatedPtrField<OneDimGroupingAggregatorState>*
-      nested_aggregators_proto = state.mutable_nested_aggregators();
-  nested_aggregators_proto->Reserve(aggregators_.size());
-  for (auto const& nested_aggregator : aggregators_) {
-    nested_aggregators_proto->Add(nested_aggregator->ToProto());
-  }
-  // Store contributors to groups.
-  state.mutable_counter_of_contributors()->Reserve(
-      contributors_to_groups_.size());
-  state.mutable_counter_of_contributors()->Add(contributors_to_groups_.begin(),
-                                               contributors_to_groups_.end());
-  return std::vector<std::string>{state.SerializeAsString()};
+  return TFF_STATUS(UNIMPLEMENTED)
+         << "GroupByAggregator::Serialize: num_partitions>1 is not supported "
+            "yet.";
 }
 
 StatusOr<GroupByAggregator::HistogramAsSliceData>
