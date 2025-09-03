@@ -385,7 +385,7 @@ def _deserialize_sequence_value(
         )
       element, *_ = flat_element
     elif isinstance(element_type, federated_language.StructType):
-      element = structure.pack_sequence_as(element_type, flat_element)
+      element = structure._pack_sequence_as(element_type, flat_element)  # pylint: disable=protected-access
       element = federated_language.framework.type_to_py_container(
           element, element_type
       )

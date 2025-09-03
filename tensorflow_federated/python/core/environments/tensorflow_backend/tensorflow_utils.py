@@ -1015,7 +1015,7 @@ def fetch_value_in_session(sess, value):
 
     if tf.is_tensor(value) and value.dtype == tf.string:
       flattened_results = [_to_unicode(result) for result in flattened_results]
-    return structure.pack_sequence_as(value, flattened_results)
+    return structure._pack_sequence_as(value, flattened_results)  # pylint: disable=protected-access
 
 
 def _interleave_dataset_results_and_tensors(dataset_results, flat_run_tensors):

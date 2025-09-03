@@ -30,7 +30,7 @@ to_odict_or_tuple = deprecation.deprecated(
 flatten = deprecation.deprecated(
     "`tff.structure.flatten` is deprecated, use a Python container instead."
 )(structure.flatten)
-pack_sequence_as = deprecation.deprecated(
+_pack_sequence_as = deprecation.deprecated(
     "`tff.structure.pack_sequence_as` is deprecated, use a Python container"
     " instead."
 )(structure.pack_sequence_as)
