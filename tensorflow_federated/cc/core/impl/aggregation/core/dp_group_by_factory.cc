@@ -399,10 +399,17 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
 
   if (open_domain) {
+    std::vector<int> contributors_to_groups =
+        aggregator_state
+            ? std::vector<int>(
+                  aggregator_state->counter_of_contributors().begin(),
+                  aggregator_state->counter_of_contributors().end())
+            : std::vector<int>();
     return DPOpenDomainHistogram::Create(
         intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
         std::move(key_combiner), std::move(nested_aggregators), epsilon, delta,
-        l0_bound, num_inputs, min_contributors_to_group);
+        l0_bound, num_inputs, min_contributors_to_group,
+        contributors_to_groups);
   }
 
   size_t num_nested_intrinsics = intrinsic.nested_intrinsics.size();

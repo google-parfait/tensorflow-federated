@@ -152,7 +152,6 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
     // Do not bother making mechanism if epsilon is too large.
     if (epsilon_per_agg_ >= kEpsilonThreshold) {
       mechanisms.push_back(nullptr);
-      laplace_was_used_.push_back(false);
       continue;
     }
 
@@ -169,9 +168,6 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
                                 linfinity_bound, l1_bound, l2_bound,
                                 /*open_domain=*/false));
     mechanisms.push_back(std::move(noise_mechanism.mechanism));
-
-    // Record whether Laplace will be used.
-    laplace_was_used_.push_back(noise_mechanism.use_laplace);
   }
 
   // Create MutableVectorData containers, one for each output tensor, that are

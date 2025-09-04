@@ -40,6 +40,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
@@ -81,6 +82,7 @@ using ::testing::Gt;
 using ::testing::HasSubstr;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
+using ::testing::Lt;
 using ::testing::Not;
 using ::testing::SizeIs;
 using ::testing::TestParamInfo;
@@ -1068,6 +1070,186 @@ TEST(DPOpenDomainHistogramTest,
   DPOpenDomainHistogramPeer peer(std::move(group_by_aggregator));
   EXPECT_THAT(peer.HasSelector(), IsFalse());
   EXPECT_THAT(peer.GetMaxContributorsToGroup(), Eq(std::nullopt));
+}
+
+TEST_P(DPOpenDomainHistogramTest,
+       SingleKeyAndMinContributorsAggregatesWithValueZeroCanSurvive) {
+  // epsilon = 1, delta= 1e-8, L0 bound = 2, Linfinity bound = 1
+  Intrinsic intrinsic =
+      CreateIntrinsic2Agg<int32_t, int64_t>(1.0, 1e-8, 2, 1, -1, -1, 1, -1, -1);
+  intrinsic.parameters.push_back(
+      Tensor::Create(internal::TypeTraits<int64_t>::kDataType, {},
+                     CreateTestData<int64_t>({5}), "min_contributors_to_group")
+          .value());
+  auto dp_aggregator = CreateTensorAggregator(intrinsic).value();
+  // Simulate many clients where they contribute
+  // aggregation 1: zeroes to key0 and ones to key1
+  // aggregation 2: zeroes to both
+  // The number of clients contributing is such that no key is removed by
+  // k-thresholding.
+  std::string key0 = "keep me";
+  std::string key1 = "keep me also";
+  int num_inputs = 400;
+  for (int i = 0; i < num_inputs; i++) {
+    Tensor keys = Tensor::Create(DT_STRING, {2},
+                                 CreateTestData<string_view>({key0, key1}))
+                      .value();
+
+    Tensor value_tensor1 =
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 1})).value();
+    Tensor value_tensor2 =
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 0})).value();
+
+    auto acc_status =
+        dp_aggregator->Accumulate({&keys, &value_tensor1, &value_tensor2});
+    EXPECT_THAT(acc_status, IsOk());
+  }
+
+  EXPECT_THAT(dp_aggregator->GetNumInputs(), Eq(num_inputs));
+  EXPECT_THAT(dp_aggregator->CanReport(), IsTrue());
+
+  if (GetParam()) {
+    auto serialized_state =
+        std::move(*dp_aggregator).Serialize(/*num_partitions=*/1);
+    dp_aggregator =
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
+            .value();
+  }
+
+  auto report = std::move(*dp_aggregator).Report();
+  EXPECT_THAT(report, IsOk());
+  EXPECT_THAT(report->size(), Eq(3));
+
+  // The report should include both keys because we don't drop aggregates with
+  // value zero when k-thresholding.
+  EXPECT_THAT(report.value()[0].AsSpan<string_view>(),
+              UnorderedElementsAreArray({key0, key1}));
+}
+
+TEST(DPOpenDomainHistogramTest, ReportAppliesKThresholdingEvenWithoutDP) {
+  // Test that when k-thresholding is enabled and no group survives, the
+  // output is empty.
+  const int64_t min_contributors_to_group = 5;
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      min_contributors_to_group, /*key_types=*/{DT_STRING});
+  TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator,
+                           CreateTensorAggregator(intrinsic));
+  std::string key0 = "drop me";
+  std::string key1 = "keep me";
+  // Simulate too few clients for key0 to survive k-thresholding.
+  int num_inputs = 4;
+  for (int i = 0; i < num_inputs; i++) {
+    Tensor keys =
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({key0}))
+            .value();
+
+    Tensor value_tensor =
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+
+    auto acc_status = dp_aggregator->Accumulate({&keys, &value_tensor});
+    ASSERT_THAT(acc_status, IsOk());
+  }
+  // Simulate enough clients for key1 to survive k-thresholding.
+  num_inputs = 100;
+  for (int i = 0; i < num_inputs; i++) {
+    Tensor keys =
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({key1}))
+            .value();
+
+    Tensor value_tensor =
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+
+    auto acc_status = dp_aggregator->Accumulate({&keys, &value_tensor});
+    ASSERT_THAT(acc_status, IsOk());
+  }
+
+  auto report = std::move(*dp_aggregator).Report();
+  ASSERT_THAT(report, IsOk());
+  ASSERT_THAT(report->size(), Eq(2));
+
+  // The report should not include key0 because it has too few
+  // contributors.
+  EXPECT_THAT(report.value()[0].AsSpan<string_view>(),
+              UnorderedElementsAreArray({key1}));
+}
+
+TEST_P(DPOpenDomainHistogramTest, ReportAppliesDPDuringSelection) {
+  // Check that the protocol doesn't publish (with probability much more than
+  // delta) values that have only k contributors.
+  const int64_t min_contributors_to_group = 5;
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int32_t, int32_t>(
+      min_contributors_to_group, /*key_types=*/{DT_INT32}, /*epsilon=*/1.0);
+  // std::string key = "drop me";
+  int key = 1;
+  int num_inputs = 5;
+  int num_repeats = 100;
+  int times_kept = 0;
+  for (int i = 0; i < num_repeats; i++) {
+    TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator,
+                             CreateTensorAggregator(intrinsic));
+    for (int i = 0; i < num_inputs; i++) {
+      Tensor keys =
+          Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({key})).value();
+
+      Tensor value_tensor =
+          Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})).value();
+
+      EXPECT_THAT(dp_aggregator->Accumulate({&keys, &value_tensor}), IsOk());
+    }
+    auto report = std::move(*dp_aggregator).Report();
+    EXPECT_THAT(report, IsOk());
+    EXPECT_THAT(report->size(), Eq(2));
+    if (report.value()[0].num_elements() > 0) {
+      times_kept++;
+    }
+  }
+  // The should be kept with probability at most delta = 0.001 so probability of
+  // keeping at least 10 is at most 10^-30 times 100 choose 10 < 10^-16.
+  EXPECT_THAT(times_kept, Lt(10));
+}
+
+TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilonsWithKThresholding) {
+  const int64_t min_contributors_to_group = 5;
+  // We need to add not too much noise to avoid flakiness from the
+  // thresholding, but not so little to get flakiness from happening to add zero
+  // noise. Testing four keys and only requiring one of them to have changed
+  // makes this easier without num_inputs being too large.
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int32_t, int64_t>(
+      min_contributors_to_group, /*key_types=*/{DT_STRING}, /*epsilon=*/0.05,
+      /*delta=*/0.001, /*l0_bound=*/4);
+  auto dp_aggregator = CreateTensorAggregator(intrinsic).value();
+  int num_inputs = 4000;
+  for (int i = 0; i < num_inputs; i++) {
+    Tensor keys =
+        Tensor::Create(
+            DT_STRING, {4},
+            CreateTestData<string_view>({"key0", "key1", "key2", "key3"}))
+            .value();
+    Tensor values =
+        Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({1, 1, 1, 1}))
+            .value();
+    auto acc_status = dp_aggregator->Accumulate({&keys, &values});
+    EXPECT_THAT(acc_status, IsOk());
+  }
+  EXPECT_EQ(dp_aggregator->GetNumInputs(), num_inputs);
+  EXPECT_TRUE(dp_aggregator->CanReport());
+
+  if (GetParam()) {
+    auto serialized_state =
+        std::move(*dp_aggregator).Serialize(/*num_partitions=*/1);
+    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
+    dp_aggregator =
+        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
+            .value();
+  }
+
+  auto report = std::move(*dp_aggregator).Report();
+  EXPECT_THAT(report, IsOk());
+  EXPECT_EQ(report->size(), 2);
+  const auto& values = report.value()[1].AsSpan<int64_t>();
+  ASSERT_THAT(values.size(), Eq(4));
+  EXPECT_TRUE(values[0] != num_inputs || values[1] != num_inputs ||
+              values[2] != num_inputs || values[3] != num_inputs);
 }
 
 INSTANTIATE_TEST_SUITE_P(

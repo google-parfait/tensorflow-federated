@@ -79,23 +79,20 @@ struct DPHistogramBundle {
   // consumes some or all of the delta that a customer provides. Only used in
   // the open-domain case.
   std::optional<double> threshold;
-
-  // A boolean to indicate which noise is used.
-  bool use_laplace = false;
 };
 
 // Given parameters for a DP aggregation, create a Gaussian mechanism for that
-// aggregation (or return error status). If open_domain is true, then split
-// delta and compute a post-aggregation threshold.
+// aggregation (or return error status). If threshold_by_value is true, then
+// split delta and compute a post-aggregation threshold.
 absl::StatusOr<DPHistogramBundle> CreateGaussianMechanism(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
-    double l2_bound, bool open_domain);
+    double l2_bound, bool threshold_by_value);
 
 // Given parameters for a DP aggregation, create a Laplace mechanism for that
 // aggregation (or return error status).
 absl::StatusOr<DPHistogramBundle> CreateLaplaceMechanism(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
-    double l1_bound, bool open_domain);
+    double l1_bound, bool threshold_by_value);
 
 // Given parameters for a DP aggregation, create a mechanism for it (or return
 // an error status). The mechanism will be either Laplace or Gaussian, whichever
@@ -103,13 +100,14 @@ absl::StatusOr<DPHistogramBundle> CreateLaplaceMechanism(
 // If it is not possible to make a mechanism, return an error status whose
 // message includes the parameters of the aggregation and the provided index of
 // the aggregation.
-// If open_domain is true, then also compute a post-aggregation threshold.
+// If threshold_by_value is true, then also compute a post-aggregation
+// threshold.
 //
 // This function can be interpreted as an version of MinVarianceMechanismBuilder
 // that takes L1 and L2 sensitivities.
 absl::StatusOr<DPHistogramBundle> CreateDPHistogramBundle(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
-    double l1_bound, double l2_bound, bool open_domain);
+    double l1_bound, double l2_bound, bool threshold_by_value);
 
 }  // namespace aggregation
 }  // namespace tensorflow_federated
