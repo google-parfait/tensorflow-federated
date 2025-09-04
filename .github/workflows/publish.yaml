@@ -202,4 +202,4 @@ jobs:
         path: dist/
 
     - name: Publish Python package
-      uses: pypa/gh-action-pypi-publish@v1.8.14
+      uses: pypa/gh-action-pypi-publish@v1.13.0
