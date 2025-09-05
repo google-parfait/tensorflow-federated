@@ -119,11 +119,11 @@ absl::StatusOr<double> CalculateLaplaceThreshold(double epsilon, double delta,
 }  // namespace internal
 
 // Given parameters for an DP aggregation, create a Gaussian mechanism for that
-// aggregation (or return error status). If open_domain is true, then split
-// delta and compute a post-aggregation threshold.
+// aggregation (or return error status). If threshold_by_value is true, then
+// split delta and compute a post-aggregation threshold.
 absl::StatusOr<DPHistogramBundle> CreateGaussianMechanism(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
-    double l2_bound, bool open_domain) {
+    double l2_bound, bool threshold_by_value) {
   if (epsilon <= 0 || epsilon >= kEpsilonThreshold) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "CreateGaussianMechanism: Epsilon must be positive "
@@ -136,9 +136,9 @@ absl::StatusOr<DPHistogramBundle> CreateGaussianMechanism(
   }
 
   // The following parameter determines how much of delta is consumed for
-  // thresholding (when open_domain is true). Currently set to 0.5, but this
-  // could be optimized down the line.
-  double fractionForThresholding = open_domain ? 0.5 : 0.0;
+  // thresholding (when threshold_by_value is true). Currently set to 0.5, but
+  // this could be optimized down the line.
+  double fractionForThresholding = threshold_by_value ? 0.5 : 0.0;
   double delta_for_thresholding = delta * fractionForThresholding;
   double delta_for_noising = delta - delta_for_thresholding;
 
@@ -154,7 +154,7 @@ absl::StatusOr<DPHistogramBundle> CreateGaussianMechanism(
   TFF_ASSIGN_OR_RETURN(dp_histogram.mechanism, gaussian_builder.Build());
   dp_histogram.use_laplace = false;
 
-  if (open_domain) {
+  if (threshold_by_value) {
     if (l0_bound <= 0 || linfinity_bound <= 0) {
       return TFF_STATUS(INVALID_ARGUMENT)
              << "CreateGaussianMechanism: Open-domain DP "
@@ -177,7 +177,7 @@ absl::StatusOr<DPHistogramBundle> CreateGaussianMechanism(
 // aggregation (or return error status).
 absl::StatusOr<DPHistogramBundle> CreateLaplaceMechanism(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
-    double l1_bound, bool open_domain) {
+    double l1_bound, bool threshold_by_value) {
   if (epsilon <= 0 || epsilon >= kEpsilonThreshold) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "CreateLaplaceMechanism: Epsilon must be positive "
@@ -195,7 +195,7 @@ absl::StatusOr<DPHistogramBundle> CreateLaplaceMechanism(
   TFF_ASSIGN_OR_RETURN(dp_histogram.mechanism, laplace_builder.Build());
   dp_histogram.use_laplace = true;
 
-  if (open_domain) {
+  if (threshold_by_value) {
     if (delta <= 0 || delta >= 1 || l0_bound <= 0 || linfinity_bound <= 0) {
       return TFF_STATUS(INVALID_ARGUMENT)
              << "CreateLaplaceMechanism: Open-domain DP "
@@ -219,7 +219,7 @@ absl::StatusOr<DPHistogramBundle> CreateLaplaceMechanism(
 // or Gaussian, whichever has less variance for the same DP parameters.
 absl::StatusOr<DPHistogramBundle> CreateDPHistogramBundle(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
-    double l1_bound, double l2_bound, bool open_domain) {
+    double l1_bound, double l2_bound, bool threshold_by_value) {
   // First we determine if we are able to make Gaussian or Laplace mechanisms
   // from the given parameters.
   double l1_sensitivity =
@@ -245,11 +245,11 @@ absl::StatusOr<DPHistogramBundle> CreateDPHistogramBundle(
   // When only one mechanism can be made, make it.
   if (!laplace_is_possible && gaussian_is_possible) {
     return CreateGaussianMechanism(epsilon, delta, l0_bound, linfinity_bound,
-                                   l2_bound, open_domain);
+                                   l2_bound, threshold_by_value);
   }
   if (laplace_is_possible && !gaussian_is_possible) {
     return CreateLaplaceMechanism(epsilon, delta, l0_bound, linfinity_bound,
-                                  l1_bound, open_domain);
+                                  l1_bound, threshold_by_value);
   }
 
   // When both mechanisms can be made, use the one with smaller variance.
@@ -260,11 +260,11 @@ absl::StatusOr<DPHistogramBundle> CreateDPHistogramBundle(
   TFF_ASSIGN_OR_RETURN(
       auto laplace_mechanism,
       CreateLaplaceMechanism(epsilon, delta, l0_bound, linfinity_bound,
-                             l1_bound, open_domain));
+                             l1_bound, threshold_by_value));
   TFF_ASSIGN_OR_RETURN(
       auto gaussian_mechanism,
       CreateGaussianMechanism(epsilon, delta, l0_bound, linfinity_bound,
-                              l2_bound, open_domain));
+                              l2_bound, threshold_by_value));
 
   if (gaussian_mechanism.mechanism->GetVariance() <
       laplace_mechanism.mechanism->GetVariance()) {

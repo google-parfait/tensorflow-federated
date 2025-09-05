@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -25,6 +26,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -399,10 +401,16 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
 
   if (open_domain) {
+    std::vector<int> contributors_to_groups;
+    if (aggregator_state != nullptr) {
+      absl::c_copy(aggregator_state->counter_of_contributors(),
+                   std::back_inserter(contributors_to_groups));
+    }
     return DPOpenDomainHistogram::Create(
         intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
         std::move(key_combiner), std::move(nested_aggregators), epsilon, delta,
-        l0_bound, num_inputs, min_contributors_to_group);
+        l0_bound, num_inputs, min_contributors_to_group,
+        contributors_to_groups);
   }
 
   size_t num_nested_intrinsics = intrinsic.nested_intrinsics.size();
