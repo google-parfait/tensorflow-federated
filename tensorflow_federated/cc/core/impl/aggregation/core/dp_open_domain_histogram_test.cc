@@ -40,6 +40,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
@@ -75,16 +76,20 @@ class DPOpenDomainHistogramPeer {
 
 namespace {
 
+using ::testing::Contains;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Gt;
 using ::testing::HasSubstr;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
+using ::testing::Lt;
+using ::testing::Ne;
 using ::testing::Not;
 using ::testing::SizeIs;
 using ::testing::TestParamInfo;
 using ::testing::TestWithParam;
+using ::testing::UnorderedElementsAre;
 using ::testing::UnorderedElementsAreArray;
 using ::testing::ValuesIn;
 
@@ -598,12 +603,13 @@ TEST_P(DPOpenDomainHistogramTest, NoKeyTripleAggWithAllBounds) {
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
 
   if (GetParam()) {
-    auto serialized_state =
-        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
-    group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
-            .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::vector<std::string> serialized_state,
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        group_by_aggregator,
+        DeserializeTensorAggregator(intrinsic, serialized_state[0]));
   }
 
   auto result = std::move(*group_by_aggregator).Report();
@@ -618,7 +624,7 @@ TEST_P(DPOpenDomainHistogramTest, NoKeyTripleAggWithAllBounds) {
 // same as the unnoised sum. The odds of a false negative shrinks with epsilon.
 TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilons) {
   Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(0.05, 1e-8, 2, 1);
-  auto dpgba = CreateTensorAggregator(intrinsic).value();
+  auto dp_aggregator = CreateTensorAggregator(intrinsic).value();
   int num_inputs = 4000;
   for (int i = 0; i < num_inputs; i++) {
     Tensor keys = Tensor::Create(DT_STRING, {2},
@@ -626,20 +632,23 @@ TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilons) {
                       .value();
     Tensor values =
         Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})).value();
-    auto acc_status = dpgba->Accumulate({&keys, &values});
+    auto acc_status = dp_aggregator->Accumulate({&keys, &values});
     EXPECT_THAT(acc_status, IsOk());
   }
-  EXPECT_EQ(dpgba->GetNumInputs(), num_inputs);
-  EXPECT_TRUE(dpgba->CanReport());
+  EXPECT_EQ(dp_aggregator->GetNumInputs(), num_inputs);
+  EXPECT_TRUE(dp_aggregator->CanReport());
 
   if (GetParam()) {
-    auto serialized_state = std::move(*dpgba).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
-    dpgba = DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
-                .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::vector<std::string> serialized_state,
+        std::move(*dp_aggregator).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        dp_aggregator,
+        DeserializeTensorAggregator(intrinsic, serialized_state[0]));
   }
 
-  auto report = std::move(*dpgba).Report();
+  auto report = std::move(*dp_aggregator).Report();
   EXPECT_THAT(report, IsOk());
   EXPECT_EQ(report->size(), 2);
   const auto& values = report.value()[1].AsSpan<int64_t>();
@@ -658,7 +667,7 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeyDropAggregatesWithValueZero) {
   // epsilon = 1, delta= 1e-8, L0 bound = 2, Linfinity bound = 1
   Intrinsic intrinsic =
       CreateIntrinsic2Agg<int32_t, int64_t>(1.0, 1e-8, 2, 1, -1, -1, 1, -1, -1);
-  auto dpgba = CreateTensorAggregator(intrinsic).value();
+  auto dp_aggregator = CreateTensorAggregator(intrinsic).value();
   // Simulate many clients where they contribute
   // aggregation 1: zeroes to key0 and ones to key1
   // aggregation 2: ones to both
@@ -676,21 +685,24 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeyDropAggregatesWithValueZero) {
         Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})).value();
 
     auto acc_status =
-        dpgba->Accumulate({&keys, &value_tensor1, &value_tensor2});
+        dp_aggregator->Accumulate({&keys, &value_tensor1, &value_tensor2});
     EXPECT_THAT(acc_status, IsOk());
   }
 
-  EXPECT_THAT(dpgba->GetNumInputs(), Eq(num_inputs));
-  EXPECT_THAT(dpgba->CanReport(), IsTrue());
+  EXPECT_THAT(dp_aggregator->GetNumInputs(), Eq(num_inputs));
+  EXPECT_THAT(dp_aggregator->CanReport(), IsTrue());
 
   if (GetParam()) {
-    auto serialized_state = std::move(*dpgba).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
-    dpgba = DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
-                .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::vector<std::string> serialized_state,
+        std::move(*dp_aggregator).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        dp_aggregator,
+        DeserializeTensorAggregator(intrinsic, serialized_state[0]));
   }
 
-  auto report = std::move(*dpgba).Report();
+  auto report = std::move(*dp_aggregator).Report();
   EXPECT_THAT(report, IsOk());
   EXPECT_THAT(report->size(), Eq(3));
 
@@ -725,12 +737,13 @@ TEST_P(DPOpenDomainHistogramTest, NoKeyNoDrop) {
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
 
   if (GetParam()) {
-    auto serialized_state =
-        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
-    group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
-            .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::vector<std::string> serialized_state,
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        group_by_aggregator,
+        DeserializeTensorAggregator(intrinsic, serialized_state[0]));
   }
 
   auto result = std::move(*group_by_aggregator).Report();
@@ -801,12 +814,13 @@ TEST_P(DPOpenDomainHistogramTest,
   }
 
   if (GetParam()) {
-    auto serialized_state =
-        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
-    group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
-            .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::vector<std::string> serialized_state,
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        group_by_aggregator,
+        DeserializeTensorAggregator(intrinsic, serialized_state[0]));
   }
 
   // Totals: [600, 1000, 800, 800]
@@ -836,7 +850,7 @@ TEST_P(DPOpenDomainHistogramTest,
   EXPECT_EQ(num_dog, 2);
 }
 
-// Finally, test merge: intermediary aggregates should not be clipped or noised
+// Eighth Test merge: intermediary aggregates should not be clipped or noised
 
 TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_SingleKey) {
   // For any single user's data we will give to the aggregators, the norm bounds
@@ -875,12 +889,18 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_SingleKey) {
   }
 
   if (GetParam()) {
-    auto serialized_state1 =
-        std::move(*agg1).Serialize(/*num_partitions=*/1).value()[0];
-    auto serialized_state2 =
-        std::move(*agg2).Serialize(/*num_partitions=*/1).value()[0];
-    agg1 = DeserializeTensorAggregator(intrinsic, serialized_state1).value();
-    agg2 = DeserializeTensorAggregator(intrinsic, serialized_state2).value();
+    TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_state1,
+                             std::move(*agg1).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state1, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg1,
+        DeserializeTensorAggregator(intrinsic, serialized_state1[0]));
+    TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_state2,
+                             std::move(*agg2).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state2, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg2,
+        DeserializeTensorAggregator(intrinsic, serialized_state2[0]));
   }
 
   // Merge the aggregators. The result should contain the 3 different keys.
@@ -931,12 +951,18 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
   }
 
   if (GetParam()) {
-    auto serialized_state1 =
-        std::move(*agg1).Serialize(/*num_partitions=*/1).value()[0];
-    auto serialized_state2 =
-        std::move(*agg2).Serialize(/*num_partitions=*/1).value()[0];
-    agg1 = DeserializeTensorAggregator(intrinsic, serialized_state1).value();
-    agg2 = DeserializeTensorAggregator(intrinsic, serialized_state2).value();
+    TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_state1,
+                             std::move(*agg1).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state1, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg1,
+        DeserializeTensorAggregator(intrinsic, serialized_state1[0]));
+    TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_state2,
+                             std::move(*agg2).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state2, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg2,
+        DeserializeTensorAggregator(intrinsic, serialized_state2[0]));
   }
 
   // Merge the aggregators. The result should contain two different keys.
@@ -983,12 +1009,18 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
   // Aggregate should be 8000, 9000 due to contribution bounding.
 
   if (GetParam()) {
-    auto serialized_state1 =
-        std::move(*agg1).Serialize(/*num_partitions=*/1).value()[0];
-    auto serialized_state2 =
-        std::move(*agg2).Serialize(/*num_partitions=*/1).value()[0];
-    agg1 = DeserializeTensorAggregator(intrinsic, serialized_state1).value();
-    agg2 = DeserializeTensorAggregator(intrinsic, serialized_state2).value();
+    TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_state1,
+                             std::move(*agg1).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state1, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg1,
+        DeserializeTensorAggregator(intrinsic, serialized_state1[0]));
+    TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_state2,
+                             std::move(*agg2).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state2, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg2,
+        DeserializeTensorAggregator(intrinsic, serialized_state2[0]));
   }
 
   auto merge_status = agg1->MergeWith(std::move(*agg2));
@@ -999,6 +1031,8 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
   EXPECT_THAT(result.value()[0], IsTensor<int64_t>({1}, {8001}));
   EXPECT_THAT(result.value()[1], IsTensor<int64_t>({1}, {9001}));
 }
+
+// Ninth test order of outputs doesn't leak which keys were added earlier.
 
 TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
   // We will simulate 26000 clients each contributing to the count of 1 letter.
@@ -1022,12 +1056,13 @@ TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
     TFF_EXPECT_OK(group_by_aggregator->Accumulate({&keys, &value_tensor}));
   }
   if (GetParam()) {
-    auto serialized_state =
-        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
-    group_by_aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value()[0])
-            .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::vector<std::string> serialized_state,
+        std::move(*group_by_aggregator).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        group_by_aggregator,
+        DeserializeTensorAggregator(intrinsic, serialized_state[0]));
   }
   auto report = std::move(*group_by_aggregator).Report();
   TFF_ASSERT_OK(report.status());
@@ -1040,6 +1075,8 @@ TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
   EXPECT_THAT(report_span, UnorderedElementsAreArray(alphabet));
   EXPECT_THAT(report_span, Not(ElementsAreArray(alphabet)));
 }
+
+// Tenth test creation of aggregator with min_contributors_to_group set.
 
 TEST(DPOpenDomainHistogramTest,
      CreateWithMinContributorsSetsSelectorAndMaxContributors) {
@@ -1068,6 +1105,200 @@ TEST(DPOpenDomainHistogramTest,
   DPOpenDomainHistogramPeer peer(std::move(group_by_aggregator));
   EXPECT_THAT(peer.HasSelector(), IsFalse());
   EXPECT_THAT(peer.GetMaxContributorsToGroup(), Eq(std::nullopt));
+}
+
+// Eleventh test that Report applies k-thresholding and DP noise correctly when
+// min_contributors_to_group is set.
+
+TEST_P(DPOpenDomainHistogramTest,
+       SingleKeyAndMinContributorsAggregatesWithValueZeroCanSurvive) {
+  Intrinsic intrinsic = CreateIntrinsic2Agg<int32_t, int64_t>(
+      /*epsilon=*/1.0, /*delta=*/1e-8, /*l0_bound=*/2, /*linfinity_bound1=*/1,
+      /*l1_bound1=*/-1, /*l2_bound1=*/-1, /*linfinity_bound2=*/1,
+      /*l1_bound2=*/-1, /*l2_bound2=*/-1);
+  intrinsic.parameters.push_back(
+      Tensor::Create(internal::TypeTraits<int64_t>::kDataType, {},
+                     CreateTestData<int64_t>({5}), "min_contributors_to_group")
+          .value());
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> dp_aggregator,
+                           CreateTensorAggregator(intrinsic));
+  // Simulate many clients where they contribute
+  // aggregation 1: zeroes to key0 and ones to key1
+  // aggregation 2: zeroes to both
+  // The number of clients contributing is such that no key is removed by
+  // k-thresholding.
+  std::string key0 = "keep me";
+  std::string key1 = "keep me also";
+  constexpr int num_inputs = 400;
+  for (int i = 0; i < num_inputs; i++) {
+    Tensor keys = Tensor::Create(DT_STRING, {2},
+                                 CreateTestData<string_view>({key0, key1}))
+                      .value();
+
+    Tensor value_tensor1 =
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 1})).value();
+    Tensor value_tensor2 =
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 0})).value();
+
+    EXPECT_THAT(
+        dp_aggregator->Accumulate({&keys, &value_tensor1, &value_tensor2}),
+        IsOk());
+  }
+
+  EXPECT_THAT(dp_aggregator->GetNumInputs(), Eq(num_inputs));
+  EXPECT_THAT(dp_aggregator->CanReport(), IsTrue());
+
+  if (GetParam()) {
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::vector<std::string> serialized_state,
+        std::move(*dp_aggregator).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> dp_aggregator,
+        DeserializeTensorAggregator(intrinsic, serialized_state[0]));
+  }
+
+  TFF_ASSERT_OK_AND_ASSIGN(OutputTensorList report,
+                           std::move(*dp_aggregator).Report());
+  ASSERT_THAT(report.size(), Eq(3));
+
+  // The report should include both keys because we don't drop aggregates with
+  // value zero when k-thresholding.
+  EXPECT_THAT(report[0].AsSpan<string_view>(),
+              UnorderedElementsAre(key0, key1));
+}
+
+TEST_P(DPOpenDomainHistogramTest, ReportAppliesKThresholdingEvenWithoutDP) {
+  // Test that when k-thresholding is enabled and no group survives, the
+  // output is empty.
+  const int64_t min_contributors_to_group = 5;
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      min_contributors_to_group, /*key_types=*/{DT_STRING});
+  TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator,
+                           CreateTensorAggregator(intrinsic));
+  std::string key0 = "drop me";
+  std::string key1 = "keep me";
+  // Simulate too few clients for key0 to survive k-thresholding.
+  constexpr int kNumInputsKey0 = 4;
+  for (int i = 0; i < kNumInputsKey0; i++) {
+    Tensor keys =
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({key0}))
+            .value();
+
+    Tensor value_tensor =
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+
+    TFF_ASSERT_OK(dp_aggregator->Accumulate({&keys, &value_tensor}));
+  }
+  // Simulate enough clients for key1 to survive k-thresholding.
+  constexpr int kNumInputsKey1 = 100;
+  for (int i = 0; i < kNumInputsKey1; i++) {
+    Tensor keys =
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({key1}))
+            .value();
+
+    Tensor value_tensor =
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+
+    TFF_ASSERT_OK(dp_aggregator->Accumulate({&keys, &value_tensor}));
+  }
+
+  if (GetParam()) {
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::vector<std::string> serialized_state,
+        std::move(*dp_aggregator).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> dp_aggregator,
+        DeserializeTensorAggregator(intrinsic, serialized_state[0]));
+  }
+
+  TFF_ASSERT_OK_AND_ASSIGN(OutputTensorList report,
+                           std::move(*dp_aggregator).Report());
+  ASSERT_THAT(report.size(), Eq(2));
+
+  // The report should not include key0 because it has too few
+  // contributors.
+  EXPECT_THAT(report[0].AsSpan<string_view>(), UnorderedElementsAre(key1));
+}
+
+TEST(DPOpenDomainHistogramTest, ReportAppliesDPDuringSelection) {
+  // Check that the protocol doesn't publish (with probability much more than
+  // delta) values that have only k contributors.
+  const int64_t min_contributors_to_group = 5;
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int32_t, int32_t>(
+      min_contributors_to_group, /*key_types=*/{DT_INT32}, /*epsilon=*/1.0);
+  int key = 1;
+  constexpr int kNumInputs = 5;
+  constexpr int kNumRepeats = 100;
+  int times_kept = 0;
+  for (int i = 0; i < kNumRepeats; i++) {
+    TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator,
+                             CreateTensorAggregator(intrinsic));
+    for (int i = 0; i < kNumInputs; i++) {
+      Tensor keys =
+          Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({key})).value();
+
+      Tensor value_tensor =
+          Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})).value();
+
+      TFF_EXPECT_OK(dp_aggregator->Accumulate({&keys, &value_tensor}));
+    }
+    TFF_ASSERT_OK_AND_ASSIGN(OutputTensorList report,
+                             std::move(*dp_aggregator).Report());
+    ASSERT_THAT(report.size(), Eq(2));
+    if (report[0].num_elements() > 0) {
+      times_kept++;
+    }
+  }
+  // The key should be kept with probability at most delta = 0.001 so
+  // probability of keeping at least 10 is at most 10^-30 times 100 choose 10 <
+  // 10^-16.
+  EXPECT_THAT(times_kept, Lt(10));
+}
+
+TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilonsWithKThresholding) {
+  const int64_t min_contributors_to_group = 5;
+  // We need to add not too much noise to avoid flakiness from the
+  // thresholding, but not so little to get flakiness from happening to add zero
+  // noise. Testing four keys and only requiring one of them to have changed
+  // makes this easier without kNumInputs being too large.
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int32_t, int64_t>(
+      min_contributors_to_group, /*key_types=*/{DT_STRING}, /*epsilon=*/0.05,
+      /*delta=*/0.001, /*l0_bound=*/4);
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> dp_aggregator,
+                           CreateTensorAggregator(intrinsic));
+  constexpr int kNumInputs = 4000;
+  for (int i = 0; i < kNumInputs; i++) {
+    Tensor keys =
+        Tensor::Create(
+            DT_STRING, {4},
+            CreateTestData<string_view>({"key0", "key1", "key2", "key3"}))
+            .value();
+    Tensor values =
+        Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({1, 1, 1, 1}))
+            .value();
+    TFF_EXPECT_OK(dp_aggregator->Accumulate({&keys, &values}));
+  }
+  EXPECT_EQ(dp_aggregator->GetNumInputs(), kNumInputs);
+  EXPECT_TRUE(dp_aggregator->CanReport());
+
+  if (GetParam()) {
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::vector<std::string> serialized_state,
+        std::move(*dp_aggregator).Serialize(/*num_partitions=*/1));
+    ASSERT_THAT(serialized_state, SizeIs(1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> dp_aggregator,
+        DeserializeTensorAggregator(intrinsic, serialized_state[0]));
+  }
+
+  TFF_ASSERT_OK_AND_ASSIGN(OutputTensorList report,
+                           std::move(*dp_aggregator).Report());
+  EXPECT_EQ(report.size(), 2);
+  const absl::Span<const int64_t>& values = report[1].AsSpan<int64_t>();
+  ASSERT_THAT(values.size(), Eq(4));
+  EXPECT_THAT(values, Contains(Ne(kNumInputs)));
 }
 
 INSTANTIATE_TEST_SUITE_P(
