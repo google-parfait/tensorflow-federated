@@ -1200,7 +1200,7 @@ TEST(CheckpointAggregatorTest,
           parameter {
             dtype: DT_DOUBLE
             shape {}
-            double_val: 1e-8
+            double_val: 1e-7
           }
         }]
       inner_intrinsics:
@@ -1254,8 +1254,8 @@ TEST(CheckpointAggregatorTest,
   )pb");
   auto aggregator = Create(config);
 
-  // Feed 100 copies of the same input to the aggregator.
-  for (int i = 0; i < 100; i++) {
+  // Feed many copies of the same input to the aggregator.
+  for (int i = 0; i < 25000; i++) {
     MockCheckpointParser parser;
     EXPECT_CALL(parser, GetTensor(StrEq("L0"))).WillOnce(Invoke([] {
       return Tensor::Create(DT_INT32, {1}, CreateTestData({1}));
@@ -1267,15 +1267,16 @@ TEST(CheckpointAggregatorTest,
   }
   // Given the duplication, the output should be (1.0, 0.1) even with DP noise.
   MockCheckpointBuilder builder;
-  EXPECT_CALL(builder, Add(StrEq("L0_estimated"), IsTensor<double>({}, {1.0})))
+  EXPECT_CALL(builder,
+              Add(StrEq("L0_estimated"), IsTensor<double>({}, {1.0}, 0.1)))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(builder,
-              Add(StrEq("L1_1_estimated"), IsTensor<double>({}, {0.1})))
+              Add(StrEq("L1_1_estimated"), IsTensor<double>({}, {0.1}, 0.1)))
       .WillOnce(Return(absl::OkStatus()));
   absl::StatusOr<int> num_checkpoints_aggregated =
       aggregator->GetNumCheckpointsAggregated();
   TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 100);
+  EXPECT_EQ(*num_checkpoints_aggregated, 25000);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 

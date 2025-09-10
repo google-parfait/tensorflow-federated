@@ -19,9 +19,11 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
@@ -40,7 +42,6 @@
 #include "tensorflow/cc/ops/io_ops.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow/core/public/session.h"
 #include "tensorflow/core/public/session_options.h"
@@ -258,6 +259,13 @@ bool IntrinsicMatcherImpl::MatchAndExplain(
   return arg.uri == expected_intrinsic_.uri &&
          arg.inputs == expected_intrinsic_.inputs &&
          arg.outputs == expected_intrinsic_.outputs;
+}
+
+template <>
+bool TensorApproximatelyMatch(const Tensor& tensor,
+                              std::vector<string_view> expected_values,
+                              std::optional<string_view> tolerance) {
+  return TensorValuesToVector<string_view>(tensor) == expected_values;
 }
 
 ::testing::Matcher<const Intrinsic&> EqIntrinsic(Intrinsic expected_intrinsic) {

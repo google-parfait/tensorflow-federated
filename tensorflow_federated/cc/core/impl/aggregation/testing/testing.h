@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -35,7 +36,6 @@
 #include "tensorflow/cc/framework/ops.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -158,15 +158,38 @@ inline std::string ToProtoContent(std::initializer_list<string_view> values) {
 // Writes description of a tensor to the ostream.
 std::ostream& operator<<(std::ostream& os, const Tensor& tensor);
 
+template <typename T>
+bool TensorApproximatelyMatch(const Tensor& tensor,
+                              std::vector<T> expected_values,
+                              std::optional<T> tolerance) {
+  AggVector<T> agg_vector = tensor.AsAggVector<T>();
+  for (auto [i, v] : agg_vector) {
+    if (!tolerance.has_value() && v != expected_values[i]) {
+      return false;
+    }
+    if (tolerance.has_value() && (v > expected_values[i] + *tolerance ||
+                                  v < expected_values[i] - *tolerance)) {
+      return false;
+    }
+  }
+  return true;
+}
+template <>
+bool TensorApproximatelyMatch(const Tensor& tensor,
+                              std::vector<string_view> expected_values,
+                              std::optional<string_view> tolerance);
+
 // TensorMatcher implementation.
 template <typename T>
 class TensorMatcherImpl : public ::testing::MatcherInterface<const Tensor&> {
  public:
   TensorMatcherImpl(DataType expected_dtype, TensorShape expected_shape,
-                    std::vector<T> expected_values)
+                    std::vector<T> expected_values,
+                    std::optional<T> tolerance = std::nullopt)
       : expected_dtype_(expected_dtype),
         expected_shape_(expected_shape),
-        expected_values_(expected_values) {}
+        expected_values_(expected_values),
+        tolerance_(tolerance) {}
 
   void DescribeTo(std::ostream* os) const override {
     DescribeTensor<T>(os, expected_dtype_, expected_shape_, expected_values_);
@@ -176,13 +199,15 @@ class TensorMatcherImpl : public ::testing::MatcherInterface<const Tensor&> {
       const Tensor& arg,
       ::testing::MatchResultListener* listener) const override {
     return arg.dtype() == expected_dtype_ && arg.shape() == expected_shape_ &&
-           TensorValuesToVector<T>(arg) == expected_values_;
+           arg.num_elements() == expected_values_.size() &&
+           TensorApproximatelyMatch<T>(arg, expected_values_, tolerance_);
   }
 
  private:
   DataType expected_dtype_;
   TensorShape expected_shape_;
   std::vector<T> expected_values_;
+  std::optional<T> tolerance_;
 };
 
 // TensorMatcher can be used to compare a tensor against an expected
@@ -191,27 +216,31 @@ template <typename T>
 class TensorMatcher {
  public:
   explicit TensorMatcher(DataType expected_dtype, TensorShape expected_shape,
-                         std::initializer_list<T> expected_values)
+                         std::initializer_list<T> expected_values,
+                         std::optional<T> tolerance = std::nullopt)
       : expected_dtype_(expected_dtype),
         expected_shape_(expected_shape),
-        expected_values_(expected_values.begin(), expected_values.end()) {}
+        expected_values_(expected_values.begin(), expected_values.end()),
+        tolerance_(tolerance) {}
   // Intentionally allowed to be implicit.
   operator ::testing::Matcher<const Tensor&>() const {  // NOLINT
     return ::testing::MakeMatcher(new TensorMatcherImpl<T>(
-        expected_dtype_, expected_shape_, expected_values_));
+        expected_dtype_, expected_shape_, expected_values_, tolerance_));
   }
 
  private:
   DataType expected_dtype_;
   TensorShape expected_shape_;
   std::vector<T> expected_values_;
+  std::optional<T> tolerance_;
 };
 
 template <typename T>
 TensorMatcher<T> IsTensor(TensorShape expected_shape,
-                          std::initializer_list<T> expected_values) {
+                          std::initializer_list<T> expected_values,
+                          std::optional<T> tolerance = std::nullopt) {
   return TensorMatcher<T>(internal::TypeTraits<T>::kDataType, expected_shape,
-                          expected_values);
+                          expected_values, tolerance);
 }
 
 // Writes description of an intrinsic to the ostream.
