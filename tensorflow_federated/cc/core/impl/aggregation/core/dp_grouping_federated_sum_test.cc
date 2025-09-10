@@ -19,7 +19,6 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
-#include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -44,48 +43,6 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
-
-// The following is an explicit specialisation of TensorMatcherImpl for doubles.
-// It tolerates low-order errors that come from finite-precision representation.
-template <>
-class TensorMatcherImpl<double>
-    : public ::testing::MatcherInterface<const Tensor&> {
- public:
-  TensorMatcherImpl(DataType expected_dtype, TensorShape expected_shape,
-                    std::vector<double> expected_values)
-      : expected_dtype_(expected_dtype),
-        expected_shape_(expected_shape),
-        expected_values_(expected_values) {}
-
-  void DescribeTo(std::ostream* os) const override {
-    DescribeTensor<double>(os, expected_dtype_, expected_shape_,
-                           expected_values_);
-  }
-
-  bool MatchAndExplain(
-      const Tensor& arg,
-      ::testing::MatchResultListener* listener) const override {
-    bool match_metadata =
-        arg.dtype() == expected_dtype_ && arg.shape() == expected_shape_;
-    if (match_metadata) {
-      auto real_data = TensorValuesToVector<double>(arg);
-      for (int i = 0; i < expected_values_.size(); ++i) {
-        if (!(real_data[i] >= expected_values_[i] - 1e-7 &&
-              real_data[i] <= expected_values_[i] + 1e-7)) {
-          return false;
-        }
-      }
-      return true;
-    }
-    return false;
-  }
-
- private:
-  DataType expected_dtype_;
-  TensorShape expected_shape_;
-  std::vector<double> expected_values_;
-};
-
 namespace {
 using ::testing::Eq;
 using ::testing::HasSubstr;
@@ -184,7 +141,8 @@ inline void MatchSum(InputType linfinity_bound, double l1_bound,
   int64_t expected_sum_length = static_cast<int64_t>(expected_sum.size());
   EXPECT_THAT(
       result.value()[0],
-      IsTensor<OutputType>(TensorShape{expected_sum_length}, expected_sum));
+      IsTensor<OutputType>(TensorShape{expected_sum_length}, expected_sum,
+                           /*tolerance=*/static_cast<OutputType>(1e-7)));
   // Also ensure that the resulting tensor is dense.
   EXPECT_TRUE(result.value()[0].is_dense());
 }
