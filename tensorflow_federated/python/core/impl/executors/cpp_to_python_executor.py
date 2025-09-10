@@ -20,7 +20,7 @@ from typing import NoReturn, Optional
 
 import federated_language
 
-from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -144,10 +144,13 @@ class CppToPythonExecutorBridge(federated_language.framework.Executor):
   async def create_struct(
       self, elements: Sequence[CppToPythonExecutorValue]
   ) -> CppToPythonExecutorValue:
-    executor_value_struct = structure._from_container(elements)  # pylint: disable=protected-access
+    if isinstance(elements, py_typecheck.SupportsNamedTuple):
+      elements = elements._asdict().items()
+    else:
+      elements = [(None, x) for x in elements]
     id_list = []
     type_list = []
-    for name, value in structure._to_elements(executor_value_struct):  # pylint: disable=protected-access
+    for name, value in elements:
       id_list.append(value.reference)
       type_list.append((name, value.type_signature))
     try:
