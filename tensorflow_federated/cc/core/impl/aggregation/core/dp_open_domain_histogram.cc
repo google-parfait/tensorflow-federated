@@ -74,14 +74,11 @@ template <typename OutputType>
 Status NoiseAndThreshold(double epsilon, double delta, int64_t l0_bound,
                          OutputType linfinity_bound, double l1_bound,
                          double l2_bound, TensorSliceData& column,
-                         absl::flat_hash_set<size_t>& survivor_indices,
-                         std::vector<bool>& laplace_was_used) {
+                         absl::flat_hash_set<size_t>& survivor_indices) {
   TFF_ASSIGN_OR_RETURN(
       auto bundle,
       CreateDPHistogramBundle(epsilon, delta, l0_bound, linfinity_bound,
                               l1_bound, l2_bound, true));
-
-  laplace_was_used.push_back(bundle.use_laplace);
 
   TFF_CHECK(bundle.threshold.has_value())
       << "NoiseAndThreshold: threshold was not set.";
@@ -308,7 +305,7 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
           TFF_RETURN_IF_ERROR(internal::NoiseAndThreshold<OutputType>(
               epsilon_per_agg_, delta_per_agg_, l0_bound_,
               linfinity_tensor.CastToScalar<OutputType>(), l1_bound, l2_bound,
-              *column_data[column], survivor_indices, laplace_was_used_)));
+              *column_data[column], survivor_indices)));
     }
 
     // When there are no grouping keys, aggregation will be scalar. Hence, the

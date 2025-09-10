@@ -57,12 +57,6 @@ class DPOpenDomainHistogram : public GroupByAggregator {
   // Otherwise, applies NoiseAndThreshold to the noiseless aggregate.
   StatusOr<OutputTensorList> Report() && override;
 
-  // Accessor to vector that indicates, for each aggregation, whether Laplace
-  // noise was used to ensure DP. This information is independent of user data
-  // and only depends on the constructor's parameters.
-  // If called before Report(), the vector will be empty.
-  std::vector<bool> laplace_was_used() const { return laplace_was_used_; }
-
  protected:
   friend class DPGroupByFactory;
   friend class DPOpenDomainHistogramPeer;
@@ -123,11 +117,6 @@ class DPOpenDomainHistogram : public GroupByAggregator {
   std::unique_ptr<
       differential_privacy::NearTruncatedGeometricPartitionSelection>
       selector_;
-
-  // At index i, the boolean in the below vector indicates if laplace noise was
-  // used to ensure DP for the i-th aggregation. The vector is empty before
-  // Report() is called.
-  std::vector<bool> laplace_was_used_;
 };
 
 }  // namespace aggregation
