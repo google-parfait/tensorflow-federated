@@ -81,7 +81,9 @@ class CheckpointAggregator {
 
   // Accumulates a checkpoint via nested tensor aggregators. The tensors are
   // provided by the CheckpointParser instance.
-  absl::Status Accumulate(CheckpointParser& checkpoint_parser);
+  absl::Status Accumulate(
+      CheckpointParser& checkpoint_parser,
+      std::optional<google::protobuf::Any> metadata = std::nullopt);
   // Merges with another compatible instance of CheckpointAggregator consuming
   // it in the process.
   absl::Status MergeWith(CheckpointAggregator&& other);

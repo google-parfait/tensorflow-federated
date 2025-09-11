@@ -17,6 +17,8 @@
 #ifndef TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_TENSOR_AGGREGATOR_H_
 #define TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_TENSOR_AGGREGATOR_H_
 
+#include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -63,7 +65,9 @@ class DPTensorAggregator : public TensorAggregator {
 
   // Verify that the input tensors match the expected specs and then call
   // AggregateTensorsInternal().
-  Status AggregateTensors(InputTensorList tensors) override {
+  Status AggregateTensors(
+      InputTensorList tensors,
+      std::optional<google::protobuf::Any> metadata) override {
     TFF_RETURN_IF_ERROR(InputMatchesSpec(tensors));
     return AggregateTensorsInternal(std::move(tensors));
   }

@@ -16,19 +16,22 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 
+#include <optional>
 #include <utility>
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
 
-Status TensorAggregator::Accumulate(InputTensorList tensors) {
+Status TensorAggregator::Accumulate(
+    InputTensorList tensors, std::optional<google::protobuf::Any> metadata) {
   TFF_RETURN_IF_ERROR(CheckValid());
 
   // Delegate aggregation to the derived class.
-  return AggregateTensors(std::move(tensors));
+  return AggregateTensors(std::move(tensors), std::move(metadata));
 }
 
 bool TensorAggregator::CanReport() const { return CheckValid().ok(); }
