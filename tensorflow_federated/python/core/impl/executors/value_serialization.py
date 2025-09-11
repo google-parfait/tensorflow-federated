@@ -24,7 +24,6 @@ import numpy as np
 import tree
 
 from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import executor_utils
 
@@ -228,7 +227,8 @@ def _serialize_federated_value(
     value = [federated_value]
   else:
     value = federated_value
-  py_typecheck.check_type(value, list)
+  if not isinstance(value, list):
+    raise ValueError(f'Expected a `list`, found {value}.')
   value_proto = executor_pb2.Value()
   for v in value:
     federated_value_proto, it_type = serialize_value(v, type_spec.member)
@@ -285,8 +285,8 @@ def serialize_value(
   else:
     raise ValueError(
         'Unable to serialize value with Python type {} and {} TFF type.'.format(
-            str(py_typecheck.type_string(type(value))),
-            str(type_spec) if type_spec is not None else 'unknown',
+            type(value),
+            type_spec if type_spec is not None else 'unknown',
         )
     )
 

@@ -192,7 +192,6 @@ py_library(
     deps = [
         ":executor_utils",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:array_py_pb2",
