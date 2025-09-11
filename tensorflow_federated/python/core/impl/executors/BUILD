@@ -107,10 +107,7 @@ py_library(
 py_library(
     name = "executor_utils",
     srcs = ["executor_utils.py"],
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@federated_language//federated_language",
-    ],
+    deps = ["@federated_language//federated_language"],
 )
 
 py_test(

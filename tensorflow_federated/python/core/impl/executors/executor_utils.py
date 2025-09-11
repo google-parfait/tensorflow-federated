@@ -17,8 +17,6 @@ from typing import Optional
 
 import federated_language
 
-from tensorflow_federated.python.common_libs import py_typecheck
-
 
 def reconcile_value_with_type_spec(
     value: object, type_spec: federated_language.Type
@@ -47,10 +45,6 @@ def reconcile_value_with_type_spec(
     and `type_spec`
     is not `None`, this is `type_spec` to the extent that it is eqiuvalent to
     the type signature of `value`, otherwise an exception is raised.
-
-  Raises:
-    TypeError: If the `value` type and `type_spec` are incompatible, or if the
-      type cannot be determined..
   """
   if isinstance(value, federated_language.TypedObject):
     return reconcile_value_type_with_type_spec(value.type_signature, type_spec)
@@ -79,11 +73,11 @@ def reconcile_value_type_with_type_spec(
   Raises:
     TypeError: If arguments are of incompatible types.
   """
-  py_typecheck.check_type(value_type, federated_language.Type)
   if type_spec is not None:
-    py_typecheck.check_type(value_type, federated_language.Type)
     if not value_type.is_equivalent_to(type_spec):
       raise TypeError(
           'Expected a value of type {}, found {}.'.format(type_spec, value_type)
       )
-  return type_spec if type_spec is not None else value_type
+    return type_spec
+  else:
+    return value_type
