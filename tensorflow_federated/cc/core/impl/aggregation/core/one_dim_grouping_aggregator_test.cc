@@ -158,8 +158,10 @@ TEST_P(OneDimGroupingAggregatorTest, EmptyReport) {
   SumGroupingAggregator<int32_t> aggregator;
 
   if (GetParam()) {
-    auto state = std::move(aggregator).ToProto();
-    aggregator = SumGroupingAggregator<int32_t>::FromProto(state);
+    auto state =
+        std::move(aggregator).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state.size(), Eq(1));
+    aggregator = SumGroupingAggregator<int32_t>::FromProto(state[0]);
   }
 
   auto result = std::move(aggregator).Report();
@@ -179,8 +181,10 @@ TEST_P(OneDimGroupingAggregatorTest, ScalarAggregation_Succeeds) {
   EXPECT_THAT(aggregator.Accumulate({&ordinal, &t2}), IsOk());
 
   if (GetParam()) {
-    auto state = std::move(aggregator).ToProto();
-    aggregator = SumGroupingAggregator<int32_t>::FromProto(state);
+    auto state =
+        std::move(aggregator).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state.size(), Eq(1));
+    aggregator = SumGroupingAggregator<int32_t>::FromProto(state[0]);
   }
 
   EXPECT_THAT(aggregator.Accumulate({&ordinal, &t3}), IsOk());
@@ -209,8 +213,10 @@ TEST_P(OneDimGroupingAggregatorTest, DenseAggregation_Succeeds) {
   EXPECT_THAT(aggregator.Accumulate({&ordinals, &t2}), IsOk());
 
   if (GetParam()) {
-    auto state = std::move(aggregator).ToProto();
-    aggregator = SumGroupingAggregator<int32_t>::FromProto(state);
+    auto state =
+        std::move(aggregator).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state.size(), Eq(1));
+    aggregator = SumGroupingAggregator<int32_t>::FromProto(state[0]);
   }
 
   EXPECT_THAT(aggregator.Accumulate({&ordinals, &t3}), IsOk());
@@ -244,8 +250,10 @@ TEST_P(OneDimGroupingAggregatorTest, DifferentOrdinalsPerAccumulate_Succeeds) {
   EXPECT_THAT(aggregator.Accumulate({&t2_ordinals, &t2}), IsOk());
 
   if (GetParam()) {
-    auto state = std::move(aggregator).ToProto();
-    aggregator = SumGroupingAggregator<int32_t>::FromProto(state);
+    auto state =
+        std::move(aggregator).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state.size(), Eq(1));
+    aggregator = SumGroupingAggregator<int32_t>::FromProto(state[0]);
   }
 
   // Totals: [32, 11, 15, 4, 2]
@@ -284,8 +292,10 @@ TEST_P(OneDimGroupingAggregatorTest, DifferentShapesPerAccumulate_Succeeds) {
   EXPECT_THAT(aggregator.Accumulate({&t2_ordinals, &t2}), IsOk());
 
   if (GetParam()) {
-    auto state = std::move(aggregator).ToProto();
-    aggregator = SumGroupingAggregator<int32_t>::FromProto(state);
+    auto state =
+        std::move(aggregator).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state.size(), Eq(1));
+    aggregator = SumGroupingAggregator<int32_t>::FromProto(state[0]);
   }
 
   // Totals: [13, 23, 17, 4, 2]
@@ -327,8 +337,10 @@ TEST_P(OneDimGroupingAggregatorTest,
   EXPECT_THAT(aggregator.Accumulate({&t2_ordinals, &t2}), IsOk());
 
   if (GetParam()) {
-    auto state = std::move(aggregator).ToProto();
-    aggregator = MinGroupingAggregator::FromProto(state);
+    auto state =
+        std::move(aggregator).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state.size(), Eq(1));
+    aggregator = MinGroupingAggregator::FromProto(state[0]);
   }
 
   // Totals: [-50, INT_MAX, 17, INT_MAX, 2]
@@ -364,10 +376,14 @@ TEST_P(OneDimGroupingAggregatorTest, Merge_Succeeds) {
   EXPECT_THAT(aggregator2.Accumulate({&ordinal, &t3}), IsOk());
 
   if (GetParam()) {
-    auto state1 = std::move(aggregator1).ToProto();
-    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1);
-    auto state2 = std::move(aggregator2).ToProto();
-    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2);
+    auto state1 =
+        std::move(aggregator1).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state1.size(), Eq(1));
+    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1[0]);
+    auto state2 =
+        std::move(aggregator2).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state2.size(), Eq(1));
+    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2[0]);
   }
 
   int aggregator2_num_inputs = aggregator2.GetNumInputs();
@@ -394,10 +410,14 @@ TEST_P(OneDimGroupingAggregatorTest, Merge_BothEmpty_Succeeds) {
   SumGroupingAggregator<int32_t> aggregator2;
 
   if (GetParam()) {
-    auto state1 = std::move(aggregator1).ToProto();
-    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1);
-    auto state2 = std::move(aggregator2).ToProto();
-    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2);
+    auto state1 =
+        std::move(aggregator1).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state1.size(), Eq(1));
+    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1[0]);
+    auto state2 =
+        std::move(aggregator2).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state2.size(), Eq(1));
+    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2[0]);
   }
 
   // Merge the two empty aggregators together.
@@ -438,10 +458,14 @@ TEST_P(OneDimGroupingAggregatorTest, Merge_ThisOutputEmpty_Succeeds) {
   // aggregator2 totals: [32, 11, 15, 4, 2]
 
   if (GetParam()) {
-    auto state1 = std::move(aggregator1).ToProto();
-    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1);
-    auto state2 = std::move(aggregator2).ToProto();
-    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2);
+    auto state1 =
+        std::move(aggregator1).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state1.size(), Eq(1));
+    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1[0]);
+    auto state2 =
+        std::move(aggregator2).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state2.size(), Eq(1));
+    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2[0]);
   }
 
   // Merge aggregator2 into aggregator1 which has not received any inputs.
@@ -487,10 +511,14 @@ TEST_P(OneDimGroupingAggregatorTest, Merge_OtherOutputEmpty_Succeeds) {
   // aggregator1 totals: [32, 11, 15, 4, 2]
 
   if (GetParam()) {
-    auto state1 = std::move(aggregator1).ToProto();
-    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1);
-    auto state2 = std::move(aggregator2).ToProto();
-    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2);
+    auto state1 =
+        std::move(aggregator1).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state1.size(), Eq(1));
+    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1[0]);
+    auto state2 =
+        std::move(aggregator2).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state2.size(), Eq(1));
+    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2[0]);
   }
 
   // Merge with aggregator2 which has not received any inputs.
@@ -541,10 +569,14 @@ TEST_P(OneDimGroupingAggregatorTest,
   // aggregator2 totals: [0, 0, 14]
 
   if (GetParam()) {
-    auto state1 = std::move(aggregator1).ToProto();
-    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1);
-    auto state2 = std::move(aggregator2).ToProto();
-    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2);
+    auto state1 =
+        std::move(aggregator1).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1[0]);
+    EXPECT_THAT(state1.size(), Eq(1));
+    auto state2 =
+        std::move(aggregator2).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state2.size(), Eq(1));
+    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2[0]);
   }
 
   int aggregator2_num_inputs = aggregator2.GetNumInputs();
@@ -597,10 +629,14 @@ TEST_P(OneDimGroupingAggregatorTest,
   // aggregator2 totals: [0, 20, 14, 0, 0, 7]
 
   if (GetParam()) {
-    auto state1 = std::move(aggregator1).ToProto();
-    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1);
-    auto state2 = std::move(aggregator2).ToProto();
-    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2);
+    auto state1 =
+        std::move(aggregator1).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    aggregator1 = SumGroupingAggregator<int32_t>::FromProto(state1[0]);
+    EXPECT_THAT(state1.size(), Eq(1));
+    auto state2 =
+        std::move(aggregator2).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state2.size(), Eq(1));
+    aggregator2 = SumGroupingAggregator<int32_t>::FromProto(state2[0]);
   }
 
   int aggregator2_num_inputs = aggregator2.GetNumInputs();
@@ -654,10 +690,14 @@ TEST_P(OneDimGroupingAggregatorTest,
   // aggregator2 totals: [-50, 7, 11, INT_MAX, 2]
 
   if (GetParam()) {
-    auto state1 = std::move(aggregator1).ToProto();
-    aggregator1 = MinGroupingAggregator::FromProto(state1);
-    auto state2 = std::move(aggregator2).ToProto();
-    aggregator2 = MinGroupingAggregator::FromProto(state2);
+    auto state1 =
+        std::move(aggregator1).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state1.size(), Eq(1));
+    aggregator1 = MinGroupingAggregator::FromProto(state1[0]);
+    auto state2 =
+        std::move(aggregator2).ToProto(/*num_partitions=*/1, /*hashes=*/{});
+    EXPECT_THAT(state2.size(), Eq(1));
+    aggregator2 = MinGroupingAggregator::FromProto(state2[0]);
   }
 
   int aggregator2_num_inputs = aggregator2.GetNumInputs();
@@ -774,6 +814,91 @@ TEST(OneDimGroupingAggregatorTest, Serialize_Unimplmeneted) {
   SumGroupingAggregator<int32_t> aggregator;
   Status s = std::move(aggregator).Serialize(/*num_partitions=*/1).status();
   EXPECT_THAT(s, StatusIs(UNIMPLEMENTED));
+}
+
+TEST_P(OneDimGroupingAggregatorTest, ToProto_MultiplePartitions_Succeeds) {
+  SumGroupingAggregator<int32_t> aggregator;
+  Tensor ordinal =
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({0, 1, 2})).value();
+  Tensor t1 = Tensor::Create(DT_INT32, {3}, CreateTestData({1, 2, 3})).value();
+  Tensor t2 = Tensor::Create(DT_INT32, {3}, CreateTestData({2, 3, 4})).value();
+  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t1}), IsOk());
+  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t2}), IsOk());
+
+  if (GetParam()) {
+    auto state = std::move(aggregator)
+                     .ToProto(/*num_partitions=*/2, /*hashes=*/{0, 1, 0});
+    EXPECT_THAT(state.size(), Eq(2));
+
+    SumGroupingAggregator<int32_t> aggregator1 =
+        SumGroupingAggregator<int32_t>::FromProto(state[0]);
+    EXPECT_THAT(aggregator1.CanReport(), IsTrue());
+    auto result1 = std::move(aggregator1).Report();
+    EXPECT_THAT(result1, IsOk());
+    EXPECT_THAT(result1.value().size(), Eq(1));
+    // Verify the resulting tensor.
+    EXPECT_THAT(result1.value()[0], IsTensor({2}, {3, 7}));
+
+    SumGroupingAggregator<int32_t> aggregator2 =
+        SumGroupingAggregator<int32_t>::FromProto(state[1]);
+    EXPECT_THAT(aggregator2.CanReport(), IsTrue());
+    auto result2 = std::move(aggregator2).Report();
+    EXPECT_THAT(result2, IsOk());
+    EXPECT_THAT(result2.value().size(), Eq(1));
+    // Verify the resulting tensor.
+    EXPECT_THAT(result2.value()[0], IsTensor({1}, {5}));
+  }
+}
+
+TEST_P(OneDimGroupingAggregatorTest,
+       ToProto_MultiplePartitions_HashedIndexOutOfBounds_Fails) {
+  SumGroupingAggregator<int32_t> aggregator;
+  Tensor ordinal =
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({0, 1, 2})).value();
+  Tensor t1 = Tensor::Create(DT_INT32, {3}, CreateTestData({1, 2, 3})).value();
+  Tensor t2 = Tensor::Create(DT_INT32, {3}, CreateTestData({2, 3, 4})).value();
+  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t1}), IsOk());
+  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t2}), IsOk());
+
+  if (GetParam()) {
+    EXPECT_DEATH(std::move(aggregator)
+                     .ToProto(/*num_partitions=*/2, /*hashes=*/{0, 1, 2}),
+                 "Hashed index out of bounds: 2");
+  }
+}
+
+TEST_P(OneDimGroupingAggregatorTest,
+       ToProto_MultiplePartitions_IncompatibleHashesSize_Fails) {
+  SumGroupingAggregator<int32_t> aggregator;
+  Tensor ordinal =
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({0, 1, 2})).value();
+  Tensor t1 = Tensor::Create(DT_INT32, {3}, CreateTestData({1, 2, 3})).value();
+  Tensor t2 = Tensor::Create(DT_INT32, {3}, CreateTestData({2, 3, 4})).value();
+  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t1}), IsOk());
+  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t2}), IsOk());
+
+  if (GetParam()) {
+    EXPECT_DEATH(
+        std::move(aggregator).ToProto(/*num_partitions=*/2, /*hashes=*/{0, 1}),
+        "Hashes size does not match data vector size.");
+  }
+}
+
+TEST_P(OneDimGroupingAggregatorTest,
+       ToProto_MultiplePartitions_EmptyAggregator_Succeeds) {
+  SumGroupingAggregator<int32_t> aggregator;
+
+  if (GetParam()) {
+    auto state =
+        std::move(aggregator).ToProto(/*num_partitions=*/2, /*hashes=*/{});
+    EXPECT_THAT(state.size(), Eq(2));
+    aggregator = SumGroupingAggregator<int32_t>::FromProto(state[0]);
+
+    auto result = std::move(aggregator).Report();
+    EXPECT_THAT(result, IsOk());
+    EXPECT_THAT(result->size(), Eq(1));
+    EXPECT_THAT(result.value()[0], IsTensor<int32_t>({0}, {}));
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(

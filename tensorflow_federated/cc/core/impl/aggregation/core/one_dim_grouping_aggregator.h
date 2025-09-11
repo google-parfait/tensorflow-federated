@@ -81,8 +81,14 @@ class OneDimBaseGroupingAggregator : public TensorAggregator {
   virtual Status MergeTensors(InputTensorList tensors, int num_inputs) = 0;
 
   // Stores the intermediate state of the OneDimBaseGroupingAggregator as a
-  // proto.
-  virtual OneDimGroupingAggregatorState ToProto() = 0;
+  // vector of OneDimGroupingAggregatorState protos.
+  // If num_partitions is 1, then a single OneDimGroupingAggregatorState proto
+  // is stored.
+  // If num_partitions is greater than 1, then the hashes param is used to
+  // partition the intermediate state into multiple
+  // OneDimGroupingAggregatorState proto.
+  virtual std::vector<OneDimGroupingAggregatorState> ToProto(
+      int num_partitions, const std::vector<size_t>& hashes) = 0;
 
  protected:
   // Checks that the input tensors param is valid.
@@ -175,11 +181,43 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
     return absl::OkStatus();
   }
 
-  OneDimGroupingAggregatorState ToProto() override {
-    OneDimGroupingAggregatorState aggregator_state;
-    aggregator_state.set_num_inputs(num_inputs_);
-    *(aggregator_state.mutable_vector_data()) = data_vector_->EncodeContent();
-    return aggregator_state;
+  std::vector<OneDimGroupingAggregatorState> ToProto(
+      int num_partitions, const std::vector<size_t>& hashes) override {
+    TFF_CHECK(num_partitions >= 1) << "OneDimGroupingAggregator::ToProto: "
+                                      "Only supports num_partitions >= 1.";
+
+    if (num_partitions == 1) {
+      OneDimGroupingAggregatorState aggregator_state;
+      aggregator_state.set_num_inputs(num_inputs_);
+      *(aggregator_state.mutable_vector_data()) = data_vector_->EncodeContent();
+      return std::vector<OneDimGroupingAggregatorState>{aggregator_state};
+    }
+
+    // Partitioning the intermediate state of the OneDimGroupingAggregator
+    // into a vector of OneDimGroupingAggregatorState protos.
+    TFF_CHECK(hashes.size() == data_vector_->size())
+        << "Hashes size does not match data vector size.";
+    std::vector<OneDimGroupingAggregatorState> aggregator_states(
+        num_partitions);
+    std::vector<std::unique_ptr<MutableVectorData<OutputT>>> partitions(
+        num_partitions);
+    for (auto& partition : partitions) {
+      partition = std::make_unique<MutableVectorData<OutputT>>();
+    }
+    for (size_t i = 0; i < data_vector_->size(); ++i) {
+      auto hashed_index = hashes[i];
+      TFF_CHECK(hashed_index < num_partitions)
+          << "Hashed index out of bounds: " << hashed_index;
+      partitions[hashed_index]->push_back((*data_vector_)[i]);
+    }
+    for (int i = 0; i < num_partitions; ++i) {
+      // In each partition, setting the number of inputs same as the total
+      // number of inputs to the OneDimGroupingAggregator.
+      aggregator_states[i].set_num_inputs(num_inputs_);
+      *(aggregator_states[i].mutable_vector_data()) =
+          partitions[i]->EncodeContent();
+    }
+    return aggregator_states;
   }
 
  protected:
