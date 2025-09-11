@@ -33,7 +33,7 @@ py_library(
         ":executor_bindings",
         ":executors_errors",
         ":value_serialization",
-        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "@federated_language//federated_language",
     ],
 )
@@ -48,7 +48,6 @@ py_test(
         ":cpp_to_python_executor",
         ":executor_bindings",
         ":value_serialization",
-        "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
     ],
 )

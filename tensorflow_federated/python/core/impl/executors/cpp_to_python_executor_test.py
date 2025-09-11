@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import federated_language
 import numpy as np
 
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import cpp_to_python_executor
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -44,12 +43,12 @@ class CcToPythonExecutorTest(
       ('float', 1.0, federated_language.TensorType(np.float32)),
       (
           'mixed_structure',
-          structure.Struct.unnamed(0, 1.0),
+          [0, 1.0],
           federated_language.StructType([np.int32, np.float32]),
       ),
       (
           'nested_structure',
-          structure.Struct.unnamed(0, structure.Struct.unnamed(1, 2)),
+          [0, [1, 2]],
           federated_language.StructType([np.int32, [np.int32, np.int32]]),
       ),
   )
