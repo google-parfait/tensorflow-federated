@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import collections
+from typing import Any
 
+from absl import logging
 from absl.testing import parameterized
-import federated_language
+import federated_language as flang
+import jax
+from jax_privacy.stream_privatization import gradient_privatizer as gradient_privatizer_lib
 import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
@@ -47,27 +51,27 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         _test_dp_query, inner_agg_factory
     )
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    value_type = federated_language.to_type(value_type)
+    value_type = flang.to_type(value_type)
     process = factory_.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query_state_type = federated_language.StructType(
+    query_state_type = flang.StructType(
         [('l2_norm_clip', np.float32), ('stddev', np.float32)]
     )
     query_metrics_type = ()
     inner_state_type = np.int32 if inner_agg_factory else ()
-    dp_event_type = federated_language.StructType([
+    dp_event_type = flang.StructType([
         ('module_name', np.str_),
         ('class_name', np.str_),
         ('noise_multiplier', np.float32),
     ])
-    server_state_type = federated_language.FederatedType(
+    server_state_type = flang.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, inner_state_type, dp_event_type, np.bool_
         ),
-        federated_language.SERVER,
+        flang.SERVER,
     )
-    expected_initialize_type = federated_language.FunctionType(
+    expected_initialize_type = flang.FunctionType(
         parameter=None, result=server_state_type
     )
     self.assertTrue(
@@ -76,25 +80,21 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
     inner_measurements_type = np.int32 if inner_agg_factory else ()
-    expected_measurements_type = federated_language.FederatedType(
+    expected_measurements_type = flang.FederatedType(
         collections.OrderedDict(
             dp_query_metrics=query_metrics_type, dp=inner_measurements_type
         ),
-        federated_language.SERVER,
+        flang.SERVER,
     )
 
-    expected_next_type = federated_language.FunctionType(
+    expected_next_type = flang.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=federated_language.FederatedType(
-                value_type, federated_language.CLIENTS
-            ),
+            value=flang.FederatedType(value_type, flang.CLIENTS),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=federated_language.FederatedType(
-                value_type, federated_language.SERVER
-            ),
+            result=flang.FederatedType(value_type, flang.SERVER),
             measurements=expected_measurements_type,
         ),
     )
@@ -115,12 +115,10 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'federated_type',
-          federated_language.FederatedType(
-              np.float32, federated_language.SERVER
-          ),
+          flang.FederatedType(np.float32, flang.SERVER),
       ),
-      ('function_type', federated_language.FunctionType(None, ())),
-      ('sequence_type', federated_language.SequenceType(np.float32)),
+      ('function_type', flang.FunctionType(None, ())),
+      ('sequence_type', flang.SequenceType(np.float32)),
   )
   def test_incorrect_value_type_raises(self, bad_value_type):
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
@@ -162,7 +160,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_simple_sum(self):
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
-    value_type = federated_language.TensorType(np.float32)
+    value_type = flang.TensorType(np.float32)
     process = factory_.create(value_type)
 
     # The test query has clip 1.0 and no noise, so this computes clipped sum.
@@ -175,7 +173,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_structure_sum(self):
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
-    value_type = federated_language.to_type([np.float32, np.float32])
+    value_type = flang.to_type([np.float32, np.float32])
     process = factory_.create(value_type)
 
     # The test query has clip 1.0 and no noise, so this computes clipped sum.
@@ -196,7 +194,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(expected_result, output.result)
 
   def test_inner_sum(self):
-    value_type = federated_language.TensorType(np.float32)
+    value_type = flang.TensorType(np.float32)
     factory_ = differential_privacy.DifferentiallyPrivateFactory(
         _test_dp_query, _test_inner_agg_factory
     )
@@ -213,7 +211,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_tree_aggregation_inner_sum(self):
     l2_clip = 1.0
-    value_type = federated_language.TensorType(np.float32)
+    value_type = flang.TensorType(np.float32)
     tree_factory = (
         differential_privacy.DifferentiallyPrivateFactory.tree_aggregation(
             noise_multiplier=0.0,
@@ -243,7 +241,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         geometric_update=False,
     )
     factory_ = differential_privacy.DifferentiallyPrivateFactory(query)
-    value_type = federated_language.TensorType(np.float32)
+    value_type = flang.TensorType(np.float32)
     process = factory_.create(value_type)
 
     state = process.initialize()
@@ -259,7 +257,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(expected_result, output.result)
 
   def test_extract_dp_event_from_state(self):
-    value_type = federated_language.TensorType(np.float32)
+    value_type = flang.TensorType(np.float32)
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
     process = factory_.create(value_type)
     state = process.initialize()
@@ -276,7 +274,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(event, expected_dp_event)
 
   def test_error_when_extracting_from_initial_state(self):
-    value_type = federated_language.TensorType(np.float32)
+    value_type = flang.TensorType(np.float32)
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
     process = factory_.create(value_type)
     state = process.initialize()
@@ -290,7 +288,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     factory_ = differential_privacy.DifferentiallyPrivateFactory.gaussian_fixed(
         noise_multiplier=noise, clients_per_round=1.0, clip=1.0
     )
-    value_type = federated_language.TensorType(np.float32)
+    value_type = flang.TensorType(np.float32)
     process = factory_.create(value_type)
 
     state = process.initialize()
@@ -363,7 +361,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     variable_shape, tolerance = [10000], 0.05
     record = np.zeros(variable_shape, np.float32)
     record_shape = variable_shape
-    record_type = federated_language.to_type((np.float32, variable_shape))
+    record_type = flang.to_type((np.float32, variable_shape))
     specs = tf.TensorSpec(shape=record_shape, dtype=tf.float32)
 
     tree_factory = (
@@ -418,7 +416,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         clipped_count_stddev=0.0,
         noise_seed=1,
     )
-    process = factory_.create(federated_language.TensorType(np.float32))
+    process = factory_.create(flang.TensorType(np.float32))
 
     state = process.initialize()
 
@@ -431,6 +429,122 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     expected_result = (0.5 + 1.5 + np.exp(2.0 / 3)) / 3.0
     output = process.next(output.state, client_data)
     self.assertAllClose(expected_result, output.result)
+
+
+_TEST_STRUCT_TYPE = flang.StructWithPythonType(
+    elements=(
+        flang.TensorType(dtype=np.float32, shape=(3,)),
+        flang.TensorType(dtype=np.float32),
+    ),
+    container_type=tuple,
+)
+
+
+def _create_test_grad_privatizer():
+
+  def init(params):
+    del params  # Unused.
+    return np.int32(0)
+
+  def privatize(
+      *, sum_of_clipped_grads, noise_state, prng_key
+  ) -> tuple[Any, Any]:
+    del prng_key  # Unused.
+    # Simple passthrough for tests, only increases the state counter. Test
+    # coverage of the privatizer noise is done in the JaxPrivacy library.
+    return sum_of_clipped_grads, noise_state + 1
+
+  return gradient_privatizer_lib.GradientPrivatizer(init, privatize)
+
+
+class DPMFAggregatorFactoryComputationTest(tf.test.TestCase):
+
+  def test_create_returns_aggregation_process(self):
+    dp_mf_factory = differential_privacy.DPMFAggregatorFactory(
+        gradient_privatizer=_create_test_grad_privatizer(),
+        clients_per_round=10,
+    )
+    process = dp_mf_factory.create(_TEST_STRUCT_TYPE)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+
+  def test_has_expected_type_signature(self):
+    dp_mf_factory = differential_privacy.DPMFAggregatorFactory(
+        gradient_privatizer=_create_test_grad_privatizer(),
+        clients_per_round=10,
+    )
+    process = dp_mf_factory.create(_TEST_STRUCT_TYPE)
+
+    expected_state_type = flang.FederatedType(
+        (flang.TensorType(dtype=np.uint32, shape=[2]), np.int32), flang.SERVER
+    )
+    with self.subTest('init'):
+      expected_initialize_type = flang.FunctionType(
+          parameter=None, result=expected_state_type
+      )
+      process.initialize.type_signature.check_equivalent_to(
+          expected_initialize_type
+      )
+    with self.subTest('next'):
+      param_value_type = flang.FederatedType(_TEST_STRUCT_TYPE, flang.CLIENTS)
+      result_value_type = flang.FederatedType(_TEST_STRUCT_TYPE, flang.SERVER)
+      expected_measurements_type = flang.FederatedType(
+          {'num_clipped_updates': np.int32}, flang.SERVER
+      )
+      expected_parameter = collections.OrderedDict(
+          state=expected_state_type,
+          value=param_value_type,
+      )
+      expected_next_type = flang.FunctionType(
+          parameter=expected_parameter,
+          result=measured_process.MeasuredProcessOutput(
+              expected_state_type, result_value_type, expected_measurements_type
+          ),
+      )
+      process.next.type_signature.check_equivalent_to(expected_next_type)
+
+
+class DPMFAggregatorFactoryExecutionTest(tf.test.TestCase):
+
+  def test_execution(self):
+    initial_rng_key = 7
+    dp_mf_factory = differential_privacy.DPMFAggregatorFactory(
+        gradient_privatizer=_create_test_grad_privatizer(),
+        clients_per_round=2,
+        l2_clip_norm=1.0,
+        initial_rng_key=initial_rng_key,
+    )
+    process = dp_mf_factory.create(_TEST_STRUCT_TYPE)
+    client_updates = [
+        (np.array([1.0, 1.0, 1.0], np.float32), np.float32(0.0)),
+        (np.array([0.0, 0.0, 0.0], np.float32), np.float32(1.0)),
+    ]
+    state = process.initialize()
+    logging.info('process.initialize: %s', process.initialize.type_signature)
+    logging.info('process.next: %s', process.next.type_signature)
+    logging.info('state: %r', state)
+    self.assertEqual(
+        jax.random.wrap_key_data(state[0]), jax.random.key(initial_rng_key)
+    )
+    output = process.next(state, client_updates)
+    # Since we are using a fake pass-thru privatizer, we only expect clipped sum
+    # to be returned.
+    self.assertAllClose(
+        output.result,
+        (
+            # Global norm of first client is sqrt(3) = 1.732, so we expect the
+            # updates to be clipped by a factor of 1.0 / 1.732, and finally
+            # averaged with 0.0 (divided by 2.0) for ~0.288.
+            np.array([0.288675, 0.288675, 0.288675], np.float32),
+            # Global norm of second client is 1.0, no clipping occurs. This
+            # is averaged with 0.0 for 0.5.
+            np.float32(0.5),
+        ),
+    )
+    self.assertNotEqual(
+        jax.random.wrap_key_data(output.state[0]),
+        jax.random.key(initial_rng_key),
+    )
+    self.assertAllClose(output.measurements, {'num_clipped_updates': 1})
 
 
 if __name__ == '__main__':
