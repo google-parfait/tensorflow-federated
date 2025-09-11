@@ -399,21 +399,33 @@ def _deserialize_struct_value(
     type_hint: Optional[federated_language.StructType],
 ) -> tuple[object, federated_language.StructType]:
   """Deserializes a value of struct type."""
-  val_elems = []
-  type_elems = []
   if type_hint is not None:
-    element_types = list(type_hint)
+    type_hints = type_hint.items()
   else:
-    element_types = [None] * len(struct_proto.element)
-  for e, e_type in zip(struct_proto.element, element_types):
-    name = e.name if e.name else None
-    e_val, e_type = deserialize_value(e.value, e_type)
-    val_elems.append((name, e_val))
-    type_elems.append((name, e_type) if name else e_type)
-  return (
-      structure.Struct(val_elems),
-      federated_language.StructType(type_elems),
+    type_hints = [(None, None)] * len(struct_proto.element)
+
+  elements = []
+  element_types = []
+  for element_proto, (element_name, element_type) in zip(
+      struct_proto.element, type_hints
+  ):
+    if element_name is None and element_proto.name:
+      element_name = element_proto.name
+    element, element_type = deserialize_value(element_proto.value, element_type)
+    elements.append(element)
+    element_types.append((element_name, element_type))
+
+  if type_hint is not None and type_hint.python_container is not None:
+    type_spec = federated_language.StructWithPythonType(
+        element_types, container_type=type_hint.python_container
+    )
+  else:
+    type_spec = federated_language.StructType(element_types)
+
+  value = federated_language.framework.to_structure_with_type(
+      elements, type_spec
   )
+  return value, type_spec
 
 
 def _ensure_deserialized_types_compatible(

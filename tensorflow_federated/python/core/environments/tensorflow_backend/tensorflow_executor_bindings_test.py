@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
-
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
@@ -93,10 +91,10 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         ('a', federated_language.TensorType(np.int64, [3])),
         ('b', federated_language.TensorType(np.float32, [])),
     ])
-    value = collections.OrderedDict(
-        a=np.array([1, 2, 3], np.int64),
-        b=np.array(42.0, np.float32),
-    )
+    value = {
+        'a': np.array([1, 2, 3], np.int64),
+        'b': np.array(42.0, np.float32),
+    }
     value_pb, _ = value_serialization.serialize_value(value, expected_type_spec)
     value = executor.create_value(value_pb)
     self.assertIsInstance(value, executor_bindings.OwnedValueId)
@@ -106,17 +104,13 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(repr(value), r'<OwnedValueId: 1>')
     materialized_value = executor.materialize(value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value
+        materialized_value, expected_type_spec
     )
     # Note: here we've lost the names `a` and `b` in the output. The output
     # is a more _strict_ type.
     self.assertTrue(expected_type_spec.is_assignable_from(type_spec))
-    deserialized_value = federated_language.framework.type_to_py_container(
-        deserialized_value, expected_type_spec
-    )
-    self.assertAllClose(
-        deserialized_value, collections.OrderedDict(a=(1, 2, 3), b=42.0)
-    )
+
+    self.assertAllClose(deserialized_value, {'a': (1, 2, 3), 'b': 42.0})
 
     # 3. Test creating a value from a computation.
     foo, _ = tensorflow_computation_factory.create_binary_operator(

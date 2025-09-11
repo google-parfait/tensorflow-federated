@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 from typing import NamedTuple
 
 from absl.testing import absltest
@@ -22,7 +21,6 @@ from federated_language.proto import computation_pb2
 import numpy as np
 
 from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import value_serialization
 
 # Convenience aliases.
@@ -281,33 +279,36 @@ class ValueSerializationTest(parameterized.TestCase):
     )
 
   def test_serialize_deserialize_nested_tuple_value_with_names(self):
-    x = collections.OrderedDict(
-        a=10, b=[20, 30], c=collections.OrderedDict(d=40)
-    )
-    x_type = federated_language.StructType(
-        collections.OrderedDict(
-            a=np.int32,
-            b=[np.int32, np.int32],
-            c=collections.OrderedDict(d=np.int32),
-        )
-    )
+    x = {
+        'a': 10,
+        'b': [20, 30],
+        'c': {'d': 40},
+    }
+    x_type = federated_language.StructType({
+        'a': np.int32,
+        'b': [np.int32, np.int32],
+        'c': {'d': np.int32},
+    })
+
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
 
     self.assertEqual(value_type, x_type)
-    y, type_spec = value_serialization.deserialize_value(value_proto)
-    # Don't assert on the Python container since it is lost in serialization.
-    self.assertTrue(type_spec.is_equivalent_to(x_type))
-    self.assertEqual(y, structure._from_container(x, recursive=True))  # pylint: disable=protected-access
+
+    y, y_type = value_serialization.deserialize_value(value_proto, value_type)
+    self.assertEqual(y_type, x_type)
+    self.assertEqual(y, x)
 
   def test_serialize_deserialize_nested_tuple_value_without_names(self):
-    x = (10, 20)
+    x = [10, 20]
     x_type = federated_language.StructType([np.int32, np.int32])
+
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
 
     self.assertEqual(value_type, x_type)
-    y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assertTrue(type_spec.is_equivalent_to(x_type))
-    self.assertEqual(y, structure._from_container((10, 20)))  # pylint: disable=protected-access
+
+    y, y_type = value_serialization.deserialize_value(value_proto, value_type)
+    self.assertEqual(y_type, x_type)
+    self.assertEqual(y, x)
 
   def test_serialize_deserialize_federated_at_clients(self):
     x = [10, 20]

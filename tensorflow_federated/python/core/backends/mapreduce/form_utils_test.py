@@ -1139,19 +1139,19 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
         lambda data: federated_language.federated_secure_sum_bitwidth(data, 7)
     )
-    self.assertEqual(mrf.secure_sum_bitwidth(), (7,))
+    self.assertEqual(mrf.secure_sum_bitwidth(), [7])
 
   def test_returns_map_reduce_form_with_secure_sum_max_input(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
         lambda data: federated_language.federated_secure_sum(data, 12)
     )
-    self.assertEqual(mrf.secure_sum_max_input(), (12,))
+    self.assertEqual(mrf.secure_sum_max_input(), [12])
 
   def test_returns_map_reduce_form_with_secure_modular_sum_modulus(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
         lambda data: mapreduce_intrinsics.federated_secure_modular_sum(data, 22)
     )
-    self.assertEqual(mrf.secure_modular_sum_modulus(), (22,))
+    self.assertEqual(mrf.secure_modular_sum_modulus(), [22])
 
 
 class BroadcastFormTest(absltest.TestCase):
