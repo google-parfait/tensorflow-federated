@@ -95,6 +95,39 @@ StatusOr<std::vector<size_t>> HashKeys(const OutputTensorList& keys, int n) {
   return hashes;
 }
 
+// DT_STRING tensors manipulate string_view objects which are basically
+// pointers. The actual string data is owned by the original key tensor.
+// In this case, we need to ensure that the original key tensor outlives the
+// MutableVectorData<string_view> objects created from it.
+template <typename T>
+Status PartitionAndAddKeysToStates(
+    Tensor key_tensor, const std::vector<size_t>& hashes,
+    std::vector<GroupByAggregatorState>& states) {
+  int num_partitions = states.size();
+  std::vector<std::unique_ptr<MutableVectorData<T>>> partitions(num_partitions);
+  for (auto& partition : partitions) {
+    partition = std::make_unique<MutableVectorData<T>>();
+  }
+  AggVector<T> data = key_tensor.AsAggVector<T>();
+  for (const auto& [index, value] : data) {
+    auto hashed_index = hashes[index];
+    TFF_CHECK(hashed_index < num_partitions)
+        << "Hashed index out of bounds: " << hashed_index;
+    // TODO: b/443258068 - The partition will be reallocated and copied as it
+    // grows. We should consider avoid the overhead of data reallocation and
+    // copy due to growth when needed.
+    partitions[hashed_index]->push_back(value);
+  }
+  for (int i = 0; i < num_partitions; ++i) {
+    TFF_ASSIGN_OR_RETURN(
+        Tensor tensor,
+        Tensor::Create(key_tensor.dtype(),
+                       {static_cast<int64_t>(partitions[i]->size())},
+                       std::move(partitions[i])));
+    states[i].mutable_keys()->Add(tensor.ToProto());
+  }
+  return absl::OkStatus();
+}
 }  // namespace internal
 
 GroupByAggregator::GroupByAggregator(
@@ -380,11 +413,29 @@ StatusOr<std::vector<std::string>> GroupByAggregator::Serialize(
 
   // Hashing the output keys and partitioning the state of the GroupByAggregator
   // when num_partitions > 1 and keys are used.
-  std::vector<std::string> partitions(num_partitions);
-  OutputTensorList keys = key_combiner_->GetOutputKeys();
-  auto hashes = internal::HashKeys(keys, num_partitions);
-  TFF_CHECK(hashes.ok()) << "Failed to hash keys.";
-  // TODO: b/437952802 - Support serialization of GroupByAggregator with
+  OutputTensorList key_list = key_combiner_->GetOutputKeys();
+  TFF_ASSIGN_OR_RETURN(std::vector<size_t> hashes,
+                       internal::HashKeys(key_list, num_partitions));
+  std::vector<GroupByAggregatorState> states(num_partitions);
+  for (auto& state : states) {
+    // In each partition, setting the number of inputs same as the total number
+    //  of inputs to the GroupByAggregator.
+    state.set_num_inputs(num_inputs_);
+    state.mutable_keys()->Reserve(key_list.size());
+  }
+  // Partition the key tensors based on the hashes of output keys and store the
+  // partitions in GroupByAggregatorState vector.
+  // This implementation creates a new tensor for each partition.
+  // In the future, we should consider sort the tensors in place and then
+  // slicing the ordered tensors to avoid the overhead of creating multiple
+  // tensors when needed.
+  for (auto& key_tensor : key_list) {
+    DTYPE_CASES(key_tensor.dtype(), T, {
+      TFF_RETURN_IF_ERROR(internal::PartitionAndAddKeysToStates<T>(
+          std::move(key_tensor), hashes, states));
+    });
+  }
+  // TODO: b/335707088 - Support serialization of GroupByAggregator with
   // num_partitions > 1.
   return TFF_STATUS(UNIMPLEMENTED)
          << "GroupByAggregator::Serialize: num_partitions>1 is not supported "
