@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import collections
-from typing import Any
+from typing import Any, NamedTuple
 from unittest import mock
 
 from absl.testing import parameterized
-import attrs
 import federated_language
 import numpy as np
 import tensorflow as tf
@@ -113,8 +112,7 @@ def local_recon_model_fn():
   )
 
 
-@attrs.define(eq=False, frozen=True)
-class MnistVariables:
+class MnistVariables(NamedTuple):
   """Structure for variables in an MNIST model."""
 
   weights: float

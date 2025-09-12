@@ -19,6 +19,7 @@ an AST either pointwise or serially.
 
 import collections
 from collections.abc import Collection, Sequence
+from typing import NamedTuple
 
 import attrs
 import federated_language
@@ -369,8 +370,7 @@ def _compute_intrinsic_dependencies(
   return result
 
 
-@attrs.define
-class _MergedIntrinsic:
+class _MergedIntrinsic(NamedTuple):
   uri: str
   args: federated_language.framework.ComputationBuildingBlock
   return_type: federated_language.Type

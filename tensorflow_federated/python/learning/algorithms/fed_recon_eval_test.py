@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import collections
+from typing import NamedTuple
 from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import attrs
 import federated_language
 import numpy as np
 import tensorflow as tf
@@ -49,8 +49,7 @@ def _create_input_spec():
   )
 
 
-@attrs.define(eq=False, frozen=True)
-class LinearModelVariables:
+class LinearModelVariables(NamedTuple):
   """Structure for variables in `LinearModel`."""
 
   weights: float

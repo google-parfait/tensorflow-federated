@@ -17,9 +17,8 @@ import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 import functools
 import math
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, NamedTuple, Optional, TypeVar, Union
 
-import attrs
 import federated_language
 
 from tensorflow_federated.python.common_libs import async_utils
@@ -248,8 +247,7 @@ class MergeableCompForm:
     self.after_merge = after_merge
 
 
-@attrs.define
-class _PartitioningValue:
+class _PartitioningValue(NamedTuple):
   """Data class to hold info on traversal while partitioning into subrounds."""
 
   payload: object
