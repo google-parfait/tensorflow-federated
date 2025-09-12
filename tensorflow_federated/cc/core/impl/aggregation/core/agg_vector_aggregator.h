@@ -84,15 +84,11 @@ class AggVectorAggregator : public TensorAggregator {
     return TFF_STATUS(OK);
   }
 
-  StatusOr<std::vector<std::string>> Serialize(int num_partitions) && override {
-    if (num_partitions != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "AggVectorAggregator::Serialize: num_partitions must be 1";
-    }
+  StatusOr<std::string> Serialize() && override {
     AggVectorAggregatorState aggregator_state;
     aggregator_state.set_num_inputs(num_inputs_);
     *(aggregator_state.mutable_vector_data()) = data_vector_->EncodeContent();
-    return std::vector<std::string>{aggregator_state.SerializeAsString()};
+    return aggregator_state.SerializeAsString();
   }
 
  protected:

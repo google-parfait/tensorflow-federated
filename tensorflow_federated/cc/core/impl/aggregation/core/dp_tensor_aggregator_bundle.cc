@@ -141,23 +141,17 @@ OutputTensorList DPTensorAggregatorBundle::TakeOutputs() && {
   return outputs;
 }
 
-StatusOr<std::vector<std::string>> DPTensorAggregatorBundle::Serialize(
-    int num_partitions) && {
-  if (num_partitions != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundle::Serialize: num_partitions must be 1";
-  }
+StatusOr<std::string> DPTensorAggregatorBundle::Serialize() && {
   DPTensorAggregatorBundleState state;
   state.set_num_inputs(num_inputs_);
   auto* nested_serialized_states = state.mutable_nested_serialized_states();
   for (auto& aggregator : aggregators_) {
     TFF_ASSIGN_OR_RETURN(auto nested_serialized_state,
-                         std::move(*aggregator).Serialize(num_partitions));
-    TFF_CHECK(nested_serialized_state.size() == 1);
-    nested_serialized_states->Add(std::move(nested_serialized_state[0]));
+                         std::move(*aggregator).Serialize());
+    nested_serialized_states->Add(std::move(nested_serialized_state));
   }
 
-  return std::vector<std::string>{state.SerializeAsString()};
+  return state.SerializeAsString();
 }
 
 StatusOr<std::unique_ptr<TensorAggregator>>

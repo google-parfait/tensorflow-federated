@@ -55,7 +55,7 @@ class OneDimBaseGroupingAggregator : public TensorAggregator {
  public:
   Status MergeWith(TensorAggregator&& other) override;
 
-  StatusOr<std::vector<std::string>> Serialize(int num_partitions) && override {
+  StatusOr<std::string> Serialize() && override {
     // OneDimBaseGroupingAggregators are always nested within an outer
     // aggregator. Use ToProto to get intermediate state and then serialize the
     // outer aggregator state instead.
