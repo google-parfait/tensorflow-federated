@@ -14,9 +14,8 @@
 """The functions for creating the federated computation for hierarchical histogram aggregation."""
 
 import math
-from typing import Any
+from typing import Any, NamedTuple
 
-import attrs
 import federated_language
 import numpy as np
 import tensorflow as tf
@@ -27,8 +26,7 @@ from tensorflow_federated.python.core.environments.tensorflow_frontend import te
 from tensorflow_federated.python.core.templates import iterative_process
 
 
-@attrs.define(eq=False, frozen=True)
-class ServerOutput:
+class ServerOutput(NamedTuple):
   """The container of results.
 
   Attributes:
