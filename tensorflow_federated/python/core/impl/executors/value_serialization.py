@@ -27,15 +27,12 @@ from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import executor_utils
 
-_SerializeReturnType = tuple[executor_pb2.Value, federated_language.Type]
-_DeserializeReturnType = tuple[object, federated_language.Type]
-
 
 @federated_language.framework.trace
-def _serialize_computation(
+def _serialize_computation_value(
     comp: computation_pb2.Computation,
     type_spec: Optional[federated_language.Type],
-) -> _SerializeReturnType:
+) -> tuple[executor_pb2.Value, federated_language.Type]:
   """Serializes a TFF computation."""
   type_spec = executor_utils.reconcile_value_type_with_type_spec(
       federated_language.Type.from_proto(comp.type), type_spec
@@ -45,7 +42,8 @@ def _serialize_computation(
 
 @federated_language.framework.trace
 def _serialize_tensor_value(
-    value: object, type_spec: federated_language.TensorType
+    value: object,
+    type_spec: federated_language.TensorType,
 ) -> tuple[executor_pb2.Value, federated_language.TensorType]:
   """Serializes a tensor value into `executor_pb2.Value`.
 
@@ -118,19 +116,10 @@ def _serialize_tensor_value(
 
 
 @federated_language.framework.trace
-def _serialize_array(
-    value: federated_language.Array,
-    type_spec: federated_language.TensorType,
-) -> array_pb2.Array:
-  value_proto, _ = _serialize_tensor_value(value, type_spec)
-  return value_proto.array
-
-
-@federated_language.framework.trace
 def _serialize_sequence_value(
     value: Sequence[object],
     type_spec: federated_language.SequenceType,
-) -> _SerializeReturnType:
+) -> tuple[executor_pb2.Value, federated_language.SequenceType]:
   """Serializes a sequence into `executor_pb2.Value`.
 
   Args:
@@ -172,6 +161,10 @@ def _serialize_sequence_value(
     else:
       return [(value, type_spec)]
 
+  def _serialize_array(value, type_spec):
+    value_proto, _ = _serialize_tensor_value(value, type_spec)
+    return value_proto.array
+
   elements_proto = []
   for element in value:
     flat_element = _flatten(element, element_type)
@@ -190,18 +183,18 @@ def _serialize_sequence_value(
 
 
 @federated_language.framework.trace
-def _serialize_struct_type(
-    struct_typed_value: object,
+def _serialize_struct_value(
+    value: object,
     type_spec: federated_language.StructType,
 ) -> tuple[executor_pb2.Value, federated_language.StructType]:
   """Serializes a value of tuple type."""
-  value_structure = structure._from_container(struct_typed_value)  # pylint: disable=protected-access
+  value_structure = structure._from_container(value)  # pylint: disable=protected-access
   if len(value_structure) != len(type_spec):
     raise TypeError(
         'Cannot serialize a struct value of '
         f'{len(value_structure)} elements to a struct type '
         f'requiring {len(type_spec)} elements. Trying to serialize'
-        f'\n{struct_typed_value!r}\nto\n{type_spec}.'
+        f'\n{value!r}\nto\n{type_spec}.'
     )
   val_elem_iter = structure._to_elements(value_structure)  # pylint: disable=protected-access
   elements = []
@@ -220,13 +213,12 @@ def _serialize_struct_type(
 
 @federated_language.framework.trace
 def _serialize_federated_value(
-    federated_value: object, type_spec: federated_language.FederatedType
+    value: object,
+    type_spec: federated_language.FederatedType,
 ) -> tuple[executor_pb2.Value, federated_language.FederatedType]:
   """Serializes a value of federated type."""
   if type_spec.all_equal:
-    value = [federated_value]
-  else:
-    value = federated_value
+    value = [value]
   if not isinstance(value, list):
     raise ValueError(f'Expected a `list`, found {value}.')
   value_proto = executor_pb2.Value()
@@ -242,7 +234,7 @@ def _serialize_federated_value(
 def serialize_value(
     value: object,
     type_spec: Optional[federated_language.Type] = None,
-) -> _SerializeReturnType:
+) -> tuple[executor_pb2.Value, federated_language.Type]:
   """Serializes a value into `executor_pb2.Value`.
 
   We use a switch/function pattern in the body here (and in `deserialize_value`
@@ -262,9 +254,9 @@ def serialize_value(
     ValueError: If the value is malformed.
   """
   if isinstance(value, computation_pb2.Computation):
-    return _serialize_computation(value, type_spec)
+    return _serialize_computation_value(value, type_spec)
   elif isinstance(value, federated_language.framework.ConcreteComputation):
-    return _serialize_computation(
+    return _serialize_computation_value(
         value.to_proto(),
         executor_utils.reconcile_value_with_type_spec(value, type_spec),
     )
@@ -279,7 +271,7 @@ def serialize_value(
   elif isinstance(type_spec, federated_language.SequenceType):
     return _serialize_sequence_value(value, type_spec)
   elif isinstance(type_spec, federated_language.StructType):
-    return _serialize_struct_type(value, type_spec)
+    return _serialize_struct_value(value, type_spec)
   elif isinstance(type_spec, federated_language.FederatedType):
     return _serialize_federated_value(value, type_spec)
   else:
@@ -292,26 +284,26 @@ def serialize_value(
 
 
 @federated_language.framework.trace
-def _deserialize_computation(
-    value_proto: executor_pb2.Value,
-) -> _DeserializeReturnType:
+def _deserialize_computation_value(
+    computation_proto: computation_pb2.Computation,
+    type_hint: Optional[federated_language.Type],
+) -> tuple[object, federated_language.Type]:
   """Deserializes a TFF computation."""
-  which_value = value_proto.computation.WhichOneof('computation')
+  del type_hint  # Unused.
+  which_value = computation_proto.WhichOneof('computation')
   if which_value == 'literal':
-    value = federated_language.array_from_proto(
-        value_proto.computation.literal.value
-    )
+    value = federated_language.array_from_proto(computation_proto.literal.value)
   else:
-    value = value_proto.computation
-  type_spec = federated_language.Type.from_proto(value_proto.computation.type)
+    value = computation_proto
+  type_spec = federated_language.Type.from_proto(computation_proto.type)
   return value, type_spec
 
 
 @federated_language.framework.trace
 def _deserialize_tensor_value(
     array_proto: array_pb2.Array,
-    type_hint: Optional[federated_language.TensorType] = None,
-) -> _DeserializeReturnType:
+    type_hint: Optional[federated_language.TensorType],
+) -> tuple[object, federated_language.TensorType]:
   """Deserializes a tensor value from `.Value`.
 
   Args:
@@ -345,8 +337,8 @@ def _deserialize_tensor_value(
 @federated_language.framework.trace
 def _deserialize_sequence_value(
     sequence_proto: executor_pb2.Value.Sequence,
-    type_hint: Optional[federated_language.SequenceType] = None,
-) -> _DeserializeReturnType:
+    type_hint: Optional[federated_language.SequenceType],
+) -> tuple[object, federated_language.SequenceType]:
   """Deserializes a value of sequence type.
 
   Args:
@@ -403,17 +395,17 @@ def _deserialize_sequence_value(
 
 @federated_language.framework.trace
 def _deserialize_struct_value(
-    value_proto: executor_pb2.Value,
-    type_hint: Optional[federated_language.Type] = None,
-) -> _DeserializeReturnType:
+    struct_proto: executor_pb2.Value.Struct,
+    type_hint: Optional[federated_language.StructType],
+) -> tuple[object, federated_language.StructType]:
   """Deserializes a value of struct type."""
   val_elems = []
   type_elems = []
   if type_hint is not None:
-    element_types = tuple(type_hint)  # pytype: disable=wrong-arg-types
+    element_types = list(type_hint)
   else:
-    element_types = [None] * len(value_proto.struct.element)
-  for e, e_type in zip(value_proto.struct.element, element_types):
+    element_types = [None] * len(struct_proto.element)
+  for e, e_type in zip(struct_proto.element, element_types):
     name = e.name if e.name else None
     e_val, e_type = deserialize_value(e.value, e_type)
     val_elems.append((name, e_val))
@@ -458,33 +450,33 @@ def _ensure_deserialized_types_compatible(
 
 @federated_language.framework.trace
 def _deserialize_federated_value(
-    value_proto: executor_pb2.Value,
-    type_hint: Optional[federated_language.Type] = None,
-) -> _DeserializeReturnType:
+    federated_proto: executor_pb2.Value.Federated,
+    type_hint: Optional[federated_language.FederatedType],
+) -> tuple[object, federated_language.FederatedType]:
   """Deserializes a value of federated type."""
-  if not value_proto.federated.value:
+  if not federated_proto.value:
     raise ValueError('Attempting to deserialize federated value with no data.')
   # The C++ runtime doesn't use the `all_equal` boolean (and doesn't report it
   # in returned values), however the type_hint on the computation may contain
   # it.
   if type_hint is not None:
-    all_equal = type_hint.all_equal  # pytype: disable=attribute-error
+    all_equal = type_hint.all_equal
   else:
-    all_equal = value_proto.federated.type.all_equal
-  placement_uri = value_proto.federated.type.placement.value.uri
+    all_equal = federated_proto.type.all_equal
+  placement_uri = federated_proto.type.placement.value.uri
   # item_type will represent a supertype of all deserialized member types in the
   # federated value. This will be the hint used for deserialize member values.
   if type_hint is not None:
-    item_type_hint = type_hint.member  # pytype: disable=attribute-error
+    item_type_hint = type_hint.member
   else:
     item_type_hint = None
   item_type = None
   if all_equal:
     # As an optimization, we only deserialize the first value of an
     # `all_equal=True` federated value.
-    items = [value_proto.federated.value[0]]
+    items = [federated_proto.value[0]]
   else:
-    items = value_proto.federated.value
+    items = federated_proto.value
   value = []
   for item in items:
     item_value, next_item_type = deserialize_value(item, item_type_hint)
@@ -506,7 +498,7 @@ def _deserialize_federated_value(
 def deserialize_value(
     value_proto: executor_pb2.Value,
     type_hint: Optional[federated_language.Type] = None,
-) -> _DeserializeReturnType:
+) -> tuple[object, federated_language.Type]:
   """Deserializes a value (of any type) from `executor_pb2.Value`.
 
   Args:
@@ -524,13 +516,8 @@ def deserialize_value(
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
-  if not hasattr(value_proto, 'WhichOneof'):
-    raise TypeError(
-        '`value_proto` must be a protocol buffer message with a '
-        '`value` oneof field.'
-    )
-  which_value = value_proto.WhichOneof('value')
-  if which_value == 'array':
+  value_oneof = value_proto.WhichOneof('value')
+  if value_oneof == 'array':
     if type_hint is not None and not isinstance(
         type_hint, federated_language.TensorType
     ):
@@ -538,18 +525,34 @@ def deserialize_value(
           f'Expected a `federated_language.TensorType`, found {type_hint}.'
       )
     return _deserialize_tensor_value(value_proto.array, type_hint)
-  elif which_value == 'computation':
-    return _deserialize_computation(value_proto)
-  elif which_value == 'sequence':
+  elif value_oneof == 'computation':
+    return _deserialize_computation_value(value_proto.computation, type_hint)
+  elif value_oneof == 'sequence':
+    if type_hint is not None and not isinstance(
+        type_hint, federated_language.SequenceType
+    ):
+      raise ValueError(
+          f'Expected a `federated_language.SequenceType`, found {type_hint}.'
+      )
     return _deserialize_sequence_value(value_proto.sequence, type_hint)
-  elif which_value == 'struct':
-    return _deserialize_struct_value(value_proto, type_hint)
-  elif which_value == 'federated':
-    return _deserialize_federated_value(value_proto, type_hint)
+  elif value_oneof == 'struct':
+    if type_hint is not None and not isinstance(
+        type_hint, federated_language.StructType
+    ):
+      raise ValueError(
+          f'Expected a `federated_language.StructType`, found {type_hint}.'
+      )
+    return _deserialize_struct_value(value_proto.struct, type_hint)
+  elif value_oneof == 'federated':
+    if type_hint is not None and not isinstance(
+        type_hint, federated_language.FederatedType
+    ):
+      raise ValueError(
+          f'Expected a `federated_language.FederatedType`, found {type_hint}.'
+      )
+    return _deserialize_federated_value(value_proto.federated, type_hint)
   else:
-    raise ValueError(
-        'Unable to deserialize a value of type {}.'.format(which_value)
-    )
+    raise NotImplementedError(f'Unexpected value found: {value_oneof}.')
 
 
 def serialize_cardinalities(
