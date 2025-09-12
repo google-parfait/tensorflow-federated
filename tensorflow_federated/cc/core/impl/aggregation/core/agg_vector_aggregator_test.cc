@@ -41,7 +41,6 @@ namespace {
 using ::testing::Eq;
 using testing::IsFalse;
 using testing::IsTrue;
-using ::testing::SizeIs;
 
 // A simple Sum Aggregator
 template <typename T>
@@ -186,11 +185,10 @@ TEST(AggVectorAggregatorTest, Serialization_Succeeds) {
   EXPECT_THAT(aggregator.CanReport(), IsTrue());
   EXPECT_THAT(aggregator.GetNumInputs(), Eq(3));
 
-  auto serialized_state = std::move(aggregator).Serialize(/*num_partitions=*/1);
-  EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
+  auto serialized_state = std::move(aggregator).Serialize();
 
   AggVectorAggregatorState aggregator_state;
-  aggregator_state.ParseFromString(serialized_state.value()[0]);
+  aggregator_state.ParseFromString(serialized_state.value());
   EXPECT_THAT(aggregator_state.num_inputs(), Eq(3));
   const int32_t* vector_data =
       reinterpret_cast<const int32_t*>(aggregator_state.vector_data().data());

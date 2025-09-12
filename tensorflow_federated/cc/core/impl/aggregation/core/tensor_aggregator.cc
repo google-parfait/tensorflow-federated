@@ -16,7 +16,9 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -40,6 +42,12 @@ StatusOr<OutputTensorList> TensorAggregator::Report() && {
            << "TensorAggregator::Report: the report goal isn't met";
   }
   return std::move(*this).TakeOutputs();
+}
+
+StatusOr<std::vector<std::string>> TensorAggregator::Partition(
+    int num_partitions) && {
+  return TFF_STATUS(UNIMPLEMENTED)
+         << "TensorAggregator::Partition is not supported";
 }
 
 }  // namespace aggregation
