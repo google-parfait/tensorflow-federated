@@ -24,6 +24,7 @@ import grpc
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.executors import cardinality
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 from tensorflow_federated.python.core.impl.executors import value_serialization
 
@@ -156,7 +157,7 @@ class RemoteExecutor(federated_language.framework.Executor):
   ):
     if self._executor_id is not None:
       self._clear_executor()
-    serialized_cardinalities = value_serialization.serialize_cardinalities(
+    serialized_cardinalities = cardinality.serialize_cardinalities(
         cardinalities
     )
     request = executor_pb2.GetExecutorRequest(

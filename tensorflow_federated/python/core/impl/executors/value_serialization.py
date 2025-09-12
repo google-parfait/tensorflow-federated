@@ -13,7 +13,7 @@
 # limitations under the License.
 """A set of utility methods for serializing Value protos using pybind11 bindings."""
 
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 import typing
 from typing import Optional
 
@@ -553,28 +553,3 @@ def deserialize_value(
     return _deserialize_federated_value(value_proto.federated, type_hint)
   else:
     raise NotImplementedError(f'Unexpected value found: {value_oneof}.')
-
-
-def serialize_cardinalities(
-    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
-) -> list[executor_pb2.Cardinality]:
-  serialized_cardinalities = []
-  for placement, cardinality in cardinalities.items():
-    cardinality_message = executor_pb2.Cardinality(
-        placement=computation_pb2.Placement(uri=placement.uri),
-        cardinality=cardinality,
-    )
-    serialized_cardinalities.append(cardinality_message)
-  return serialized_cardinalities
-
-
-def deserialize_cardinalities(
-    serialized_cardinalities: Collection[executor_pb2.Cardinality],
-) -> dict[federated_language.framework.PlacementLiteral, int]:
-  cardinalities = {}
-  for cardinality_spec in serialized_cardinalities:
-    literal = federated_language.framework.uri_to_placement_literal(
-        cardinality_spec.placement.uri
-    )
-    cardinalities[literal] = cardinality_spec.cardinality
-  return cardinalities

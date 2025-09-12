@@ -449,39 +449,5 @@ class ValueSerializationTest(parameterized.TestCase):
     self.assertEqual(y, 10)
 
 
-class SerializeCardinalitiesTest(absltest.TestCase):
-
-  def test_serialize_deserialize_clients_and_server_cardinalities_roundtrip(
-      self,
-  ):
-    client_and_server_cardinalities = {
-        federated_language.CLIENTS: 10,
-        federated_language.SERVER: 1,
-    }
-    cardinalities_list = value_serialization.serialize_cardinalities(
-        client_and_server_cardinalities
-    )
-    for cardinality in cardinalities_list:
-      self.assertIsInstance(cardinality, executor_pb2.Cardinality)
-    reconstructed_cardinalities = value_serialization.deserialize_cardinalities(
-        cardinalities_list
-    )
-    self.assertEqual(
-        client_and_server_cardinalities, reconstructed_cardinalities
-    )
-
-  def test_serialize_deserialize_clients_alone(self):
-    client_cardinalities = {federated_language.CLIENTS: 10}
-    cardinalities_list = value_serialization.serialize_cardinalities(
-        client_cardinalities
-    )
-    for cardinality in cardinalities_list:
-      self.assertIsInstance(cardinality, executor_pb2.Cardinality)
-    reconstructed_cardinalities = value_serialization.deserialize_cardinalities(
-        cardinalities_list
-    )
-    self.assertEqual(client_cardinalities, reconstructed_cardinalities)
-
-
 if __name__ == '__main__':
   absltest.main()

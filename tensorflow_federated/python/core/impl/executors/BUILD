@@ -24,6 +24,27 @@ py_library(
 )
 
 py_library(
+    name = "cardinality",
+    srcs = ["cardinality.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "@federated_language//federated_language",
+        "@federated_language//federated_language/proto:computation_py_pb2",
+    ],
+)
+
+py_test(
+    name = "cardinality_test",
+    srcs = ["cardinality_test.py"],
+    deps = [
+        ":cardinality",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "@federated_language//federated_language",
+        "@federated_language//federated_language/proto:computation_py_pb2",
+    ],
+)
+
+py_library(
     name = "cpp_to_python_executor",
     srcs = ["cpp_to_python_executor.py"],
     tags = [
@@ -129,6 +150,7 @@ py_library(
     name = "remote_executor",
     srcs = ["remote_executor.py"],
     deps = [
+        ":cardinality",
         ":remote_executor_stub",
         ":value_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
