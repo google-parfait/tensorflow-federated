@@ -1,0 +1,23 @@
+diff --git third_party/llvm/workspace.bzl third_party/llvm/workspace.bzl
+index 038e0ee5fe5..4693f5cfadc 100644
+--- third_party/llvm/workspace.bzl
++++ third_party/llvm/workspace.bzl
+@@ -5,15 +5,15 @@ load("//third_party:repo.bzl", "tf_http_archive")
+ def repo(name):
+     """Imports LLVM."""
+     LLVM_COMMIT = "668e33c6401abe7844691fb7d47a3cf2d2012dbc"
+-    LLVM_SHA256 = "b97fefaa486b106c8dd45b963116ed7684d8f3f55682116d5760b0b60db17702"
++    LLVM_SHA256 = "f6659fe4c8bfb271262abbe52f1f1320d12174504202c7c4bc4bce0910511297"
+ 
+     tf_http_archive(
+         name = name,
+         sha256 = LLVM_SHA256,
+-        strip_prefix = "llvm-project-{commit}".format(commit = LLVM_COMMIT),
++        strip_prefix = "llvm-llvm-project-{commit_partial}".format(commit_partial = LLVM_COMMIT[:7]),
+         urls = [
+             "https://storage.googleapis.com/mirror.tensorflow.org/github.com/llvm/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
+-            "https://github.com/llvm/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
++            "https://api.github.com/repos/llvm/llvm-project/tarball/{commit}".format(commit = LLVM_COMMIT),
+         ],
+         build_file = "//third_party/llvm:llvm.BUILD",
+         patch_file = [

@@ -111,9 +111,34 @@ http_archive(
 http_archive(
     name = "org_tensorflow",
     patches = [
+        # This patch enables googleapi Java and Python proto rules such as
+        # @com_google_googleapis//google/rpc:rpc_java_proto.
+        "//third_party/tensorflow:googleapis_proto_rules.patch",
+        # This patch works around failures in GitHub infrastructure to
+        # download versions of LLVM pointed to by non-HEAD TensorFlow.
+        # TODO(team): Remove this patch when resolved.
+        "//third_party/tensorflow:llvm_url.patch",
+        # The version of googleapis imported by TensorFlow 2.14 doesn't provide
+        # `py_proto_library` targets for //google/longrunning.
+        "//third_party/tensorflow:googleapis.patch",
+        # This patch replaces tf_gen_op_wrapper_py's dependency on @tensorflow
+        # with @pypi_tensorflow.
+        "//third_party/tensorflow:tf_gen_op_wrapper_py.patch",
+        # gRPC v1.48.0-pre1 and later include zconf.h in addition to zlib.h;
+        # TensorFlow's build rule for zlib only exports the latter.
+        "//third_party/tensorflow:zlib.patch",
+        # These patches enables building TensorFlow Federated from source by
+        # fixing visibility in TensorFlow.
         "//third_party/tensorflow:internal_visibility.patch",
-        "//third_party/tensorflow:python_toolchain.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
+
+        "//third_party/tensorflow:snappy_include.patch",
+        # allow self-signed certificates on macos (otherwise SecureTransport will be used which does not allow that)
+        "//third_party/tensorflow:curl_ssl_macos.patch",
+
+
+        # "//third_party/tensorflow:python_toolchain.patch",
+
     ],
     sha256 = "ce357fd0728f0d1b0831d1653f475591662ec5bca736a94ff789e6b1944df19f",
     strip_prefix = "tensorflow-2.14.0",
@@ -152,11 +177,38 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_license/archive/refs/tags/0.0.8.tar.gz",
 )
 
+# Python rules for Bazel
 http_archive(
     name = "rules_python",
-    sha256 = "c68bdc4fbec25de5b5493b8819cfc877c4ea299c0dcb15c244c5a00208cde311",
-    strip_prefix = "rules_python-0.31.0",
-    url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.31.0.tar.gz",
+    patches = [
+        "//third_party/patches:py_package.patch",
+    ],
+    sha256 = "690e0141724abb568267e003c7b6d9a54925df40c275a870a4d934161dc9dd53",
+    strip_prefix = "rules_python-0.40.0",
+    url = "https://github.com/bazelbuild/rules_python/releases/download/0.40.0/rules_python-0.40.0.tar.gz",
+)
+
+load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_toolchains")
+
+py_repositories()
+
+load(
+    "//tools/python_version:python_repo.bzl",
+    "python_repository",
+)
+
+python_repository(name = "python_version_repo")
+
+load("@python_version_repo//:py_version.bzl", "HERMETIC_PYTHON_VERSION")
+
+python_register_toolchains(
+    name = "python",
+    ignore_root_user_error = True,
+    minor_mapping = {
+        "3.10": "3.10.11",
+        "3.11": "3.11.6",
+    },
+    python_version = HERMETIC_PYTHON_VERSION,
 )
 
 #
@@ -184,10 +236,6 @@ http_archive(
 #
 # Transitive dependencies, grouped by direct dependency.
 #
-
-load("@rules_python//python:repositories.bzl", "py_repositories")
-
-py_repositories()
 
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 

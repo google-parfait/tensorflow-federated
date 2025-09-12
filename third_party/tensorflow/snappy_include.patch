@@ -1,0 +1,12 @@
+diff --git third_party/snappy.BUILD third_party/snappy.BUILD
+index 9bcff36a2a9..4562c6c0d2e 100644
+--- third_party/snappy.BUILD
++++ third_party/snappy.BUILD
+@@ -17,6 +17,7 @@ cc_library(
+         "snappy-stubs-internal.h",
+         "snappy-stubs-public.h",
+     ],
++    includes = ["."],
+     hdrs = ["snappy.h"],
+     copts = ["-DHAVE_CONFIG_H"] + select({
+         "@org_tensorflow//tensorflow/tsl:windows": [],

@@ -1,0 +1,32 @@
+diff --git a/third_party/curl.BUILD b/third_party/curl.BUILD
+--- third_party/curl.BUILD
++++ third_party/curl.BUILD
+@@ -362,9 +362,6 @@ cc_library(
+         "lib/ws.c",
+         "lib/ws.h",
+     ] + select({
+-        "@org_tensorflow//tensorflow/tsl:macos": [
+-            "lib/vtls/sectransp.c",
+-        ],
+         "@org_tensorflow//tensorflow/tsl:ios": [
+             "lib/vtls/sectransp.c",
+         ],
+@@ -567,7 +564,7 @@ genrule(
+         "#ifndef EXTERNAL_CURL_INCLUDE_CURL_CONFIG_H_",
+         "#define EXTERNAL_CURL_INCLUDE_CURL_CONFIG_H_",
+         "",
+-        "#if !defined(_WIN32) && !defined(__APPLE__)",
++        "#if !defined(_WIN32)",
+         "#  include <openssl/opensslv.h>",
+         "#  if defined(OPENSSL_IS_BORINGSSL)",
+         "#    define HAVE_BORINGSSL 1",
+@@ -600,7 +597,8 @@ genrule(
+         "#  define HAVE_SYS_FILIO_H 1",
+         "#  define HAVE_SYS_SOCKIO_H 1",
+         "#  define OS \"x86_64-apple-darwin15.5.0\"",
+-        "#  define USE_SECTRANSP 1",
++        "#  define USE_OPENSSL 1",
++        "#  define CURL_CA_BUNDLE \"/etc/ssl/cert.pem\"",
+         "#else",
+         "#  define CURL_CA_BUNDLE \"/etc/ssl/certs/ca-certificates.crt\"",
+         "#  define GETSERVBYPORT_R_ARGS 6",

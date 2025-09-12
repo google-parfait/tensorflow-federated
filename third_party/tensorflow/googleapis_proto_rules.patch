@@ -1,0 +1,11 @@
+--- third_party/googleapis/repository_rules.bzl
++++ third_party/googleapis/repository_rules.patched.bzl
+@@ -34,6 +34,8 @@
+     switched_rules_by_language(
+         name = "com_google_googleapis_imports",
+         cc = True,
+         grpc = True,
++        java = True,
++        python = True,
+         rules_override = {
+             "cc_proto_library": [

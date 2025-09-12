@@ -1,0 +1,11 @@
+--- third_party/zlib.BUILD
++++ third_party/zlib.BUILD
+@@ -31,7 +31,7 @@
+         "zutil.c",
+         "zutil.h",
+     ],
+-    hdrs = ["zlib.h"],
++    hdrs = ["zconf.h", "zlib.h"],
+     copts = select({
+         "@org_tensorflow//tensorflow/tsl:windows": [],
+         "//conditions:default": [

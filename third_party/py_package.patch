@@ -1,0 +1,36 @@
+diff --git a/python/private/py_package.bzl b/python/private/py_package.bzl
+--- python/private/py_package.bzl
++++ python/private/py_package.bzl
+@@ -51,19 +51,20 @@ def _py_package_impl(ctx):
+     # TODO: '/' is wrong on windows, but the path separator is not available in starlark.
+     # Fix this once ctx.configuration has directory separator information.
+     packages = [p.replace(".", "/") for p in ctx.attr.packages]
+-    if not packages:
+-        filtered_inputs = inputs
+-    else:
+-        filtered_files = []
+-
+-        # TODO: flattening depset to list gives poor performance,
+-        for input_file in inputs.to_list():
+-            wheel_path = _path_inside_wheel(input_file)
+-            for package in packages:
+-                if wheel_path.startswith(package):
+-                    filtered_files.append(input_file)
+-        filtered_inputs = depset(direct = filtered_files)
++    filtered_files = []
++    # TODO: flattening depset to list gives poor performance,
++    for input_file in inputs.to_list():
++        wheel_path = _path_inside_wheel(input_file)
++        if wheel_path.startswith("site-packages"):
++            continue
++        if not packages:
++            filtered_files.append(input_file)
++            continue
++        for package in packages:
++            if wheel_path.startswith(package):
++                filtered_files.append(input_file)
+
++    filtered_inputs = depset(direct = filtered_files)
+     return [DefaultInfo(
+         files = filtered_inputs,
+     )]
