@@ -16,9 +16,9 @@
 import collections
 from collections.abc import Callable
 import functools
+from typing import NamedTuple
 
 from absl.testing import parameterized
-import attrs
 import federated_language
 import numpy as np
 import tensorflow as tf
@@ -89,8 +89,7 @@ def _tff_learning_model_fn():
   )
 
 
-@attrs.define
-class MnistVariables:
+class MnistVariables(NamedTuple):
   weights: float
   bias: float
   num_examples: int

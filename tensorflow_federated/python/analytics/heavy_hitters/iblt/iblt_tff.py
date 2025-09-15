@@ -14,9 +14,8 @@
 """Heavy hitters discovery using IBLT."""
 
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
-import attrs
 import federated_language
 import numpy as np
 import tensorflow as tf
@@ -32,8 +31,7 @@ from tensorflow_federated.python.core.environments.tensorflow_frontend import te
 _CharacterEncoding = chunkers.CharacterEncoding
 
 
-@attrs.define(eq=False, frozen=True)
-class ServerOutput:
+class ServerOutput(NamedTuple):
   """The container of results.
 
   Attributes:

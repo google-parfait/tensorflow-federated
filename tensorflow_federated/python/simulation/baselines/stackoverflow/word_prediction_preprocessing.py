@@ -14,17 +14,15 @@
 """Preprocessing library for Stack Overflow next-word prediction tasks."""
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, NamedTuple
 
-import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.stackoverflow import constants
 
 
-@attrs.define(eq=False, frozen=True)
-class SpecialTokens:
+class SpecialTokens(NamedTuple):
   """Structure for Special tokens.
 
   Attributes:

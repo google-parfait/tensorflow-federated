@@ -14,9 +14,8 @@
 """Factory for string aggregation using IBLT."""
 
 import collections
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
-import attrs
 import federated_language
 import numpy as np
 import tensorflow as tf
@@ -37,8 +36,7 @@ DATASET_KEY = 'key'
 DATASET_VALUE = 'value'
 
 
-@attrs.define(eq=False, frozen=True)
-class ServerOutput:
+class ServerOutput(NamedTuple):
   output_strings: Any
   string_values: Any
   num_not_decoded: Any
