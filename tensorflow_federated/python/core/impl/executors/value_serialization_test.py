@@ -62,6 +62,7 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec
     )
+
     self.assertEqual(value_type, serialize_type_spec)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     self.assertEqual(type_spec, serialize_type_spec)
@@ -77,6 +78,7 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec
     )
+
     self.assertTrue(value_type.is_assignable_from(serialize_type_spec))
     y, type_spec = value_serialization.deserialize_value(value_proto)
     self.assertTrue(serialize_type_spec.is_assignable_from(type_spec))
@@ -93,6 +95,7 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec
     )
+
     self.assertEqual(value_type, serialize_type_spec)
     y, deserialize_type_spec = value_serialization.deserialize_value(
         value_proto, type_hint=serialize_type_spec
@@ -146,6 +149,7 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         value, type_spec
     )
+
     self.assertEqual(value_type, type_spec)
     result, result_type = value_serialization.deserialize_value(
         value_proto, type_spec
@@ -167,6 +171,7 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, TensorType(np.int32, [3])
     )
+
     self.assertEqual(value_type, TensorType(np.int32, [3]))
     y, type_spec = value_serialization.deserialize_value(value_proto)
     self.assertEqual(type_spec, TensorType(np.int32, [3]))
@@ -247,6 +252,7 @@ class ValueSerializationTest(parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         value, type_spec
     )
+
     self.assertEqual(value_type, type_spec)
     result, result_type = value_serialization.deserialize_value(
         value_proto, type_spec
@@ -286,6 +292,7 @@ class ValueSerializationTest(parameterized.TestCase):
         )
     )
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
+
     self.assertEqual(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Don't assert on the Python container since it is lost in serialization.
@@ -296,6 +303,7 @@ class ValueSerializationTest(parameterized.TestCase):
     x = (10, 20)
     x_type = federated_language.StructType([np.int32, np.int32])
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
+
     self.assertEqual(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     self.assertTrue(type_spec.is_equivalent_to(x_type))
@@ -307,6 +315,7 @@ class ValueSerializationTest(parameterized.TestCase):
         np.int32, federated_language.CLIENTS
     )
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
+
     self.assertEqual(
         value_type,
         federated_language.FederatedType(np.int32, federated_language.CLIENTS),
@@ -440,6 +449,7 @@ class ValueSerializationTest(parameterized.TestCase):
         np.int32, federated_language.SERVER
     )
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
+
     self.assertEqual(
         value_type,
         federated_language.FederatedType(np.int32, federated_language.SERVER),
