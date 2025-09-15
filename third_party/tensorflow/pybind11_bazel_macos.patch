@@ -1,0 +1,13 @@
+diff --git a/build_defs.bzl b/build_defs.bzl
+index cde1e93..03f14a5 100644
+--- a/build_defs.bzl
++++ a/build_defs.bzl
+@@ -43,7 +43,7 @@
+         copts = copts + PYBIND_COPTS + ["-fvisibility=hidden"],
+         features = features + PYBIND_FEATURES,
+         linkopts = linkopts + select({
+-            "@pybind11//:osx": [],
++            "@pybind11//:osx": ["-Wl,-undefined,dynamic_lookup"],
+             "//conditions:default": ["-Wl,-Bsymbolic"],
+         }),
+         linkshared = 1,

@@ -56,6 +56,9 @@ cc_library(
 
 cc_binary(
     name = "worker_binary",
-    linkopts = ["-lrt"],
+    linkopts = select({
+        "//conditions:default": [],
+        "@bazel_tools//src/conditions:linux": ["-lrt"],
+    }),
     deps = [":worker_main"],
 )

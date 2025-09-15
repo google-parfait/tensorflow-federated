@@ -1,0 +1,25 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -830,6 +846,10 @@
+     copts = COPTS + [
+         "-DPYTHON_PROTO2_CPP_IMPL_V2",
+     ],
++    linkopts = select({
++        "@platforms//os:osx": ["-Wl,-undefined,dynamic_lookup"],
++        "//conditions:default": [],
++    }),
+     linkshared = 1,
+     linkstatic = 1,
+     tags = [
+@@ -857,6 +877,10 @@
+         "//conditions:default": [],
+         ":allow_oversize_protos": ["-DPROTOBUF_PYTHON_ALLOW_OVERSIZE_PROTOS=1"],
+     }),
++    linkopts = select({
++        "@platforms//os:osx": ["-Wl,-undefined,dynamic_lookup"],
++        "//conditions:default": [],
++    }),
+     includes = [
+         "python/",
+         "src/",

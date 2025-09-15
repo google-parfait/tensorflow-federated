@@ -11,6 +11,7 @@
 workspace(name = "org_tensorflow_federated")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 #
 # Direct dependencies
@@ -30,11 +31,22 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz",
 )
 
+# http_archive(
+#     name = "com_github_grpc_grpc",
+#     sha256 = "76900ab068da86378395a8e125b5cc43dfae671e09ff6462ddfef18676e2165a",
+#     strip_prefix = "grpc-1.50.0",
+#     url = "https://github.com/grpc/grpc/archive/refs/tags/v1.50.0.tar.gz",
+# )
+
 http_archive(
     name = "com_github_grpc_grpc",
+    patches = [
+        # Enable dynamic_lookup linkopt on macOS
+        "//third_party/grpc:dynamic_lookup.patch",
+    ],
     sha256 = "76900ab068da86378395a8e125b5cc43dfae671e09ff6462ddfef18676e2165a",
     strip_prefix = "grpc-1.50.0",
-    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.50.0.tar.gz",
+    urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.50.0.tar.gz"],
 )
 
 http_archive(
@@ -58,6 +70,32 @@ http_archive(
     url = "https://github.com/google/differential-privacy/archive/refs/tags/v3.0.0.tar.gz",
 )
 
+# Register a clang C++ toolchain.
+git_repository(
+    name = "toolchains_llvm",
+    remote = "https://github.com/bazel-contrib/toolchains_llvm.git",
+    tag = "1.0.0",
+)
+
+load("@toolchains_llvm//toolchain:deps.bzl", "bazel_toolchain_dependencies")
+
+bazel_toolchain_dependencies()
+
+load("@toolchains_llvm//toolchain:rules.bzl", "llvm_toolchain")
+
+llvm_toolchain(
+    name = "llvm_toolchain",
+    llvm_versions = {
+        "": "15.0.6",
+        "linux-aarch64": "15.0.6",
+        "darwin-aarch64": "15.0.7",
+    },
+)
+
+load("@llvm_toolchain//:toolchains.bzl", "llvm_register_toolchains")
+
+llvm_register_toolchains()
+
 # This commit is determined by
 # https://github.com/tensorflow/tensorflow/blob/v2.16.1/third_party/absl/workspace.bzl#L10.
 http_archive(
@@ -74,12 +112,15 @@ http_archive(
     url = "https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz",
 )
 
-http_archive(
-    name = "com_google_protobuf",
-    sha256 = "1add10f9bd92775b91f326da259f243881e904dd509367d5031d4c782ba82810",
-    strip_prefix = "protobuf-3.21.9",
-    url = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.21.9.tar.gz",
-)
+# http_archive(
+#     name = "com_google_protobuf",
+#     sha256 = "1add10f9bd92775b91f326da259f243881e904dd509367d5031d4c782ba82810",
+#     strip_prefix = "protobuf-3.21.9",
+#     patches = [
+#         "//third_party/protobuf:dynamic_lookup_macos.patch",
+#     ],
+#     url = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.21.9.tar.gz",
+# )
 
 http_archive(
     name = "eigen",
@@ -145,6 +186,27 @@ http_archive(
     url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.14.0.tar.gz",
 )
 
+load("@org_tensorflow//third_party:repo.bzl", "tf_http_archive", "tf_mirror_urls")
+
+# Update protobug from TensorFlow to enable dynamic_lookup on macOS for Bazel 7
+# Check https://github.com/protocolbuffers/protobuf/pull/19785/files
+tf_http_archive(
+    name = "com_google_protobuf",
+    patch_file = [
+        "@org_tensorflow//third_party/protobuf:protobuf.patch",
+        # Enable dynamic_lookup linkopt on macOS
+        "@org_tensorflow_federated//third_party/protobuf:dynamic_lookup_macos.patch",
+    ],
+    sha256 = "f66073dee0bc159157b0bd7f502d7d1ee0bc76b3c1eac9836927511bdc4b3fc1",
+    strip_prefix = "protobuf-3.21.9",
+    system_build_file = "@org_tensorflow//third_party/systemlibs:protobuf.BUILD",
+    system_link_files = {
+        "@org_tensorflow///third_party/systemlibs:protobuf.bzl": "protobuf.bzl",
+        "@org_tensorflow///third_party/systemlibs:protobuf_deps.bzl": "protobuf_deps.bzl",
+    },
+    urls = tf_mirror_urls("https://github.com/protocolbuffers/protobuf/archive/v3.21.9.zip"),
+)
+
 # This commit is determined by
 # https://github.com/tensorflow/tensorflow/blob/v2.16.1/third_party/pybind11_abseil/workspace.bzl#L11.
 http_archive(
@@ -154,11 +216,23 @@ http_archive(
     url = "https://github.com/pybind/pybind11_abseil/archive/2c4932ed6f6204f1656e245838f4f5eae69d2e29.tar.gz",
 )
 
-http_archive(
+# http_archive(
+#     name = "pybind11_bazel",
+#     sha256 = "e8355ee56c2ff772334b4bfa22be17c709e5573f6d1d561c7176312156c27bd4",
+#     strip_prefix = "pybind11_bazel-2.11.1",
+#     url = "https://github.com/pybind/pybind11_bazel/archive/refs/tags/v2.11.1.tar.gz",
+# )
+
+tf_http_archive(
     name = "pybind11_bazel",
-    sha256 = "e8355ee56c2ff772334b4bfa22be17c709e5573f6d1d561c7176312156c27bd4",
-    strip_prefix = "pybind11_bazel-2.11.1",
-    url = "https://github.com/pybind/pybind11_bazel/archive/refs/tags/v2.11.1.tar.gz",
+    patch_file = [
+        "@org_tensorflow//third_party/pybind11_bazel:pybind11_bazel.patch",
+        # Enable dynamic_lookup linkopt on macOS
+        "@org_tensorflow_federated//third_party/pybind11_bazel:dynamic_lookup.patch",
+    ],
+    sha256 = "516c1b3a10d87740d2b7de6f121f8e19dde2c372ecbfe59aef44cd1872c10395",
+    strip_prefix = "pybind11_bazel-72cbbf1fbc830e487e3012862b7b720001b70672",
+    urls = tf_mirror_urls("https://github.com/pybind/pybind11_bazel/archive/72cbbf1fbc830e487e3012862b7b720001b70672.tar.gz"),
 )
 
 # This commit is determined by

@@ -1,0 +1,14 @@
+diff --git a/bazel/cython_library.bzl b/bazel/cython_library.bzl
+--- bazel/cython_library.bzl
++++ bazel/cython_library.bzl
+@@ -72,6 +72,10 @@
+             name = shared_object_name,
+             srcs = [stem + ".cpp"],
+             deps = deps + ["@local_config_python//:python_headers"],
++            linkopts = select({
++                "@platforms//os:osx": ["-Wl,-undefined,dynamic_lookup"],
++                "//conditions:default": [],
++            }),
+             linkshared = 1,
+         )
+         shared_objects.append(shared_object_name)

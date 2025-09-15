@@ -1,149 +1,258 @@
-# TensorFlow Federated Bazel configuration
-#
-# See https://docs.bazel.build/versions/master/user-manual.html#config for
-# details on the various configuration options.
+# ----------------------------------------------------------------------------------------------------------------------
+# BAZEL BEHAVIOR
+# Applies globally to bazel and configures its behavior.
+# ----------------------------------------------------------------------------------------------------------------------
 
-# Enable verbose failures for testing only.
-build --verbose_failures
-
-# Enable logging rc options.
+# Announce all options read from the bazelrc file(s) when starting up at the beginning of each Bazel invocation.
 common --announce_rc
 
-# Enable platform-specific configs from bazelrc files.
+# Disable bzlmod (until Tensorflow supports it)
+common --noenable_bzlmod
+
+# Automatically picks up host-OS-specific config lines from bazelrc files.
 common --enable_platform_specific_config
+
+# Disable visibility enforcement as Google Federated Computation Platform (FCP) code
+# is not designed for external consumption.
+common --nocheck_visibility
+
+# ----------------------------------------------------------------------------------------------------------------------
+# TARGET PLATFORMS
+# Configurations specific to target platforms.
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Configuration for Linux on AMD64 (x86_64)
+build:linux_x86_64 --copt=-march=haswell
+build:linux_x86_64 --host_copt=-march=haswell
+
+# Configuration for Linux on ARM64 (aarch64)
+build:linux_aarch64 --copt=-march=armv8-a
+build:linux_aarch64 --host_copt=-march=armv8-a
+
+# Configure for Linux on ARM^$ (Apple Silicon)
+build:macos --macos_minimum_os=12.0
+build:macos_arm64 --copt=-mcpu=apple-m1
+build:macos_arm64 --host_copt=-mcpu=apple-m1
+
+# ----------------------------------------------------------------------------------------------------------------------
+# BUILD
+# Affects general build behavior.
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Attempt to build & test every target whose prerequisites were successfully built.
+build --keep_going
+
+# Show the output files created by builds that requested more than one target.
+build --show_result=20
+
+# Don't allow network access for build actions in the sandbox to avoid accidental dependencies on remote services.
+# Developers should tag targets with `tags=["requires-network"]` to opt-out of the enforcement.
+build --nosandbox_default_allow_network
+
+# Use the most hermetic, available sandboxing strategy.
+build --strategy_regexp=//.*=sandboxed
+
+# ----------------------------------------------------------------------------------------------------------------------
+# CACHE AND REMOTE
+# Configures cache both remotely and locally.
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Enable remote execution and other related features
+common --experimental_repo_remote_exec
+
+# Remote cache server
+common --remote_cache=https://storage.googleapis.com/jbr-fed-bazel-cache/federated-compute
+
+# Use a static value for `PATH` and does not inherit `LD_LIBRARY_PATH` to avoid cache misses.
+common --incompatible_strict_action_env
+
+# Do not upload locally executed action results to the remote cache.
+# It should be flipped to `--remote_upload_local_results` on CI.
+common --noremote_upload_local_results
+
+# Increase the maximum amount of time to wait for remote execution and cache calls.
+common --remote_timeout=3600
+
+# Check the ctime of input files of an action before uploading it to a remote cache.
+common --experimental_guard_against_concurrent_changes
+
+# Process remote cache I/O in the background instead of as the part of a spawn.
+common --experimental_remote_cache_async
+
+# Fall back to standalone local execution strategy if remote execution fails.
+common --remote_local_fallback
+
+# Enable local cache garbage collection.
+common --experimental_disk_cache_gc_max_size=10G
+
+# Extend the lease for remote cache of actions during the build.
+common --experimental_remote_cache_lease_extension
+
+# Always download coverage files for tests from the remote cache, otherwise may be incomplete for cached steps.
+test --experimental_fetch_all_coverage_outputs
+
+# Configuration disabling remote cache
+build:noremote_cache --noremote_accept_cached
+build:noremote_cache --remote_cache=
+
+# ----------------------------------------------------------------------------------------------------------------------
+# LEGACY AND WRONG DEFAULTS
+# Override dangerous or senseless default/legacy Bazel behavior.
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Allow the Bazel server to check directory sources for changes.
+startup --host_jvm_args=-DBAZEL_TRACK_SOURCE_DIRECTORIES=1
+
+# Do not build legacy runfiles symlink forests for external repositories under `.runfiles/wsname/external/repo`.
+build --nolegacy_external_runfiles
+
+# Speed up all builds by not checking if external repository files have been modified.
+common --noexperimental_check_external_repository_files
+
+# ----------------------------------------------------------------------------------------------------------------------
+# C/C++
+# Applied to every C++ target.
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Enable a hermetic C++ toolchain and disable the default detected one.
+build --incompatible_enable_cc_toolchain_resolution
+build --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+
+# Defaults to --std=c++0x
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
+
+# Treat warnings as errors
+build --per_file_copt=+^//@-Werror
+build --copt="-Wno-error=unused-but-set-variable"
+build --copt="-Wno-error=deprecated-declarations"
+
+# ----------------------------------------------------------------------------------------------------------------------
+# PYTHON
+# Applied to every python target.
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Do not automatically create `__init__.py` files in the runfiles of Python targets.
+build --incompatible_default_to_explicit_init_py
+
+# ----------------------------------------------------------------------------------------------------------------------
+# PROTOBUF
+# Applied to every protobuf target.
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Enable fast C++ protocol buffers, 10x speedup over pure Python.
+build --define=use_fast_cpp_protos=true
+build --define=allow_oversize_protos=true
+
+# ----------------------------------------------------------------------------------------------------------------------
+# TENSORFLOW BASE
+# Configure default TensorFlow settings and features.
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Avoid building with --compilation_mode=dbg usually, since the artifacts can be very large
+build --compilation_mode=opt
+
+# Build TensorFlow 2.x.
+build --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
+
+# Enable Tensorflow XLA support by default.
+build --define=with_xla_support=true
+
+# Prevent gRPC from depending on c-ares.
+build --define=grpc_no_ares=true
+
+# Link tensorflow statically, disable dynamic op registration.
+build --define framework_shared_object=false
+build --define tsl_protobuf_header_only=false
+
+# Default behavior leads to parts of TensorFlow library stripped,
+# reverting to including whole archives.
+build --noincompatible_remove_legacy_whole_archive
+build --features=-force_no_whole_archive
+build --host_features=-force_no_whole_archive
+
+# Disable all default platform optional features.
+build --define=no_aws_support=true
+build --define=no_gcp_support=true
+build --define=no_hdfs_support=true
+build --define=no_nccl_support=true
+build --define=no_kafka_support=true
+build --define=no_ignite_support=true
+
+# Disable XNNPACK
+build --define=tflite_with_xnnpack=false
+
+# ----------------------------------------------------------------------------------------------------------------------
+# MESSAGING
+# Limit build logs and clarify failures.
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Without this, bazel doesn't print all Java compilation errors.
+build --javacopt="-verbose"
+
+# Don't show inactionable warnings when building (not using) external deps.
+build --output_filter='^//((?!(external):).)*$'
+
+# Configure short or long logs
+build --output_filter=DONT_MATCH_ANYTHING
+build:verbose_logs --output_filter=
+
+# Enable verbose failures for testing only.
+test --verbose_failures
 
 # Enable logging error output.
 test --test_output=errors
 test --test_summary=detailed
 
-# Execute commands as local subprocesses
-build --spawn_strategy=local
+# ----------------------------------------------------------------------------------------------------------------------
+# DEBUGGING
+# Simplify debugging (doesn't affect TensorFlow binary).
+# ----------------------------------------------------------------------------------------------------------------------
 
-# Enable build optimizations.
-build --compilation_mode=opt
+# Fail fast during debugging
+common:debug --nokeep_going
 
-# Enable fast C++ protocol buffers, 10x speedup over pure Python.
-# TODO: b/306021118 - Temporarily disable `use_fast_cpp_protos`.
-# build --define=use_fast_cpp_protos=true
-build --define=allow_oversize_protos=true
+# Keep the sandbox on failure for debugging
+build:debug --sandbox_debug
 
-# Do not automatically create `__init__.py` in the runfiles of Python targets.
-build --incompatible_default_to_explicit_init_py
+# Always run tests even if they have cached results.
+test:debug --nocache_test_results
 
-# Haswell processor and later optimizations. This covers most processors deployed
-# today, includin Colab CPU runtimes.
-build --copt=-march=haswell
-build --host_copt=-march=haswell
-# Only use level three optimizations for target, not necessarily for host
-# since host artifacts don't need to be fast.
-build --copt=-O3
+# Run one test at a time.
+test:debug --test_strategy=exclusive
 
-# Suppress C++ compiler warnings.
-build:linux --copt=-w
-build:linux --host_copt=-w
+# Stream stdout/stderr output from each test in real-time.
+test:debug --test_output=streamed
 
-#
-# Remote execution capabilities
-#
+# Prevent long running tests from timing out.
+test:debug --test_timeout=9999
 
-# Enable authentication.
-build:remote --google_default_credentials=true
+# ----------------------------------------------------------------------------------------------------------------------
+# CI/CD
+# Streamline CI/CD logs and write cache results.
+# ----------------------------------------------------------------------------------------------------------------------
 
-# Enable remote cache.
-build:remote --remote_cache=grpcs://remotebuildexecution.googleapis.com
+# Fail fast during CI build
+common:ci --nokeep_going
 
-# Project configuration.
-build:remote --remote_instance_name=projects/tensorflow-federated/instances/default_instance
-build:remote --project_id=tensorflow-federated
+# Upload locally executed action results to the remote cache.
+common:ci_main --remote_upload_local_results
 
-#
-# Required to build TensorFlow
-#
+# Only download required dependencies on CI.
+common:ci --remote_download_toplevel
 
-# Default build options. These are applied first and unconditionally.
+# Add a timestamp to each message generated by Bazel specifying the time at which the message was displayed.
+common:ci --show_timestamps
 
-build --define=grpc_no_ares=true
+# Only show progress every 60 seconds on CI to avoid producing overly long logs.
+common:ci --show_progress_rate_limit=60
 
-# See https://github.com/bazelbuild/bazel/issues/7362 for information on what
-# --incompatible_remove_legacy_whole_archive flag does.
-# This flag is set to true in Bazel 1.0 and newer versions. We tried to migrate
-# Tensorflow to the default, however test coverage wasn't enough to catch the
-# errors.
-# There is ongoing work on Bazel team's side to provide support for transitive
-# shared libraries. As part of migrating to transitive shared libraries, we
-# hope to provide a better mechanism for control over symbol exporting, and
-# then tackle this issue again.
-#
-# Remove this line once TF doesn't depend on Bazel wrapping all library
-# archives in -whole_archive -no_whole_archive.
-build --noincompatible_remove_legacy_whole_archive
+# Set this flag to enable re-tries of failed tests on CI to avoid rare flaky tests.
+test:ci --flaky_test_attempts=2
 
-# Enable XLA support by default.
-build --define=with_xla_support=true
+# Fixes builds hanging on CI that get the TCP connection closed without sending RST packets.
+common:ci --grpc_keepalive_time=30s
 
-build --config=short_logs
-
-build --config=v2
-
-# Disable AWS/HDFS support by default
-build --define=no_aws_support=true
-build --define=no_hdfs_support=true
-
-# TF now has `cc_shared_library` targets, so it needs the experimental flag
-# Remove when `cc_shared_library` is enabled by default
-build --experimental_cc_shared_library
-build --experimental_link_static_libraries_once=false
-
-# Default options should come above this line.
-
-# This config refers to building CUDA op kernels with nvcc.
-build:cuda --repo_env TF_NEED_CUDA=1
-build:cuda --crosstool_top=@local_config_cuda//crosstool:toolchain
-build:cuda --@local_config_cuda//:enable_cuda
-
-# Default paths for TF_SYSTEM_LIBS
-build:linux --define=PREFIX=/usr
-build:linux --define=LIBDIR=$(PREFIX)/lib
-build:linux --define=INCLUDEDIR=$(PREFIX)/include
-build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
-
-# By default, build TF in C++ 17 mode.
-build:linux --cxxopt=-std=c++17
-build:linux --host_cxxopt=-std=c++17
-
-# Do not risk cache corruption. See:
-# https://github.com/bazelbuild/bazel/issues/3360
-build:linux --experimental_guard_against_concurrent_changes
-
-# Configure short or long logs
-build:short_logs --output_filter=DONT_MATCH_ANYTHING
-build:verbose_logs --output_filter=
-
-# Instruction set optimizations
-# Create a feature in toolchains for avx/avx2 to
-#   avoid having to define linux/win separately.
-build:avx_linux --copt=-mavx
-build:avx_linux --host_copt=-mavx
-
-# Options to build TensorFlow 1.x or 2.x.
-build:v1 --define=tf_api_version=1 --action_env=TF2_BEHAVIOR=0
-build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
-
-# Options when using remote execution
-
-# Flag to enable remote config
-common --experimental_repo_remote_exec
-
-# Config-specific options should come above this line.
-
-build:cuda --action_env=TF_CUDA_VERSION="12"
-build:cuda --action_env=TF_CUDNN_VERSION="8"
-build:cuda --repo_env=TF_CUDA_COMPUTE_CAPABILITIES="sm_60,sm_70,sm_75,compute_80"
-build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt9/usr/bin/gcc"
-
-build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1
-
-# Default startup
-startup --host_jvm_args=-Dbazel.DigestFunction=SHA256
-
-build --define=build_with_onednn_v2=true
+# -------------------------------------------------------------------------------------------------
+# Load any settings & overrides specific to the local system from `./local.bazelrc`.
+try-import %workspace%/.local.bazelrc
