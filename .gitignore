@@ -13,3 +13,8 @@ venv/
 
 # Notebooks
 .ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+.eclipse/
