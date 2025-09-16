@@ -1280,6 +1280,142 @@ TEST(CheckpointAggregatorTest,
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
+TEST_P(CheckpointAggregatorTest, ReportWithMinContributors) {
+  Configuration config_message = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "fedsql_dp_group_by"
+      intrinsic_args:
+      [ {
+        input_tensor {
+          name: "key"
+          dtype: DT_STRING
+          shape { dim_sizes: -1 }
+        }
+      }
+        , {
+          parameter {
+            name: "epsilon"
+            dtype: DT_DOUBLE
+            shape {}
+            double_val: 50.0
+          }
+        }
+        , {
+          parameter {
+            name: "delta"
+            dtype: DT_DOUBLE
+            shape {}
+            double_val: 0.0001
+          }
+        }
+        , {
+          parameter {
+            name: "max_groups_contributed"
+            dtype: DT_INT64
+            shape {}
+            int64_val: 1
+          }
+        }
+        , {
+          parameter {
+            name: "min_contributors_to_group"
+            dtype: DT_INT64
+            shape {}
+            int64_val: 3
+          }
+        }]
+      output_tensors {
+        name: "key_out"
+        dtype: DT_STRING
+        shape { dim_sizes: -1 }
+      }
+      inner_intrinsics:
+      [ {
+        intrinsic_uri: "GoogleSQL:$differential_privacy_sum"
+        intrinsic_args:
+        [ {
+          input_tensor {
+            name: "value"
+            dtype: DT_INT32
+            shape {}
+          }
+        }]
+        output_tensors {
+          name: "value_out"
+          dtype: DT_INT64
+          shape {}
+        }
+        intrinsic_args:
+        [ {
+          parameter {
+            dtype: DT_DOUBLE
+            shape {}
+            double_val: 1.0
+          }
+        }
+          , {
+            parameter {
+              dtype: DT_DOUBLE
+              shape {}
+              double_val: -1.0
+            }
+          }
+          , {
+            parameter {
+              dtype: DT_DOUBLE
+              shape {}
+              double_val: -1.0
+            }
+          }]
+      }]
+    }
+  )pb");
+  std::unique_ptr<CheckpointAggregator> aggregator = Create(config_message);
+
+  // Accumulate 40 inputs for "keep" key.
+  for (int i = 0; i < 40; ++i) {
+    MockCheckpointParser parser;
+    EXPECT_CALL(parser, GetTensor(StrEq("key"))).WillOnce([] {
+      return Tensor::Create(DT_STRING, {1},
+                            CreateTestData<string_view>({"keep"}));
+    });
+    EXPECT_CALL(parser, GetTensor(StrEq("value"))).WillOnce([] {
+      return Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1}));
+    });
+    TFF_ASSERT_OK(aggregator->Accumulate(parser));
+  }
+
+  // Accumulate 2 inputs for "drop" key.
+  for (int i = 0; i < 2; ++i) {
+    MockCheckpointParser parser;
+    EXPECT_CALL(parser, GetTensor(StrEq("key"))).WillOnce([] {
+      return Tensor::Create(DT_STRING, {1},
+                            CreateTestData<string_view>({"drop"}));
+    });
+    EXPECT_CALL(parser, GetTensor(StrEq("value"))).WillOnce([] {
+      return Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1}));
+    });
+    TFF_ASSERT_OK(aggregator->Accumulate(parser));
+  }
+
+  if (GetParam()) {
+    TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_state,
+                             std::move(*aggregator).Serialize());
+    TFF_ASSERT_OK_AND_ASSIGN(aggregator, CheckpointAggregator::Deserialize(
+                                             config_message, serialized_state));
+  }
+
+  // Only the "keep" key should be reported.
+  MockCheckpointBuilder builder;
+  EXPECT_CALL(builder,
+              Add(StrEq("key_out"), IsTensor<string_view>({1}, {"keep"})))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(builder, Add(StrEq("value_out"), IsTensor<int64_t>({1}, {40}, 5)))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_THAT(aggregator->GetNumCheckpointsAggregated(), IsOkAndHolds(42));
+  TFF_EXPECT_OK(aggregator->Report(builder));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     CheckpointAggregatorTestInstantiation, CheckpointAggregatorTest,
     testing::ValuesIn<bool>({false, true}),
