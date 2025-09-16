@@ -217,16 +217,16 @@ class RemoteExecutor(federated_language.framework.Executor):
   async def create_value(self, value, type_spec=None):
     self._check_has_executor_id()
 
+    @federated_language.framework.trace
+    def serialize_value():
+      return value_serialization.serialize_value(value, type_spec)
+
     if self._stream_structs and isinstance(
         type_spec, federated_language.StructType
     ):
       return await self.create_value_stream_structs(value, type_spec)
 
-    if isinstance(value, structure.Struct):
-      value = structure.to_odict_or_tuple(value)
-    value_proto, type_spec = value_serialization.serialize_value(
-        value, type_spec
-    )
+    value_proto, type_spec = serialize_value()
     create_value_request = executor_pb2.CreateValueRequest(
         executor=self._executor_id, value=value_proto
     )

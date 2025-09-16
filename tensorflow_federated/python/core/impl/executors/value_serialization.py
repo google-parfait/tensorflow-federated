@@ -188,34 +188,26 @@ def _serialize_struct_value(
     type_spec: federated_language.StructType,
 ) -> tuple[executor_pb2.Value, federated_language.StructType]:
   """Serializes a value of tuple type."""
-  if isinstance(value, Mapping):
-    values = value.values()
-  elif isinstance(value, Sequence):
-    values = list(value)
-  else:
-    raise ValueError(
-        'Expected value to be a `NamedTuple`, `Mapping`, or `Sequence`, found'
-        f' {type(value)}.'
+  value_structure = structure._from_container(value)  # pylint: disable=protected-access
+  if len(value_structure) != len(type_spec):
+    raise TypeError(
+        'Cannot serialize a struct value of '
+        f'{len(value_structure)} elements to a struct type '
+        f'requiring {len(type_spec)} elements. Trying to serialize'
+        f'\n{value!r}\nto\n{type_spec}.'
     )
-  if len(values) != len(type_spec):
-    raise ValueError(
-        f'Expected the number of `values` {len(values)} to equal the length'
-        f' of `type_spec` {len(type_spec)}.'
-    )
-
-  element_protos = []
-  for (element_name, element_type), value in zip(type_spec.items(), values):
-    value_proto, _ = serialize_value(value, element_type)
-    if element_name is not None:
-      element_proto = executor_pb2.Value.Struct.Element(
-          name=element_name, value=value_proto
-      )
+  val_elem_iter = structure._to_elements(value_structure)  # pylint: disable=protected-access
+  elements = []
+  for (e_name, e_type), (_, e_val) in zip(type_spec.items(), val_elem_iter):
+    e_value, _ = serialize_value(e_val, e_type)
+    if e_name:
+      element = executor_pb2.Value.Struct.Element(name=e_name, value=e_value)
     else:
-      element_proto = executor_pb2.Value.Struct.Element(value=value_proto)
-    element_protos.append(element_proto)
-
-  struct_proto = executor_pb2.Value.Struct(element=element_protos)
-  value_proto = executor_pb2.Value(struct=struct_proto)
+      element = executor_pb2.Value.Struct.Element(value=e_value)
+    elements.append(element)
+  value_proto = executor_pb2.Value(
+      struct=executor_pb2.Value.Struct(element=elements)
+  )
   return value_proto, type_spec
 
 

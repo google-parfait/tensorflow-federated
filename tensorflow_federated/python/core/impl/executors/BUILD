@@ -55,7 +55,6 @@ py_library(
         ":executors_errors",
         ":value_serialization",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
     ],
 )

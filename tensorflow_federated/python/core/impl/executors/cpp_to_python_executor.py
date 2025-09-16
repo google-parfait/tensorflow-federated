@@ -16,13 +16,11 @@
 import asyncio
 from collections.abc import Sequence
 import concurrent
-import typing
-from typing import NoReturn, Optional, Union
+from typing import NoReturn, Optional
 
 import federated_language
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -109,11 +107,6 @@ class CppToPythonExecutorBridge(federated_language.framework.Executor):
   async def create_value(
       self, value: object, type_signature: federated_language.Type
   ) -> CppToPythonExecutorValue:
-    # TODO: b/224484886 - Downcasting to all handled types.
-    value = typing.cast(Union[structure.Struct], value)
-    if isinstance(value, structure.Struct):
-      value = structure.to_odict_or_tuple(value)
-
     serialized_value, _ = value_serialization.serialize_value(
         value, type_signature
     )

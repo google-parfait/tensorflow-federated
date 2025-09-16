@@ -182,7 +182,13 @@ class ValueSerializationTest(parameterized.TestCase):
 
   def test_serialize_struct_with_type_element_mismatch(self):
     x = {'a': 1}
-    with self.assertRaises(ValueError):
+    with self.assertRaisesRegex(
+        TypeError,
+        (
+            'Cannot serialize a struct value of 1 elements to a struct '
+            'type requiring 2 elements.'
+        ),
+    ):
       value_serialization.serialize_value(
           x, federated_language.StructType([('a', np.int32), ('b', np.int32)])
       )
