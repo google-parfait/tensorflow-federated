@@ -84,16 +84,12 @@ class DPQuantileAggregator final : public DPTensorAggregator {
 
   Status IsCompatible(const TensorAggregator& other) const override;
 
-  StatusOr<std::vector<std::string>> Serialize(int num_partitions) && override {
-    if (num_partitions != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPQuantileAggregator::Serialize: num_partitions must be 1";
-    }
+  StatusOr<std::string> Serialize() && override {
     DPQuantileAggregatorState aggregator_state;
     aggregator_state.set_num_inputs(num_inputs_);
     aggregator_state.set_reservoir_sampling_count(reservoir_sampling_count_);
     *(aggregator_state.mutable_buffer()) = buffer_.EncodeContent();
-    return std::vector<std::string>{aggregator_state.SerializeAsString()};
+    return aggregator_state.SerializeAsString();
   }
 
   // Trigger execution of the DP quantile algorithm from Durfee's paper. It is

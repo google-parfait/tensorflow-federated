@@ -39,7 +39,6 @@ using ::testing::Eq;
 using ::testing::HasSubstr;
 using testing::IsFalse;
 using testing::IsTrue;
-using ::testing::SizeIs;
 using testing::TestWithParam;
 
 using FederatedMeanTest = TestWithParam<bool>;
@@ -58,11 +57,9 @@ TEST_P(FederatedMeanTest, ScalarAggregation_Succeeds) {
   EXPECT_THAT(aggregator->Accumulate(v2), IsOk());
 
   if (GetParam()) {
-    auto serialized_state =
-        std::move(*aggregator).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
+    auto serialized_state = std::move(*aggregator).Serialize();
     aggregator = DeserializeTensorAggregator(federated_mean_intrinsic,
-                                             serialized_state.value()[0])
+                                             serialized_state.value())
                      .value();
   }
 
@@ -97,11 +94,9 @@ TEST_P(FederatedMeanTest, WeightedScalarAggregation_Succeeds) {
   EXPECT_THAT(aggregator->Accumulate({&v2, &w2}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state =
-        std::move(*aggregator).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
+    auto serialized_state = std::move(*aggregator).Serialize();
     aggregator = DeserializeTensorAggregator(federated_mean_intrinsic,
-                                             serialized_state.value()[0])
+                                             serialized_state.value())
                      .value();
   }
 
@@ -140,11 +135,9 @@ TEST_P(FederatedMeanTest, DenseAggregation_Succeeds) {
   EXPECT_THAT(aggregator->Accumulate(v2), IsOk());
 
   if (GetParam()) {
-    auto serialized_state =
-        std::move(*aggregator).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
+    auto serialized_state = std::move(*aggregator).Serialize();
     aggregator = DeserializeTensorAggregator(federated_mean_intrinsic,
-                                             serialized_state.value()[0])
+                                             serialized_state.value())
                      .value();
   }
 
@@ -186,11 +179,9 @@ TEST_P(FederatedMeanTest, WeightedDenseAggregation_Succeeds) {
   EXPECT_THAT(aggregator->Accumulate({&v2, &w2}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state =
-        std::move(*aggregator).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
+    auto serialized_state = std::move(*aggregator).Serialize();
     aggregator = DeserializeTensorAggregator(federated_mean_intrinsic,
-                                             serialized_state.value()[0])
+                                             serialized_state.value())
                      .value();
   }
 
@@ -228,17 +219,13 @@ TEST_P(FederatedMeanTest, Merge_Succeeds) {
   EXPECT_THAT(aggregator2->Accumulate(v3), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 =
-        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
-    auto serialized_state2 =
-        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
-    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
+    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state2 = std::move(*aggregator2).Serialize();
     aggregator1 = DeserializeTensorAggregator(federated_mean_intrinsic,
-                                              serialized_state1.value()[0])
+                                              serialized_state1.value())
                       .value();
     aggregator2 = DeserializeTensorAggregator(federated_mean_intrinsic,
-                                              serialized_state2.value()[0])
+                                              serialized_state2.value())
                       .value();
   }
 
@@ -279,17 +266,13 @@ TEST_P(FederatedMeanTest, WeightedDenseMerge_Succeeds) {
   EXPECT_THAT(aggregator2->Accumulate({&v3, &w3}), IsOk());
 
   if (GetParam()) {
-    auto serialized_state1 =
-        std::move(*aggregator1).Serialize(/*num_partitions=*/1);
-    auto serialized_state2 =
-        std::move(*aggregator2).Serialize(/*num_partitions=*/1);
-    EXPECT_THAT(serialized_state1, IsOkAndHolds(SizeIs(1)));
-    EXPECT_THAT(serialized_state2, IsOkAndHolds(SizeIs(1)));
+    auto serialized_state1 = std::move(*aggregator1).Serialize();
+    auto serialized_state2 = std::move(*aggregator2).Serialize();
     aggregator1 = DeserializeTensorAggregator(federated_mean_intrinsic,
-                                              serialized_state1.value()[0])
+                                              serialized_state1.value())
                       .value();
     aggregator2 = DeserializeTensorAggregator(federated_mean_intrinsic,
-                                              serialized_state2.value()[0])
+                                              serialized_state2.value())
                       .value();
   }
 

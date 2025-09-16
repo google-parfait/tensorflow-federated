@@ -58,18 +58,14 @@ class FederatedMean final : public TensorAggregator {
         weights_sum_(weights_sum),
         num_inputs_(num_inputs) {}
 
-  StatusOr<std::vector<std::string>> Serialize(int num_partitions) && override {
-    if (num_partitions != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMean::Serialize: num_partitions must be 1";
-    }
+  StatusOr<std::string> Serialize() && override {
     FederatedMeanAggregatorState aggregator_state;
     aggregator_state.set_num_inputs(num_inputs_);
     *(aggregator_state.mutable_weighted_values_sum()) =
         weighted_values_sum_->EncodeContent();
     *(aggregator_state.mutable_weights_sum()) = std::string(
         reinterpret_cast<char*>(&weights_sum_), sizeof(weights_sum_));
-    return std::vector<std::string>{aggregator_state.SerializeAsString()};
+    return aggregator_state.SerializeAsString();
   }
 
  private:

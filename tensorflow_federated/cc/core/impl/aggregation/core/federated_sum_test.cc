@@ -37,7 +37,6 @@ namespace {
 using ::testing::Eq;
 using ::testing::HasSubstr;
 using testing::IsTrue;
-using ::testing::SizeIs;
 
 Intrinsic GetDefaultIntrinsic() {
   // One "federated_sum" intrinsic with a single scalar int32 tensor.
@@ -124,12 +123,10 @@ TEST(FederatedSumTest, SerializeDeserialize_Succeeds) {
   EXPECT_THAT(aggregator->Accumulate(t2), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
 
-  auto serialized_state =
-      std::move(*aggregator).Serialize(/*num_partitions=*/1);
-  EXPECT_THAT(serialized_state, IsOkAndHolds(SizeIs(1)));
+  auto serialized_state = std::move(*aggregator).Serialize();
   auto deserialized_aggregator =
       DeserializeTensorAggregator(GetDefaultIntrinsic(),
-                                  serialized_state.value()[0])
+                                  serialized_state.value())
           .value();
 
   EXPECT_THAT(deserialized_aggregator->Accumulate(t3), IsOk());
