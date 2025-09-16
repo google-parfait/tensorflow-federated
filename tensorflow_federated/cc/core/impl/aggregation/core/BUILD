@@ -237,7 +237,6 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/hash",
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -878,5 +877,30 @@ cc_binary(
         ":tensor",
         ":tensor_cc_proto",
         "@com_google_benchmark//:benchmark",
+    ],
+)
+
+cc_library(
+    name = "partitioner",
+    srcs = ["partitioner.cc"],
+    hdrs = ["partitioner.h"],
+    deps = [
+        ":tensor",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/hash",
+    ],
+    alwayslink = 1,
+)
+
+cc_test(
+    name = "partitioner_test",
+    srcs = ["partitioner_test.cc"],
+    deps = [
+        ":partitioner",
+        ":tensor",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
     ],
 )
