@@ -18,3 +18,5 @@ venv/
 .vscode/
 .idea/
 .eclipse/
+.devcontainer/
+.history/

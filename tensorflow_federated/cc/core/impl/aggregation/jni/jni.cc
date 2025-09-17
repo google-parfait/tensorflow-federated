@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+// todo: do not use tf/tff types on the border on jni: use strings and serialize/deserialize them
+
 #include <jni.h>
 #include <string.h>
 

@@ -17,6 +17,9 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 # Direct dependencies
 #
 
+# Warning:
+# for nsync compilation you have to install g++: apt-get update && apt-get install -y g++
+
 http_archive(
     name = "bazel_skylib",
     sha256 = "3b620033ca48fcd6f5ef2ac85e0f6ec5639605fa2f627968490e52fc91a9932f",
