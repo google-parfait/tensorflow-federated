@@ -154,10 +154,10 @@ class MapReduceFormTest(tf.test.TestCase):
         ip_2_result_type
     )
 
-    sample_batch = collections.OrderedDict(
-        x=np.array([[1.0, 1.0]], dtype=np.float32),
-        y=np.array([[0]], dtype=np.int32),
-    )
+    sample_batch = {
+        'x': np.array([[1.0, 1.0]], dtype=np.float32),
+        'y': np.array([[0]], dtype=np.int32),
+    }
     client_data = [sample_batch]
     state_1 = ip_1.initialize()
     ip_1_next_result = ip_1.next(state_1, [client_data])
@@ -180,8 +180,14 @@ class MapReduceFormTest(tf.test.TestCase):
 
     # Note that we cannot simply use assertEqual because the values may differ
     # due to floating point issues.
-    tf.nest.assert_same_structure(server_state_1, server_state_2)
-    tf.nest.assert_same_structure(server_output_1, server_output_2)
+    # NOTE: the structure of the values will differ because the
+    # `tff.backends.mapreduce` functions do not preserve the structure.
+    tf.nest.assert_same_structure(
+        server_state_1, server_state_2, check_types=False
+    )
+    tf.nest.assert_same_structure(
+        server_output_1, server_output_2, check_types=False
+    )
     self.assertAllClose(server_state_1_arrays, server_state_2_arrays)
     self.assertAllClose(server_output_1_arrays[:2], server_output_2_arrays[:2])
 
