@@ -31,11 +31,11 @@ limitations under the License
 #include "include/grpcpp/grpcpp.h"
 #include "include/grpcpp/support/status.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.grpc.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
-#include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -60,7 +60,8 @@ using ExecutorFactory = std::function<absl::StatusOr<std::shared_ptr<Executor>>(
 // Finally, `Dispose` serves as an explicit resource-management request;
 // `Dispose` tells the service that it can free any resources
 // associated with the specified `ValueId`s.
-class ExecutorService : public v0::ExecutorGroup::Service {
+class ExecutorService
+    : public federated_language_executor::ExecutorGroup::Service {
   using RemoteValueId = std::string;
 
  public:
@@ -78,45 +79,53 @@ class ExecutorService : public v0::ExecutorGroup::Service {
   // Configure the underlying executor stack to host a particular executor
   // configuration and return an identifier used to access the resulting
   // executor.
-  grpc::Status GetExecutor(grpc::ServerContext* context,
-                           const v0::GetExecutorRequest* request,
-                           v0::GetExecutorResponse* response) override;
+  grpc::Status GetExecutor(
+      grpc::ServerContext* context,
+      const federated_language_executor::GetExecutorRequest* request,
+      federated_language_executor::GetExecutorResponse* response) override;
 
   // Embed a value in the underlying executor stack.
-  grpc::Status CreateValue(grpc::ServerContext* context,
-                           const v0::CreateValueRequest* request,
-                           v0::CreateValueResponse* response) override;
+  grpc::Status CreateValue(
+      grpc::ServerContext* context,
+      const federated_language_executor::CreateValueRequest* request,
+      federated_language_executor::CreateValueResponse* response) override;
 
   // Invoke an embedded function on an embedded argument.
-  grpc::Status CreateCall(grpc::ServerContext* context,
-                          const v0::CreateCallRequest* request,
-                          v0::CreateCallResponse* response) override;
+  grpc::Status CreateCall(
+      grpc::ServerContext* context,
+      const federated_language_executor::CreateCallRequest* request,
+      federated_language_executor::CreateCallResponse* response) override;
 
   // Package several embedded values together as a single value.
-  grpc::Status CreateStruct(grpc::ServerContext* context,
-                            const v0::CreateStructRequest* request,
-                            v0::CreateStructResponse* response) override;
+  grpc::Status CreateStruct(
+      grpc::ServerContext* context,
+      const federated_language_executor::CreateStructRequest* request,
+      federated_language_executor::CreateStructResponse* response) override;
 
   // Select a single value from an embedded value of TFF type Struct.
-  grpc::Status CreateSelection(grpc::ServerContext* context,
-                               const v0::CreateSelectionRequest* request,
-                               v0::CreateSelectionResponse* response) override;
+  grpc::Status CreateSelection(
+      grpc::ServerContext* context,
+      const federated_language_executor::CreateSelectionRequest* request,
+      federated_language_executor::CreateSelectionResponse* response) override;
 
   // Materialize a value on the client. Blocking. The value requested to be
   // materialized must be non-functional.
-  grpc::Status Compute(grpc::ServerContext* context,
-                       const v0::ComputeRequest* request,
-                       v0::ComputeResponse* response) override;
+  grpc::Status Compute(
+      grpc::ServerContext* context,
+      const federated_language_executor::ComputeRequest* request,
+      federated_language_executor::ComputeResponse* response) override;
 
   // Free the resources associated to the embedded values specified.
-  grpc::Status Dispose(grpc::ServerContext* context,
-                       const v0::DisposeRequest* request,
-                       v0::DisposeResponse* response) override;
+  grpc::Status Dispose(
+      grpc::ServerContext* context,
+      const federated_language_executor::DisposeRequest* request,
+      federated_language_executor::DisposeResponse* response) override;
 
   // Free the resources associated with a particular executor.
-  grpc::Status DisposeExecutor(grpc::ServerContext* context,
-                               const v0::DisposeExecutorRequest* request,
-                               v0::DisposeExecutorResponse* response) override;
+  grpc::Status DisposeExecutor(
+      grpc::ServerContext* context,
+      const federated_language_executor::DisposeExecutorRequest* request,
+      federated_language_executor::DisposeExecutorResponse* response) override;
 
  private:
   // A cheaply-copyable struct used to track executors and pass handles to them
@@ -134,14 +143,16 @@ class ExecutorService : public v0::ExecutorGroup::Service {
   // Writes the `std::shared_ptr<Executor>` corresponding to `executor_id` into
   // `executor_out`. `method name` is the name of the caller that requested
   // access to this executor, and is used for debug purposes only.
-  grpc::Status RequireExecutor(absl::string_view method_name,
-                               const v0::ExecutorId& executor_id,
-                               std::shared_ptr<Executor>& executor_out);
+  grpc::Status RequireExecutor(
+      absl::string_view method_name,
+      const federated_language_executor::ExecutorId& executor_id,
+      std::shared_ptr<Executor>& executor_out);
 
   // Function which contains switching logic, determining e.g. whether to
   // destroy an underlying executor.
-  grpc::Status HandleNotOK(const absl::Status& status,
-                           const v0::ExecutorId& executor_id);
+  grpc::Status HandleNotOK(
+      const absl::Status& status,
+      const federated_language_executor::ExecutorId& executor_id);
 
   using ExecutorId = std::string;
 

@@ -65,8 +65,8 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
+        "@federated_language//federated_language_executor:executor_bindings",
     ],
 )
 

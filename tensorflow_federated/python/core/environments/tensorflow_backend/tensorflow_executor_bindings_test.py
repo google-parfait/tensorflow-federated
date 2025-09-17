@@ -17,15 +17,15 @@ import collections
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
+from federated_language_executor import executor_bindings
+from federated_language_executor import executor_pb2
+from federated_language_executor import value_serialization
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
 # Creating logical devices should be done only once before TF runtime startup

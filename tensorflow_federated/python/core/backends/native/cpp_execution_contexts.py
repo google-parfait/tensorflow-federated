@@ -16,12 +16,12 @@
 from collections.abc import Sequence
 
 import federated_language
+from federated_language_executor import executor_bindings
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
 def _create_tensorflow_backend_execution_stack(

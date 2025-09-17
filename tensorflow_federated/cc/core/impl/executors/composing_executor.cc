@@ -39,6 +39,7 @@ limitations under the License
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -46,7 +47,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -64,15 +64,17 @@ inline std::shared_ptr<OwnedValueId> ShareValueId(OwnedValueId&& id) {
 // Inner (behind shared_ptr) representation of an unplaced value.
 //
 // The primary purpose of this class is to manage values which may be either:
-// (1) a v0::Value proto
+// (1) a federated_language_executor::Value proto
 // (2) embedded in the `server` executor or
 // (3) both.
 class UnplacedInner {
  public:
-  explicit UnplacedInner(std::shared_ptr<v0::Value> proto)
+  explicit UnplacedInner(
+      std::shared_ptr<federated_language_executor::Value> proto)
       : proto_(std::move(proto)) {}
-  explicit UnplacedInner(v0::Value proto)
-      : proto_(std::make_shared<v0::Value>(std::move(proto))) {}
+  explicit UnplacedInner(federated_language_executor::Value proto)
+      : proto_(std::make_shared<federated_language_executor::Value>(
+            std::move(proto))) {}
   explicit UnplacedInner(std::shared_ptr<OwnedValueId> embedded)
       : embedded_(std::move(embedded)) {}
   explicit UnplacedInner(OwnedValueId embedded)
@@ -82,14 +84,17 @@ class UnplacedInner {
 
   // Returns the underlying `Proto` value without attempting to create one via
   // a `Materialize` call.
-  std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> GetProto() {
+  std::optional<
+      absl::StatusOr<std::shared_ptr<federated_language_executor::Value>>>
+  GetProto() {
     absl::ReaderMutexLock lock(&mutex_);
     return proto_;
   }
 
   // Gets the proto representation of the inner value. May block on a remote
   // `Materialize` call.
-  absl::StatusOr<std::shared_ptr<v0::Value>> Proto(Executor& server) {
+  absl::StatusOr<std::shared_ptr<federated_language_executor::Value>> Proto(
+      Executor& server) {
     {
       // Try to grab the proto if it already exists.
       absl::ReaderMutexLock lock(&mutex_);
@@ -108,8 +113,8 @@ class UnplacedInner {
       auto proto_or_status =
           server.Materialize(embedded_.value().value()->ref());
       if (proto_or_status.ok()) {
-        proto_ =
-            std::make_shared<v0::Value>(std::move(proto_or_status.value()));
+        proto_ = std::make_shared<federated_language_executor::Value>(
+            std::move(proto_or_status.value()));
       } else {
         proto_ = std::move(proto_or_status.status());
       }
@@ -146,8 +151,8 @@ class UnplacedInner {
   }
 
  private:
-  absl::StatusOr<std::shared_ptr<v0::Value>> ExtractProto() const
-      ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
+  absl::StatusOr<std::shared_ptr<federated_language_executor::Value>>
+  ExtractProto() const ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
     if (proto_.value().ok()) {
       return proto_.value().value();
     } else {
@@ -165,8 +170,9 @@ class UnplacedInner {
   }
 
   absl::Mutex mutex_;
-  std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> proto_
-      ABSL_GUARDED_BY(mutex_);
+  std::optional<
+      absl::StatusOr<std::shared_ptr<federated_language_executor::Value>>>
+      proto_ ABSL_GUARDED_BY(mutex_);
   std::optional<absl::StatusOr<std::shared_ptr<OwnedValueId>>> embedded_
       ABSL_GUARDED_BY(mutex_);
 };
@@ -258,8 +264,8 @@ class ExecutorValue {
 
   // Fetches an unplaced functional value as a proto, ensuring that no
   // underlying `Materialize` call occurs.
-  absl::StatusOr<std::shared_ptr<v0::Value>> GetUnplacedFunctionProto(
-      absl::string_view name) const {
+  absl::StatusOr<std::shared_ptr<federated_language_executor::Value>>
+  GetUnplacedFunctionProto(absl::string_view name) const {
     if (type() != ExecutorValue::ValueType::UNPLACED) {
       return absl::InvalidArgumentError(
           absl::StrCat("`", name, "` must be an unplaced functional value, ",
@@ -310,16 +316,19 @@ class ExecutorValue {
   // of federated values to `create_federated` and creating unrecognized
   // values inside of the `unplaced_child` executor.
   static absl::StatusOr<ExecutorValue> FromProto(
-      const v0::Value& value_pb, Executor& unplaced_child, int32_t num_clients,
+      const federated_language_executor::Value& value_pb,
+      Executor& unplaced_child, int32_t num_clients,
       const std::function<absl::StatusOr<ExecutorValue>(
-          FederatedKind, const v0::Value_Federated&)>& create_federated) {
+          FederatedKind, const federated_language_executor::Value_Federated&)>&
+          create_federated) {
     switch (value_pb.value_case()) {
-      case v0::Value::kFederated: {
-        const v0::Value_Federated& federated = value_pb.federated();
+      case federated_language_executor::Value::kFederated: {
+        const federated_language_executor::Value_Federated& federated =
+            value_pb.federated();
         auto kind = TFF_TRY(ValidateFederated(num_clients, federated));
         return create_federated(kind, federated);
       }
-      case v0::Value::kStruct: {
+      case federated_language_executor::Value::kStruct: {
         auto elements = NewStructure();
         elements->reserve(value_pb.struct_().element_size());
         for (const auto& element_pb : value_pb.struct_().element()) {
@@ -329,7 +338,7 @@ class ExecutorValue {
         }
         return ExecutorValue::CreateStructure(std::move(elements));
       }
-      case v0::Value::kComputation: {
+      case federated_language_executor::Value::kComputation: {
         if (value_pb.computation().has_intrinsic()) {
           return ExecutorValue::FederatedIntrinsic(TypedFederatedIntrinsic{
               TFF_TRY(FederatedIntrinsicFromUri(
@@ -389,7 +398,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
-      const v0::Value& value_pb) final {
+      const federated_language_executor::Value& value_pb) final {
     return ReadyFuture(TFF_TRY(ExecutorValue::FromProto(
         value_pb, *server_, total_clients_, [this](auto kind, const auto& v) {
           return CreateFederatedValue(kind, v);
@@ -490,7 +499,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         &thread_pool_);
   }
 
-  absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
+  absl::Status Materialize(ValueFuture value_fut,
+                           federated_language_executor::Value* value_pb) final {
     ExecutorValue value = TFF_TRY(Wait(std::move(value_fut)));
     ParallelTasks tasks(&thread_pool_);
     TFF_TRY(MaterializeValue(value, value_pb, tasks));
@@ -504,7 +514,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CreateFederatedValue(
-      FederatedKind kind, const v0::Value_Federated& federated) {
+      FederatedKind kind,
+      const federated_language_executor::Value_Federated& federated) {
     switch (kind) {
       case FederatedKind::SERVER: {
         auto value = TFF_TRY(server_->CreateValue(federated.value(0)));
@@ -516,8 +527,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         int32_t next_client_index = 0;
         for (int32_t i = 0; i < children_.size(); i++) {
           auto child = children_[i];
-          v0::Value child_value;
-          v0::Value_Federated* child_value_fed =
+          federated_language_executor::Value child_value;
+          federated_language_executor::Value_Federated* child_value_fed =
               child_value.mutable_federated();
           *child_value_fed->mutable_type() = federated.type();
           int32_t stop_index = next_client_index + child.num_clients();
@@ -530,16 +541,17 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         return ExecutorValue::CreateClientsPlaced(std::move(clients));
       }
       case FederatedKind::CLIENTS_ALL_EQUAL: {
-        v0::Value child_value;
+        federated_language_executor::Value child_value;
         *child_value.mutable_federated() = federated;
         return AllEqualToAll(child_value);
       }
     }
   }
 
-  v0::Value NewAllEqual() const {
-    v0::Value value;
-    v0::Value_Federated* fed_value = value.mutable_federated();
+  federated_language_executor::Value NewAllEqual() const {
+    federated_language_executor::Value value;
+    federated_language_executor::Value_Federated* fed_value =
+        value.mutable_federated();
     fed_value->mutable_type()->set_all_equal(true);
     fed_value->mutable_type()
         ->mutable_placement()
@@ -550,7 +562,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> AllEqualToAll(
-      const v0::Value& all_equal_value) const {
+      const federated_language_executor::Value& all_equal_value) const {
     auto clients = NewClients();
     for (const auto& child : children_) {
       auto child_id = TFF_TRY(child.executor()->CreateValue(all_equal_value));
@@ -569,8 +581,9 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
                        "value of type: ",
                        arg.type()));
     }
-    v0::Value value = NewAllEqual();
-    v0::Value* value_contents = value.mutable_federated()->add_value();
+    federated_language_executor::Value value = NewAllEqual();
+    federated_language_executor::Value* value_contents =
+        value.mutable_federated()->add_value();
     *value_contents = *TFF_TRY(arg.unplaced()->Proto(*server_));
     return AllEqualToAll(value);
   }
@@ -594,7 +607,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     auto fn_to_eval =
         TFF_TRY(arg.GetUnplacedFunctionProto("federated_eval_at_clients_fn"));
     auto clients = NewClients();
-    v0::Value eval_at_clients;
+    federated_language_executor::Value eval_at_clients;
     eval_at_clients.mutable_computation()
         ->mutable_intrinsic()
         ->mutable_uri()
@@ -621,7 +634,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
           "Cannot aggregate a value not placed at clients");
     }
     const auto& zero = arg.structure()->at(1);
-    v0::Value zero_val;
+    federated_language_executor::Value zero_val;
     ParallelTasks tasks;
     TFF_TRY(MaterializeValue(zero, &zero_val, tasks));
     TFF_TRY(tasks.WaitAll());
@@ -638,9 +651,9 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     auto report_val = TFF_TRY(report.GetUnplacedFunctionProto("report"));
     auto report_id = TFF_TRY(report.unplaced()->Embedded(*server_));
 
-    v0::Value null_report_val;
+    federated_language_executor::Value null_report_val;
     *null_report_val.mutable_computation() = IdentityComp();
-    v0::Value aggregate;
+    federated_language_executor::Value aggregate;
     aggregate.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
         kFederatedAggregateUri.data(), kFederatedAggregateUri.size());
     *aggregate.mutable_computation()->mutable_type()->mutable_function() =
@@ -655,7 +668,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       std::vector<OwnedValueId> arg_owners;
       std::vector<ValueId> arg_ids;
       arg_ids.emplace_back(child_val);
-      for (const v0::Value& arg_value :
+      for (const federated_language_executor::Value& arg_value :
            {zero_val, *accumulate_val, *merge_val, null_report_val}) {
         OwnedValueId child_id = TFF_TRY(child->CreateValue(arg_value));
         arg_ids.emplace_back(child_id.ref());
@@ -679,7 +692,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
           [this, &child = children_[i].executor(),
            &child_result_id = child_result_ids[i], &merge_id, &current,
            &mutex]() -> absl::Status {
-            v0::Value child_result =
+            federated_language_executor::Value child_result =
                 TFF_TRY(child->Materialize(child_result_id));
             if (!child_result.has_federated() ||
                 child_result.federated().type().placement().value().uri() !=
@@ -716,8 +729,9 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       return absl::InvalidArgumentError(
           "Attempted to broadcast a value not placed at server.");
     }
-    v0::Value value = NewAllEqual();
-    v0::Value* value_contents = value.mutable_federated()->add_value();
+    federated_language_executor::Value value = NewAllEqual();
+    federated_language_executor::Value* value_contents =
+        value.mutable_federated()->add_value();
     TFF_TRY(server_->Materialize(arg.server()->ref(), value_contents));
     return AllEqualToAll(value);
   }
@@ -730,11 +744,11 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     const auto& data = arg.structure()->at(1);
     if (data.type() == ExecutorValue::ValueType::CLIENTS) {
       Clients results = NewClients();
-      v0::Value fn_val;
+      federated_language_executor::Value fn_val;
       ParallelTasks tasks;
       TFF_TRY(MaterializeValue(fn, &fn_val, tasks));
       TFF_TRY(tasks.WaitAll());
-      v0::Value map_val;
+      federated_language_executor::Value map_val;
       map_val.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
           kFederatedMapAtClientsUri.data(), kFederatedMapAtClientsUri.size());
       *map_val.mutable_computation()->mutable_type()->mutable_function() =
@@ -777,15 +791,15 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     // Both `max_key_pb` and `server_val_pb` must be materialized from the
     // `server_` executor so that they can be placed on `children_`.
     ParallelTasks tasks;
-    v0::Value max_key_pb;
+    federated_language_executor::Value max_key_pb;
     TFF_TRY(MaterializeValue(max_key, &max_key_pb, tasks));
-    v0::Value server_val_pb;
+    federated_language_executor::Value server_val_pb;
     TFF_TRY(MaterializeValue(server_val, &server_val_pb, tasks));
     TFF_TRY(tasks.WaitAll());
-    std::shared_ptr<v0::Value> select_fn_val =
+    std::shared_ptr<federated_language_executor::Value> select_fn_val =
         TFF_TRY(select_fn.GetUnplacedFunctionProto("select_fn"));
 
-    v0::Value select;
+    federated_language_executor::Value select;
     select.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
         kFederatedSelectUri.data(), kFederatedSelectUri.size());
     *select.mutable_computation()->mutable_type()->mutable_function() = type_pb;
@@ -798,7 +812,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       std::vector<OwnedValueId> arg_owners;
       std::vector<ValueId> arg_ids;
       arg_ids.emplace_back(child_keys);
-      for (const v0::Value& arg_value :
+      for (const federated_language_executor::Value& arg_value :
            {max_key_pb, server_val_pb, *select_fn_val}) {
         OwnedValueId child_id = TFF_TRY(child->CreateValue(arg_value));
         arg_ids.emplace_back(child_id.ref());
@@ -849,7 +863,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   absl::StatusOr<ExecutorValue> CallIntrinsicZipAtClients(
       ExecutorValue&& arg, const federated_language::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicZipAtClients");
-    v0::Value zip_at_clients;
+    federated_language_executor::Value zip_at_clients;
     zip_at_clients.mutable_computation()
         ->mutable_intrinsic()
         ->mutable_uri()
@@ -948,14 +962,15 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
   // Creates tasks to materialize values into the addresses pointed to by
   // `protos_out`.
-  absl::Status MaterializeChildClientValues(int32_t child_index,
-                                            ValueId child_id,
-                                            absl::Span<v0::Value*> protos_out,
-                                            ParallelTasks& tasks) const {
+  absl::Status MaterializeChildClientValues(
+      int32_t child_index, ValueId child_id,
+      absl::Span<federated_language_executor::Value*> protos_out,
+      ParallelTasks& tasks) const {
     CHECK(protos_out.size() == children_[child_index].num_clients());
     return tasks.add_task([child = children_[child_index], child_id,
                            protos_out]() -> absl::Status {
-      v0::Value child_value = TFF_TRY(child.executor()->Materialize(child_id));
+      federated_language_executor::Value child_value =
+          TFF_TRY(child.executor()->Materialize(child_id));
       if (!child_value.has_federated()) {
         return absl::InternalError(
             absl::StrCat("Composing child executor returned non-federated "
@@ -989,20 +1004,23 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     });
   }
 
-  absl::Status MaterializeValue(const ExecutorValue& value, v0::Value* value_pb,
+  absl::Status MaterializeValue(const ExecutorValue& value,
+                                federated_language_executor::Value* value_pb,
                                 ParallelTasks& tasks) const {
     switch (value.type()) {
       case ExecutorValue::ValueType::CLIENTS: {
-        v0::Value_Federated* federated_pb = value_pb->mutable_federated();
-        google::protobuf::RepeatedPtrField<v0::Value>* values_pb =
-            federated_pb->mutable_value();
+        federated_language_executor::Value_Federated* federated_pb =
+            value_pb->mutable_federated();
+        google::protobuf::RepeatedPtrField<federated_language_executor::Value>*
+            values_pb = federated_pb->mutable_value();
         // Ensure that the `values_pb` array does not grow, changing the
         // addresses to which `MaterializeChildClientValues` should load.
         values_pb->Reserve(total_clients_);
-        // Create `v0::Value`s for `MaterializeChildClientValues` to write to.
-        // Note: we'd like to use `AddNAlreadyReserved`, but unfortunately that
-        // method only exists for `RepeatedField`, not `RepeatedPtrField`.
-        v0::Value null_value;
+        // Create `federated_language_executor::Value`s for
+        // `MaterializeChildClientValues` to write to. Note: we'd like to use
+        // `AddNAlreadyReserved`, but unfortunately that method only exists for
+        // `RepeatedField`, not `RepeatedPtrField`.
+        federated_language_executor::Value null_value;
         for (int32_t i = 0; i < total_clients_; i++) {
           *values_pb->Add() = null_value;
         }
@@ -1014,9 +1032,10 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         type_pb->set_all_equal(false);
         type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
             kClientsUri.data(), kClientsUri.size());
-        v0::Value** client_start = values_pb->mutable_data();
+        federated_language_executor::Value** client_start =
+            values_pb->mutable_data();
         for (int32_t i = 0; i < children_.size(); i++) {
-          absl::Span<v0::Value*> client_value_pointers(
+          absl::Span<federated_language_executor::Value*> client_value_pointers(
               client_start, children_[i].num_clients());
           ValueId child_value_id = value.clients()->at(i)->ref();
           TFF_TRY(MaterializeChildClientValues(i, child_value_id,
@@ -1037,7 +1056,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
             "Materialization of federated intrinsics is not supported.");
       }
       case ExecutorValue::ValueType::SERVER: {
-        v0::Value_Federated* federated_pb = value_pb->mutable_federated();
+        federated_language_executor::Value_Federated* federated_pb =
+            value_pb->mutable_federated();
         federated_language::FederatedType* type_pb =
             federated_pb->mutable_type();
         // Server placement is assumed to be of cardinality one, and so must
@@ -1052,7 +1072,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         });
       }
       case ExecutorValue::ValueType::STRUCTURE: {
-        v0::Value_Struct* struct_pb = value_pb->mutable_struct_();
+        federated_language_executor::Value_Struct* struct_pb =
+            value_pb->mutable_struct_();
         for (const auto& element : *value.structure()) {
           TFF_TRY(MaterializeValue(
               element, struct_pb->add_element()->mutable_value(), tasks));

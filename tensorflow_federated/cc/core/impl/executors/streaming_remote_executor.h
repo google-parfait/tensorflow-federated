@@ -19,9 +19,9 @@ limitations under the License
 #include <memory>
 
 #include "include/grpcpp/grpcpp.h"
+#include "third_party/py/federated_language_executor/executor.grpc.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
-#include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 
 namespace tensorflow_federated {
 
@@ -34,7 +34,8 @@ std::shared_ptr<Executor> CreateStreamingRemoteExecutor(
     std::shared_ptr<grpc::ChannelInterface> channel,
     const CardinalityMap& cardinalities);
 std::shared_ptr<Executor> CreateStreamingRemoteExecutor(
-    std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
+    std::unique_ptr<federated_language_executor::ExecutorGroup::StubInterface>
+        stub,
     const CardinalityMap& cardinalities);
 }  // namespace tensorflow_federated
 

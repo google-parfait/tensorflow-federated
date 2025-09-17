@@ -50,7 +50,7 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
-      const v0::Value& value_pb) final {
+      const federated_language_executor::Value& value_pb) final {
     if (value_pb.has_computation() && value_pb.computation().has_data()) {
       // Note: `value_pb` is copied here in order to ensure that it remains
       // available for the lifetime of the resolving thread. However, it should
@@ -62,7 +62,7 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
                         this_keepalive =
                             shared_from_this()]() -> absl::StatusOr<SharedId> {
         Trace("DataExecutor::DataBackend::ResolveToValue");
-        v0::Value resolved_value;
+        federated_language_executor::Value resolved_value;
         TFF_TRY(data_backend_->ResolveToValue(data, data_type, resolved_value));
         OwnedValueId child_value = TFF_TRY(child_->CreateValue(resolved_value));
         return std::make_shared<OwnedValueId>(std::move(child_value));
@@ -126,7 +126,8 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
         });
   }
 
-  absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
+  absl::Status Materialize(ValueFuture value_fut,
+                           federated_language_executor::Value* value_pb) final {
     SharedId value = TFF_TRY(Wait(std::move(value_fut)));
     return child_->Materialize(value->ref(), value_pb);
   }

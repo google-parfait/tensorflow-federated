@@ -18,17 +18,18 @@ limitations under the License
 
 #include "absl/status/status.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/data_backend.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated_examples {
 
 // An example implementation of `DataBackend` used to show Python interop.
 class DataBackendExample : public tensorflow_federated::DataBackend {
  public:
-  absl::Status ResolveToValue(const federated_language::Data& data_reference,
-                              const federated_language::Type& data_type,
-                              tensorflow_federated::v0::Value& value_out) final;
+  absl::Status ResolveToValue(
+      const federated_language::Data& data_reference,
+      const federated_language::Type& data_type,
+      federated_language_executor::Value& value_out) final;
 };
 
 }  // namespace tensorflow_federated_examples

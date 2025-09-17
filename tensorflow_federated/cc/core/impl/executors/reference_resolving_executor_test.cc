@@ -15,14 +15,15 @@ limitations under the License
 
 // Unit tests for the ReferenceResolvingExecutor.
 //
-// IMPORTANT: many of the `v0::Value` protocol buffer messages used in the unit
-// tests in this file are not well-formed from the view of the entire execution
-// stack.  Particularly `federated_language::Computation` message fields that
-// are not used by the ReferenceResolvingExecutor are often ellided to assert
-// that they are not dependend on. This generally means the test protos are only
-// valid because the child executor is mocked out and returns a hardcoded
-// result, and should not be used a reference for how a real
-// `federated_language::Computation` protocol buffer message should look.
+// IMPORTANT: many of the `federated_language_executor::Value` protocol buffer
+// messages used in the unit tests in this file are not well-formed from the
+// view of the entire execution stack.  Particularly
+// `federated_language::Computation` message fields that are not used by the
+// ReferenceResolvingExecutor are often ellided to assert that they are not
+// dependend on. This generally means the test protos are only valid because the
+// child executor is mocked out and returns a hardcoded result, and should not
+// be used a reference for how a real `federated_language::Computation` protocol
+// buffer message should look.
 
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 
@@ -43,6 +44,7 @@ limitations under the License
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -51,7 +53,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 namespace {
@@ -101,7 +102,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueChildExecutorError) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(value_pb)))
       .WillOnce([]() { return absl::InternalError("test"); });
@@ -113,7 +114,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueTensor) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   constexpr int kNumValues = 3;
   mock_executor_->ExpectCreateValue(value_pb, Exactly(kNumValues));
@@ -124,8 +125,9 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueTensor) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueSequence) {
-  v0::Value sequence_val_pb;
-  *sequence_val_pb.mutable_sequence() = v0::Value::Sequence();
+  federated_language_executor::Value sequence_val_pb;
+  *sequence_val_pb.mutable_sequence() =
+      federated_language_executor::Value::Sequence();
   constexpr int kNumValues = 3;
   mock_executor_->ExpectCreateValue(sequence_val_pb, Exactly(kNumValues));
   for (int i = 0; i < kNumValues; ++i) {
@@ -135,8 +137,9 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueSequence) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedTensor) {
-  v0::Value federated_value_pb;
-  v0::Value::Federated* federated_pb = federated_value_pb.mutable_federated();
+  federated_language_executor::Value federated_value_pb;
+  federated_language_executor::Value::Federated* federated_pb =
+      federated_value_pb.mutable_federated();
   federated_language::FederatedType* type_pb = federated_pb->mutable_type();
   type_pb->set_all_equal(false);
   type_pb->mutable_placement()->mutable_value()->set_uri(kTestPlacement);
@@ -148,7 +151,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedTensor) {
     federated_language::Array array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value value_pb;
+    federated_language_executor::Value value_pb;
     value_pb.mutable_array()->Swap(&array_pb);
     *federated_pb->add_value() = value_pb;
   }
@@ -161,22 +164,24 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueStructOfTensor) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {2.0}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   federated_language::Array array3_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {3.0}));
-  v0::Value value3_pb;
+  federated_language_executor::Value value3_pb;
   value3_pb.mutable_array()->Swap(&array3_pb);
-  v0::Value struct_value_pb = StructV({value1_pb, value2_pb, value3_pb});
-  for (const v0::Value::Struct::Element& element_pb :
+  federated_language_executor::Value struct_value_pb =
+      StructV({value1_pb, value2_pb, value3_pb});
+  for (const federated_language_executor::Value::Struct::Element& element_pb :
        struct_value_pb.struct_().element()) {
-    const v0::Value& tensor_value_pb = element_pb.value();
+    const federated_language_executor::Value& tensor_value_pb =
+        element_pb.value();
     mock_executor_->ExpectCreateValue(tensor_value_pb);
   }
   // Expect ID 0, the first for ReferenceResolvingExecutor (ignoring the
@@ -189,19 +194,19 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueNestedStructOfTensor) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {2.0}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   federated_language::Array array3_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {3.0}));
-  v0::Value value3_pb;
+  federated_language_executor::Value value3_pb;
   value3_pb.mutable_array()->Swap(&array3_pb);
-  v0::Value struct_value_pb =
+  federated_language_executor::Value struct_value_pb =
       StructV({StructV({value1_pb, value2_pb}), value3_pb});
   // Expect three calls to CreateValue() on the inner mock, once for each
   // element of the struct.
@@ -216,8 +221,9 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueNestedStructOfTensor) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedStructOfTensor) {
-  v0::Value federated_value_pb;
-  v0::Value::Federated* federated_pb = federated_value_pb.mutable_federated();
+  federated_language_executor::Value federated_value_pb;
+  federated_language_executor::Value::Federated* federated_pb =
+      federated_value_pb.mutable_federated();
   federated_language::FederatedType* type_pb = federated_pb->mutable_type();
   type_pb->set_all_equal(false);
   type_pb->mutable_placement()->mutable_value()->set_uri(kTestPlacement);
@@ -235,17 +241,17 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedStructOfTensor) {
     federated_language::Array array1_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value value1_pb;
+    federated_language_executor::Value value1_pb;
     value1_pb.mutable_array()->Swap(&array1_pb);
     federated_language::Array array2_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {i + 1}));
-    v0::Value value2_pb;
+    federated_language_executor::Value value2_pb;
     value2_pb.mutable_array()->Swap(&array2_pb);
     federated_language::Array array3_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {i + 2}));
-    v0::Value value3_pb;
+    federated_language_executor::Value value3_pb;
     value3_pb.mutable_array()->Swap(&array3_pb);
 
     *federated_pb->add_value() = StructV({value1_pb, value2_pb, value3_pb});
@@ -256,7 +262,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedStructOfTensor) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationTensorflow) {
-  v0::Value tensorflow_value_pb;
+  federated_language_executor::Value tensorflow_value_pb;
   tensorflow_value_pb.mutable_computation()->mutable_tensorflow();
   mock_executor_->ExpectCreateValue(tensorflow_value_pb);
   EXPECT_THAT(test_executor_->CreateValue(tensorflow_value_pb),
@@ -264,7 +270,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationTensorflow) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationXla) {
-  v0::Value xla_value_pb;
+  federated_language_executor::Value xla_value_pb;
   xla_value_pb.mutable_computation()->mutable_xla();
   mock_executor_->ExpectCreateValue(xla_value_pb);
   EXPECT_THAT(test_executor_->CreateValue(xla_value_pb),
@@ -272,14 +278,15 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationXla) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationData) {
-  v0::Value data_comp_pb = ComputationV(DataComputation("test_data_uri"));
+  federated_language_executor::Value data_comp_pb =
+      ComputationV(DataComputation("test_data_uri"));
   mock_executor_->ExpectCreateValue(data_comp_pb);
   EXPECT_THAT(test_executor_->CreateValue(data_comp_pb),
               IsOkAndHolds(HasValueId(0)));
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationIntrinsic) {
-  v0::Value intrinsic_comp_pb =
+  federated_language_executor::Value intrinsic_comp_pb =
       ComputationV(IntrinsicComputation("test_intrinsic_uri"));
   mock_executor_->ExpectCreateValue(intrinsic_comp_pb);
   EXPECT_THAT(test_executor_->CreateValue(intrinsic_comp_pb),
@@ -287,7 +294,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationIntrinsic) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationPlacement) {
-  v0::Value placement_comp_pb =
+  federated_language_executor::Value placement_comp_pb =
       ComputationV(PlacementComputation("test_placement_uri"));
   mock_executor_->ExpectCreateValue(placement_comp_pb);
   EXPECT_THAT(test_executor_->CreateValue(placement_comp_pb),
@@ -296,7 +303,8 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationPlacement) {
 
 TEST_F(ReferenceResolvingExecutorTest, NoArgLambda) {
   federated_language::Computation data_pb = DataComputation("test_data_uri");
-  v0::Value lambda_pb = ComputationV(LambdaComputation(std::nullopt, data_pb));
+  federated_language_executor::Value lambda_pb =
+      ComputationV(LambdaComputation(std::nullopt, data_pb));
   auto create_result = test_executor_->CreateValue(lambda_pb);
   EXPECT_THAT(create_result, IsOkAndHolds(HasValueId(0)));
   // Expect that the CreateCall causes the lambda to be evaluated and embedded
@@ -311,7 +319,7 @@ TEST_F(ReferenceResolvingExecutorTest, NoArgLambda) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   mock_executor_->ExpectMaterialize(mock_value_id, value_pb);
   ExpectMaterialize(call_result.value(), value_pb);
@@ -321,9 +329,9 @@ TEST_F(ReferenceResolvingExecutorTest, OneArgLambda) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
-  v0::Value lambda_pb = ComputationV(
+  federated_language_executor::Value lambda_pb = ComputationV(
       LambdaComputation("test_arg", ReferenceComputation("test_arg")));
   auto create_lambda_result = test_executor_->CreateValue(lambda_pb);
   EXPECT_THAT(create_lambda_result, IsOkAndHolds(HasValueId(0)));
@@ -341,14 +349,14 @@ TEST_F(ReferenceResolvingExecutorTest, OneArgLambda) {
   federated_language::Array array_result_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_result_pb;
+  federated_language_executor::Value value_result_pb;
   value_result_pb.mutable_array()->Swap(&array_result_pb);
   mock_executor_->ExpectMaterialize(arg_child_id, value_result_pb);
   ExpectMaterialize(call_result.value(), value_result_pb);
 }
 
 TEST_F(ReferenceResolvingExecutorTest, LambdaStructArgumentLazilyEmbedded) {
-  v0::Value lambda_pb = ComputationV(
+  federated_language_executor::Value lambda_pb = ComputationV(
       LambdaComputation("test_arg", ReferenceComputation("test_arg")));
   auto create_lambda_result = test_executor_->CreateValue(lambda_pb);
   EXPECT_THAT(create_lambda_result, IsOkAndHolds(HasValueId(0)));
@@ -361,7 +369,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaStructArgumentLazilyEmbedded) {
     federated_language::Array array_pb = TFF_ASSERT_OK(testing::CreateArray(
         federated_language::DataType::DT_FLOAT, testing::CreateArrayShape({}),
         {static_cast<float>(i)}));
-    v0::Value value_pb;
+    federated_language_executor::Value value_pb;
     value_pb.mutable_array()->Swap(&array_pb);
     ValueId child_id = mock_executor_->ExpectCreateValue(value_pb);
     auto create_arg_result = test_executor_->CreateValue(value_pb);
@@ -385,7 +393,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaStructArgumentLazilyEmbedded) {
   federated_language::Array array_result_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_result_pb;
+  federated_language_executor::Value value_result_pb;
   value_result_pb.mutable_array()->Swap(&array_result_pb);
   mock_executor_->ExpectMaterialize(struct_child_id, value_result_pb);
   ExpectMaterialize(call_result.value(), value_result_pb);
@@ -394,7 +402,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaStructArgumentLazilyEmbedded) {
 TEST_F(ReferenceResolvingExecutorTest,
        LambdaArgumentScopeHidesBlockNamedValue) {
   federated_language::Computation data_pb = DataComputation("test_data_uri");
-  v0::Value lambda_pb = ComputationV(BlockComputation(
+  federated_language_executor::Value lambda_pb = ComputationV(BlockComputation(
       {{"test_arg", data_pb},
        {"test_lambda",
         LambdaComputation("test_arg", ReferenceComputation("test_arg"))}},
@@ -410,7 +418,7 @@ TEST_F(ReferenceResolvingExecutorTest,
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(value_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 200); });
@@ -430,10 +438,11 @@ TEST_F(ReferenceResolvingExecutorTest,
 }
 
 TEST_F(ReferenceResolvingExecutorTest, LambdaArgumentToInstrinsicIsEmbedded) {
-  v0::Value intrinsic_pb = ComputationV(IntrinsicComputation("test_intrinsic"));
-  v0::Value lambda_arg_pb = ComputationV(
+  federated_language_executor::Value intrinsic_pb =
+      ComputationV(IntrinsicComputation("test_intrinsic"));
+  federated_language_executor::Value lambda_arg_pb = ComputationV(
       LambdaComputation("test_arg", ReferenceComputation("test_arg")));
-  v0::Value lambda_pb;
+  federated_language_executor::Value lambda_pb;
   *lambda_pb.mutable_computation()->mutable_call()->mutable_function() =
       intrinsic_pb.computation();
   *lambda_pb.mutable_computation()->mutable_call()->mutable_argument() =
@@ -461,7 +470,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaArgumentToInstrinsicIsEmbedded) {
 
 TEST_F(ReferenceResolvingExecutorTest,
        CreateValueComputationBlockSingleLocalUsingReference) {
-  v0::Value block_value_pb = ComputationV(
+  federated_language_executor::Value block_value_pb = ComputationV(
       BlockComputation({{"test_ref", DataComputation("test_data_uri")}},
                        ReferenceComputation("test_ref")));
   // Expect CreateValue to be called on each local in the block, and delegate
@@ -470,7 +479,7 @@ TEST_F(ReferenceResolvingExecutorTest,
   EXPECT_CALL(
       *mock_executor_,
       CreateValue(::testing::Property(
-          &v0::Value::computation,
+          &federated_language_executor::Value::computation,
           EqualsProto(block_value_pb.computation().block().local(0).value()))))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, child_id); });
   EXPECT_CALL(*mock_executor_, Dispose(child_id));
@@ -480,7 +489,7 @@ TEST_F(ReferenceResolvingExecutorTest,
 
 TEST_F(ReferenceResolvingExecutorTest,
        CreateValueComputationBlockUniqueLocals) {
-  v0::Value block_value_pb = ComputationV(
+  federated_language_executor::Value block_value_pb = ComputationV(
       BlockComputation({{"test_ref", DataComputation("test_data_uri")},
                         {"test_ref2", DataComputation("test_data_uri2")}},
                        ReferenceComputation("test_ref")));
@@ -489,8 +498,9 @@ TEST_F(ReferenceResolvingExecutorTest,
        block_value_pb.computation().block().local()) {
     EXPECT_CALL(*mock_executor_, Dispose(child_id));
     EXPECT_CALL(*mock_executor_,
-                CreateValue(::testing::Property(&v0::Value::computation,
-                                                EqualsProto(local_pb.value()))))
+                CreateValue(::testing::Property(
+                    &federated_language_executor::Value::computation,
+                    EqualsProto(local_pb.value()))))
         .WillOnce([this, child_id]() {
           return OwnedValueId(mock_executor_, child_id);
         });
@@ -504,7 +514,7 @@ TEST_F(ReferenceResolvingExecutorTest,
        CreateValueComputationBlockDulicatedLocals) {
   // Expect that the nested/later scope in the second local is used for the
   // reference.
-  v0::Value block_value_pb = ComputationV(
+  federated_language_executor::Value block_value_pb = ComputationV(
       BlockComputation({{"test_ref", DataComputation("test_data_uri")},
                         {"test_ref", DataComputation("test_data_uri2")}},
                        ReferenceComputation("test_ref")));
@@ -513,8 +523,9 @@ TEST_F(ReferenceResolvingExecutorTest,
        block_value_pb.computation().block().local()) {
     EXPECT_CALL(*mock_executor_, Dispose(child_id));
     EXPECT_CALL(*mock_executor_,
-                CreateValue(::testing::Property(&v0::Value::computation,
-                                                EqualsProto(local_pb.value()))))
+                CreateValue(::testing::Property(
+                    &federated_language_executor::Value::computation,
+                    EqualsProto(local_pb.value()))))
         .WillOnce([this, child_id]() {
           return OwnedValueId(mock_executor_, child_id);
         });
@@ -533,7 +544,7 @@ TEST_F(ReferenceResolvingExecutorTest,
        EvaluateBlockLocalReferencesPreviousLocal) {
   // Expect that the nested/later scope in the second local is used for the
   // reference.
-  v0::Value block_value_pb = ComputationV(
+  federated_language_executor::Value block_value_pb = ComputationV(
       BlockComputation({{"test_ref1", DataComputation("test_data_uri")},
                         {"test_ref2", ReferenceComputation("test_ref1")}},
                        ReferenceComputation("test_ref2")));
@@ -544,7 +555,7 @@ TEST_F(ReferenceResolvingExecutorTest,
   EXPECT_CALL(
       *mock_executor_,
       CreateValue(::testing::Property(
-          &v0::Value::computation,
+          &federated_language_executor::Value::computation,
           EqualsProto(block_value_pb.computation().block().local(0).value()))))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, local_id); });
   auto create_result = test_executor_->CreateValue(block_value_pb);
@@ -557,11 +568,13 @@ TEST_F(ReferenceResolvingExecutorTest,
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationReferenceMissing) {
-  v0::Value block_value_pb = ComputationV(BlockComputation(
-      {{"test_ref", DataComputation("test_data_uri")},
-       {"test_ref2", StructComputation({DataComputation("test_data_uri2"),
-                                        DataComputation("test_data_uri3")})}},
-      ReferenceComputation("test_ref3")));
+  federated_language_executor::Value block_value_pb =
+      ComputationV(BlockComputation(
+          {{"test_ref", DataComputation("test_data_uri")},
+           {"test_ref2",
+            StructComputation({DataComputation("test_data_uri2"),
+                               DataComputation("test_data_uri3")})}},
+          ReferenceComputation("test_ref3")));
   ValueId child_id = 3;
   EXPECT_CALL(*mock_executor_, CreateValue(_))
       .Times(3)
@@ -580,14 +593,15 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallFailsNonFunction) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {2.0}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
-  v0::Value struct_value_pb = StructV({value1_pb, value2_pb});
+  federated_language_executor::Value struct_value_pb =
+      StructV({value1_pb, value2_pb});
   EXPECT_CALL(*mock_executor_, CreateValue(_))
       .Times(2)
       .WillRepeatedly([this]() { return OwnedValueId(mock_executor_, 0); });
@@ -602,7 +616,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallFailsNonFunction) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgComp) {
-  v0::Value no_arg_computation_pb;
+  federated_language_executor::Value no_arg_computation_pb;
   no_arg_computation_pb.mutable_computation()->mutable_tensorflow();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
@@ -617,7 +631,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgComp) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgCompWithArg) {
-  v0::Value no_arg_computation_pb;
+  federated_language_executor::Value no_arg_computation_pb;
   no_arg_computation_pb.mutable_computation()->mutable_tensorflow();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
@@ -628,7 +642,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgCompWithArg) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(value_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 1); });
@@ -648,7 +662,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgCompWithArg) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallSingleArg) {
-  v0::Value no_arg_computation_pb;
+  federated_language_executor::Value no_arg_computation_pb;
   no_arg_computation_pb.mutable_computation()->mutable_tensorflow();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
@@ -659,7 +673,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallSingleArg) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(value_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 1); });
@@ -677,7 +691,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallSingleArg) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallLazyStructMultiArg) {
-  v0::Value no_arg_computation_pb;
+  federated_language_executor::Value no_arg_computation_pb;
   no_arg_computation_pb.mutable_computation()->mutable_tensorflow();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
@@ -690,7 +704,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallLazyStructMultiArg) {
     federated_language::Array array_pb = TFF_ASSERT_OK(testing::CreateArray(
         federated_language::DataType::DT_FLOAT, testing::CreateArrayShape({}),
         {static_cast<float>(i)}));
-    v0::Value value_pb;
+    federated_language_executor::Value value_pb;
     value_pb.mutable_array()->Swap(&array_pb);
     EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(value_pb)))
         .WillOnce([this, i]() { return OwnedValueId(mock_executor_, i + 1); });
@@ -716,7 +730,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallLazyStructMultiArg) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateStruct) {
-  v0::Value struct_value_pb;
+  federated_language_executor::Value struct_value_pb;
   std::vector<OwnedValueId> elements;
   std::vector<ValueId> element_ids;
   std::vector<ValueId> element_child_ids;
@@ -724,7 +738,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateStruct) {
     federated_language::Array array_pb = TFF_ASSERT_OK(testing::CreateArray(
         federated_language::DataType::DT_FLOAT, testing::CreateArrayShape({}),
         {static_cast<float>(i)}));
-    v0::Value value_pb;
+    federated_language_executor::Value value_pb;
     value_pb.mutable_array()->Swap(&array_pb);
     ValueId child_id = mock_executor_->ExpectCreateValue(value_pb);
     absl::StatusOr<OwnedValueId> element =
@@ -744,18 +758,19 @@ TEST_F(ReferenceResolvingExecutorTest, CreateStruct) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   mock_executor_->ExpectMaterialize(struct_child_id, value_pb);
   ExpectMaterialize(create_struct_result.value(), value_pb);
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationStruct) {
-  v0::Value struct_value_pb = ComputationV(StructComputation({
-      DataComputation("test_data1"),
-      DataComputation("test_data2"),
-      DataComputation("test_data3"),
-  }));
+  federated_language_executor::Value struct_value_pb =
+      ComputationV(StructComputation({
+          DataComputation("test_data1"),
+          DataComputation("test_data2"),
+          DataComputation("test_data3"),
+      }));
   // Expect CreateValue calls for each element as it is embedded.
   ValueId test_id = 0;
   const uint32_t num_elements =
@@ -786,14 +801,15 @@ TEST_F(ReferenceResolvingExecutorTest, CreateSelection) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {2.0}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
-  v0::Value struct_value_pb = StructV({value1_pb, value2_pb});
+  federated_language_executor::Value struct_value_pb =
+      StructV({value1_pb, value2_pb});
   // Expect CreateValue calls for each element as it is embedded.
   [[maybe_unused]] ValueId first_child_id =
       mock_executor_->ExpectCreateValue(value1_pb);
@@ -807,14 +823,14 @@ TEST_F(ReferenceResolvingExecutorTest, CreateSelection) {
   federated_language::Array array3_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {3}));
-  v0::Value value3_pb;
+  federated_language_executor::Value value3_pb;
   value3_pb.mutable_array()->Swap(&array3_pb);
   mock_executor_->ExpectMaterialize(second_child_id, value3_pb);
   ExpectMaterialize(create_selection_result.value(), value3_pb);
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationSelection) {
-  v0::Value selection_value_pb = ComputationV(
+  federated_language_executor::Value selection_value_pb = ComputationV(
       SelectionComputation(StructComputation({DataComputation("test_data1"),
                                               DataComputation("test_data2")}),
                            /*index=*/1));
@@ -847,7 +863,8 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationSelection) {
 TEST_F(ReferenceResolvingExecutorTest, EvaluateSelectionOfEmbeddStruct) {
   // Calling an intrinsic will result in an embedded value. Using this to
   // create selection on an embedded value.
-  v0::Value intrinsic_pb = ComputationV(IntrinsicComputation("test_intrinsic"));
+  federated_language_executor::Value intrinsic_pb =
+      ComputationV(IntrinsicComputation("test_intrinsic"));
   ValueId comp_child_id = mock_executor_->ExpectCreateValue(intrinsic_pb);
   auto intrinsic_result = test_executor_->CreateValue(intrinsic_pb);
   EXPECT_THAT(intrinsic_result, IsOkAndHolds(HasValueId(0)));
@@ -868,7 +885,8 @@ TEST_F(ReferenceResolvingExecutorTest,
   // Calling an intrinsic will result in an embedded value. Using this to
   // create selection on an embedded value. In this case the child executor will
   // return an error rather.
-  v0::Value intrinsic_pb = ComputationV(IntrinsicComputation("test_intrinsic"));
+  federated_language_executor::Value intrinsic_pb =
+      ComputationV(IntrinsicComputation("test_intrinsic"));
   ValueId intrinsic_child_id = mock_executor_->ExpectCreateValue(intrinsic_pb);
   auto intrinsic_result = test_executor_->CreateValue(intrinsic_pb);
   EXPECT_THAT(intrinsic_result, IsOkAndHolds(HasValueId(0)));
@@ -888,9 +906,10 @@ TEST_F(ReferenceResolvingExecutorTest,
 
 TEST_F(ReferenceResolvingExecutorTest,
        EvaluateSelectionFromUncalledLambdaFails) {
-  v0::Value selection_value_pb = ComputationV(SelectionComputation(
-      LambdaComputation("test_arg", ReferenceComputation("test_arg")),
-      /*index=*/1));
+  federated_language_executor::Value selection_value_pb =
+      ComputationV(SelectionComputation(
+          LambdaComputation("test_arg", ReferenceComputation("test_arg")),
+          /*index=*/1));
   // Expect the executor returns an error because it cannot evaluate a
   // selection on a uncalled lambda.
   EXPECT_THAT(test_executor_->CreateValue(selection_value_pb),
@@ -902,14 +921,15 @@ TEST_F(ReferenceResolvingExecutorTest, EvaluateSelectionFailsInvalidIndex) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {2.0}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
-  v0::Value struct_value_pb = StructV({value1_pb, value2_pb});
+  federated_language_executor::Value struct_value_pb =
+      StructV({value1_pb, value2_pb});
   mock_executor_->ExpectCreateValue(value1_pb);
   mock_executor_->ExpectCreateValue(value2_pb);
   auto create_struct_result = test_executor_->CreateValue(struct_value_pb);
@@ -923,7 +943,7 @@ TEST_F(ReferenceResolvingExecutorTest, MaterializeEmbeddedValue) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   ValueId child_id = mock_executor_->ExpectCreateValue(value_pb);
   auto result = test_executor_->CreateValue(value_pb);
@@ -936,14 +956,14 @@ TEST_F(ReferenceResolvingExecutorTest, MaterializeFlatStruct) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {2.0}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
-  v0::Value value_pb = StructV({value1_pb, value2_pb});
+  federated_language_executor::Value value_pb = StructV({value1_pb, value2_pb});
   // Setup expectations for the individual tensors, ensuring that struct
   // creation is delayed until materializing.
   for (const auto& element_pb : value_pb.struct_().element()) {
@@ -964,15 +984,17 @@ TEST_F(ReferenceResolvingExecutorTest, MaterializeNestedStruct) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {2.0}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
-  std::vector<v0::Value> tensor_pbs = {value1_pb, value2_pb};
-  v0::Value value_pb = StructV({StructV({tensor_pbs[0]}), tensor_pbs[1]});
+  std::vector<federated_language_executor::Value> tensor_pbs = {value1_pb,
+                                                                value2_pb};
+  federated_language_executor::Value value_pb =
+      StructV({StructV({tensor_pbs[0]}), tensor_pbs[1]});
   // Setup expectations for the individual tensors, ensuring that struct
   // creation is delayed until materializing.
   std::vector<ValueId> tensor_child_ids;
@@ -990,14 +1012,14 @@ TEST_F(ReferenceResolvingExecutorTest, MaterializeNestedStruct) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, MaterializeFailsOnChildFailure) {
-  const v0::Value value_pb = ComputationV(
+  const federated_language_executor::Value value_pb = ComputationV(
       LambdaComputation("test_arg", ReferenceComputation("test_arg")));
   auto result = test_executor_->CreateValue(value_pb);
   EXPECT_THAT(result, IsOkAndHolds(HasValueId(0)));
   ValueId child_id = mock_executor_->ExpectCreateValue(value_pb);
   EXPECT_CALL(*mock_executor_, Materialize(child_id, _))
       .WillOnce(Return(absl::InternalError("child test error")));
-  v0::Value result_pb;
+  federated_language_executor::Value result_pb;
   EXPECT_THAT(test_executor_->Materialize(result.value().ref(), &result_pb),
               StatusIs(StatusCode::kInternal, HasSubstr("child test error")));
 }
@@ -1007,7 +1029,7 @@ TEST_F(ReferenceResolvingExecutorTest, Dispose) {
       test_executor_->Dispose(0),
       StatusIs(StatusCode::kNotFound,
                HasSubstr("ReferenceResolvingExecutor value not found: 0")));
-  const v0::Value value_pb = ComputationV(
+  const federated_language_executor::Value value_pb = ComputationV(
       LambdaComputation("test_arg", ReferenceComputation("test_arg")));
   auto result = test_executor_->CreateValue(value_pb);
   EXPECT_THAT(result, IsOkAndHolds(HasValueId(0)));
@@ -1018,7 +1040,7 @@ TEST_F(ReferenceResolvingExecutorTest, DisposeForwardsToChildExecutor) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(value_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 10); });

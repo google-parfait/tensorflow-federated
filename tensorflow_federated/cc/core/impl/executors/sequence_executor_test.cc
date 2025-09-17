@@ -59,13 +59,13 @@ class SequenceExecutorTest : public ExecutorTestBase {
 };
 
 TEST_F(SequenceExecutorTest, CreateMaterializeTFFSequence) {
-  v0::Value value_pb = SequenceV(0, 10, 1);
+  federated_language_executor::Value value_pb = SequenceV(0, 10, 1);
   mock_executor_->ExpectCreateMaterialize(value_pb);
   ExpectCreateMaterialize(value_pb);
 }
 
 TEST_F(SequenceExecutorTest, CreateMaterializeTFFSequenceYieldingStructures) {
-  v0::Value value_pb = SequenceV({
+  federated_language_executor::Value value_pb = SequenceV({
       {1, 2, 3},
       {10, 20, 30},
       {100, 200, 300},
@@ -75,27 +75,27 @@ TEST_F(SequenceExecutorTest, CreateMaterializeTFFSequenceYieldingStructures) {
 }
 
 TEST_F(SequenceExecutorTest, CreateMaterializeLocalComputation) {
-  v0::Value value_pb =
+  federated_language_executor::Value value_pb =
       ComputationV(LambdaComputation("x", ReferenceComputation("x")));
   mock_executor_->ExpectCreateMaterialize(value_pb);
   ExpectCreateMaterialize(value_pb);
 }
 
 TEST_F(SequenceExecutorTest, MaterializeSequenceIntrinsicFails) {
-  v0::Value value_pb = IntrinsicV(kSequenceReduceUri);
+  federated_language_executor::Value value_pb = IntrinsicV(kSequenceReduceUri);
   TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(value_pb));
   EXPECT_THAT(test_executor_->Materialize(id),
               StatusIs(StatusCode::kUnimplemented));
 }
 
 TEST_F(SequenceExecutorTest, CreateMaterializePassesThroughUnknownIntrinsic) {
-  v0::Value value_pb = IntrinsicV("unknown_intrinsic");
+  federated_language_executor::Value value_pb = IntrinsicV("unknown_intrinsic");
   mock_executor_->ExpectCreateMaterialize(value_pb);
   ExpectCreateMaterialize(value_pb);
 }
 
 TEST_F(SequenceExecutorTest, CreateSelectionFromComputationFails) {
-  v0::Value value_pb = IntrinsicV(kSequenceReduceUri);
+  federated_language_executor::Value value_pb = IntrinsicV(kSequenceReduceUri);
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId computation,
                            test_executor_->CreateValue(value_pb));
   // Note that there is no concurrency introduced yet, so this failure should
@@ -108,14 +108,15 @@ TEST_F(SequenceExecutorTest, CreateStructureOfTensors) {
   federated_language::Array five_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {5.0}));
-  v0::Value five_tensor;
+  federated_language_executor::Value five_tensor;
   five_tensor.mutable_array()->Swap(&five_array_pb);
   federated_language::Array ten_array_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_FLOAT,
                            testing::CreateArrayShape({}), {10.0}));
-  v0::Value ten_tensor;
+  federated_language_executor::Value ten_tensor;
   ten_tensor.mutable_array()->Swap(&ten_array_pb);
-  v0::Value struct_val = StructV({five_tensor, ten_tensor});
+  federated_language_executor::Value struct_val =
+      StructV({five_tensor, ten_tensor});
 
   auto embedded_five_id = mock_executor_->ExpectCreateValue(five_tensor);
   auto embedded_ten_id = mock_executor_->ExpectCreateValue(ten_tensor);
@@ -137,12 +138,12 @@ TEST_F(SequenceExecutorTest, CreateSelectionFromStructure) {
   federated_language::Array five_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {5.0}));
-  v0::Value five_tensor;
+  federated_language_executor::Value five_tensor;
   five_tensor.mutable_array()->Swap(&five_array_pb);
   federated_language::Array ten_array_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_FLOAT,
                            testing::CreateArrayShape({}), {10.0}));
-  v0::Value ten_tensor;
+  federated_language_executor::Value ten_tensor;
   ten_tensor.mutable_array()->Swap(&ten_array_pb);
   mock_executor_->ExpectCreateMaterialize(five_tensor);
   mock_executor_->ExpectCreateMaterialize(ten_tensor);
@@ -164,14 +165,15 @@ TEST_F(SequenceExecutorTest, CreateSelectionFromEmbedded) {
   federated_language::Array five_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {5.0}));
-  v0::Value five_tensor;
+  federated_language_executor::Value five_tensor;
   five_tensor.mutable_array()->Swap(&five_array_pb);
   federated_language::Array ten_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {5.0}));
-  v0::Value ten_tensor;
+  federated_language_executor::Value ten_tensor;
   ten_tensor.mutable_array()->Swap(&ten_array_pb);
-  v0::Value struct_value = StructV({five_tensor, ten_tensor});
+  federated_language_executor::Value struct_value =
+      StructV({five_tensor, ten_tensor});
   auto embedded_struct_id = mock_executor_->ExpectCreateValue(struct_value);
   auto embedded_five_id =
       mock_executor_->ExpectCreateSelection(embedded_struct_id, 0);
@@ -194,12 +196,12 @@ TEST_F(SequenceExecutorTest, TestCreateSelectionFromStructureOutOfBounds) {
   federated_language::Array five_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {5.0}));
-  v0::Value five_tensor;
+  federated_language_executor::Value five_tensor;
   five_tensor.mutable_array()->Swap(&five_array_pb);
   federated_language::Array ten_array_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_FLOAT,
                            testing::CreateArrayShape({}), {10.0}));
-  v0::Value ten_tensor;
+  federated_language_executor::Value ten_tensor;
   ten_tensor.mutable_array()->Swap(&ten_array_pb);
   // Notice no materialize calls should go through to the underlying mock.
   mock_executor_->ExpectCreateValue(five_tensor);
@@ -220,9 +222,10 @@ TEST_F(SequenceExecutorTest, CallPassThrough) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value tensor_value;
+  federated_language_executor::Value tensor_value;
   tensor_value.mutable_array()->Swap(&array_pb);
-  v0::Value passthru_fn = IntrinsicV("some_passthru_intrinsic");
+  federated_language_executor::Value passthru_fn =
+      IntrinsicV("some_passthru_intrinsic");
 
   auto embedded_tensor_id = mock_executor_->ExpectCreateValue(tensor_value);
   auto embedded_fn_id = mock_executor_->ExpectCreateValue(passthru_fn);
@@ -240,9 +243,10 @@ TEST_F(SequenceExecutorTest, CallPassThroughNoArg) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value tensor_value;
+  federated_language_executor::Value tensor_value;
   tensor_value.mutable_array()->Swap(&array_pb);
-  v0::Value passthru_fn = IntrinsicV("some_passthru_intrinsic");
+  federated_language_executor::Value passthru_fn =
+      IntrinsicV("some_passthru_intrinsic");
 
   {
     auto embedded_fn_id = mock_executor_->ExpectCreateValue(passthru_fn);
@@ -259,7 +263,8 @@ TEST_F(SequenceExecutorTest, CallPassThroughNoArg) {
 
 TEST_F(SequenceExecutorTest, CallSequenceReduceNoargFails) {
   int dataset_len = 10;
-  v0::Value sequence_value_pb = SequenceV(1, dataset_len, 1);
+  federated_language_executor::Value sequence_value_pb =
+      SequenceV(1, dataset_len, 1);
 
   auto sequence_reduce_id = TFF_ASSERT_OK(
       test_executor_->CreateValue(IntrinsicV(kSequenceReduceUri)));
@@ -274,9 +279,9 @@ TEST_F(SequenceExecutorTest, EmbedFailsWithBadType) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {45}));
-  v0::Value expected_sum_result;
+  federated_language_executor::Value expected_sum_result;
   expected_sum_result.mutable_array()->Swap(&array_pb);
-  v0::Value sequence_pb = SequenceV(1, dataset_len, 1);
+  federated_language_executor::Value sequence_pb = SequenceV(1, dataset_len, 1);
   // We mutate the element type of this Sequence value to a non-embeddable type.
 
   federated_language::Type function_type;
@@ -288,9 +293,10 @@ TEST_F(SequenceExecutorTest, EmbedFailsWithBadType) {
   federated_language::Array zero_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {0}));
-  v0::Value zero;
+  federated_language_executor::Value zero;
   zero.mutable_array()->Swap(&zero_array_pb);
-  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+  federated_language_executor::Value reduce_fn =
+      IntrinsicV("some_passthru_intrinsic");
 
   mock_executor_->ExpectCreateValue(zero);
   mock_executor_->ExpectCreateValue(reduce_fn);
@@ -316,9 +322,9 @@ TEST_F(SequenceExecutorTest, CreateCallStructureSequenceReduce) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {45}));
-  v0::Value expected_sum_result;
+  federated_language_executor::Value expected_sum_result;
   expected_sum_result.mutable_array()->Swap(&array_pb);
-  v0::Value sequence_value_pb = SequenceV({
+  federated_language_executor::Value sequence_value_pb = SequenceV({
       {1, 11},
       {2, 12},
       {3, 13},
@@ -333,9 +339,10 @@ TEST_F(SequenceExecutorTest, CreateCallStructureSequenceReduce) {
   federated_language::Array zero_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {0}));
-  v0::Value zero;
+  federated_language_executor::Value zero;
   zero.mutable_array()->Swap(&zero_array_pb);
-  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+  federated_language_executor::Value reduce_fn =
+      IntrinsicV("some_passthru_intrinsic");
 
   auto embedded_accumulator_id = mock_executor_->ExpectCreateValue(zero);
   auto embedded_reduce_fn_id = mock_executor_->ExpectCreateValue(reduce_fn);
@@ -344,14 +351,14 @@ TEST_F(SequenceExecutorTest, CreateCallStructureSequenceReduce) {
     federated_language::Array first_array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT64,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value first_element_pb;
+    federated_language_executor::Value first_element_pb;
     first_element_pb.mutable_array()->Swap(&first_array_pb);
     auto embedded_dataset_first_element =
         mock_executor_->ExpectCreateValue(first_element_pb);
     federated_language::Array second_array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT64,
                              testing::CreateArrayShape({}), {i + dataset_len}));
-    v0::Value second_element_pb;
+    federated_language_executor::Value second_element_pb;
     second_element_pb.mutable_array()->Swap(&second_array_pb);
     auto embedded_dataset_second_element =
         mock_executor_->ExpectCreateValue(second_element_pb);
@@ -383,10 +390,10 @@ TEST_F(SequenceExecutorTest, CreateCallNestedStructureSequenceReduce) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {45}));
-  v0::Value expected_sum_result;
+  federated_language_executor::Value expected_sum_result;
   expected_sum_result.mutable_array()->Swap(&array_pb);
 
-  v0::Value sequence_value_pb = SequenceV({
+  federated_language_executor::Value sequence_value_pb = SequenceV({
       {1, 11, 21},
       {2, 12, 22},
       {3, 13, 23},
@@ -424,8 +431,9 @@ TEST_F(SequenceExecutorTest, CreateCallNestedStructureSequenceReduce) {
   federated_language::Array zero_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {0}));
-  v0::Value zero;
-  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+  federated_language_executor::Value zero;
+  federated_language_executor::Value reduce_fn =
+      IntrinsicV("some_passthru_intrinsic");
 
   // Since we pull elements out of the sequence in the sequence
   // executor, we never create the sequence in the target.
@@ -437,7 +445,7 @@ TEST_F(SequenceExecutorTest, CreateCallNestedStructureSequenceReduce) {
     federated_language::Array array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT64,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value element_pb;
+    federated_language_executor::Value element_pb;
     element_pb.mutable_array()->Swap(&array_pb);
     auto embedded_dataset_top_level_element =
         mock_executor_->ExpectCreateValue(element_pb);
@@ -447,14 +455,14 @@ TEST_F(SequenceExecutorTest, CreateCallNestedStructureSequenceReduce) {
     federated_language::Array x_array_pb = TFF_ASSERT_OK(testing::CreateArray(
         federated_language::DataType::DT_INT64, testing::CreateArrayShape({}),
         {i + 2 * dataset_len}));
-    v0::Value x_element_pb;
+    federated_language_executor::Value x_element_pb;
     x_element_pb.mutable_array()->Swap(&x_array_pb);
     auto embedded_dataset_struct_x_element =
         mock_executor_->ExpectCreateValue(x_element_pb);
     federated_language::Array y_array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT64,
                              testing::CreateArrayShape({}), {i + dataset_len}));
-    v0::Value y_element_pb;
+    federated_language_executor::Value y_element_pb;
     y_element_pb.mutable_array()->Swap(&y_array_pb);
     auto embedded_dataset_struct_y_element =
         mock_executor_->ExpectCreateValue(y_element_pb);
@@ -491,20 +499,22 @@ TEST_F(SequenceExecutorTest, CreateCreateSequenceReduceStructuredZero) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {45}));
-  v0::Value expected_sum_result;
+  federated_language_executor::Value expected_sum_result;
   expected_sum_result.mutable_array()->Swap(&array_pb);
-  v0::Value sequence_value_pb = SequenceV(1, dataset_len, 1);
+  federated_language_executor::Value sequence_value_pb =
+      SequenceV(1, dataset_len, 1);
   federated_language::Array zero_one_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {100}));
-  v0::Value zero_one;
+  federated_language_executor::Value zero_one;
   zero_one.mutable_array()->Swap(&zero_one_array_pb);
   federated_language::Array zero_two_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {101}));
-  v0::Value zero_two;
+  federated_language_executor::Value zero_two;
   zero_two.mutable_array()->Swap(&zero_two_array_pb);
-  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+  federated_language_executor::Value reduce_fn =
+      IntrinsicV("some_passthru_intrinsic");
 
   // Since we pull elements out of the sequence in the sequence
   // executor, we never create the sequence in the target.
@@ -520,7 +530,7 @@ TEST_F(SequenceExecutorTest, CreateCreateSequenceReduceStructuredZero) {
     federated_language::Array array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT64,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value element_pb;
+    federated_language_executor::Value element_pb;
     element_pb.mutable_array()->Swap(&array_pb);
     auto embedded_dataset_element =
         mock_executor_->ExpectCreateValue(element_pb);
@@ -553,15 +563,17 @@ TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceReduce) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {45}));
-  v0::Value expected_sum_result;
+  federated_language_executor::Value expected_sum_result;
   expected_sum_result.mutable_array()->Swap(&array_pb);
-  v0::Value sequence_value_pb = SequenceV(1, dataset_len, 1);
+  federated_language_executor::Value sequence_value_pb =
+      SequenceV(1, dataset_len, 1);
   federated_language::Array zero_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {0}));
-  v0::Value zero;
+  federated_language_executor::Value zero;
   zero.mutable_array()->Swap(&zero_array_pb);
-  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+  federated_language_executor::Value reduce_fn =
+      IntrinsicV("some_passthru_intrinsic");
 
   // Since we pull elements out of the sequence in the sequence
   // executor, we never create the sequence in the target.
@@ -572,7 +584,7 @@ TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceReduce) {
     federated_language::Array array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT64,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value element_pb;
+    federated_language_executor::Value element_pb;
     element_pb.mutable_array()->Swap(&array_pb);
     auto embedded_dataset_element =
         mock_executor_->ExpectCreateValue(element_pb);
@@ -599,8 +611,10 @@ TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceReduce) {
 
 TEST_F(SequenceExecutorTest, EmbedMappedSequenceFails) {
   int dataset_len = 10;
-  v0::Value sequence_value_pb = SequenceV(1, dataset_len, 1);
-  v0::Value mapping_fn = IntrinsicV("some_passthru_mapping_fn");
+  federated_language_executor::Value sequence_value_pb =
+      SequenceV(1, dataset_len, 1);
+  federated_language_executor::Value mapping_fn =
+      IntrinsicV("some_passthru_mapping_fn");
 
   mock_executor_->ExpectCreateValue(mapping_fn);
 
@@ -619,8 +633,10 @@ TEST_F(SequenceExecutorTest, EmbedMappedSequenceFails) {
 
 TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceMapThenReduce) {
   int dataset_len = 10;
-  v0::Value sequence_value_pb = SequenceV(1, dataset_len, 1);
-  v0::Value mapping_fn = IntrinsicV("some_passthru_mapping_fn");
+  federated_language_executor::Value sequence_value_pb =
+      SequenceV(1, dataset_len, 1);
+  federated_language_executor::Value mapping_fn =
+      IntrinsicV("some_passthru_mapping_fn");
 
   // Only the mapping function may be embedded while we create the sequence map,
   // the rest will happen lazily upon iteration.
@@ -640,14 +656,15 @@ TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceMapThenReduce) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {45}));
-  v0::Value expected_sum_result;
+  federated_language_executor::Value expected_sum_result;
   expected_sum_result.mutable_array()->Swap(&array_pb);
   federated_language::Array zero_array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT64,
                                          testing::CreateArrayShape({}), {0}));
-  v0::Value zero;
+  federated_language_executor::Value zero;
   zero.mutable_array()->Swap(&zero_array_pb);
-  v0::Value reduce_fn = IntrinsicV("some_passthru_reduce_fn");
+  federated_language_executor::Value reduce_fn =
+      IntrinsicV("some_passthru_reduce_fn");
 
   auto embedded_accumulator_id = mock_executor_->ExpectCreateValue(zero);
   auto embedded_reduce_fn_id = mock_executor_->ExpectCreateValue(reduce_fn);
@@ -656,7 +673,7 @@ TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceMapThenReduce) {
     federated_language::Array array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT64,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value element_pb;
+    federated_language_executor::Value element_pb;
     element_pb.mutable_array()->Swap(&array_pb);
     auto embedded_dataset_element =
         mock_executor_->ExpectCreateValue(element_pb);

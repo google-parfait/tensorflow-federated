@@ -20,9 +20,7 @@ There are two principal modes of deployment for TFF computations:
     TFF *executor* interfaces, such as
     [`federated_language.framework.Executor`](https://www.tensorflow.org/federated/api_docs/python/tff/framework/Executor)
     for consumption by Python code, or the language-independent version of it
-    defined in
-    [`executor.proto`](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/proto/v0/executor.proto)
-    exposed as a gRPC endpoint.
+    defined in `executor.proto` exposed as a gRPC endpoint.
 
     Native backends that support the above interfaces can be used interactively
     in lieu of the default reference runtime, e.g., to run notebooks or

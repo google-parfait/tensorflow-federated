@@ -19,14 +19,14 @@ import weakref
 
 from absl import logging
 import federated_language
+from federated_language_executor import executor_pb2
+from federated_language_executor import value_serialization
 import grpc
 
-from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import cardinality
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
-from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
 class RemoteValue(federated_language.framework.ExecutorValue):

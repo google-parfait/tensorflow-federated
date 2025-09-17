@@ -38,7 +38,7 @@ using ::tensorflow_federated::testing::EqualsProto;
 using ::tensorflow_federated::testing::SequenceV;
 
 TEST(DatasetConversionsTest, TestIterationOverCreatedDataset) {
-  v0::Value value_pb = SequenceV(0, 10, 1);
+  federated_language_executor::Value value_pb = SequenceV(0, 10, 1);
   std::shared_ptr<tensorflow::data::standalone::Dataset> ds =
       TFF_ASSERT_OK(DatasetFromGraphDefTensor(
           TFF_ASSERT_OK(GraphDefTensorFromSequence(value_pb.sequence()))));

@@ -18,18 +18,18 @@ limitations under the License
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
 // Serializes a tensor to a TFF Value protobuf.
 absl::Status SerializeTensorValue(const tensorflow::Tensor tensor,
-                                  v0::Value* value_pb);
+                                  federated_language_executor::Value* value_pb);
 
 // Deserializes a TFF Value protobuf back to a tf::Tensor.
 absl::StatusOr<tensorflow::Tensor> DeserializeTensorValue(
-    const v0::Value& value_pb);
+    const federated_language_executor::Value& value_pb);
 
 }  // namespace tensorflow_federated
 

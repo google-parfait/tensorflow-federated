@@ -210,11 +210,11 @@ py_test(
     deps = [
         ":tensorflow_computation_factory",
         ":tensorflow_executor_bindings",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
-        "//tensorflow_federated/python/core/impl/executors:value_serialization",
         "@federated_language//federated_language",
+        "@federated_language//federated_language_executor:executor_bindings",
+        "@federated_language//federated_language_executor:executor_py_pb2",
+        "@federated_language//federated_language_executor:value_serialization",
     ],
 )
 

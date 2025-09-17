@@ -32,10 +32,10 @@ limitations under the License
 #include "include/grpcpp/server_context.h"
 #include "include/grpcpp/support/status.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -55,14 +55,15 @@ std::string CardinalitiesToString(const CardinalityMap& cardinalities) {
   return absl::StrJoin(cardinalities, ",", absl::PairFormatter("="));
 }
 
-v0::ValueRef IdToRemoteValue(ValueId value_id) {
-  v0::ValueRef value_ref;
+federated_language_executor::ValueRef IdToRemoteValue(ValueId value_id) {
+  federated_language_executor::ValueRef value_ref;
   value_ref.set_id(absl::StrCat(value_id));
   return value_ref;
 }
 
-grpc::Status RemoteValueToId(const v0::ValueRef& remote_value_ref,
-                             ValueId& value_id_out) {
+grpc::Status RemoteValueToId(
+    const federated_language_executor::ValueRef& remote_value_ref,
+    ValueId& value_id_out) {
   // Incoming ref should be a string containing the ValueId.
   if (absl::SimpleAtoi(remote_value_ref.id(), &value_id_out)) {
     return grpc::Status::OK;
@@ -189,9 +190,10 @@ void ExecutorService::ExecutorResolver::DestroyExecutorImpl(
   }
 }
 
-grpc::Status ExecutorService::GetExecutor(grpc::ServerContext* context,
-                                          const v0::GetExecutorRequest* request,
-                                          v0::GetExecutorResponse* response) {
+grpc::Status ExecutorService::GetExecutor(
+    grpc::ServerContext* context,
+    const federated_language_executor::GetExecutorRequest* request,
+    federated_language_executor::GetExecutorResponse* response) {
   CardinalityMap cardinalities;
   for (const auto& cardinality : request->cardinalities()) {
     cardinalities.insert(
@@ -208,7 +210,8 @@ grpc::Status ExecutorService::GetExecutor(grpc::ServerContext* context,
 }
 
 grpc::Status ExecutorService::RequireExecutor(
-    absl::string_view method_name, const v0::ExecutorId& executor,
+    absl::string_view method_name,
+    const federated_language_executor::ExecutorId& executor,
     std::shared_ptr<Executor>& executor_out) {
   absl::StatusOr<ExecutorEntry> ex =
       executor_resolver_.ExecutorForId({executor.id()});
@@ -222,8 +225,9 @@ grpc::Status ExecutorService::RequireExecutor(
   return grpc::Status::OK;
 }
 
-grpc::Status ExecutorService::HandleNotOK(const absl::Status& status,
-                                          const v0::ExecutorId& executor_id) {
+grpc::Status ExecutorService::HandleNotOK(
+    const absl::Status& status,
+    const federated_language_executor::ExecutorId& executor_id) {
   if (status.code() == absl::StatusCode::kFailedPrecondition) {
     // TODO: b/193900393 - With increased reliance on the semantics of
     // FAILED_PRECONDITION, we would likely prefer to define a custom error code
@@ -236,9 +240,10 @@ grpc::Status ExecutorService::HandleNotOK(const absl::Status& status,
   return absl_to_grpc(status);
 }
 
-grpc::Status ExecutorService::CreateValue(grpc::ServerContext* context,
-                                          const v0::CreateValueRequest* request,
-                                          v0::CreateValueResponse* response) {
+grpc::Status ExecutorService::CreateValue(
+    grpc::ServerContext* context,
+    const federated_language_executor::CreateValueRequest* request,
+    federated_language_executor::CreateValueResponse* response) {
   std::shared_ptr<Executor> executor;
   TFF_TRYLOG_GRPC(
       RequireExecutor("CreateValue", request->executor(), executor));
@@ -254,9 +259,10 @@ grpc::Status ExecutorService::CreateValue(grpc::ServerContext* context,
   return grpc::Status::OK;
 }
 
-grpc::Status ExecutorService::CreateCall(grpc::ServerContext* context,
-                                         const v0::CreateCallRequest* request,
-                                         v0::CreateCallResponse* response) {
+grpc::Status ExecutorService::CreateCall(
+    grpc::ServerContext* context,
+    const federated_language_executor::CreateCallRequest* request,
+    federated_language_executor::CreateCallResponse* response) {
   std::shared_ptr<Executor> executor;
   TFF_TRYLOG_GRPC(RequireExecutor("CreateCall", request->executor(), executor));
   ValueId embedded_fn;
@@ -279,14 +285,16 @@ grpc::Status ExecutorService::CreateCall(grpc::ServerContext* context,
 }
 
 grpc::Status ExecutorService::CreateStruct(
-    grpc::ServerContext* context, const v0::CreateStructRequest* request,
-    v0::CreateStructResponse* response) {
+    grpc::ServerContext* context,
+    const federated_language_executor::CreateStructRequest* request,
+    federated_language_executor::CreateStructResponse* response) {
   std::shared_ptr<Executor> executor;
   TFF_TRYLOG_GRPC(
       RequireExecutor("CreateStruct", request->executor(), executor));
   std::vector<ValueId> requested_ids;
   requested_ids.reserve(request->element().size());
-  for (const v0::CreateStructRequest::Element& elem : request->element()) {
+  for (const federated_language_executor::CreateStructRequest::Element& elem :
+       request->element()) {
     ValueId id;
     TFF_TRYLOG_GRPC(RemoteValueToId(elem.value_ref(), id));
     requested_ids.push_back(id);
@@ -303,8 +311,9 @@ grpc::Status ExecutorService::CreateStruct(
 }
 
 grpc::Status ExecutorService::CreateSelection(
-    grpc::ServerContext* context, const v0::CreateSelectionRequest* request,
-    v0::CreateSelectionResponse* response) {
+    grpc::ServerContext* context,
+    const federated_language_executor::CreateSelectionRequest* request,
+    federated_language_executor::CreateSelectionResponse* response) {
   std::shared_ptr<Executor> executor;
   TFF_TRYLOG_GRPC(
       RequireExecutor("CreateSelection", request->executor(), executor));
@@ -321,9 +330,10 @@ grpc::Status ExecutorService::CreateSelection(
   return grpc::Status::OK;
 }
 
-grpc::Status ExecutorService::Compute(grpc::ServerContext* context,
-                                      const v0::ComputeRequest* request,
-                                      v0::ComputeResponse* response) {
+grpc::Status ExecutorService::Compute(
+    grpc::ServerContext* context,
+    const federated_language_executor::ComputeRequest* request,
+    federated_language_executor::ComputeResponse* response) {
   std::shared_ptr<Executor> executor;
   TFF_TRYLOG_GRPC(RequireExecutor("Compute", request->executor(), executor));
   ValueId requested_value;
@@ -336,9 +346,10 @@ grpc::Status ExecutorService::Compute(grpc::ServerContext* context,
   return HandleNotOK(status, request->executor());
 }
 
-grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
-                                      const v0::DisposeRequest* request,
-                                      v0::DisposeResponse* response) {
+grpc::Status ExecutorService::Dispose(
+    grpc::ServerContext* context,
+    const federated_language_executor::DisposeRequest* request,
+    federated_language_executor::DisposeResponse* response) {
   std::shared_ptr<Executor> executor;
   grpc::Status executor_status =
       RequireExecutor("Dispose", request->executor(), executor);
@@ -355,7 +366,8 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
   }
   std::vector<ValueId> embedded_ids_to_dispose;
   embedded_ids_to_dispose.reserve(request->value_ref().size());
-  for (const v0::ValueRef& disposed_value_ref : request->value_ref()) {
+  for (const federated_language_executor::ValueRef& disposed_value_ref :
+       request->value_ref()) {
     ValueId embedded_value;
     grpc::Status status = RemoteValueToId(disposed_value_ref, embedded_value);
     if (status.ok()) {
@@ -370,8 +382,9 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
 }
 
 grpc::Status ExecutorService::DisposeExecutor(
-    grpc::ServerContext* context, const v0::DisposeExecutorRequest* request,
-    v0::DisposeExecutorResponse* response) {
+    grpc::ServerContext* context,
+    const federated_language_executor::DisposeExecutorRequest* request,
+    federated_language_executor::DisposeExecutorResponse* response) {
   return absl_to_grpc(
       executor_resolver_.DisposeExecutor({request->executor().id()}));
 }

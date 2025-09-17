@@ -31,9 +31,9 @@ limitations under the License
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -66,8 +66,8 @@ class ScopedLambda {
       const ReferenceResolvingExecutor& rre,
       std::optional<std::shared_ptr<ExecutorValue>> arg) const;
 
-  v0::Value as_value_pb() const {
-    v0::Value value_pb;
+  federated_language_executor::Value as_value_pb() const {
+    federated_language_executor::Value value_pb;
     *value_pb.mutable_computation()->mutable_lambda() = lambda_pb_;
     return value_pb;
   }
@@ -209,7 +209,7 @@ class ReferenceResolvingExecutor
   }
 
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateExecutorValue(
-      const v0::Value& value_pb) final;
+      const federated_language_executor::Value& value_pb) final;
 
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateCall(
       std::shared_ptr<ExecutorValue> function,
@@ -227,7 +227,7 @@ class ReferenceResolvingExecutor
       std::shared_ptr<ExecutorValue> source, uint32_t index) const;
 
   absl::Status Materialize(std::shared_ptr<ExecutorValue> value,
-                           v0::Value* value_pb) final;
+                           federated_language_executor::Value* value_pb) final;
 
  private:
   std::shared_ptr<Executor> child_executor_;
@@ -353,25 +353,26 @@ std::string ExecutorValue::DebugString() const {
 }
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
-ReferenceResolvingExecutor::CreateExecutorValue(const v0::Value& value_pb) {
+ReferenceResolvingExecutor::CreateExecutorValue(
+    const federated_language_executor::Value& value_pb) {
   VLOG(2) << "Creating value: " << value_pb.Utf8DebugString();
   switch (value_pb.value_case()) {
-    case v0::Value::kFederated:
-    case v0::Value::kSequence:
-    case v0::Value::kArray: {
+    case federated_language_executor::Value::kFederated:
+    case federated_language_executor::Value::kSequence:
+    case federated_language_executor::Value::kArray: {
       return std::make_shared<ExecutorValue>(
           TFF_TRY(child_executor_->CreateValue(value_pb)));
     }
-    case v0::Value::kStruct: {
+    case federated_language_executor::Value::kStruct: {
       std::vector<std::shared_ptr<ExecutorValue>> elements;
       elements.reserve(value_pb.struct_().element_size());
-      for (const v0::Value::Struct::Element& element_pb :
-           value_pb.struct_().element()) {
+      for (const federated_language_executor::Value::Struct::Element&
+               element_pb : value_pb.struct_().element()) {
         elements.emplace_back(TFF_TRY(CreateExecutorValue(element_pb.value())));
       }
       return std::make_shared<ExecutorValue>(std::move(elements));
     }
-    case v0::Value::kComputation: {
+    case federated_language_executor::Value::kComputation: {
       return Evaluate(value_pb.computation(), std::make_shared<Scope>());
     }
     default:
@@ -460,7 +461,8 @@ ReferenceResolvingExecutor::CreateSelectionInternal(
 }
 
 absl::Status ReferenceResolvingExecutor::Materialize(
-    std::shared_ptr<ExecutorValue> value, v0::Value* value_pb) {
+    std::shared_ptr<ExecutorValue> value,
+    federated_language_executor::Value* value_pb) {
   // Value might still be a struct here, but the underlying child executor
   // only knows about the individual elements.  In this case we must create a
   // struct of the elements in the child executor first, and then materialize
@@ -525,7 +527,7 @@ ReferenceResolvingExecutor::Evaluate(
       // `Value` for each `Computation` proto (see
       // `federated_language::Block::local`); this code is simpler and more
       // homogenous. If profiling shows this is a hotspot we can optimize.
-      v0::Value child_value_pb;
+      federated_language_executor::Value child_value_pb;
       *child_value_pb.mutable_computation() = computation_pb;
       return std::make_shared<ExecutorValue>(
           TFF_TRY(child_executor_->CreateValue(child_value_pb)));

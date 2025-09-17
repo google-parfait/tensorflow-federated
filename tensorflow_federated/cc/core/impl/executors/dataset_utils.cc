@@ -34,9 +34,10 @@ limitations under the License
 namespace tensorflow_federated {
 
 absl::StatusOr<tensorflow::Tensor> GraphDefTensorFromSequence(
-    const v0::Value::Sequence& sequence_pb) {
+    const federated_language_executor::Value::Sequence& sequence_pb) {
   std::vector<std::vector<tensorflow::Tensor>> tensor_structures;
-  for (const v0::Value::Sequence::Element& element_pb : sequence_pb.element()) {
+  for (const federated_language_executor::Value::Sequence::Element& element_pb :
+       sequence_pb.element()) {
     std::vector<tensorflow::Tensor> tensors;
     for (const federated_language::Array& array_pb : element_pb.flat_value()) {
       // Repeated fields are used for strings and scalars to maintain

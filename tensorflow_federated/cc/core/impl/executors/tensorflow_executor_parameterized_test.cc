@@ -33,6 +33,7 @@ limitations under the License
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_context_internal.h"
 #include "tensorflow/c/tf_status.h"
@@ -55,7 +56,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 ABSL_FLAG(std::string, reduce_graph_path, "",
           "Path to a serialized GraphDef containing a dataset reduce.");
@@ -121,12 +121,12 @@ template <>
 ExecutorId ExecutorType<TensorflowExecutor>() {
   return kTensorFlowExecutor;
 }
-inline v0::Value ComputationV(
+inline federated_language_executor::Value ComputationV(
     std::optional<federated_language::TensorFlow::Binding> in_binding,
     federated_language::TensorFlow::Binding out_binding,
     const tensorflow::Scope& scope,
     const std::optional<const tensorflow::Operation>& init_op = std::nullopt) {
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   federated_language::Computation* comp_pb = value_pb.mutable_computation();
   // NOTE: we do not fill in the `type` field of `comp` because it is not needed
   // by the C++ TensorFlow executor.
@@ -162,10 +162,10 @@ class TensorFlowBasedExecutorsTest : public ::testing::Test {
   std::shared_ptr<Executor> test_executor_;
   TFE_Context* context_;
 
-  void CheckRoundTrip(const v0::Value& input_pb) {
+  void CheckRoundTrip(const federated_language_executor::Value& input_pb) {
     TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
                              test_executor_->CreateValue(input_pb));
-    v0::Value output_pb;
+    federated_language_executor::Value output_pb;
     EXPECT_THAT(test_executor_->Materialize(id, &output_pb), IsOk());
     EXPECT_THAT(output_pb, testing::proto::IgnoringRepeatedFieldOrdering(
                                EqualsProto(input_pb)));
@@ -175,13 +175,15 @@ class TensorFlowBasedExecutorsTest : public ::testing::Test {
 
   template <typename... Ts>
   void CheckTensorRoundTrip(Ts... tensor_constructor_args) {
-    const v0::Value input_pb = TensorV(tensor_constructor_args...);
+    const federated_language_executor::Value input_pb =
+        TensorV(tensor_constructor_args...);
     CheckRoundTrip(input_pb);
   }
 
-  void CheckCallEqualsProto(const v0::Value& fn,
-                            const std::optional<v0::Value>& arg,
-                            const v0::Value& expected) {
+  void CheckCallEqualsProto(
+      const federated_language_executor::Value& fn,
+      const std::optional<federated_language_executor::Value>& arg,
+      const federated_language_executor::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
     std::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
@@ -195,9 +197,10 @@ class TensorFlowBasedExecutorsTest : public ::testing::Test {
     EXPECT_THAT(result_proto, EqualsProto(expected));
   }
 
-  void CheckCallRepeatedlyEqualsProto(const v0::Value& fn,
-                                      const std::optional<v0::Value>& arg,
-                                      const v0::Value& expected) {
+  void CheckCallRepeatedlyEqualsProto(
+      const federated_language_executor::Value& fn,
+      const std::optional<federated_language_executor::Value>& arg,
+      const federated_language_executor::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
     std::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
@@ -213,9 +216,10 @@ class TensorFlowBasedExecutorsTest : public ::testing::Test {
     }
   }
 
-  void CheckCallParallelEqualsProto(const v0::Value& fn,
-                                    const std::optional<v0::Value>& arg,
-                                    const v0::Value& expected) {
+  void CheckCallParallelEqualsProto(
+      const federated_language_executor::Value& fn,
+      const std::optional<federated_language_executor::Value>& arg,
+      const federated_language_executor::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
     std::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
@@ -223,15 +227,18 @@ class TensorFlowBasedExecutorsTest : public ::testing::Test {
                                test_executor_->CreateValue(arg.value()));
     }
     const int NUM_TEST_THREADS = 32;
-    std::vector<std::future<absl::StatusOr<v0::Value>>> results;
+    std::vector<std::future<absl::StatusOr<federated_language_executor::Value>>>
+        results;
     for (int i = 0; i < NUM_TEST_THREADS; i++) {
-      results.emplace_back(
-          std::async(std::launch::async, [&]() -> absl::StatusOr<v0::Value> {
+      results.emplace_back(std::async(
+          std::launch::async,
+          [&]() -> absl::StatusOr<federated_language_executor::Value> {
             return test_executor_->Materialize(
                 TFF_TRY(test_executor_->CreateCall(fn_id, arg_id)));
           }));
     }
-    for (std::future<absl::StatusOr<v0::Value>>& result_future : results) {
+    for (std::future<absl::StatusOr<federated_language_executor::Value>>&
+             result_future : results) {
       result_future.wait();
       auto result_status = result_future.get();
       TFF_EXPECT_OK(result_status);
@@ -247,14 +254,14 @@ typedef Types<TensorflowExecutor> Implementations;
 TYPED_TEST_SUITE(TensorFlowBasedExecutorsTest, Implementations);
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CreateValueEmptyStruct) {
-  v0::Value input_pb;
+  federated_language_executor::Value input_pb;
   input_pb.mutable_struct_();
   EXPECT_THAT(this->test_executor_->CreateValue(input_pb), IsOk());
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CreateValueSimpleTensor) {
   int8_t input_int = 9;
-  v0::Value input_pb = TensorV(input_int);
+  federated_language_executor::Value input_pb = TensorV(input_int);
   EXPECT_THAT(this->test_executor_->CreateValue(input_pb), IsOk());
 }
 
@@ -279,8 +286,8 @@ char const* const kReduceResultOutputTensorName = "result_tensor";
 
 // Returns a value containing a computation which will perform a reduce on an
 // input dataset of `int64_t`s and return the sum of the elements.
-v0::Value CreateDatasetReduceComputationV() {
-  v0::Value value_pb;
+federated_language_executor::Value CreateDatasetReduceComputationV() {
+  federated_language_executor::Value value_pb;
   federated_language::Computation* comp_pb = value_pb.mutable_computation();
   // NOTE: we do not fill in the `type` field of `comp` because it is not needed
   // by the C++ TensorFlow executor.
@@ -308,7 +315,7 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallReduceOnSequence) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripEmptyStruct) {
-  v0::Value input_pb;
+  federated_language_executor::Value input_pb;
   input_pb.mutable_struct_();
   this->CheckRoundTrip(input_pb);
 }
@@ -323,22 +330,23 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripSimpleTensor) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripStructWithTensor) {
-  v0::Value input_pb = StructV({TensorV(9)});
+  federated_language_executor::Value input_pb = StructV({TensorV(9)});
   this->CheckRoundTrip(input_pb);
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripStructOfNestedTensors) {
-  v0::Value input_pb = StructV({StructV({TensorV(24)}), TensorV(88)});
+  federated_language_executor::Value input_pb =
+      StructV({StructV({TensorV(24)}), TensorV(88)});
   this->CheckRoundTrip(input_pb);
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripSequence) {
-  v0::Value value_pb = SequenceV(0, 2, 1);
+  federated_language_executor::Value value_pb = SequenceV(0, 2, 1);
   // We can't simply `this->CheckRoundTrip` because the serialized graph defs
   // don't have deterministic node orders.
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
                            this->test_executor_->CreateValue(value_pb));
-  v0::Value output_pb;
+  federated_language_executor::Value output_pb;
   EXPECT_THAT(this->test_executor_->Materialize(id, &output_pb), IsOk());
   // Compare elements without ordering, output_pb will not have an element_type
   // because ExecutorValue does not have a type.
@@ -349,7 +357,7 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripSequence) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CreateStructOneElement) {
-  v0::Value input = TensorV(5);
+  federated_language_executor::Value input = TensorV(5);
   TFF_ASSERT_OK_AND_ASSIGN(auto value,
                            this->test_executor_->CreateValue(input));
   TFF_ASSERT_OK_AND_ASSIGN(auto struct_,
@@ -360,10 +368,11 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CreateStructOneElement) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CreateStructSeveralElements) {
-  v0::Value t1 = TensorV(5);
-  v0::Value t2 = TensorV(6);
-  v0::Value t3 = TensorV(7);
-  v0::Value struct_ = StructV({TensorV(5), TensorV(6), TensorV(7)});
+  federated_language_executor::Value t1 = TensorV(5);
+  federated_language_executor::Value t2 = TensorV(6);
+  federated_language_executor::Value t3 = TensorV(7);
+  federated_language_executor::Value struct_ =
+      StructV({TensorV(5), TensorV(6), TensorV(7)});
   TFF_ASSERT_OK_AND_ASSIGN(auto t1id, this->test_executor_->CreateValue(t1));
   TFF_ASSERT_OK_AND_ASSIGN(auto t2id, this->test_executor_->CreateValue(t2));
   TFF_ASSERT_OK_AND_ASSIGN(auto t3id, this->test_executor_->CreateValue(t3));
@@ -375,7 +384,7 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CreateStructSeveralElements) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CreateSelectionFromCreateValue) {
-  v0::Value input = StructV({TensorV(1), TensorV(2)});
+  federated_language_executor::Value input = StructV({TensorV(1), TensorV(2)});
   TFF_ASSERT_OK_AND_ASSIGN(auto vid, this->test_executor_->CreateValue(input));
   TFF_ASSERT_OK_AND_ASSIGN(auto t1id,
                            this->test_executor_->CreateSelection(vid, 0));
@@ -428,10 +437,12 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallNoOutputTensors) {
   // so long as it has no tensors.
   auto out_binding = StructB({StructB({}), StructB({StructB({})})});
 
-  v0::Value fn = ComputationV(in_binding, out_binding, root);
-  v0::Value arg = StructV(
+  federated_language_executor::Value fn =
+      ComputationV(in_binding, out_binding, root);
+  federated_language_executor::Value arg = StructV(
       {TensorV(static_cast<float>(1.0)), TensorV(static_cast<float>(2.0))});
-  v0::Value expected = StructV({StructV({}), StructV({StructV({})})});
+  federated_language_executor::Value expected =
+      StructV({StructV({}), StructV({StructV({})})});
   this->CheckCallEqualsProto(fn, arg, expected);
   this->CheckCallRepeatedlyEqualsProto(fn, arg, expected);
 }
@@ -443,11 +454,11 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallNoArgOneOutWithInitialize) {
   auto var_init = tensorflow::ops::AssignVariableOp(
       root, var, tensorflow::ops::Const(root, {1, 2, 3}, shape));
   tensorflow::ops::ReadVariableOp read_var(root, var, tensorflow::DT_INT32);
-  v0::Value fn = ComputationV(
+  federated_language_executor::Value fn = ComputationV(
       /*in_binding=*/std::nullopt,
       /*out_binding=*/TensorB(read_var), root,
       /*init_op=*/var_init);
-  v0::Value expected = TensorVFromIntList({1, 2, 3});
+  federated_language_executor::Value expected = TensorVFromIntList({1, 2, 3});
   this->CheckCallEqualsProto(fn, std::nullopt, expected);
   // Ensure that repeatedly using the same session from the session provider
   // works correctly.
@@ -458,9 +469,10 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallOneInOut) {
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder in(root, tensorflow::DT_DOUBLE);
   tensorflow::ops::Identity out(root, in);
-  v0::Value fn = ComputationV(TensorB(in), TensorB(out), root);
-  v0::Value arg = TensorV(5.0);
-  v0::Value expected = TensorV(5.0);
+  federated_language_executor::Value fn =
+      ComputationV(TensorB(in), TensorB(out), root);
+  federated_language_executor::Value arg = TensorV(5.0);
+  federated_language_executor::Value expected = TensorV(5.0);
   this->CheckCallEqualsProto(fn, arg, expected);
 }
 
@@ -470,10 +482,12 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallStructSwapInOut) {
   tensorflow::ops::Placeholder yin(root, tensorflow::DT_INT32);
   tensorflow::ops::Identity xout(root, xin);
   tensorflow::ops::Identity yout(root, yin);
-  v0::Value fn = ComputationV(StructB({TensorB(xin), TensorB(yin)}),
-                              StructB({TensorB(yout), TensorB(xout)}), root);
-  v0::Value arg = StructV({TensorV(5.0), TensorV(1)});
-  v0::Value expected = StructV({TensorV(1), TensorV(5.0)});
+  federated_language_executor::Value fn =
+      ComputationV(StructB({TensorB(xin), TensorB(yin)}),
+                   StructB({TensorB(yout), TensorB(xout)}), root);
+  federated_language_executor::Value arg = StructV({TensorV(5.0), TensorV(1)});
+  federated_language_executor::Value expected =
+      StructV({TensorV(1), TensorV(5.0)});
   this->CheckCallEqualsProto(fn, arg, expected);
 }
 
@@ -483,11 +497,13 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallNestedStructSwapInOut) {
   tensorflow::ops::Placeholder yin(root, tensorflow::DT_INT32);
   tensorflow::ops::Identity xout(root, xin);
   tensorflow::ops::Identity yout(root, yin);
-  v0::Value fn =
+  federated_language_executor::Value fn =
       ComputationV(StructB({StructB({TensorB(xin)}), TensorB(yin)}),
                    StructB({TensorB(yout), StructB({TensorB(xout)})}), root);
-  v0::Value arg = StructV({StructV({TensorV(2.0)}), TensorV(4)});
-  v0::Value expected = StructV({TensorV(4), StructV({TensorV(2.0)})});
+  federated_language_executor::Value arg =
+      StructV({StructV({TensorV(2.0)}), TensorV(4)});
+  federated_language_executor::Value expected =
+      StructV({TensorV(4), StructV({TensorV(2.0)})});
   this->CheckCallEqualsProto(fn, arg, expected);
 }
 
@@ -496,10 +512,10 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallAdd) {
   tensorflow::ops::Placeholder x(root, tensorflow::DT_INT32);
   tensorflow::ops::Placeholder y(root, tensorflow::DT_INT32);
   tensorflow::ops::AddV2 out(root, x, y);
-  v0::Value fn =
+  federated_language_executor::Value fn =
       ComputationV(StructB({TensorB(x), TensorB(y)}), TensorB(out), root);
-  v0::Value arg = StructV({TensorV(1), TensorV(2)});
-  v0::Value expected = TensorV(3);
+  federated_language_executor::Value arg = StructV({TensorV(1), TensorV(2)});
+  federated_language_executor::Value expected = TensorV(3);
   this->CheckCallEqualsProto(fn, arg, expected);
 }
 
@@ -514,8 +530,9 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, StatefulCallGetsReinitialized) {
   tensorflow::ops::ReadVariableOp read_var(
       root.WithControlDependencies({var_add_assign}), var,
       tensorflow::DT_INT32);
-  v0::Value fn = ComputationV(std::nullopt, TensorB(read_var), root, var_init);
-  v0::Value expected = TensorV(1);
+  federated_language_executor::Value fn =
+      ComputationV(std::nullopt, TensorB(read_var), root, var_init);
+  federated_language_executor::Value expected = TensorV(1);
   this->CheckCallEqualsProto(fn, std::nullopt, expected);
   this->CheckCallRepeatedlyEqualsProto(fn, std::nullopt, expected);
   this->CheckCallParallelEqualsProto(fn, std::nullopt, expected);
@@ -526,13 +543,13 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallWithComputationId) {
   tensorflow::ops::Placeholder x(root, tensorflow::DT_INT32);
   tensorflow::ops::Placeholder y(root, tensorflow::DT_INT32);
   tensorflow::ops::AddV2 out(root, x, y);
-  v0::Value fn =
+  federated_language_executor::Value fn =
       ComputationV(StructB({TensorB(x), TensorB(y)}), TensorB(out), root);
   // Add an ID to the value.
   fn.mutable_computation()->mutable_tensorflow()->mutable_cache_key()->set_id(
       1);
-  v0::Value arg = StructV({TensorV(1), TensorV(2)});
-  v0::Value expected = TensorV(3);
+  federated_language_executor::Value arg = StructV({TensorV(1), TensorV(2)});
+  federated_language_executor::Value expected = TensorV(3);
   // First call will populate the cache.
   this->CheckCallEqualsProto(fn, arg, expected);
   // Call a second time to exercise the cache.
@@ -562,13 +579,13 @@ TYPED_TEST(TensorFlowBasedExecutorsTest,
       })));
   OwnedValueId result_id = TFF_ASSERT_OK(
       this->test_executor_->CreateCall(args_into_sequence, structures));
-  v0::Value result =
+  federated_language_executor::Value result =
       TFF_ASSERT_OK(this->test_executor_->Materialize(result_id));
   EXPECT_TRUE(result.has_sequence()) << result.ShortDebugString();
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, ArgsIntoSequenceReturnsReducible) {
-  v0::Value elements_pb =
+  federated_language_executor::Value elements_pb =
       StructV({TensorV(int64_t{1}), TensorV(int64_t{10}), TensorV(int64_t{100}),
                TensorV(int64_t{1000})});
   const int64_t expected_sum = 1111;
@@ -582,7 +599,7 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, ArgsIntoSequenceReturnsReducible) {
       this->test_executor_->CreateValue(CreateDatasetReduceComputationV()));
   OwnedValueId result_id =
       TFF_ASSERT_OK(this->test_executor_->CreateCall(reduce, sequence));
-  v0::Value result =
+  federated_language_executor::Value result =
       TFF_ASSERT_OK(this->test_executor_->Materialize(result_id));
   EXPECT_THAT(result, EqualsProto(TensorV(expected_sum)));
 }
@@ -592,8 +609,9 @@ class TensorFlowExecutorTest : public ::testing::Test {
   TensorFlowExecutorTest() { test_executor_ = CreateTensorFlowExecutor(10); }
   std::shared_ptr<Executor> test_executor_;
 
-  void CheckMaterializeEqual(ValueId id, v0::Value expected_result) {
-    v0::Value output_pb;
+  void CheckMaterializeEqual(
+      ValueId id, federated_language_executor::Value expected_result) {
+    federated_language_executor::Value output_pb;
     EXPECT_THAT(test_executor_->Materialize(id, &output_pb), IsOk());
     EXPECT_THAT(output_pb, testing::proto::IgnoringRepeatedFieldOrdering(
                                EqualsProto(expected_result)));
@@ -609,12 +627,13 @@ TEST_F(TensorFlowExecutorTest, CreateValueComputationLiteralReturnsResult) {
       TFF_ASSERT_OK(testing::CreateArray(dtype, shape_pb, values));
   federated_language::Computation computation_pb =
       testing::LiteralComputation(array_pb);
-  v0::Value value_pb = testing::ComputationV(computation_pb);
+  federated_language_executor::Value value_pb =
+      testing::ComputationV(computation_pb);
 
   const OwnedValueId& embedded_fn =
       TFF_ASSERT_OK(test_executor_->CreateValue(value_pb));
 
-  const v0::Value& expected_pb = TensorV(1);
+  const federated_language_executor::Value& expected_pb = TensorV(1);
   CheckMaterializeEqual(embedded_fn, expected_pb);
 }
 

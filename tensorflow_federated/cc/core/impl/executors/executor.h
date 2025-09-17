@@ -37,9 +37,9 @@ limitations under the License
 #include "absl/types/span.h"
 #include "absl/utility/utility.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow/tsl/profiler/lib/traceme.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -58,14 +58,15 @@ using ValueId = uint64_t;
 // representation. For example:
 //
 // ```
-// // Imagine we have a `v0::Value` holding a TensorFlow function and some
+// // Imagine we have a `federated_language_executor::Value` holding a
+// TensorFlow function and some
 // // tensors: (my_tf_fn, t1, t2).
-// v0::Value graph_and_val = ...;
+// federated_language_executor::Value graph_and_val = ...;
 // // and some executor on which to run our computations.
 // std::unique_ptr<Executor> exec = ...;
 //
 // // Say we want to run the computation `my_tf_fn(t1, t2)`.
-// // First, we import our `v0::Value`.
+// // First, we import our `federated_language_executor::Value`.
 // OwnedValueId in = TFF_TRY(exec->CreateValue(graph_and_val));
 //
 // // We construct values for the function and the argument struct `<t1, t2>`.
@@ -78,7 +79,7 @@ using ValueId = uint64_t;
 // OwnedValueId result = TFF_TRY(exec->CreateCall(my_tf_function, arg));
 //
 // // Finally, we can materialize our result back into a proto.
-// v0::Value result_val;
+// federated_language_executor::Value result_val;
 // exec->Materialize(result, &result_val);
 // ... do more with `result_val ...
 // ```
@@ -105,7 +106,7 @@ class Executor {
   // Note: structure field names present in `CreateValue` are not persisted,
   // and will not be present in the returned `Materialize`d structure.
   virtual absl::StatusOr<OwnedValueId> CreateValue(
-      const v0::Value& value_pb) = 0;
+      const federated_language_executor::Value& value_pb) = 0;
 
   // Calls `function` with optional `argument`.
   //
@@ -149,12 +150,13 @@ class Executor {
   //
   // This method is blocking: it may synchronously wait for the result of
   // complex computations or IO-bound work.
-  virtual absl::Status Materialize(const ValueId value,
-                                   v0::Value* value_pb) = 0;
+  virtual absl::Status Materialize(
+      const ValueId value, federated_language_executor::Value* value_pb) = 0;
 
   // Convenience method for calling `Materialize` without a pre-existing proto.
-  inline absl::StatusOr<v0::Value> Materialize(const ValueId value) {
-    v0::Value value_pb;
+  inline absl::StatusOr<federated_language_executor::Value> Materialize(
+      const ValueId value) {
+    federated_language_executor::Value value_pb;
     TFF_TRY(Materialize(value, &value_pb));
     return value_pb;
   }
@@ -290,19 +292,20 @@ class ExecutorBase : public Executor,
   // Returns the string name of the current executor.
   virtual absl::string_view ExecutorName() = 0;
   virtual absl::StatusOr<ExecutorValue> CreateExecutorValue(
-      const v0::Value& value_pb) = 0;
+      const federated_language_executor::Value& value_pb) = 0;
   virtual absl::StatusOr<ExecutorValue> CreateCall(
       ExecutorValue function, std::optional<ExecutorValue> argument) = 0;
   virtual absl::StatusOr<ExecutorValue> CreateStruct(
       std::vector<ExecutorValue> members) = 0;
   virtual absl::StatusOr<ExecutorValue> CreateSelection(
       ExecutorValue value, const uint32_t index) = 0;
-  virtual absl::Status Materialize(ExecutorValue value,
-                                   v0::Value* value_pb) = 0;
+  virtual absl::Status Materialize(
+      ExecutorValue value, federated_language_executor::Value* value_pb) = 0;
   ~ExecutorBase() override {}
 
  public:
-  absl::StatusOr<OwnedValueId> CreateValue(const v0::Value& value_pb) final {
+  absl::StatusOr<OwnedValueId> CreateValue(
+      const federated_language_executor::Value& value_pb) final {
     auto trace = Trace("CreateValue");
     return TrackValue(TFF_TRY(CreateExecutorValue(value_pb)));
   }
@@ -337,7 +340,8 @@ class ExecutorBase : public Executor,
         TFF_TRY(CreateSelection(TFF_TRY(GetTracked(source)), index)));
   }
 
-  absl::Status Materialize(const ValueId value_id, v0::Value* value_pb) final {
+  absl::Status Materialize(const ValueId value_id,
+                           federated_language_executor::Value* value_pb) final {
     auto trace = Trace("Materialize");
     return Materialize(TFF_TRY(GetTracked(value_id)), value_pb);
   }

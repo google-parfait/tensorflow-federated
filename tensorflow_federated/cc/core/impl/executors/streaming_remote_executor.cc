@@ -38,6 +38,8 @@ limitations under the License
 #include "include/grpcpp/grpcpp.h"
 #include "include/grpcpp/support/status.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.grpc.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
@@ -45,8 +47,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
-#include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -60,15 +60,16 @@ using ValueFuture =
 //
 // This method is used repeatedly to turn a structure-of-federated-values into
 // a federated-structure-of-values.
-absl::Status BuildPlacedStructValue(const v0::Value::Struct& struct_value_pb,
-                                    int32_t placement_index,
-                                    v0::Value::Struct* placed_struct_pb) {
-  for (const v0::Value::Struct::Element& element_pb :
+absl::Status BuildPlacedStructValue(
+    const federated_language_executor::Value::Struct& struct_value_pb,
+    int32_t placement_index,
+    federated_language_executor::Value::Struct* placed_struct_pb) {
+  for (const federated_language_executor::Value::Struct::Element& element_pb :
        struct_value_pb.element()) {
-    v0::Value::Struct::Element* placed_element_pb =
+    federated_language_executor::Value::Struct::Element* placed_element_pb =
         placed_struct_pb->add_element();
     switch (element_pb.value().value_case()) {
-      case v0::Value::kFederated: {
+      case federated_language_executor::Value::kFederated: {
         if (element_pb.value().federated().value_size() <= placement_index) {
           return absl::InvalidArgumentError(absl::StrCat(
               "Expect cardinality [", placement_index, "] but got [",
@@ -79,7 +80,7 @@ absl::Status BuildPlacedStructValue(const v0::Value::Struct& struct_value_pb,
             element_pb.value().federated().value(placement_index);
         break;
       }
-      case v0::Value::kStruct: {
+      case federated_language_executor::Value::kStruct: {
         TFF_TRY(BuildPlacedStructValue(
             element_pb.value().struct_(), placement_index,
             placed_element_pb->mutable_value()->mutable_struct_()));
@@ -100,11 +101,12 @@ absl::Status BuildPlacedStructValue(const v0::Value::Struct& struct_value_pb,
 // streaming mode. This method must set the appropriate type signature so that
 // the remote executor can track the resulting value, which is necessary to
 // later stream results during materialization.
-absl::StatusOr<v0::Value> CreateFederatedZipComputation(
+absl::StatusOr<federated_language_executor::Value>
+CreateFederatedZipComputation(
     const federated_language::StructType& parameter_type_pb,
     const federated_language::FederatedType& result_type_pb,
     const federated_language::PlacementSpec& placement_spec) {
-  v0::Value intrinsic_pb;
+  federated_language_executor::Value intrinsic_pb;
   federated_language::Computation* computation_pb =
       intrinsic_pb.mutable_computation();
   federated_language::FunctionType* computation_type_pb =
@@ -173,7 +175,8 @@ federated_language::Call CreateCalledFederatedMappedSelection(
 //      >)
 //     in <local_0, local_1>
 //   ))
-absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
+absl::StatusOr<federated_language_executor::Value>
+CreateSelectionFederatedStructComputation(
     const federated_language::FederatedType& parameter_type_pb) {
   if (!parameter_type_pb.member().has_struct_()) {
     // We don't want to create and send RPCs for computations that don't require
@@ -182,7 +185,7 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
         absl::StrCat("parameter_type_pb is a not a federated structure type: ",
                      parameter_type_pb.ShortDebugString()));
   }
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   federated_language::FunctionType* lambda_type_pb =
       value_pb.mutable_computation()->mutable_type()->mutable_function();
   *lambda_type_pb->mutable_parameter()->mutable_federated() = parameter_type_pb;
@@ -294,7 +297,8 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
   return value_pb;
 }
 
-// A custom deleter for the `std::shared_ptr<v0::ExecutorGroup::StubInterface>`
+// A custom deleter for the
+// `std::shared_ptr<federated_language_executor::ExecutorGroup::StubInterface>`
 // which will call `DisposeExecutor` for the provided `executor_pb`, if any.
 // This ensures that the remote service knows no more calls will be coming for
 // the given `executor_pb` and that the associated resources can be released.
@@ -305,14 +309,15 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
 class StubDeleter {
  public:
   StubDeleter() = default;
-  void SetExecutorId(v0::ExecutorId executor_pb) {
+  void SetExecutorId(federated_language_executor::ExecutorId executor_pb) {
     executor_pb_ = std::move(executor_pb);
   }
-  void operator()(v0::ExecutorGroup::StubInterface* stub) {
+  void operator()(
+      federated_language_executor::ExecutorGroup::StubInterface* stub) {
     if (executor_pb_.has_value()) {
       ThreadRun([stub, executor_pb = std::move(*executor_pb_)]() {
-        v0::DisposeExecutorRequest request;
-        v0::DisposeExecutorResponse response;
+        federated_language_executor::DisposeExecutorRequest request;
+        federated_language_executor::DisposeExecutorResponse response;
         grpc::ClientContext context;
         *request.mutable_executor() = std::move(executor_pb);
         grpc::Status dispose_status =
@@ -330,13 +335,14 @@ class StubDeleter {
   }
 
  private:
-  std::optional<v0::ExecutorId> executor_pb_;
+  std::optional<federated_language_executor::ExecutorId> executor_pb_;
 };
 
 class StreamingRemoteExecutor : public ExecutorBase<ValueFuture> {
  public:
   StreamingRemoteExecutor(
-      std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
+      std::unique_ptr<federated_language_executor::ExecutorGroup::StubInterface>
+          stub,
       const CardinalityMap& cardinalities)
       : stub_(stub.release(), StubDeleter()), cardinalities_(cardinalities) {}
 
@@ -349,7 +355,7 @@ class StreamingRemoteExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
-      const v0::Value& value_pb) final;
+      const federated_language_executor::Value& value_pb) final;
 
   absl::StatusOr<ValueFuture> CreateCall(
       ValueFuture function, std::optional<ValueFuture> argument) final;
@@ -360,22 +366,26 @@ class StreamingRemoteExecutor : public ExecutorBase<ValueFuture> {
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
                                               uint32_t index) final;
 
-  absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final;
-  absl::Status MaterializeRPC(ValueFuture value, v0::Value* value_pb);
+  absl::Status Materialize(ValueFuture value,
+                           federated_language_executor::Value* value_pb) final;
+  absl::Status MaterializeRPC(ValueFuture value,
+                              federated_language_executor::Value* value_pb);
 
  private:
   absl::Status EnsureInitialized();
-  std::shared_ptr<v0::ExecutorGroup::StubInterface> stub_;
+  std::shared_ptr<federated_language_executor::ExecutorGroup::StubInterface>
+      stub_;
   CardinalityMap cardinalities_;
   absl::Mutex mutex_;
   bool executor_pb_set_ ABSL_GUARDED_BY(mutex_) = false;
-  v0::ExecutorId executor_pb_;
+  federated_language_executor::ExecutorId executor_pb_;
 
-  absl::StatusOr<ValueFuture> CreateValueRPC(const v0::Value& value_pb);
+  absl::StatusOr<ValueFuture> CreateValueRPC(
+      const federated_language_executor::Value& value_pb);
   absl::StatusOr<ValueFuture> CreateExecutorValueStreaming(
-      const v0::Value& value_pb);
+      const federated_language_executor::Value& value_pb);
   absl::StatusOr<ValueFuture> CreateExecutorFederatedValueStreaming(
-      const v0::Value& value_pb);
+      const federated_language_executor::Value& value_pb);
 };
 
 // A value tracked by the StreamingRemoteExecutor.
@@ -389,9 +399,12 @@ class StreamingRemoteExecutor : public ExecutorBase<ValueFuture> {
 // structure and stream them back.
 class ExecutorValue {
  public:
-  ExecutorValue(v0::ValueRef value_ref, federated_language::Type type_pb,
-                v0::ExecutorId executor_pb,
-                std::shared_ptr<v0::ExecutorGroup::StubInterface> stub)
+  ExecutorValue(
+      federated_language_executor::ValueRef value_ref,
+      federated_language::Type type_pb,
+      federated_language_executor::ExecutorId executor_pb,
+      std::shared_ptr<federated_language_executor::ExecutorGroup::StubInterface>
+          stub)
       : value_ref_(std::move(value_ref)),
         type_pb_(std::move(type_pb)),
         executor_pb_(std::move(executor_pb)),
@@ -400,8 +413,8 @@ class ExecutorValue {
   ~ExecutorValue() {
     ThreadRun([value_ref = value_ref_, executor_pb = executor_pb_,
                stub = stub_] {
-      v0::DisposeRequest request;
-      v0::DisposeResponse response;
+      federated_language_executor::DisposeRequest request;
+      federated_language_executor::DisposeResponse response;
       grpc::ClientContext context;
       *request.mutable_executor() = std::move(executor_pb);
       *request.add_value_ref() = value_ref;
@@ -413,14 +426,17 @@ class ExecutorValue {
     });
   }
 
-  const v0::ValueRef& Get() const { return value_ref_; }
+  const federated_language_executor::ValueRef& Get() const {
+    return value_ref_;
+  }
   const federated_language::Type& Type() const { return type_pb_; }
 
  private:
-  const v0::ValueRef value_ref_;
+  const federated_language_executor::ValueRef value_ref_;
   const federated_language::Type type_pb_;
-  const v0::ExecutorId executor_pb_;
-  std::shared_ptr<v0::ExecutorGroup::StubInterface> stub_;
+  const federated_language_executor::ExecutorId executor_pb_;
+  std::shared_ptr<federated_language_executor::ExecutorGroup::StubInterface>
+      stub_;
 };
 
 absl::Status StreamingRemoteExecutor::EnsureInitialized() {
@@ -428,17 +444,17 @@ absl::Status StreamingRemoteExecutor::EnsureInitialized() {
   if (executor_pb_set_) {
     return absl::OkStatus();
   }
-  v0::GetExecutorRequest request;
+  federated_language_executor::GetExecutorRequest request;
   for (auto iter = cardinalities_.begin(); iter != cardinalities_.end();
        ++iter) {
     federated_language::Placement placement;
     placement.set_uri(iter->first);
-    v0::Cardinality cardinality;
+    federated_language_executor::Cardinality cardinality;
     *cardinality.mutable_placement() = placement;
     cardinality.set_cardinality(iter->second);
     request.mutable_cardinalities()->Add(std::move(cardinality));
   }
-  v0::GetExecutorResponse response;
+  federated_language_executor::GetExecutorResponse response;
   grpc::ClientContext client_context;
   auto result = stub_->GetExecutor(&client_context, request, &response);
   if (result.ok()) {
@@ -453,8 +469,9 @@ absl::Status StreamingRemoteExecutor::EnsureInitialized() {
 
 absl::StatusOr<ValueFuture>
 StreamingRemoteExecutor::CreateExecutorFederatedValueStreaming(
-    const v0::Value& value_pb) {
-  const v0::Value::Federated& federated_pb = value_pb.federated();
+    const federated_language_executor::Value& value_pb) {
+  const federated_language_executor::Value::Federated& federated_pb =
+      value_pb.federated();
   if (!federated_pb.type().member().has_struct_()) {
     return CreateValueRPC(value_pb);
   }
@@ -476,10 +493,11 @@ StreamingRemoteExecutor::CreateExecutorFederatedValueStreaming(
   federated_language::StructType parameter_type_pb;
   std::vector<ValueFuture> elements;
   elements.reserve(struct_size);
-  v0::Value element_pb;
+  federated_language_executor::Value element_pb;
   for (int32_t i = 0; i < struct_size; ++i) {
     element_pb.Clear();
-    v0::Value::Federated* federated_element_pb = element_pb.mutable_federated();
+    federated_language_executor::Value::Federated* federated_element_pb =
+        element_pb.mutable_federated();
     federated_language::FederatedType* federated_type =
         federated_element_pb->mutable_type();
     *federated_type->mutable_placement() = placement_spec;
@@ -489,7 +507,8 @@ StreamingRemoteExecutor::CreateExecutorFederatedValueStreaming(
         federated_pb.type().member().struct_().element(i).value();
     *parameter_type_pb.add_element()->mutable_value()->mutable_federated() =
         *federated_type;
-    for (const v0::Value& child_value : federated_pb.value()) {
+    for (const federated_language_executor::Value& child_value :
+         federated_pb.value()) {
       *federated_element_pb->add_value() =
           child_value.struct_().element(i).value();
     }
@@ -498,27 +517,30 @@ StreamingRemoteExecutor::CreateExecutorFederatedValueStreaming(
   ValueFuture struct_value_ref = TFF_TRY(CreateStruct(std::move(elements)));
   // Now call a federated_zip intrinsics on the structure-of-federated-values to
   // promote it back to a federated-structure-of-values.
-  const v0::Value intrinsic_pb = TFF_TRY(CreateFederatedZipComputation(
-      parameter_type_pb, federated_pb.type(), placement_spec));
+  const federated_language_executor::Value intrinsic_pb =
+      TFF_TRY(CreateFederatedZipComputation(
+          parameter_type_pb, federated_pb.type(), placement_spec));
   ValueFuture intrinsic_ref = TFF_TRY(CreateExecutorValue(intrinsic_pb));
   return CreateCall(intrinsic_ref, struct_value_ref);
 }
 
 absl::StatusOr<ValueFuture>
 StreamingRemoteExecutor::CreateExecutorValueStreaming(
-    const v0::Value& value_pb) {
+    const federated_language_executor::Value& value_pb) {
   switch (value_pb.value_case()) {
-    case v0::Value::kStruct: {
-      const v0::Value::Struct& struct_pb = value_pb.struct_();
+    case federated_language_executor::Value::kStruct: {
+      const federated_language_executor::Value::Struct& struct_pb =
+          value_pb.struct_();
       std::vector<ValueFuture> elements;
       elements.reserve(struct_pb.element_size());
-      for (const v0::Value::Struct::Element& element_pb : struct_pb.element()) {
+      for (const federated_language_executor::Value::Struct::Element&
+               element_pb : struct_pb.element()) {
         elements.push_back(
             TFF_TRY(CreateExecutorValueStreaming(element_pb.value())));
       }
       return CreateStruct(std::move(elements));
     }
-    case v0::Value::kFederated: {
+    case federated_language_executor::Value::kFederated: {
       return CreateExecutorFederatedValueStreaming(value_pb);
     }
     default:
@@ -529,7 +551,7 @@ StreamingRemoteExecutor::CreateExecutorValueStreaming(
 }
 
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateExecutorValue(
-    const v0::Value& value_pb) {
+    const federated_language_executor::Value& value_pb) {
   TFF_TRY(EnsureInitialized());
   return ThreadRun([value_pb, this, this_keepalive = shared_from_this()]()
                        -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
@@ -538,7 +560,7 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateExecutorValue(
 }
 
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateValueRPC(
-    const v0::Value& value_pb) {
+    const federated_language_executor::Value& value_pb) {
   federated_language::Type type_pb = TFF_TRY(InferTypeFromValue(value_pb));
   VLOG(5) << "CreateValueRPC: [" << type_pb.ShortDebugString() << "]";
   if (type_pb.has_function() || type_pb.ShortDebugString().empty()) {
@@ -554,10 +576,10 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateValueRPC(
         "Message with type `", type_pb.ShortDebugString(),
         "` will fail to serialize for gRPC, size: ", value_pb.ByteSizeLong()));
   }
-  v0::CreateValueRequest request;
+  federated_language_executor::CreateValueRequest request;
   *request.mutable_executor() = executor_pb_;
   *request.mutable_value() = value_pb;
-  v0::CreateValueResponse response;
+  federated_language_executor::CreateValueResponse response;
   grpc::ClientContext client_context;
   grpc::Status status = stub_->CreateValue(&client_context, request, &response);
   TFF_TRY(grpc_to_absl(status));
@@ -573,8 +595,8 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateCall(
                     argument = std::move(argument), executor_pb = executor_pb_,
                     this, this_keepalive = shared_from_this()]()
                        -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-    v0::CreateCallRequest request;
-    v0::CreateCallResponse response;
+    federated_language_executor::CreateCallRequest request;
+    federated_language_executor::CreateCallResponse response;
     grpc::ClientContext context;
     std::shared_ptr<ExecutorValue> fn = TFF_TRY(Wait(function));
 
@@ -600,16 +622,16 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateStruct(
   return ThreadRun([futures = std::move(members), this,
                     this_keepalive = shared_from_this()]()
                        -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-    v0::CreateStructRequest request;
+    federated_language_executor::CreateStructRequest request;
     *request.mutable_executor() = this->executor_pb_;
-    v0::CreateStructResponse response;
+    federated_language_executor::CreateStructResponse response;
     grpc::ClientContext context;
     std::vector<std::shared_ptr<ExecutorValue>> values =
         TFF_TRY(WaitAll(futures));
     federated_language::Type result_type;
     federated_language::StructType* struct_type = result_type.mutable_struct_();
     for (const std::shared_ptr<ExecutorValue>& element : values) {
-      v0::CreateStructRequest_Element struct_elem;
+      federated_language_executor::CreateStructRequest_Element struct_elem;
       *struct_elem.mutable_value_ref() = element->Get();
       *struct_type->add_element()->mutable_value() = element->Type();
       request.mutable_element()->Add(std::move(struct_elem));
@@ -637,8 +659,8 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateSelection(
           absl::StrCat("Error selecting from non-Struct value: ",
                        source_type_pb.ShortDebugString()));
     }
-    v0::CreateSelectionRequest request;
-    v0::CreateSelectionResponse response;
+    federated_language_executor::CreateSelectionRequest request;
+    federated_language_executor::CreateSelectionResponse response;
     grpc::ClientContext context;
     *request.mutable_executor() = this->executor_pb_;
     *request.mutable_source_ref() = source_value->Get();
@@ -654,8 +676,8 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateSelection(
   });
 }
 
-absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
-                                                  v0::Value* value_pb) {
+absl::Status StreamingRemoteExecutor::Materialize(
+    ValueFuture value, federated_language_executor::Value* value_pb) {
   std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(Wait(value));
   switch (value_ref->Type().type_case()) {
     case federated_language::Type::kTensor: {
@@ -664,7 +686,8 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
     case federated_language::Type::kStruct: {
       const federated_language::StructType& struct_type_pb =
           value_ref->Type().struct_();
-      v0::Value::Struct* struct_value_pb = value_pb->mutable_struct_();
+      federated_language_executor::Value::Struct* struct_value_pb =
+          value_pb->mutable_struct_();
       for (int32_t i = 0; i < struct_type_pb.element_size(); ++i) {
         ValueFuture selection = TFF_TRY(CreateSelection(value, i));
         TFF_TRY(Materialize(selection,
@@ -707,7 +730,8 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
       if (member_type_pb.struct_().element_size() == 0) {
         // Empty struct has nothing to materialize from the remote, avoid
         // issuing the RPC and simply return.
-        v0::Value::Federated* federated_pb = value_pb->mutable_federated();
+        federated_language_executor::Value::Federated* federated_pb =
+            value_pb->mutable_federated();
         for (int32_t i = 0; i < cardinality; ++i) {
           federated_pb->add_value()->mutable_struct_();
         }
@@ -720,7 +744,7 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
       ValueFuture selection_computation = TFF_TRY(
           CreateExecutorValue(TFF_TRY(CreateSelectionFederatedStructComputation(
               value_ref->Type().federated()))));
-      v0::Value intermediate_value_pb;
+      federated_language_executor::Value intermediate_value_pb;
       TFF_TRY(Materialize(TFF_TRY(CreateCall(selection_computation, value)),
                           &intermediate_value_pb));
       if (intermediate_value_pb.struct_().element_size() == 0) {
@@ -730,11 +754,13 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
       }
       // We need to convert from the materialized struct-of-federated-values
       // back to a federated-struct-of-values.
-      const v0::Value::Struct struct_value_pb = intermediate_value_pb.struct_();
-      v0::Value::Federated* federated_pb = value_pb->mutable_federated();
+      const federated_language_executor::Value::Struct struct_value_pb =
+          intermediate_value_pb.struct_();
+      federated_language_executor::Value::Federated* federated_pb =
+          value_pb->mutable_federated();
       for (int32_t placement_index = 0; placement_index < cardinality;
            ++placement_index) {
-        v0::Value::Struct* federated_struct_pb =
+        federated_language_executor::Value::Struct* federated_struct_pb =
             federated_pb->add_value()->mutable_struct_();
         TFF_TRY(BuildPlacedStructValue(struct_value_pb, placement_index,
                                        federated_struct_pb));
@@ -748,16 +774,16 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
   return MaterializeRPC(value, value_pb);
 }
 
-absl::Status StreamingRemoteExecutor::MaterializeRPC(ValueFuture value,
-                                                     v0::Value* value_pb) {
+absl::Status StreamingRemoteExecutor::MaterializeRPC(
+    ValueFuture value, federated_language_executor::Value* value_pb) {
   std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(Wait(value));
   VLOG(5) << "MaterializeRPC (" << value_ref->Get().ShortDebugString() << "): ["
           << value_ref->Type().ShortDebugString() << "]";
-  v0::ComputeRequest request;
+  federated_language_executor::ComputeRequest request;
   *request.mutable_executor() = executor_pb_;
   *request.mutable_value_ref() = value_ref->Get();
 
-  v0::ComputeResponse compute_response;
+  federated_language_executor::ComputeResponse compute_response;
   grpc::ClientContext client_context;
   grpc::Status status =
       stub_->Compute(&client_context, request, &compute_response);
@@ -766,7 +792,8 @@ absl::Status StreamingRemoteExecutor::MaterializeRPC(ValueFuture value,
 }
 
 std::shared_ptr<Executor> CreateStreamingRemoteExecutor(
-    std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
+    std::unique_ptr<federated_language_executor::ExecutorGroup::StubInterface>
+        stub,
     const CardinalityMap& cardinalities) {
   return std::make_shared<StreamingRemoteExecutor>(std::move(stub),
                                                    cardinalities);
@@ -775,8 +802,8 @@ std::shared_ptr<Executor> CreateStreamingRemoteExecutor(
 std::shared_ptr<Executor> CreateStreamingRemoteExecutor(
     std::shared_ptr<grpc::ChannelInterface> channel,
     const CardinalityMap& cardinalities) {
-  std::unique_ptr<v0::ExecutorGroup::StubInterface> stub(
-      v0::ExecutorGroup::NewStub(channel));
+  std::unique_ptr<federated_language_executor::ExecutorGroup::StubInterface>
+      stub(federated_language_executor::ExecutorGroup::NewStub(channel));
   return std::make_shared<StreamingRemoteExecutor>(std::move(stub),
                                                    cardinalities);
 }

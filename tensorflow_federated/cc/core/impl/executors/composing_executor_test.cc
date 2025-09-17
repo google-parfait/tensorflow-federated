@@ -28,6 +28,7 @@ limitations under the License
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -37,7 +38,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -104,7 +104,7 @@ TEST_F(ComposingExecutorTest, ChildConstructionWithNoClientCardinalitiesFails) {
 }
 
 TEST_F(ComposingExecutorTest, CreateMaterializeTensor) {
-  v0::Value value = TensorV(1.0);
+  federated_language_executor::Value value = TensorV(1.0);
   ExpectCreateMaterialize(value);
 }
 
@@ -134,20 +134,20 @@ TEST_F(ComposingExecutorTest, CreateMaterializeFlatStruct) {
 }
 
 TEST_F(ComposingExecutorTest, CreateMaterializeAtServer) {
-  v0::Value tensor_pb = TensorV(1.0);
+  federated_language_executor::Value tensor_pb = TensorV(1.0);
   mock_server_->ExpectCreateMaterialize(tensor_pb);
   ExpectCreateMaterialize(ServerV(tensor_pb));
 }
 
 TEST_F(ComposingExecutorTest, CreateMaterializeAtClients) {
-  std::vector<v0::Value> values;
+  std::vector<federated_language_executor::Value> values;
   uint32_t next_value = 0;
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
     uint32_t num_clients = clients_per_child_[i];
-    std::vector<v0::Value> child_values;
+    std::vector<federated_language_executor::Value> child_values;
     for (uint32_t j = 0; j < num_clients; j++) {
-      v0::Value tensor_pb = TensorV(next_value);
+      federated_language_executor::Value tensor_pb = TensorV(next_value);
       next_value++;
       child_values.push_back(tensor_pb);
       values.push_back(tensor_pb);
@@ -165,23 +165,26 @@ TEST_F(ComposingExecutorTest, CreateValueFailsWrongNumberClients) {
 }
 
 TEST_F(ComposingExecutorTest, CreateMaterializeAtClientsAllEqual) {
-  v0::Value tensor_pb = TensorV(2);
-  v0::Value all_equal_value = ClientsV({tensor_pb}, true);
+  federated_language_executor::Value tensor_pb = TensorV(2);
+  federated_language_executor::Value all_equal_value =
+      ClientsV({tensor_pb}, true);
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
     auto child = mock_children_[i];
     auto id = child->ExpectCreateValue(all_equal_value);
     child->ExpectMaterialize(
-        id, ClientsV(std::vector<v0::Value>(clients_per_child_[i], tensor_pb)));
+        id, ClientsV(std::vector<federated_language_executor::Value>(
+                clients_per_child_[i], tensor_pb)));
   }
   TFF_ASSERT_OK_AND_ASSIGN(auto id,
                            test_executor_->CreateValue(all_equal_value));
-  ExpectMaterialize(
-      id, ClientsV(std::vector<v0::Value>(total_clients_, tensor_pb)));
+  ExpectMaterialize(id,
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        total_clients_, tensor_pb)));
 }
 
 TEST_F(ComposingExecutorTest, CreateFederatedValueInsideStruct) {
-  v0::Value fed_pb = ClientsV({TensorV(5)}, true);
-  v0::Value struct_pb = StructV({fed_pb});
+  federated_language_executor::Value fed_pb = ClientsV({TensorV(5)}, true);
+  federated_language_executor::Value struct_pb = StructV({fed_pb});
   for (const auto& child : mock_children_) {
     child->ExpectCreateValue(fed_pb);
   }
@@ -189,25 +192,27 @@ TEST_F(ComposingExecutorTest, CreateFederatedValueInsideStruct) {
 }
 
 TEST_F(ComposingExecutorTest, CreateMaterializeStructOfFederatedValues) {
-  v0::Value server_v1 = TensorV(6);
-  v0::Value server_v2 = TensorV(7);
-  v0::Value value_pb = StructV({ServerV(server_v1), ServerV(server_v2)});
+  federated_language_executor::Value server_v1 = TensorV(6);
+  federated_language_executor::Value server_v2 = TensorV(7);
+  federated_language_executor::Value value_pb =
+      StructV({ServerV(server_v1), ServerV(server_v2)});
   mock_server_->ExpectCreateMaterialize(server_v1);
   mock_server_->ExpectCreateMaterialize(server_v2);
   ExpectCreateMaterialize(value_pb);
 }
 
 TEST_F(ComposingExecutorTest, CreateMaterializeStructOfMixedValues) {
-  v0::Value unplaced = TensorV(6);
-  v0::Value server = TensorV(7);
-  v0::Value value_pb = StructV({unplaced, ServerV(server)});
+  federated_language_executor::Value unplaced = TensorV(6);
+  federated_language_executor::Value server = TensorV(7);
+  federated_language_executor::Value value_pb =
+      StructV({unplaced, ServerV(server)});
   mock_server_->ExpectCreateMaterialize(server);
   ExpectCreateMaterialize(value_pb);
 }
 
 TEST_F(ComposingExecutorTest, CreateStructOfTensors) {
-  v0::Value tensor_v1 = TensorV(5);
-  v0::Value tensor_v2 = TensorV(6);
+  federated_language_executor::Value tensor_v1 = TensorV(5);
+  federated_language_executor::Value tensor_v2 = TensorV(6);
   TFF_ASSERT_OK_AND_ASSIGN(auto v1_id, test_executor_->CreateValue(tensor_v1));
   TFF_ASSERT_OK_AND_ASSIGN(auto v2_id, test_executor_->CreateValue(tensor_v2));
   TFF_ASSERT_OK_AND_ASSIGN(auto id,
@@ -216,7 +221,7 @@ TEST_F(ComposingExecutorTest, CreateStructOfTensors) {
 }
 
 TEST_F(ComposingExecutorTest, CreateSelection) {
-  v0::Value tensor = TensorV(5);
+  federated_language_executor::Value tensor = TensorV(5);
   TFF_ASSERT_OK_AND_ASSIGN(auto s,
                            test_executor_->CreateValue(StructV({tensor})));
   TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateSelection(s, 0));
@@ -224,8 +229,8 @@ TEST_F(ComposingExecutorTest, CreateSelection) {
 }
 
 TEST_F(ComposingExecutorTest, CreateSelectionFromEmbeddedValue) {
-  v0::Value pretend_struct = TensorV(5);
-  v0::Value selected_tensor = TensorV(24);
+  federated_language_executor::Value pretend_struct = TensorV(5);
+  federated_language_executor::Value selected_tensor = TensorV(24);
   ValueId child_id = mock_server_->ExpectCreateValue(pretend_struct);
   ValueId child_selected_id = mock_server_->ExpectCreateSelection(child_id, 0);
   mock_server_->ExpectMaterialize(child_selected_id, selected_tensor);
@@ -235,8 +240,8 @@ TEST_F(ComposingExecutorTest, CreateSelectionFromEmbeddedValue) {
 }
 
 TEST_F(ComposingExecutorTest, CreateSelectionFromFederatedValueFails) {
-  v0::Value struct_pb = StructV({TensorV(6)});
-  v0::Value fed = ServerV(struct_pb);
+  federated_language_executor::Value struct_pb = StructV({TensorV(6)});
+  federated_language_executor::Value fed = ServerV(struct_pb);
   mock_server_->ExpectCreateValue(struct_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto fed_id, test_executor_->CreateValue(fed));
   EXPECT_THAT(test_executor_->CreateSelection(fed_id, 0),
@@ -257,8 +262,8 @@ TEST_F(ComposingExecutorTest, CreateSelectionOutOfBoundsFails) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallEmbeddedNoArg) {
-  v0::Value fn = TensorV(5);
-  v0::Value result = TensorV(22);
+  federated_language_executor::Value fn = TensorV(5);
+  federated_language_executor::Value result = TensorV(22);
   ValueId fn_server_id = mock_server_->ExpectCreateValue(fn);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   ValueId fn_result_child_id =
@@ -270,9 +275,9 @@ TEST_F(ComposingExecutorTest, CreateCallEmbeddedNoArg) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallEmbeddedSingleArg) {
-  v0::Value fn = TensorV(5);
-  v0::Value arg = TensorV(6);
-  v0::Value result = TensorV(22);
+  federated_language_executor::Value fn = TensorV(5);
+  federated_language_executor::Value arg = TensorV(6);
+  federated_language_executor::Value result = TensorV(22);
   ValueId fn_child_id = mock_server_->ExpectCreateValue(fn);
   ValueId arg_child_id = mock_server_->ExpectCreateValue(arg);
   ValueId fn_result_child_id =
@@ -286,10 +291,10 @@ TEST_F(ComposingExecutorTest, CreateCallEmbeddedSingleArg) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallEmbedsStructArg) {
-  v0::Value fn = TensorV(5);
-  v0::Value arg_1 = TensorV(6);
-  v0::Value arg_2 = TensorV(7);
-  v0::Value result = TensorV(22);
+  federated_language_executor::Value fn = TensorV(5);
+  federated_language_executor::Value arg_1 = TensorV(6);
+  federated_language_executor::Value arg_2 = TensorV(7);
+  federated_language_executor::Value result = TensorV(22);
   ValueId fn_child_id = mock_server_->ExpectCreateValue(fn);
   ValueId arg_1_child_id = mock_server_->ExpectCreateValue(arg_1);
   ValueId arg_2_child_id = mock_server_->ExpectCreateValue(arg_2);
@@ -307,7 +312,7 @@ TEST_F(ComposingExecutorTest, CreateCallEmbedsStructArg) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedValueFails) {
-  v0::Value tensor = TensorV(1);
+  federated_language_executor::Value tensor = TensorV(1);
   mock_server_->ExpectCreateValue(tensor);
   TFF_ASSERT_OK_AND_ASSIGN(auto fed_id,
                            test_executor_->CreateValue(ServerV(tensor)));
@@ -320,7 +325,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedValueFails) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallStructFails) {
-  v0::Value tensor = TensorV(1);
+  federated_language_executor::Value tensor = TensorV(1);
   TFF_ASSERT_OK_AND_ASSIGN(auto struct_id,
                            test_executor_->CreateValue(StructV({tensor})));
   TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
@@ -332,13 +337,15 @@ TEST_F(ComposingExecutorTest, CreateCallStructFails) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedAggregate) {
-  v0::Value value = ClientsV({TensorV("value")}, true);
-  v0::Value zero = TensorV("zero");
-  v0::Value accumulate = TensorV("accumulate");
-  v0::Value merge = TensorV("merge");
-  v0::Value report = TensorV("report");
-  v0::Value result_from_child = ServerV(TensorV("result from child"));
-  v0::Value final_result_unfed = TensorV("final result");
+  federated_language_executor::Value value = ClientsV({TensorV("value")}, true);
+  federated_language_executor::Value zero = TensorV("zero");
+  federated_language_executor::Value accumulate = TensorV("accumulate");
+  federated_language_executor::Value merge = TensorV("merge");
+  federated_language_executor::Value report = TensorV("report");
+  federated_language_executor::Value result_from_child =
+      ServerV(TensorV("result from child"));
+  federated_language_executor::Value final_result_unfed =
+      TensorV("final result");
 
   federated_language::FunctionType intrinsic_type_pb;
   federated_language::FederatedType* parameter_type_pb =
@@ -361,7 +368,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedAggregate) {
     auto child_zero = child->ExpectCreateValue(zero);
     auto child_accumulate = child->ExpectCreateValue(accumulate);
     auto child_merge = child->ExpectCreateValue(merge);
-    v0::Value report_val;
+    federated_language_executor::Value report_val;
     *report_val.mutable_computation() = IdentityComp();
     auto child_report = child->ExpectCreateValue(report_val);
     auto child_agg =
@@ -412,7 +419,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedAggregate) {
 
 TEST_F(ComposingExecutorTest,
        CreateCallFederatedAggregateFailsWithNonClientsPlacedValue) {
-  v0::Value unplaced_value = TensorV(1);
+  federated_language_executor::Value unplaced_value = TensorV(1);
   TFF_ASSERT_OK_AND_ASSIGN(auto unplaced_id,
                            test_executor_->CreateValue(unplaced_value));
   TFF_ASSERT_OK_AND_ASSIGN(auto arg, test_executor_->CreateStruct({
@@ -430,7 +437,7 @@ TEST_F(ComposingExecutorTest,
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedBroadcast) {
-  v0::Value tensor = TensorV(1);
+  federated_language_executor::Value tensor = TensorV(1);
   mock_server_->ExpectCreateMaterialize(tensor);
   for (const auto& child : mock_children_) {
     child->ExpectCreateMaterialize(ClientsV({tensor}, true));
@@ -442,12 +449,13 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedBroadcast) {
   TFF_ASSERT_OK_AND_ASSIGN(auto clients_id,
                            test_executor_->CreateCall(broadcast_id, server_id));
   ExpectMaterialize(clients_id,
-                    ClientsV(std::vector<v0::Value>(total_clients_, tensor)));
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        total_clients_, tensor)));
 }
 
 TEST_F(ComposingExecutorTest,
        CreateCallFederatedBroadcastFailsOnNonServerPlacedValue) {
-  v0::Value tensor = TensorV(1);
+  federated_language_executor::Value tensor = TensorV(1);
   TFF_ASSERT_OK_AND_ASSIGN(auto unplaced_id,
                            test_executor_->CreateValue(tensor));
   TFF_ASSERT_OK_AND_ASSIGN(auto broadcast_id,
@@ -459,9 +467,9 @@ TEST_F(ComposingExecutorTest,
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtClients) {
-  std::vector<v0::Value> client_vals_in;
-  std::vector<v0::Value> client_vals_out;
-  v0::Value fn = TensorV(24601);
+  std::vector<federated_language_executor::Value> client_vals_in;
+  std::vector<federated_language_executor::Value> client_vals_out;
+  federated_language_executor::Value fn = TensorV(24601);
 
   federated_language::FunctionType intrinsic_type_pb;
   federated_language::FederatedType* parameter_type_pb =
@@ -475,11 +483,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtClients) {
 
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
-    std::vector<v0::Value> in_vec;
-    std::vector<v0::Value> out_vec;
+    std::vector<federated_language_executor::Value> in_vec;
+    std::vector<federated_language_executor::Value> out_vec;
     for (uint32_t j = 0; j < clients_per_child_[i]; j++) {
-      v0::Value in = TensorV(i * 10000 + j * 100);
-      v0::Value out = TensorV(i * 10000 + j * 100 + 1);
+      federated_language_executor::Value in = TensorV(i * 10000 + j * 100);
+      federated_language_executor::Value out = TensorV(i * 10000 + j * 100 + 1);
       client_vals_in.push_back(in);
       in_vec.push_back(in);
       client_vals_out.push_back(out);
@@ -505,9 +513,9 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtClients) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedMapAllEqualAtClients) {
-  std::vector<v0::Value> client_vals_in;
-  std::vector<v0::Value> client_vals_out;
-  v0::Value fn = TensorV(24601);
+  std::vector<federated_language_executor::Value> client_vals_in;
+  std::vector<federated_language_executor::Value> client_vals_out;
+  federated_language_executor::Value fn = TensorV(24601);
 
   federated_language::FunctionType intrinsic_type_pb;
   federated_language::FederatedType* parameter_type_pb =
@@ -521,11 +529,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAllEqualAtClients) {
 
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
-    std::vector<v0::Value> in_vec;
-    std::vector<v0::Value> out_vec;
+    std::vector<federated_language_executor::Value> in_vec;
+    std::vector<federated_language_executor::Value> out_vec;
     for (uint32_t j = 0; j < clients_per_child_[i]; j++) {
-      v0::Value in = TensorV(i * 10000 + j * 100);
-      v0::Value out = TensorV(i * 10000 + j * 100 + 1);
+      federated_language_executor::Value in = TensorV(i * 10000 + j * 100);
+      federated_language_executor::Value out = TensorV(i * 10000 + j * 100 + 1);
       client_vals_in.push_back(in);
       in_vec.push_back(in);
       client_vals_out.push_back(out);
@@ -554,11 +562,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAllEqualAtClients) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtServer) {
-  v0::Value tensor = TensorV(23);
+  federated_language_executor::Value tensor = TensorV(23);
   ValueId tensor_child_id = mock_server_->ExpectCreateValue(tensor);
   TFF_ASSERT_OK_AND_ASSIGN(auto server_id,
                            test_executor_->CreateValue(ServerV(tensor)));
-  v0::Value fn = TensorV(44);
+  federated_language_executor::Value fn = TensorV(44);
   ValueId fn_child_id = mock_server_->ExpectCreateValue(fn);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
@@ -569,16 +577,16 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtServer) {
       mock_server_->ExpectCreateCall(fn_child_id, tensor_child_id);
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
                            test_executor_->CreateCall(map_id, arg_id));
-  v0::Value output_tensor = TensorV(89);
+  federated_language_executor::Value output_tensor = TensorV(89);
   mock_server_->ExpectMaterialize(result_child_id, output_tensor);
   ExpectMaterialize(result_id, ServerV(output_tensor));
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedMapOnUnplacedFails) {
-  v0::Value tensor = TensorV(23);
+  federated_language_executor::Value tensor = TensorV(23);
   TFF_ASSERT_OK_AND_ASSIGN(auto unplaced_id,
                            test_executor_->CreateValue(tensor));
-  v0::Value fn = TensorV(44);
+  federated_language_executor::Value fn = TensorV(44);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
                            test_executor_->CreateValue(FederatedMapV()));
@@ -591,8 +599,8 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapOnUnplacedFails) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtClients) {
-  v0::Value fn = TensorV(22);
-  std::vector<v0::Value> client_results;
+  federated_language_executor::Value fn = TensorV(22);
+  std::vector<federated_language_executor::Value> client_results;
 
   federated_language::FunctionType intrinsic_type_pb;
   federated_language::FederatedType* result_type_pb =
@@ -605,9 +613,10 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtClients) {
 
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
-    std::vector<v0::Value> child_results;
+    std::vector<federated_language_executor::Value> child_results;
     for (uint32_t j = 0; j < clients_per_child_[i]; j++) {
-      v0::Value result = TensorV(static_cast<int32_t>(client_results.size()));
+      federated_language_executor::Value result =
+          TensorV(static_cast<int32_t>(client_results.size()));
       child_results.push_back(result);
       client_results.push_back(result);
     }
@@ -627,7 +636,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtClients) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtServer) {
-  v0::Value fn = TensorV(1);
+  federated_language_executor::Value fn = TensorV(1);
   ValueId fn_child_id = mock_server_->ExpectCreateValue(fn);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   ValueId result_child_id =
@@ -636,16 +645,18 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtServer) {
       auto fed_eval_id, test_executor_->CreateValue(FederatedEvalAtServerV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
                            test_executor_->CreateCall(fed_eval_id, fn_id));
-  v0::Value result_tensor = TensorV(3);
+  federated_language_executor::Value result_tensor = TensorV(3);
   mock_server_->ExpectMaterialize(result_child_id, result_tensor);
   ExpectMaterialize(result_id, ServerV(result_tensor));
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedSelect) {
-  v0::Value keys = ClientsV({TensorVFromIntList({22, 47, 89})}, true);
-  v0::Value max_key = TensorV("max_key");
-  v0::Value server_val = ServerV(TensorV("server_val"));
-  v0::Value select_fn = TensorV("select_fn");
+  federated_language_executor::Value keys =
+      ClientsV({TensorVFromIntList({22, 47, 89})}, true);
+  federated_language_executor::Value max_key = TensorV("max_key");
+  federated_language_executor::Value server_val =
+      ServerV(TensorV("server_val"));
+  federated_language_executor::Value select_fn = TensorV("select_fn");
   mock_server_->ExpectCreateMaterialize(TensorV("server_val"));
 
   federated_language::FunctionType intrinsic_type_pb;
@@ -662,7 +673,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedSelect) {
   *intrinsic_type_pb.mutable_result() =
       TFF_ASSERT_OK(InferTypeFromValue(select_fn));
 
-  std::vector<v0::Value> results;
+  std::vector<federated_language_executor::Value> results;
   results.reserve(mock_children_.size());
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
@@ -676,10 +687,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedSelect) {
     ValueId arg = child->ExpectCreateStruct(
         {child_keys, child_max_key, child_server_val, child_select_fn});
     ValueId res = child->ExpectCreateCall(child_sel, arg);
-    std::vector<v0::Value> child_results;
+    std::vector<federated_language_executor::Value> child_results;
     child_results.reserve(num_clients);
     for (uint32_t client_i = 0; client_i < num_clients; client_i++) {
-      v0::Value sequence = SequenceV(client_i, client_i + 3, 1);
+      federated_language_executor::Value sequence =
+          SequenceV(client_i, client_i + 3, 1);
       results.push_back(sequence);
       child_results.push_back(std::move(sequence));
     }
@@ -700,7 +712,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedSelect) {
 
 TEST_F(ComposingExecutorTest,
        CreateCallFederatedSelectFailsWithNonClientsPlacedKeys) {
-  v0::Value unplaced_value = TensorV(1);
+  federated_language_executor::Value unplaced_value = TensorV(1);
   auto unplaced_id = TFF_ASSERT_OK(test_executor_->CreateValue(unplaced_value));
   auto arg = TFF_ASSERT_OK(test_executor_->CreateStruct({
       unplaced_id,  // keys
@@ -732,7 +744,7 @@ TEST_F(ComposingExecutorTest,
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedValueAtClients) {
-  v0::Value tensor = TensorV(1);
+  federated_language_executor::Value tensor = TensorV(1);
   for (const auto& child : mock_children_) {
     child->ExpectCreateMaterialize(ClientsV({tensor}, true));
   }
@@ -742,13 +754,14 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedValueAtClients) {
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
                            test_executor_->CreateCall(fed_val_id, tensor_id));
   ExpectMaterialize(result_id,
-                    ClientsV(std::vector<v0::Value>(total_clients_, tensor)));
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        total_clients_, tensor)));
 }
 
 TEST_F(ComposingExecutorTest,
        CreateCallFederatedValueAtClientsWithComputedValue) {
-  v0::Value tensor = TensorV(1);
-  v0::Value identity_lambda;
+  federated_language_executor::Value tensor = TensorV(1);
+  federated_language_executor::Value identity_lambda;
   *identity_lambda.mutable_computation() = IdentityComp();
   auto server_fn_id = mock_server_->ExpectCreateValue(identity_lambda);
   auto server_tensor_id = mock_server_->ExpectCreateValue(tensor);
@@ -770,11 +783,12 @@ TEST_F(ComposingExecutorTest,
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id, test_executor_->CreateCall(
                                                fed_val_id, computed_tensor_id));
   ExpectMaterialize(result_id,
-                    ClientsV(std::vector<v0::Value>(total_clients_, tensor)));
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        total_clients_, tensor)));
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedValueAtServer) {
-  v0::Value tensor = TensorV(1);
+  federated_language_executor::Value tensor = TensorV(1);
   mock_server_->ExpectCreateMaterialize(tensor);
   TFF_ASSERT_OK_AND_ASSIGN(auto tensor_id, test_executor_->CreateValue(tensor));
   TFF_ASSERT_OK_AND_ASSIGN(
@@ -786,11 +800,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedValueAtServer) {
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsFlat) {
   // Creates two T@C values.
-  v0::Value v1 = ClientsV({TensorV(1)}, true);
-  v0::Value v2 = ClientsV({TensorV(2)}, true);
+  federated_language_executor::Value v1 = ClientsV({TensorV(1)}, true);
+  federated_language_executor::Value v2 = ClientsV({TensorV(2)}, true);
   // Creates a value of <T,T>@C
   auto merged_struct = StructV({TensorV(1), TensorV(2)});
-  v0::Value merged = ClientsV({merged_struct}, true);
+  federated_language_executor::Value merged = ClientsV({merged_struct}, true);
 
   federated_language::FunctionType intrinsic_type_pb;
   federated_language::FederatedType* parameter_type_pb =
@@ -836,18 +850,19 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsFlat) {
       test_executor_->CreateValue(FederatedZipAtClientsV(intrinsic_type_pb)));
   TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
                            test_executor_->CreateCall(zip_id, arg_id));
-  ExpectMaterialize(
-      res_id, ClientsV(std::vector<v0::Value>(total_clients_, merged_struct)));
+  ExpectMaterialize(res_id,
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        total_clients_, merged_struct)));
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsNested) {
   // Creates a value of <T@C,T@C>
-  v0::Value v1 = ClientsV({TensorV(1)}, true);
-  v0::Value v2 = ClientsV({TensorV(2)}, true);
-  v0::Value v2_struct = StructV({v2});
+  federated_language_executor::Value v1 = ClientsV({TensorV(1)}, true);
+  federated_language_executor::Value v2 = ClientsV({TensorV(2)}, true);
+  federated_language_executor::Value v2_struct = StructV({v2});
   // Creates a value of <T,T>@C
   auto merged_struct = StructV({TensorV(1), StructV({TensorV(2)})});
-  v0::Value merged = ClientsV({merged_struct}, true);
+  federated_language_executor::Value merged = ClientsV({merged_struct}, true);
 
   federated_language::FunctionType intrinsic_type_pb;
   federated_language::FederatedType* parameter_type_pb =
@@ -894,13 +909,14 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsNested) {
       test_executor_->CreateValue(FederatedZipAtClientsV(intrinsic_type_pb)));
   TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
                            test_executor_->CreateCall(zip_id, arg_id));
-  ExpectMaterialize(
-      res_id, ClientsV(std::vector<v0::Value>(total_clients_, merged_struct)));
+  ExpectMaterialize(res_id,
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        total_clients_, merged_struct)));
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtServerFlat) {
-  v0::Value v1 = TensorV(1);
-  v0::Value v2 = TensorV(2);
+  federated_language_executor::Value v1 = TensorV(1);
+  federated_language_executor::Value v2 = TensorV(2);
   ValueId v1_child_id = mock_server_->ExpectCreateValue(v1);
   ValueId v2_child_id = mock_server_->ExpectCreateValue(v2);
   TFF_ASSERT_OK_AND_ASSIGN(auto v_id, test_executor_->CreateValue(
@@ -916,8 +932,8 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtServerFlat) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtServerNested) {
-  v0::Value v1 = TensorV(1);
-  v0::Value v2 = TensorV(2);
+  federated_language_executor::Value v1 = TensorV(1);
+  federated_language_executor::Value v2 = TensorV(2);
   ValueId v1_child_id = mock_server_->ExpectCreateValue(v1);
   ValueId v2_child_id = mock_server_->ExpectCreateValue(v2);
   TFF_ASSERT_OK_AND_ASSIGN(auto v_id,
@@ -936,9 +952,9 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtServerNested) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedZipDifferentPlacementsFails) {
-  v0::Value v1 = ClientsV({TensorV(1)}, true);
-  v0::Value v2_inner = TensorV(2);
-  v0::Value v2 = ServerV(v2_inner);
+  federated_language_executor::Value v1 = ClientsV({TensorV(1)}, true);
+  federated_language_executor::Value v2_inner = TensorV(2);
+  federated_language_executor::Value v2 = ServerV(v2_inner);
   for (const auto& child : mock_children_) {
     child->ExpectCreateValue(v1);
   }
@@ -954,8 +970,8 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipDifferentPlacementsFails) {
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedZipUnplacedFails) {
-  v0::Value v1 = TensorV(1);
-  v0::Value v2 = TensorV(2);
+  federated_language_executor::Value v1 = TensorV(1);
+  federated_language_executor::Value v2 = TensorV(2);
   TFF_ASSERT_OK_AND_ASSIGN(auto v_id,
                            test_executor_->CreateValue(StructV({v1, v2})));
   TFF_ASSERT_OK_AND_ASSIGN(

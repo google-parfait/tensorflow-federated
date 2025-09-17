@@ -30,16 +30,16 @@ limitations under the License
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 namespace testing {
 
-inline v0::Value IntrinsicV(
+inline federated_language_executor::Value IntrinsicV(
     absl::string_view uri,
     std::optional<federated_language::FunctionType> type_spec = std::nullopt) {
-  v0::Value value_proto;
+  federated_language_executor::Value value_proto;
   federated_language::Computation* computation_pb =
       value_proto.mutable_computation();
   // Construct an explicit string from this string-view; this silent conversion
@@ -52,8 +52,9 @@ inline v0::Value IntrinsicV(
 }
 
 // NOTE: Returns a value whose federated type `.member` field is unset.
-inline v0::Value ServerV(v0::Value server_val) {
-  v0::Value value_proto;
+inline federated_language_executor::Value ServerV(
+    federated_language_executor::Value server_val) {
+  federated_language_executor::Value value_proto;
   federated_language::FederatedType* type_proto =
       value_proto.mutable_federated()->mutable_type();
   type_proto->set_all_equal(true);
@@ -63,9 +64,10 @@ inline v0::Value ServerV(v0::Value server_val) {
 }
 
 // NOTE: Returns a value whose federated type `.member` field is unset.
-inline v0::Value ClientsV(const absl::Span<const v0::Value> client_values,
-                          bool all_equal = false) {
-  v0::Value value_proto;
+inline federated_language_executor::Value ClientsV(
+    const absl::Span<const federated_language_executor::Value> client_values,
+    bool all_equal = false) {
+  federated_language_executor::Value value_proto;
   federated_language::FederatedType* type_proto =
       value_proto.mutable_federated()->mutable_type();
   type_proto->set_all_equal(all_equal);
@@ -79,8 +81,9 @@ inline v0::Value ClientsV(const absl::Span<const v0::Value> client_values,
   return value_proto;
 }
 
-inline v0::Value StructV(const absl::Span<const v0::Value> elements) {
-  v0::Value value_proto;
+inline federated_language_executor::Value StructV(
+    const absl::Span<const federated_language_executor::Value> elements) {
+  federated_language_executor::Value value_proto;
   auto struct_proto = value_proto.mutable_struct_();
   for (const auto& element : elements) {
     *struct_proto->add_element()->mutable_value() = element;
@@ -90,12 +93,15 @@ inline v0::Value StructV(const absl::Span<const v0::Value> elements) {
 
 // Returns a value representing a sequence of `int64_t`s from `start` to `stop`,
 // stepping by `step`.
-inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
-  v0::Value value_pb;
-  v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
+inline federated_language_executor::Value SequenceV(int64_t start, int64_t stop,
+                                                    int64_t step) {
+  federated_language_executor::Value value_pb;
+  federated_language_executor::Value::Sequence* sequence_pb =
+      value_pb.mutable_sequence();
 
   for (int i = start; i < stop; i += step) {
-    v0::Value::Sequence::Element* element_pb = sequence_pb->add_element();
+    federated_language_executor::Value::Sequence::Element* element_pb =
+        sequence_pb->add_element();
     federated_language::Array* array_pb = element_pb->add_flat_value();
     array_pb->set_dtype(federated_language::DT_INT64);
     array_pb->mutable_shape()->mutable_dim()->Clear();
@@ -111,12 +117,15 @@ inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
 }
 
 // Returns a value representing a sequence of `int64_t`s elements.
-inline v0::Value SequenceV(std::vector<std::vector<int64_t>> elements) {
-  v0::Value value_pb;
-  v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
+inline federated_language_executor::Value SequenceV(
+    std::vector<std::vector<int64_t>> elements) {
+  federated_language_executor::Value value_pb;
+  federated_language_executor::Value::Sequence* sequence_pb =
+      value_pb.mutable_sequence();
 
   for (const std::vector<int64_t>& flat_values : elements) {
-    v0::Value::Sequence::Element* element_pb = sequence_pb->add_element();
+    federated_language_executor::Value::Sequence::Element* element_pb =
+        sequence_pb->add_element();
     for (const int64_t value : flat_values) {
       federated_language::Array* array_pb = element_pb->add_flat_value();
       array_pb->set_dtype(federated_language::DT_INT64);
@@ -150,7 +159,7 @@ inline federated_language::Type MakeInt64ScalarType() {
 namespace intrinsic {
 
 #define INTRINSIC_FUNC(name, uri)                                 \
-  inline v0::Value name(                                          \
+  inline federated_language_executor::Value name(                 \
       std::optional<federated_language::FunctionType> type_spec = \
           std::nullopt) {                                         \
     return IntrinsicV(#uri, type_spec);                           \
@@ -173,8 +182,9 @@ INTRINSIC_FUNC(FederatedZipAtServerV, federated_zip_at_server);
 
 }  // namespace intrinsic
 
-inline v0::Value ComputationV(federated_language::Computation computation_pb) {
-  v0::Value value_pb;
+inline federated_language_executor::Value ComputationV(
+    federated_language::Computation computation_pb) {
+  federated_language_executor::Value value_pb;
   *value_pb.mutable_computation() = computation_pb;
   return value_pb;
 }

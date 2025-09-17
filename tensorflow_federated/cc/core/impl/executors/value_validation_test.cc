@@ -23,10 +23,10 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -38,7 +38,7 @@ using testing::ServerV;
 using testing::TensorV;
 
 const uint32_t NUM_CLIENTS = 5;
-const v0::Value TENSOR = TensorV(1.0);  // NOLINT
+const federated_language_executor::Value TENSOR = TensorV(1.0);  // NOLINT
 
 class ValueValidationTest : public ::testing::Test {};
 
@@ -50,8 +50,9 @@ TEST_F(ValueValidationTest, ValidateFederatedServer) {
 TEST_F(ValueValidationTest, ValidateFederatedAtClients) {
   EXPECT_THAT(
       ValidateFederated(
-          NUM_CLIENTS,
-          ClientsV(std::vector<v0::Value>(NUM_CLIENTS, TENSOR)).federated()),
+          NUM_CLIENTS, ClientsV(std::vector<federated_language_executor::Value>(
+                                    NUM_CLIENTS, TENSOR))
+                           .federated()),
       IsOkAndHolds(FederatedKind::CLIENTS));
 }
 
@@ -74,7 +75,7 @@ TEST_F(ValueValidationTest, ValidateFederatedErrorOnWrongNumberClients) {
 }
 
 TEST_F(ValueValidationTest, ValidateFederatedErrorOnNonAllEqualServer) {
-  v0::Value value_proto;
+  federated_language_executor::Value value_proto;
   federated_language::FederatedType* type_proto =
       value_proto.mutable_federated()->mutable_type();
   type_proto->set_all_equal(false);

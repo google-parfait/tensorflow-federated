@@ -19,8 +19,8 @@ limitations under the License
 #include <cstdint>
 
 #include "absl/status/statusor.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -37,7 +37,8 @@ enum class FederatedKind {
 // In particular, checks that `all_equal` corresponds to 1, and that
 // server-placed values are `all_equal`.
 absl::StatusOr<FederatedKind> ValidateFederated(
-    uint32_t num_clients, const v0::Value_Federated& federated);
+    uint32_t num_clients,
+    const federated_language_executor::Value_Federated& federated);
 
 }  // namespace tensorflow_federated
 

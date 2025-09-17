@@ -26,6 +26,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -34,7 +35,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -93,23 +93,27 @@ class FederatingExecutorTest : public ExecutorTestBase {
   std::shared_ptr<::testing::StrictMock<MockExecutor>> mock_client_executor_ =
       std::make_shared<::testing::StrictMock<MockExecutor>>();
 
-  ValueId ExpectCreateInServerChild(const v0::Value& expected,
-                                    Cardinality repeatedly = ONCE) {
+  ValueId ExpectCreateInServerChild(
+      const federated_language_executor::Value& expected,
+      Cardinality repeatedly = ONCE) {
     return mock_server_executor_->ExpectCreateValue(expected, repeatedly);
   }
-  ValueId ExpectCreateInClientChild(const v0::Value& expected,
-                                    Cardinality repeatedly = ONCE) {
+  ValueId ExpectCreateInClientChild(
+      const federated_language_executor::Value& expected,
+      Cardinality repeatedly = ONCE) {
     return mock_client_executor_->ExpectCreateValue(expected, repeatedly);
   }
 
-  void ExpectMaterializeInServerChild(ValueId id, v0::Value to_return,
-                                      Cardinality repeatedly = ONCE) {
+  void ExpectMaterializeInServerChild(
+      ValueId id, federated_language_executor::Value to_return,
+      Cardinality repeatedly = ONCE) {
     mock_server_executor_->ExpectMaterialize(id, std::move(to_return),
                                              repeatedly);
   }
 
-  void ExpectMaterializeInClientChild(ValueId id, v0::Value to_return,
-                                      Cardinality repeatedly = ONCE) {
+  void ExpectMaterializeInClientChild(
+      ValueId id, federated_language_executor::Value to_return,
+      Cardinality repeatedly = ONCE) {
     mock_client_executor_->ExpectMaterialize(id, std::move(to_return),
                                              repeatedly);
   }
@@ -135,18 +139,19 @@ class FederatingExecutorTest : public ExecutorTestBase {
       const absl::Span<const ValueId> elements, Cardinality repeatedly = ONCE) {
     return mock_client_executor_->ExpectCreateStruct(elements, repeatedly);
   }
-  void ExpectCreateMaterializeInServerChild(v0::Value value,
-                                            Cardinality repeatedly = ONCE) {
+  void ExpectCreateMaterializeInServerChild(
+      federated_language_executor::Value value, Cardinality repeatedly = ONCE) {
     ValueId id = ExpectCreateInServerChild(value, repeatedly);
     ExpectMaterializeInServerChild(id, value, repeatedly);
   }
-  void ExpectCreateMaterializeInClientChild(v0::Value value,
-                                            Cardinality repeatedly = ONCE) {
+  void ExpectCreateMaterializeInClientChild(
+      federated_language_executor::Value value, Cardinality repeatedly = ONCE) {
     ValueId id = ExpectCreateInClientChild(value, repeatedly);
     ExpectMaterializeInClientChild(id, value, repeatedly);
   }
 
-  absl::StatusOr<IdPair> CreatePassthroughValue(const v0::Value& value) {
+  absl::StatusOr<IdPair> CreatePassthroughValue(
+      const federated_language_executor::Value& value) {
     ValueId child_id = ExpectCreateInServerChild(value);
     OwnedValueId id = TFF_TRY(test_executor_->CreateValue(value));
     return IdPair{std::move(id), child_id};
@@ -163,7 +168,7 @@ TEST_F(FederatingExecutorTest, CreateMaterializeTensor) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   ExpectCreateMaterialize(value_pb);
 }
@@ -174,7 +179,8 @@ TEST_F(FederatingExecutorTest, CreateValueIntrinsic) {
 
 TEST_F(FederatingExecutorTest,
        CreateValueNonFederatedIntrinsicForwardedToChild) {
-  const v0::Value intrinsic_pb = IntrinsicV("sequence_reduce");
+  const federated_language_executor::Value intrinsic_pb =
+      IntrinsicV("sequence_reduce");
   TFF_ASSERT_OK(test_executor_->CreateValue(intrinsic_pb));
 }
 
@@ -193,17 +199,17 @@ TEST_F(FederatingExecutorTest, CreateMaterializeFlatStruct) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {2.0}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   federated_language::Array array3_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {3.0}));
-  v0::Value value3_pb;
+  federated_language_executor::Value value3_pb;
   value3_pb.mutable_array()->Swap(&array3_pb);
   auto elements = {value1_pb, value2_pb, value3_pb};
   ExpectCreateMaterialize(StructV(elements));
@@ -213,19 +219,19 @@ TEST_F(FederatingExecutorTest, CreateMaterializeAtServer) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   ExpectCreateMaterializeInServerChild(value_pb);
   ExpectCreateMaterialize(ServerV(value_pb));
 }
 
 TEST_F(FederatingExecutorTest, CreateMaterializeAtClients) {
-  std::vector<v0::Value> values;
+  std::vector<federated_language_executor::Value> values;
   for (int i = 0; i < NUM_CLIENTS; i++) {
     federated_language::Array array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value value_pb;
+    federated_language_executor::Value value_pb;
     value_pb.mutable_array()->Swap(&array_pb);
     values.emplace_back(value_pb);
     ExpectCreateMaterializeInClientChild(value_pb);
@@ -242,7 +248,7 @@ TEST_F(FederatingExecutorTest, CreateMaterializeAtClientsAllEqual) {
   federated_language::Array array_in_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_in_pb;
+  federated_language_executor::Value value_in_pb;
   value_in_pb.mutable_array()->Swap(&array_in_pb);
   ValueId child_id = ExpectCreateInClientChild(value_in_pb);
   TFF_ASSERT_OK_AND_ASSIGN(
@@ -250,11 +256,13 @@ TEST_F(FederatingExecutorTest, CreateMaterializeAtClientsAllEqual) {
   federated_language::Array array_out_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {2.0}));
-  v0::Value value_out_pb;
+  federated_language_executor::Value value_out_pb;
   value_out_pb.mutable_array()->Swap(&array_out_pb);
   ExpectMaterializeInClientChild(child_id, value_out_pb, ONCE_PER_CLIENT);
-  v0::Value clients_out =
-      ClientsV(std::vector<v0::Value>(NUM_CLIENTS, value_out_pb), false);
+  federated_language_executor::Value clients_out =
+      ClientsV(std::vector<federated_language_executor::Value>(NUM_CLIENTS,
+                                                               value_out_pb),
+               false);
   ExpectMaterialize(id, clients_out);
 }
 
@@ -262,9 +270,9 @@ TEST_F(FederatingExecutorTest, CreateValueFailsMultipleAllEqualValues) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
-  std::vector<v0::Value> values(NUM_CLIENTS, value_pb);
+  std::vector<federated_language_executor::Value> values(NUM_CLIENTS, value_pb);
   EXPECT_THAT(test_executor_->CreateValue(ClientsV(values, true)),
               StatusIs(StatusCode::kInvalidArgument));
 }
@@ -273,14 +281,15 @@ TEST_F(FederatingExecutorTest, CreateMaterializeStructOfFederatedValues) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
-  v0::Value value3_pb = StructV({ServerV(value1_pb), ServerV(value2_pb)});
+  federated_language_executor::Value value3_pb =
+      StructV({ServerV(value1_pb), ServerV(value2_pb)});
   ExpectCreateMaterializeInServerChild(value1_pb);
   ExpectCreateMaterializeInServerChild(value2_pb);
   ExpectCreateMaterialize(value3_pb);
@@ -290,14 +299,15 @@ TEST_F(FederatingExecutorTest, CreateMaterializeStructOfMixedValues) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
-  v0::Value value3_pb = StructV({value1_pb, ServerV(value2_pb)});
+  federated_language_executor::Value value3_pb =
+      StructV({value1_pb, ServerV(value2_pb)});
   ExpectCreateMaterializeInServerChild(value2_pb);
   ExpectCreateMaterialize(value3_pb);
 }
@@ -306,9 +316,9 @@ TEST_F(FederatingExecutorTest, CreateMaterializeFederatedStruct) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                          testing::CreateArrayShape({}), {1.0}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
-  v0::Value struct_pb = StructV({value_pb});
+  federated_language_executor::Value struct_pb = StructV({value_pb});
   ExpectCreateMaterializeInServerChild(struct_pb);
   ExpectCreateMaterialize(ServerV(struct_pb));
 }
@@ -317,12 +327,12 @@ TEST_F(FederatingExecutorTest, CreateStructOfTensors) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto v1_id, test_executor_->CreateValue(value1_pb));
   TFF_ASSERT_OK_AND_ASSIGN(auto v2_id, test_executor_->CreateValue(value2_pb));
@@ -335,7 +345,7 @@ TEST_F(FederatingExecutorTest, CreateSelection) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto s,
                            test_executor_->CreateValue(StructV({value_pb})));
@@ -347,12 +357,12 @@ TEST_F(FederatingExecutorTest, CreateSelectionFromEmbeddedValue) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   ValueId child_id = ExpectCreateInServerChild(value1_pb);
   ValueId child_selected_id =
@@ -367,10 +377,10 @@ TEST_F(FederatingExecutorTest, CreateSelectionFromFederatedValueFails) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
-  v0::Value struct_pb = StructV({value_pb});
-  v0::Value fed = ServerV(struct_pb);
+  federated_language_executor::Value struct_pb = StructV({value_pb});
+  federated_language_executor::Value fed = ServerV(struct_pb);
   ExpectCreateInServerChild(struct_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto fed_id, test_executor_->CreateValue(fed));
   EXPECT_THAT(test_executor_->CreateSelection(fed_id, 0),
@@ -394,12 +404,12 @@ TEST_F(FederatingExecutorTest, CreateCallEmbeddedNoArg) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(value1_pb));
   ValueId fn_result_child_id =
@@ -414,17 +424,17 @@ TEST_F(FederatingExecutorTest, CreateCallEmbeddedSingleArg) {
   federated_language::Array array_fn_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_fn_pb;
+  federated_language_executor::Value value_fn_pb;
   value_fn_pb.mutable_array()->Swap(&array_fn_pb);
   federated_language::Array array_arg_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value_arg_pb;
+  federated_language_executor::Value value_arg_pb;
   value_arg_pb.mutable_array()->Swap(&array_arg_pb);
   federated_language::Array array_result_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {3}));
-  v0::Value value_result_pb;
+  federated_language_executor::Value value_result_pb;
   value_result_pb.mutable_array()->Swap(&array_result_pb);
   IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(value_fn_pb));
   IdPair arg = TFF_ASSERT_OK(CreatePassthroughValue(value_arg_pb));
@@ -440,23 +450,23 @@ TEST_F(FederatingExecutorTest, CreateCallEmbedsStructArg) {
   federated_language::Array array_fn_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_fn_pb;
+  federated_language_executor::Value value_fn_pb;
   value_fn_pb.mutable_array()->Swap(&array_fn_pb);
   IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(value_fn_pb));
   federated_language::Array array_arg_1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value_arg_1_pb;
+  federated_language_executor::Value value_arg_1_pb;
   value_arg_1_pb.mutable_array()->Swap(&array_arg_1_pb);
   federated_language::Array array_arg_2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {3}));
-  v0::Value value_arg_2_pb;
+  federated_language_executor::Value value_arg_2_pb;
   value_arg_2_pb.mutable_array()->Swap(&array_arg_2_pb);
   federated_language::Array array_result_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {4}));
-  v0::Value value_result_pb;
+  federated_language_executor::Value value_result_pb;
   value_result_pb.mutable_array()->Swap(&array_result_pb);
   ValueId arg_1_child_id = ExpectCreateInServerChild(value_arg_1_pb);
   ValueId arg_2_child_id = ExpectCreateInServerChild(value_arg_2_pb);
@@ -478,7 +488,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedValueFails) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   ExpectCreateInServerChild(value_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto fed_id,
@@ -491,7 +501,7 @@ TEST_F(FederatingExecutorTest, CreateCallStructFails) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto struct_id,
                            test_executor_->CreateValue(StructV({value_pb})));
@@ -500,43 +510,44 @@ TEST_F(FederatingExecutorTest, CreateCallStructFails) {
 }
 
 TEST_F(FederatingExecutorTest, CreateCallFederatedAggregate) {
-  std::vector<v0::Value> client_vals;
+  std::vector<federated_language_executor::Value> client_vals;
   std::vector<ValueId> client_vals_child_ids;
   for (int i = 0; i < NUM_CLIENTS; i++) {
     federated_language::Array array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value value_pb;
+    federated_language_executor::Value value_pb;
     value_pb.mutable_array()->Swap(&array_pb);
     client_vals.emplace_back(value_pb);
     client_vals_child_ids.emplace_back(ExpectCreateInClientChild(value_pb));
   }
-  v0::Value value = ClientsV(client_vals);
+  federated_language_executor::Value value = ClientsV(client_vals);
   federated_language::Array array_zero_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"zero"}));
-  v0::Value value_zero_pb;
+  federated_language_executor::Value value_zero_pb;
   value_zero_pb.mutable_array()->Swap(&array_zero_pb);
   ValueId zero_child_id = ExpectCreateInClientChild(value_zero_pb);
   federated_language::Array array_accumulate_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"accumulate"}));
-  v0::Value value_accumulate_pb;
+  federated_language_executor::Value value_accumulate_pb;
   value_accumulate_pb.mutable_array()->Swap(&array_accumulate_pb);
   ValueId accumulate_child_id = ExpectCreateInClientChild(value_accumulate_pb);
   federated_language::Array array_merge_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"merge"}));
-  v0::Value value_merge_pb;
+  federated_language_executor::Value value_merge_pb;
   value_merge_pb.mutable_array()->Swap(&array_merge_pb);
   federated_language::Array array_report_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"report"}));
-  v0::Value value_report_pb;
+  federated_language_executor::Value value_report_pb;
   value_report_pb.mutable_array()->Swap(&array_report_pb);
   ValueId report_child_id = ExpectCreateInServerChild(value_report_pb);
-  v0::Value arg = StructV({value, value_zero_pb, value_accumulate_pb,
-                           value_merge_pb, value_report_pb});
+  federated_language_executor::Value arg =
+      StructV({value, value_zero_pb, value_accumulate_pb, value_merge_pb,
+               value_report_pb});
   TFF_ASSERT_OK_AND_ASSIGN(auto arg_id, test_executor_->CreateValue(arg));
   TFF_ASSERT_OK_AND_ASSIGN(auto intrinsic_id,
                            test_executor_->CreateValue(FederatedAggregateV()));
@@ -550,7 +561,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedAggregate) {
   federated_language::Array array_client_child_result_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"result_value"}));
-  v0::Value value_client_child_result_pb;
+  federated_language_executor::Value value_client_child_result_pb;
   value_client_child_result_pb.mutable_array()->Swap(
       &array_client_child_result_pb);
   ExpectMaterializeInClientChild(current_child_id,
@@ -564,7 +575,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedAggregate) {
   federated_language::Array array_child_result_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"result"}));
-  v0::Value value_child_result_pb;
+  federated_language_executor::Value value_child_result_pb;
   value_child_result_pb.mutable_array()->Swap(&array_child_result_pb);
   ExpectMaterializeInServerChild(result_child_id, value_child_result_pb);
   ExpectMaterialize(result_id, ServerV(value_child_result_pb));
@@ -574,7 +585,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedBroadcast) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   ValueId tensor_id = ExpectCreateInServerChild(value1_pb);
   ExpectMaterializeInServerChild(tensor_id, value1_pb);
@@ -588,32 +599,33 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedBroadcast) {
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   ExpectMaterializeInClientChild(client_id, value2_pb, ONCE_PER_CLIENT);
   ExpectMaterialize(clients_id,
-                    ClientsV(std::vector<v0::Value>(NUM_CLIENTS, value2_pb)));
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        NUM_CLIENTS, value2_pb)));
 }
 
 TEST_F(FederatingExecutorTest, CreateCallFederatedMapAtClients) {
-  std::vector<v0::Value> client_vals;
+  std::vector<federated_language_executor::Value> client_vals;
   std::vector<ValueId> client_vals_child_ids;
   for (int i = 0; i < NUM_CLIENTS; i++) {
     federated_language::Array array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value value_pb;
+    federated_language_executor::Value value_pb;
     value_pb.mutable_array()->Swap(&array_pb);
     client_vals.emplace_back(value_pb);
     client_vals_child_ids.emplace_back(ExpectCreateInClientChild(value_pb));
   }
-  v0::Value value = ClientsV(client_vals);
+  federated_language_executor::Value value = ClientsV(client_vals);
   TFF_ASSERT_OK_AND_ASSIGN(auto input_id,
                            test_executor_->CreateValue(ClientsV(client_vals)));
   federated_language::Array array_fn_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"fn"}));
-  v0::Value value_fn_pb;
+  federated_language_executor::Value value_fn_pb;
   value_fn_pb.mutable_array()->Swap(&array_fn_pb);
   auto fn_id = ExpectCreateInClientChild(value_fn_pb);
   for (int i = 0; i < NUM_CLIENTS; i++) {
@@ -633,24 +645,24 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedMapAtClients) {
 }
 
 TEST_F(FederatingExecutorTest, CreateCallFederatedMapAllEqualAtClients) {
-  std::vector<v0::Value> client_vals;
+  std::vector<federated_language_executor::Value> client_vals;
   std::vector<ValueId> client_vals_child_ids;
   for (int i = 0; i < NUM_CLIENTS; i++) {
     federated_language::Array array_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value value_pb;
+    federated_language_executor::Value value_pb;
     value_pb.mutable_array()->Swap(&array_pb);
     client_vals.emplace_back(value_pb);
     client_vals_child_ids.emplace_back(ExpectCreateInClientChild(value_pb));
   }
-  v0::Value value = ClientsV(client_vals);
+  federated_language_executor::Value value = ClientsV(client_vals);
   TFF_ASSERT_OK_AND_ASSIGN(auto input_id,
                            test_executor_->CreateValue(ClientsV(client_vals)));
   federated_language::Array array_fn_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"fn"}));
-  v0::Value value_fn_pb;
+  federated_language_executor::Value value_fn_pb;
   value_fn_pb.mutable_array()->Swap(&array_fn_pb);
   auto fn_id = ExpectCreateInClientChild(value_fn_pb);
   for (int i = 0; i < NUM_CLIENTS; i++) {
@@ -673,7 +685,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedMapAtServer) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   ValueId tensor_child_id = ExpectCreateInServerChild(value1_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto server_id,
@@ -681,7 +693,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedMapAtServer) {
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(value2_pb));
   TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
@@ -695,7 +707,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedMapAtServer) {
   federated_language::Array array3_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {3}));
-  v0::Value value3_pb;
+  federated_language_executor::Value value3_pb;
   value3_pb.mutable_array()->Swap(&array3_pb);
   ExpectMaterializeInServerChild(result_child_id, value3_pb);
   ExpectMaterialize(result_id, ServerV(value3_pb));
@@ -705,7 +717,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedEvalAtClients) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn, test_executor_->CreateValue(value1_pb));
   auto fn_client_id = ExpectCreateInClientChild(value1_pb);
@@ -718,18 +730,19 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedEvalAtClients) {
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {3}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   ExpectMaterializeInClientChild(result_child_id, value2_pb, ONCE_PER_CLIENT);
   ExpectMaterialize(result_id,
-                    ClientsV(std::vector<v0::Value>(NUM_CLIENTS, value2_pb)));
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        NUM_CLIENTS, value2_pb)));
 }
 
 TEST_F(FederatingExecutorTest, CreateCallFederatedEvalAtServer) {
   federated_language::Array array_fn_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_fn_pb;
+  federated_language_executor::Value value_fn_pb;
   value_fn_pb.mutable_array()->Swap(&array_fn_pb);
   ValueId fn_child_id = ExpectCreateInServerChild(value_fn_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id,
@@ -743,7 +756,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedEvalAtServer) {
   federated_language::Array array_result_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {3}));
-  v0::Value value_result_pb;
+  federated_language_executor::Value value_result_pb;
   value_result_pb.mutable_array()->Swap(&array_result_pb);
   ExpectMaterializeInServerChild(result_child_id, value_result_pb);
   ExpectMaterialize(result_id, ServerV(value_result_pb));
@@ -755,29 +768,29 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectUniqueKeyPerClient) {
   federated_language::Array array_fn_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"fn"}));
-  v0::Value value_fn_pb;
+  federated_language_executor::Value value_fn_pb;
   value_fn_pb.mutable_array()->Swap(&array_fn_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto select_fn,
                            test_executor_->CreateValue(value_fn_pb));
   federated_language::Array array_max_key_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"max_key"}));
-  v0::Value value_max_key_pb;
+  federated_language_executor::Value value_max_key_pb;
   value_max_key_pb.mutable_array()->Swap(&array_max_key_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto max_key,
                            test_executor_->CreateValue(value_max_key_pb));
   federated_language::Array array_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"value"}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   ValueId server_value_child_id = ExpectCreateInServerChild(value_pb);
   OwnedValueId server_value_id =
       TFF_ASSERT_OK(test_executor_->CreateValue(ServerV(value_pb)));
   ValueId args_into_sequence_id =
       ExpectCreateInServerChild(ArgsIntoSequenceV());
-  std::vector<v0::Value> keys_pbs;
-  std::vector<v0::Value> dataset_pbs;
+  std::vector<federated_language_executor::Value> keys_pbs;
+  std::vector<federated_language_executor::Value> dataset_pbs;
   std::vector<ValueId> dataset_ids;
 
   ValueId select_fn_server_id = ExpectCreateInServerChild(value_fn_pb);
@@ -785,14 +798,14 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectUniqueKeyPerClient) {
     federated_language::Array array_keys_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({1}), {i}));
-    v0::Value keys_for_client_pb;
+    federated_language_executor::Value keys_for_client_pb;
     keys_for_client_pb.mutable_array()->Swap(&array_keys_pb);
     keys_pbs.push_back(keys_for_client_pb);
     ExpectCreateMaterializeInClientChild(keys_for_client_pb);
     federated_language::Array array_key_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {i}));
-    v0::Value value_key_pb;
+    federated_language_executor::Value value_key_pb;
     value_key_pb.mutable_array()->Swap(&array_key_pb);
     ValueId key_id = ExpectCreateInServerChild(value_key_pb);
 
@@ -804,7 +817,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectUniqueKeyPerClient) {
     ValueId dataset_id =
         ExpectCreateCallInServerChild(args_into_sequence_id, slices_id);
 
-    v0::Value dataset_pb = SequenceV(i, i + 1, 1);
+    federated_language_executor::Value dataset_pb = SequenceV(i, i + 1, 1);
     dataset_ids.push_back(dataset_id);
     dataset_pbs.push_back(dataset_pb);
     ExpectMaterializeInServerChild(dataset_id, dataset_pb);
@@ -825,20 +838,20 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectAllClientsSameKeys) {
   federated_language::Array array_fn_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"fn"}));
-  v0::Value value_fn_pb;
+  federated_language_executor::Value value_fn_pb;
   value_fn_pb.mutable_array()->Swap(&array_fn_pb);
   IdPair select_fn = TFF_ASSERT_OK(CreatePassthroughValue(value_fn_pb));
   federated_language::Array array_max_key_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"max_key"}));
-  v0::Value value_max_key_pb;
+  federated_language_executor::Value value_max_key_pb;
   value_max_key_pb.mutable_array()->Swap(&array_max_key_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto max_key,
                            test_executor_->CreateValue(value_max_key_pb));
   federated_language::Array array_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"value"}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   ValueId server_value_child_id = ExpectCreateInServerChild(value_pb);
   OwnedValueId server_value_id =
@@ -849,7 +862,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectAllClientsSameKeys) {
   federated_language::Array array_keys_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({3}), keys));
-  v0::Value keys_pb;
+  federated_language_executor::Value keys_pb;
   keys_pb.mutable_array()->Swap(&array_keys_pb);
   std::vector<ValueId> slice_child_ids;
   // Every unique key should only have its slice created once (not once per
@@ -858,7 +871,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectAllClientsSameKeys) {
     federated_language::Array array_key_pb = TFF_ASSERT_OK(
         testing::CreateArray(federated_language::DataType::DT_INT32,
                              testing::CreateArrayShape({}), {key}));
-    v0::Value value_key_pb;
+    federated_language_executor::Value value_key_pb;
     value_key_pb.mutable_array()->Swap(&array_key_pb);
     ValueId key_id = ExpectCreateInServerChild(value_key_pb);
     ValueId select_fn_args_id =
@@ -875,12 +888,12 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectAllClientsSameKeys) {
       ExpectCreateStructInServerChild(slice_child_ids, ONCE_PER_CLIENT);
   ValueId dataset_id = ExpectCreateCallInServerChild(
       args_into_sequence_id, slices_id, ONCE_PER_CLIENT);
-  v0::Value dataset_pb = SequenceV(0, 10, 2);
+  federated_language_executor::Value dataset_pb = SequenceV(0, 10, 2);
   ExpectMaterializeInServerChild(dataset_id, dataset_pb, ONCE_PER_CLIENT);
   ExpectCreateMaterializeInClientChild(dataset_pb, ONCE_PER_CLIENT);
-  std::vector<v0::Value> keys_pbs;
+  std::vector<federated_language_executor::Value> keys_pbs;
   keys_pbs.resize(NUM_CLIENTS, keys_pb);
-  std::vector<v0::Value> dataset_pbs;
+  std::vector<federated_language_executor::Value> dataset_pbs;
   dataset_pbs.resize(NUM_CLIENTS, dataset_pb);
   OwnedValueId keys_id =
       TFF_ASSERT_OK(test_executor_->CreateValue(ClientsV(keys_pbs)));
@@ -898,20 +911,20 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectNonInt32KeysFails) {
   federated_language::Array array_fn_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"fn"}));
-  v0::Value value_fn_pb;
+  federated_language_executor::Value value_fn_pb;
   value_fn_pb.mutable_array()->Swap(&array_fn_pb);
   IdPair select_fn = TFF_ASSERT_OK(CreatePassthroughValue(value_fn_pb));
   federated_language::Array array_max_key_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"max_key"}));
-  v0::Value value_max_key_pb;
+  federated_language_executor::Value value_max_key_pb;
   value_max_key_pb.mutable_array()->Swap(&array_max_key_pb);
   OwnedValueId max_key =
       TFF_ASSERT_OK(test_executor_->CreateValue(value_max_key_pb));
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   ExpectCreateInServerChild(value_pb);
   OwnedValueId server_value_id =
@@ -920,7 +933,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectNonInt32KeysFails) {
   federated_language::Array array_keys_pb;
   array_keys_pb.set_dtype(federated_language::DataType::DT_UINT8);
   array_keys_pb.mutable_shape()->mutable_dim()->Add(1);
-  v0::Value keys_pb;
+  federated_language_executor::Value keys_pb;
   *keys_pb.mutable_array() = array_keys_pb;
   // The child `keys_pb` value is only created once due to the ALL_EQUALS bit,
   // and then is only materialized once after which the operation fails.
@@ -940,20 +953,20 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectNonRankOneKeysFails) {
   federated_language::Array array_fn_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"fn"}));
-  v0::Value value_fn_pb;
+  federated_language_executor::Value value_fn_pb;
   value_fn_pb.mutable_array()->Swap(&array_fn_pb);
   IdPair select_fn = TFF_ASSERT_OK(CreatePassthroughValue(value_fn_pb));
   federated_language::Array array_max_key_pb = TFF_ASSERT_OK(
       testing::CreateArray(federated_language::DataType::DT_STRING,
                            testing::CreateArrayShape({}), {"max_key"}));
-  v0::Value value_max_key_pb;
+  federated_language_executor::Value value_max_key_pb;
   value_max_key_pb.mutable_array()->Swap(&array_max_key_pb);
   OwnedValueId max_key =
       TFF_ASSERT_OK(test_executor_->CreateValue(value_max_key_pb));
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   ExpectCreateInServerChild(value_pb);
   OwnedValueId server_value_id =
@@ -963,7 +976,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectNonRankOneKeysFails) {
   array_keys_pb.set_dtype(federated_language::DataType::DT_INT32);
   array_keys_pb.mutable_shape()->mutable_dim()->Add(2);
   array_keys_pb.mutable_shape()->mutable_dim()->Add(2);
-  v0::Value keys_pb;
+  federated_language_executor::Value keys_pb;
   *keys_pb.mutable_array() = array_keys_pb;
   // The child `keys_pb` value is only created once due to the ALL_EQUALS bit,
   // and then is only materialized once after which the operation fails.
@@ -981,7 +994,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedValueAtClients) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   auto tensor = TFF_ASSERT_OK(test_executor_->CreateValue(value_pb));
   TFF_ASSERT_OK_AND_ASSIGN(
@@ -991,7 +1004,8 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedValueAtClients) {
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
                            test_executor_->CreateCall(fed_val_id, tensor));
   ExpectMaterialize(result_id,
-                    ClientsV(std::vector<v0::Value>(NUM_CLIENTS, value_pb)));
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        NUM_CLIENTS, value_pb)));
 }
 
 TEST_F(FederatingExecutorTest,
@@ -999,7 +1013,7 @@ TEST_F(FederatingExecutorTest,
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(value_pb));
   ValueId fn_result_child_id =
@@ -1015,14 +1029,15 @@ TEST_F(FederatingExecutorTest,
       auto result_id, test_executor_->CreateCall(fed_val_id, fn_result_id));
   ExpectMaterializeInClientChild(result_tensor_id, value_pb, ONCE_PER_CLIENT);
   ExpectMaterialize(result_id,
-                    ClientsV(std::vector<v0::Value>(NUM_CLIENTS, value_pb)));
+                    ClientsV(std::vector<federated_language_executor::Value>(
+                        NUM_CLIENTS, value_pb)));
 }
 
 TEST_F(FederatingExecutorTest, CreateCallFederatedValueAtServer) {
   federated_language::Array array_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value_pb;
+  federated_language_executor::Value value_pb;
   value_pb.mutable_array()->Swap(&array_pb);
   ValueId tensor_child_id = ExpectCreateInServerChild(value_pb);
   TFF_ASSERT_OK_AND_ASSIGN(auto tensor_id,
@@ -1039,12 +1054,12 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtClientsFlat) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   ValueId v1_child_id = ExpectCreateInClientChild(value1_pb);
   ValueId v2_child_id = ExpectCreateInClientChild(value2_pb);
@@ -1061,7 +1076,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtClientsFlat) {
   ExpectMaterializeInClientChild(
       struct_child_id, StructV({value1_pb, value2_pb}), ONCE_PER_CLIENT);
   ExpectMaterialize(result_id,
-                    ClientsV(std::vector<v0::Value>(
+                    ClientsV(std::vector<federated_language_executor::Value>(
                         NUM_CLIENTS, StructV({value1_pb, value2_pb}))));
 }
 
@@ -1069,12 +1084,12 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtClientsNested) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   ValueId v1_child_id = ExpectCreateInClientChild(value1_pb);
   ValueId v2_child_id = ExpectCreateInClientChild(value2_pb);
@@ -1094,7 +1109,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtClientsNested) {
                                  StructV({value1_pb, StructV({value2_pb})}),
                                  ONCE_PER_CLIENT);
   ExpectMaterialize(
-      result_id, ClientsV(std::vector<v0::Value>(
+      result_id, ClientsV(std::vector<federated_language_executor::Value>(
                      NUM_CLIENTS, StructV({value1_pb, StructV({value2_pb})}))));
 }
 
@@ -1102,12 +1117,12 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtServerFlat) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   ValueId v1_child_id = ExpectCreateInServerChild(value1_pb);
   ValueId v2_child_id = ExpectCreateInServerChild(value2_pb);
@@ -1129,12 +1144,12 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtServerNested) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {2}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   ValueId v1_child_id = ExpectCreateInServerChild(value1_pb);
   ValueId v2_child_id = ExpectCreateInServerChild(value2_pb);
@@ -1158,12 +1173,12 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedZipMixedPlacementsFails) {
   federated_language::Array array1_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value1_pb;
+  federated_language_executor::Value value1_pb;
   value1_pb.mutable_array()->Swap(&array1_pb);
   federated_language::Array array2_pb =
       TFF_ASSERT_OK(testing::CreateArray(federated_language::DataType::DT_INT32,
                                          testing::CreateArrayShape({}), {1}));
-  v0::Value value2_pb;
+  federated_language_executor::Value value2_pb;
   value2_pb.mutable_array()->Swap(&array2_pb);
   ExpectCreateInServerChild(value1_pb);
   ExpectCreateInClientChild(value2_pb);

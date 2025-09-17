@@ -40,4 +40,3 @@ backends.native.set_sync_local_cpp_execution_context()
 # the directory structure. The python import statements above implicitly add
 # these to locals().
 del python  # pylint: disable=undefined-variable
-del proto  # pylint: disable=undefined-variable
