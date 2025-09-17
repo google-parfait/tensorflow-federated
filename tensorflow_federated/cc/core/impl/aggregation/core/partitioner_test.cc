@@ -23,7 +23,9 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -98,6 +100,41 @@ TEST(PartitionerTest, CreatePartitioner_KeyTensorsWithDifferentSizes) {
                        testing::HasSubstr("All key tensors must have the "
                                           "same one-dimensional size.")));
 }
+
+TEST(PartitionerTest, PartitionKeys_Succeeds) {
+  std::vector<Tensor> key_tensors;
+  key_tensors.push_back(Tensor::Create(DT_STRING, {3},
+                                       CreateTestData<string_view>({
+                                           "a",
+                                           "b",
+                                           "c",
+                                       }))
+                            .value());
+  key_tensors.push_back(Tensor::Create(DT_INT64, {3},
+                                       CreateTestData<int64_t>({
+                                           1,
+                                           2,
+                                           3,
+                                       }))
+                            .value());
+  key_tensors.push_back(
+      Tensor::Create(DT_DOUBLE, {3}, CreateTestData<double>({2.0, 3.0, 4.0}))
+          .value());
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Partitioner partitioner,
+      Partitioner::Create(key_tensors, /*num_partitions=*/2));
+
+  TFF_ASSERT_OK_AND_ASSIGN(std::vector<Tensor> partitioned_tensors,
+                           partitioner.PartitionKeys(key_tensors[0]));
+
+  // Verify the contents of the partitioned tensors.
+  EXPECT_EQ(partitioned_tensors.size(), 2);
+  EXPECT_THAT(partitioned_tensors[0],
+              IsTensor<string_view>(TensorShape({1}), {"b"}));
+  EXPECT_THAT(partitioned_tensors[1],
+              IsTensor<string_view>(TensorShape({2}), {"a", "c"}));
+}
+
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated
