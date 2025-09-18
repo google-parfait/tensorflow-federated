@@ -18,6 +18,8 @@
 
 #include <jni.h>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/cleanup/cleanup.h"
 #include "absl/container/fixed_array.h"
 #include "absl/log/absl_log.h"
@@ -45,13 +47,26 @@
 namespace tff {
 namespace jni {
 
-static inline std::string JbyteArrayToString(JNIEnv* env, jbyteArray arr) {
+static absl::Status CheckJniException(JNIEnv* env, absl::string_view context) {
+  if (env->ExceptionCheck()) {
+    env->ExceptionDescribe();  // Optional: prints Java stack trace to stderr
+    env->ExceptionClear();
+    return absl::InternalError("Java JNI exception:" + std::string(context));
+  }
+
+  return absl::OkStatus();
+}
+
+static inline absl::StatusOr<std::string> JbyteArrayToString(JNIEnv* env, jbyteArray arr) {
   int len = env->GetArrayLength(arr);
   char* buf = new char[len];
   std::unique_ptr<char[]> buf_uptr(buf);
   env->GetByteArrayRegion(arr, 0, len, reinterpret_cast<jbyte*>(buf));
-  std::string result(buf, len);
-  return result;
+  if (auto status = CheckJniException(env, "GetByteArrayRegion"); !status.ok()) {
+    return status;
+  }
+
+  return std::string(buf, len);
 }
 
 // Throws an exception of the given class. The exception is expected to have
@@ -147,24 +162,38 @@ class ScopedJniEnv final {
 // input argument will always be a valid proto (and anything else would be a
 // programmer error).
 template <typename MessageT>
-static MessageT ParseProtoFromJByteArray(JNIEnv* env, jbyteArray byte_array) {
-  MessageT out_message;
-
+static absl::StatusOr<MessageT> ParseProtoFromJByteArray(JNIEnv* env, jbyteArray byte_array) {
   jsize length = env->GetArrayLength(byte_array);
-  JNI_CHECK(!env->ExceptionCheck());
+  if (auto status = CheckJniException(env, "GetArrayLength"); !status.ok()) {
+    return status;
+  }
+
+  if (length >= INT32_MAX) {
+    return absl::InvalidArgumentError("Byte array too large");
+  }
+
+  if (length < 0) {
+    return absl::InvalidArgumentError("Negative length");
+  }
 
   if (length == 0) {
-    return std::move(out_message);
+    return MessageT();
   }
+
+  MessageT result;
   // This will make a copy of the data into buffer, but generally the proto data
   // will small enough that this shouldn't matter.
   absl::FixedArray<jbyte> buffer(length);
   env->GetByteArrayRegion(byte_array, 0, length, buffer.data());
-  JNI_CHECK(!env->ExceptionCheck());
+  if (auto status = CheckJniException(env, "GetByteArrayRegion"); !status.ok()) {
+    return status;
+  }
 
-  JNI_CHECK(out_message.ParseFromArray(buffer.data(), length));
+  if (!result.ParseFromArray(buffer.data(), length)) {
+    return absl::InvalidArgumentError("Failed to parse proto");
+  }
 
-  return std::move(out_message);
+  return result;
 }
 
 // Serializes a proto to a `jbyteArray`.
@@ -174,22 +203,32 @@ static MessageT ParseProtoFromJByteArray(JNIEnv* env, jbyteArray byte_array) {
 //
 // If any JNI calls fail, then this JNI_CHECK-fails.
 template <typename MessageT>
-static jbyteArray SerializeProtoToJByteArray(JNIEnv* env,
-                                             const MessageT& proto) {
+static absl::StatusOr<jbyteArray> SerializeProtoToJByteArray(
+  JNIEnv* env,
+  const MessageT& proto
+) {
   int length = static_cast<int>(proto.ByteSizeLong());
-
   jbyteArray byte_array = env->NewByteArray(length);
-  JNI_CHECK(byte_array != nullptr);
-  JNI_CHECK(!env->ExceptionCheck());
+  if (auto status = CheckJniException(env, "NewByteArray"); !status.ok()) {
+    return status;
+  }
+
+  if (byte_array == nullptr) {
+    return absl::InternalError("Failed to allocate byte array");
+  }
 
   // This serializes into a buffer and then copies that buffer to the Java byte
   // array. The proto data is generally small enough that this extra copy
   // shouldn't matter.
   absl::FixedArray<jbyte> buffer(length);
-  proto.SerializeToArray(buffer.data(), length);
+  if (!proto.SerializeToArray(buffer.data(), length)) {
+    return absl::InternalError("Failed to serialize proto");
+  }
 
   env->SetByteArrayRegion(byte_array, 0, length, buffer.data());
-  JNI_CHECK(!env->ExceptionCheck());
+  if (auto status = CheckJniException(env, "SetByteArrayRegion"); !status.ok()) {
+    return status;
+  }
 
   return byte_array;
 }

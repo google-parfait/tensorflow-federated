@@ -13,8 +13,10 @@
 # limitations under the License.
 
 package(
-    default_visibility = ["//visibility:public"],
+    default_visibility = ["//visibility:public"]
 )
+
+load("@org_tensorflow//tensorflow/core/platform:build_config.bzl", "tf_proto_library")
 
 cc_library(
     name = "native",
@@ -30,6 +32,7 @@ cc_library(
         "-Wno-overloaded-virtual",
     ],
     deps = [
+        ":plan_cc_proto",
         "@bazel_tools//tools/jdk:jni",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
@@ -50,4 +53,17 @@ cc_binary(
     linkshared = 1,
     linkstatic = 1,
     deps = [":native"],
+)
+
+tf_proto_library(
+    name = "plan_proto",
+    srcs = ["plan.proto"],
+    protodeps = [
+        "@org_tensorflow//tensorflow/core:protos_all",
+    ],
+)
+
+alias(
+    name = "plan_cc_proto",
+    actual = "plan_proto_cc",
 )

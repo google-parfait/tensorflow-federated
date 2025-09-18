@@ -115,16 +115,6 @@ http_archive(
     url = "https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz",
 )
 
-# http_archive(
-#     name = "com_google_protobuf",
-#     sha256 = "1add10f9bd92775b91f326da259f243881e904dd509367d5031d4c782ba82810",
-#     strip_prefix = "protobuf-3.21.9",
-#     patches = [
-#         "//third_party/protobuf:dynamic_lookup_macos.patch",
-#     ],
-#     url = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.21.9.tar.gz",
-# )
-
 http_archive(
     name = "eigen",
     build_file = "//third_party:eigen.BUILD",
@@ -149,6 +139,53 @@ http_archive(
     strip_prefix = "federated-language-16e734b633e68b613bb92918e6f3304774853e9b",
     url = "https://github.com/google-parfait/federated-language/archive/16e734b633e68b613bb92918e6f3304774853e9b.tar.gz",
 )
+
+http_archive(
+    name = "rules_java",
+    sha256 = "c7bd858a132c7b8febe040a90fa138c2e3e7f0bce47122ac2ad43906036a276c",
+    urls = [
+        "https://github.com/bazelbuild/rules_java/releases/download/8.3.0/rules_java-8.3.0.tar.gz",
+    ],
+)
+
+load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_java_toolchains")
+
+rules_java_dependencies()
+
+rules_java_toolchains()
+
+RULES_JVM_EXTERNAL_TAG = "6.0"
+
+RULES_JVM_EXTERNAL_SHA = "85fd6bad58ac76cc3a27c8e051e4255ff9ccd8c92ba879670d195622e7c0a9b7"
+
+http_archive(
+    name = "rules_jvm_external",
+    sha256 = RULES_JVM_EXTERNAL_SHA,
+    strip_prefix = "rules_jvm_external-%s" % RULES_JVM_EXTERNAL_TAG,
+    url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/%s/rules_jvm_external-%s.tar.gz" % (RULES_JVM_EXTERNAL_TAG, RULES_JVM_EXTERNAL_TAG),
+)
+
+load("@rules_jvm_external//:repositories.bzl", "rules_jvm_external_deps")
+
+rules_jvm_external_deps()
+
+load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
+
+rules_jvm_external_setup()
+
+load("@rules_jvm_external//:defs.bzl", "maven_install")
+
+maven_install(
+    name = "maven",
+    artifacts = [
+        "com.google.guava:guava:32.1.2-jre",
+        "com.google.code.findbugs:jsr305:3.0.2",
+    ],
+    repositories = [
+        "https://repo1.maven.org/maven2",
+    ],
+)
+
 
 # The version of TensorFlow should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
@@ -218,13 +255,6 @@ http_archive(
     strip_prefix = "pybind11_abseil-2c4932ed6f6204f1656e245838f4f5eae69d2e29",
     url = "https://github.com/pybind/pybind11_abseil/archive/2c4932ed6f6204f1656e245838f4f5eae69d2e29.tar.gz",
 )
-
-# http_archive(
-#     name = "pybind11_bazel",
-#     sha256 = "e8355ee56c2ff772334b4bfa22be17c709e5573f6d1d561c7176312156c27bd4",
-#     strip_prefix = "pybind11_bazel-2.11.1",
-#     url = "https://github.com/pybind/pybind11_bazel/archive/refs/tags/v2.11.1.tar.gz",
-# )
 
 tf_http_archive(
     name = "pybind11_bazel",
