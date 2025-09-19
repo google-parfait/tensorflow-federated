@@ -106,8 +106,8 @@ public final class AggregationSession implements AutoCloseable {
   }
 
   static {
-    // install by separate deps
-    System.loadLibrary("libaggregation-jni");
+    // ytodo: install by separate deps
+    System.loadLibrary("aggregation-jni");
   }
 
   // Native API

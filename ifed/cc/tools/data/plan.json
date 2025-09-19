@@ -1,0 +1,47 @@
+{
+  "phase": [
+    {
+      "serverPhaseV2": {
+        "aggregations": [
+          {
+            "intrinsicUri": "federated_sum",
+            "intrinsicArgs": [
+              {
+                "inputTensor": {
+                  "name": "weights",
+                  "shape": {
+                    "dim": [
+                      {
+                        "size": "2"
+                      },
+                      {
+                        "size": "2"
+                      }
+                    ]
+                  },
+                  "dtype": "DT_FLOAT"
+                }
+              }
+            ],
+            "outputTensors": [
+              {
+                "name": "aggregated_weights",
+                "shape": {
+                  "dim": [
+                    {
+                      "size": "2"
+                    },
+                    {
+                      "size": "2"
+                    }
+                  ]
+                },
+                "dtype": "DT_FLOAT"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

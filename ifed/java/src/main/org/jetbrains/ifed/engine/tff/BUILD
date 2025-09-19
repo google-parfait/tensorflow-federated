@@ -21,7 +21,7 @@ java_library(
         "AggregationSession.java",
     ],
     runtime_deps = [
-        "//ifed/engine/cc:libaggregation-jni.so",
+        "//ifed/cc/aggregation:libaggregation-jni.dylib",
     ],
     deps = [
         ":aggregation_exception",

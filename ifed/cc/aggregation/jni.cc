@@ -25,7 +25,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/converters.h"
 
 #define JFUN(METHOD_NAME) \
-  Java_com_google_tff_aggregation_AggregationSession_##METHOD_NAME
+  Java_org_jetbrains_ifed_engine_tff_AggregationSession_##METHOD_NAME
 
 constexpr const char* AG_EXCEPTION_CLASS = "org/jetbrains/ifed/engine/tff/AggregationException";
 
@@ -126,7 +126,7 @@ ExtractAggregationConfigurationFromPlan(const ifed::engine::tff::Plan& plan) {
       return absl::Status(converted.status().code(), "Failed to convert aggregation config: " + Message(converted.status()));
     }
 
-    *result.add_intrinsic_configs() = converted.value();
+    *result.add_intrinsic_configs() = *converted;
   }
 
   return result;
@@ -139,25 +139,19 @@ ExtractAggregationConfigurationFromPlan(const ifed::engine::tff::Plan& plan) {
 
 extern "C" JNIEXPORT jlong JNICALL JFUN(createNativeFromByteArray)(
     JNIEnv* env, jclass, jbyteArray configurationByteArray) {
-  absl::StatusOr<Configuration> config =
-      jni::ParseProtoFromJByteArray<
-          Configuration>(
-          env, configurationByteArray);
+  auto config = jni::ParseProtoFromJByteArray<Configuration>(env, configurationByteArray);
   if (!config.ok()) {
     ThrowAggregationException(env, config.status());
     return 0;
   }
 
-  absl::StatusOr<
-      std::unique_ptr<CheckpointAggregator>>
-      result = CheckpointAggregator::Create(
-          config.value());
+  auto result = CheckpointAggregator::Create(*config);
   if (!result.ok()) {
     ThrowAggregationException(env, result.status());
     return 0;
   }
 
-  return reinterpret_cast<jlong>(result.value().release());
+  return reinterpret_cast<jlong>(result->release());
 }
 
 extern "C" JNIEXPORT void JNICALL JFUN(mergeWith)(
@@ -354,17 +348,17 @@ extern "C" JNIEXPORT jbyteArray JNICALL JFUN(extractConfiguration)(
     return {};
   }
 
-  const auto config = ExtractAggregationConfigurationFromPlan(plan.value());
+  const auto config = ExtractAggregationConfigurationFromPlan(*plan);
   if (!config.ok()) {
     ThrowAggregationException(env, config.status());
     return {};
   }
 
-  const auto result = jni::SerializeProtoToJByteArray(env, config.value());
+  const auto result = jni::SerializeProtoToJByteArray(env, *config);
   if (!result.ok()) {
     ThrowAggregationException(env, result.status());
     return {};
   }
 
-  return result.value();
+  return *result;
 }

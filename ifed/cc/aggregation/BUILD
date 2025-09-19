@@ -62,7 +62,7 @@ alias(
 )
 
 cc_binary(
-    name = "libaggregation-jni.so",
+    name = "libaggregation-jni.dylib",
     linkshared = 1,
     linkstatic = 1,
     deps = [":native"],

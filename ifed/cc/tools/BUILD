@@ -1,5 +1,3 @@
-# Tools for creating and parsing checkpoints and plans
-
 cc_binary(
 	name = "checkpoint_tool",
 	srcs = ["checkpoint_tool.cc"],
@@ -11,5 +9,17 @@ cc_binary(
 		"@com_google_absl//absl/status:statusor",
 		"@com_google_absl//absl/strings:cord",
     "@nlohmann_json//:json",
+	],
+)
+
+cc_binary(
+	name = "plan_tool",
+	srcs = ["plan_tool.cc"],
+	deps = [
+		"//ifed/cc/aggregation:plan_cc_proto",
+		"@com_google_absl//absl/flags:parse",
+		"@com_google_absl//absl/strings:str_format",
+		"@com_google_protobuf//:protobuf",
+		#"@com_google_protobuf//:protobuf_util",
 	],
 )
