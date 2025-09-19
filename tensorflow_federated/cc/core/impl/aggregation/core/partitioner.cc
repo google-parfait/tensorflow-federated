@@ -17,13 +17,17 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/partitioner.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <memory>
 #include <utility>
 #include <vector>
 
-#include "absl/hash/hash.h"
+#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 
 namespace tensorflow_federated {
@@ -35,6 +39,19 @@ namespace {
 size_t CombineHashes(size_t a, size_t b) {
   a ^= b + 0x9e3779b9 + (a << 6) + (a >> 2);
   return a;
+}
+
+template <typename T>
+std::vector<std::vector<T>> PartitionInternal(
+    absl::Span<const T> input, int num_partitions,
+    const std::vector<size_t>& hashes) {
+  std::vector<std::vector<T>> slices(num_partitions);
+
+  for (int index = 0; index < input.size(); ++index) {
+    auto hashed_index = hashes[index];
+    slices[hashed_index].push_back(input[index]);
+  }
+  return slices;
 }
 }  // namespace
 
@@ -61,7 +78,7 @@ StatusOr<Partitioner> Partitioner::Create(
     DTYPE_CASES(key.dtype(), T, {
       AggVector<T> data = key.AsAggVector<T>();
       for (const auto& [index, value] : data) {
-        hashes[index] = CombineHashes(hashes[index], absl::HashOf(value));
+        hashes[index] = CombineHashes(hashes[index], std::hash<T>()(value));
       }
     });
   }
@@ -70,5 +87,25 @@ StatusOr<Partitioner> Partitioner::Create(
   }
   return Partitioner(std::move(hashes), num_partitions);
 }
+
+StatusOr<std::vector<Tensor>> Partitioner::PartitionKeys(
+    const Tensor& key_tensor) {
+  std::vector<Tensor> result_tensors;
+  DTYPE_CASES(key_tensor.dtype(), T, {
+    auto slices =
+        PartitionInternal<T>(key_tensor.AsSpan<T>(), num_partitions_, hashes_);
+    for (auto& slice : slices) {
+      int dim_size = slice.size();
+      TFF_ASSIGN_OR_RETURN(
+          Tensor tensor,
+          Tensor::Create(key_tensor.dtype(), {static_cast<int64_t>(dim_size)},
+                         std::make_unique<MutableVectorData<T>>(slice.begin(),
+                                                                slice.end())));
+      result_tensors.push_back(std::move(tensor));
+    }
+  });
+  return result_tensors;
+}
+
 }  // namespace aggregation
 }  // namespace tensorflow_federated
