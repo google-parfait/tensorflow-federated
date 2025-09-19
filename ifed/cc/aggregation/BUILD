@@ -48,13 +48,6 @@ cc_library(
     alwayslink = 1,
 )
 
-cc_binary(
-    name = "libaggregation-jni.so",
-    linkshared = 1,
-    linkstatic = 1,
-    deps = [":native"],
-)
-
 tf_proto_library(
     name = "plan_proto",
     srcs = ["plan.proto"],
@@ -66,4 +59,11 @@ tf_proto_library(
 alias(
     name = "plan_cc_proto",
     actual = "plan_proto_cc",
+)
+
+cc_binary(
+    name = "libaggregation-jni.so",
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [":native"],
 )

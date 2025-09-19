@@ -17,7 +17,7 @@
 #include <jni.h>
 #include "absl/status/status.h"
 #include "util.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/engine/plan.pb.h"
+#include "ifed/engine/cc/plan.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/configuration.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tensorflow_checkpoint_builder_factory.h"

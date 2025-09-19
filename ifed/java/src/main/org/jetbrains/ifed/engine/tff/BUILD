@@ -21,20 +21,13 @@ java_library(
         "AggregationSession.java",
     ],
     runtime_deps = [
-        "//tensorflow_federated/cc/core/impl/aggregation/jni:libaggregation-jni_darwin",
+        "//ifed/engine/cc:libaggregation-jni.so",
     ],
     deps = [
         ":aggregation_exception",
         ":native_handle",
         "@maven//:com_google_code_findbugs_jsr305",
         "@maven//:com_google_guava_guava",
-
-        #"//fcp/aggregation/core:tensor_java_proto",
-        #"//fcp/aggregation/protocol:configuration_java_proto",
-        # "//fcp/java_src/main/java/com/google/fcp/tensorflow:protos_all_java_proto",
-        # "//fcp/protos:plan_java_proto",
-        # "@com_google_protobuf//java/core",
-
     ],
 )
 

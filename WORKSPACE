@@ -17,6 +17,15 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 # Direct dependencies
 #
 
+http_archive(
+    name = "platforms",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/1.0.0/platforms-1.0.0.tar.gz",
+        "https://github.com/bazelbuild/platforms/releases/download/1.0.0/platforms-1.0.0.tar.gz",
+    ],
+    sha256 = "3384eb1c30762704fbe38e440204e114154086c8fc8a8c2e3e28441028c019a8",
+)
+
 # Warning:
 # for nsync compilation you have to install g++: apt-get update && apt-get install -y g++
 
@@ -180,6 +189,7 @@ maven_install(
     artifacts = [
         "com.google.guava:guava:32.1.2-jre",
         "com.google.code.findbugs:jsr305:3.0.2",
+        "junit:junit:4.13.2",
     ],
     repositories = [
         "https://repo1.maven.org/maven2",
@@ -369,3 +379,18 @@ protobuf_deps()
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
+
+# IFed deps
+http_archive(
+    name = "nlohmann_json",
+    url = "https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz",
+    strip_prefix = "json",
+    build_file_content = """
+cc_library(
+    name = "json",
+    hdrs = glob(["single_include/nlohmann/*.hpp"]),
+    includes = ["single_include"],
+    visibility = ["//visibility:public"],
+)
+""",
+)

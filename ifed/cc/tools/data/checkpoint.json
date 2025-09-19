@@ -1,0 +1,20 @@
+[
+  {
+    "name": "weights",
+    "dtype": "DT_FLOAT",
+    "shape": { "dim_sizes": [2, 2] },
+    "float_val": [1.0, 2.0, 3.0, 4.0]
+  },
+  {
+    "name": "bias",
+    "dtype": "DT_DOUBLE",
+    "shape": { "dim_sizes": [2] },
+    "double_val": [0.5, -0.5]
+  },
+  {
+    "name": "step",
+    "dtype": "DT_INT64",
+    "shape": { "dim_sizes": [] },
+    "int64_val": [42]
+  }
+]
