@@ -21,6 +21,7 @@ import federated_language
 import tensorflow as tf
 import tree
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
@@ -287,6 +288,10 @@ def _structure_from_tensor_type_tree_inner(
     )
 
 
+@deprecation.deprecated(
+    '`tff.tensorflow.structure_from_tensor_type_tree` is deprecated, use'
+    ' `federated_language.framework.structure_with_type` instead.'
+)
 def structure_from_tensor_type_tree(
     fn: Callable[[federated_language.TensorType], object], type_spec
 ) -> object:
