@@ -232,6 +232,7 @@ cc_library(
         ":composite_key_combiner",
         ":fedsql_constants",
         ":intrinsic",
+        ":partitioner",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -887,7 +888,7 @@ cc_library(
     deps = [
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
-        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/types:span",
     ],
     alwayslink = 1,
 )
@@ -899,6 +900,7 @@ cc_test(
         ":partitioner",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
