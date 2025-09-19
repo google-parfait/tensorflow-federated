@@ -34,6 +34,7 @@ class CheckpointParser {
 
   // Gets a tensor by name.
   virtual absl::StatusOr<Tensor> GetTensor(const std::string& name) = 0;
+  virtual absl::StatusOr<std::vector<std::string>> ListTensorsNames() = 0;
 };
 
 // Describes an abstract factory for creating instances of CheckpointParser.

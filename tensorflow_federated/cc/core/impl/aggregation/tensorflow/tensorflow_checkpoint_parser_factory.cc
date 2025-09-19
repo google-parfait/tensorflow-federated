@@ -56,6 +56,16 @@ class TensorflowCheckpointParser : public CheckpointParser {
     return reader_->GetTensor(name);
   }
 
+  absl::StatusOr<std::vector<std::string>> ListTensorsNames() override {
+    std::vector<std::string> names;
+    const auto& map = reader_->GetDataTypeMap();
+    names.reserve(map.size());
+    for (const auto& [name, _] : map) {
+      names.push_back(name);
+    }
+    return names;
+  }
+
  private:
   std::string filename_;
   std::unique_ptr<CheckpointReader> reader_;

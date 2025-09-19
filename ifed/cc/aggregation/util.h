@@ -44,7 +44,6 @@
   ABSL_LOG_IF(FATAL, ABSL_PREDICT_FALSE(!(condition))) \
       << ("Check failed: " #condition ". ")
 
-namespace tff {
 namespace jni {
 
 static absl::Status CheckJniException(JNIEnv* env, absl::string_view context) {
@@ -263,4 +262,3 @@ class LocalRefDeleter {
 };
 
 }  // namespace jni
-}  // namespace fcp
