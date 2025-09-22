@@ -232,6 +232,7 @@ cc_library(
         ":composite_key_combiner",
         ":fedsql_constants",
         ":intrinsic",
+        ":partitioner",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",

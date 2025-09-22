@@ -50,7 +50,7 @@ class TensorAggregator
 
   // Partitions the internal state of the TensorAggregator and serializes them
   // as a vector of strings.
-  StatusOr<std::vector<std::string>> Partition(int num_partitions) &&;
+  virtual StatusOr<std::vector<std::string>> Partition(int num_partitions) &&;
 
  protected:
   // Construct TensorAggregator

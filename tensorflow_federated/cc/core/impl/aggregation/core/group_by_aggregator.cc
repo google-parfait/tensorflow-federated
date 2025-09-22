@@ -39,6 +39,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/partitioner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
@@ -331,6 +332,35 @@ StatusOr<std::string> GroupByAggregator::Serialize() && {
   state.mutable_counter_of_contributors()->Add(contributors_to_groups_.begin(),
                                                contributors_to_groups_.end());
   return state.SerializeAsString();
+}
+
+StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
+    int num_partitions) && {
+  if (num_partitions < 1) {
+    return TFF_STATUS(INVALID_ARGUMENT) << "GroupByAggregator::Partition: "
+                                           "num_partitions must be at least 1.";
+  }
+
+  std::vector<std::string> serialized_states(num_partitions);
+  std::vector<GroupByAggregatorState> group_by_aggregator_states(
+      num_partitions);
+  OutputTensorList keys = key_combiner_->GetOutputKeys();
+  TFF_ASSIGN_OR_RETURN(Partitioner partitioner,
+                       Partitioner::Create(keys, num_partitions));
+  for (const auto& key : keys) {
+    TFF_ASSIGN_OR_RETURN(auto partitioned_keys, partitioner.PartitionKeys(key));
+    for (int j = 0; j < num_partitions; ++j) {
+      group_by_aggregator_states[j].mutable_keys()->Add(
+          partitioned_keys[j].ToProto());
+    }
+  }
+  // TODO: b/437952802 - Serialize the state of the nested aggregators and
+  // contributors to groups.
+  for (int i = 0; i < num_partitions; ++i) {
+    serialized_states[i] =
+        std::move(group_by_aggregator_states[i]).SerializeAsString();
+  }
+  return serialized_states;
 }
 
 StatusOr<GroupByAggregator::HistogramAsSliceData>
