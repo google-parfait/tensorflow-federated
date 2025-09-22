@@ -5,8 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
-import org.jetbrains.tff.engine.AggregationSession;
-
 public class AggregationSessionTool {
     public static void main(String[] args) throws Exception {
         if (args.length < 3) {

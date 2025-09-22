@@ -14,11 +14,6 @@
 package org.jetbrains.tff.engine;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-
-import org.jetbrains.tff.engine.NativeHandle;
-import java.io.Closeable;
-import java.util.List;
 
 /// A simple wrapper around the checkpoint aggregator.
 public final class AggregationSession implements AutoCloseable {

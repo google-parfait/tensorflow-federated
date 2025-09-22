@@ -1,0 +1,45 @@
+{
+  "name": "TFF DevContainer",
+  "image": "ubuntu:24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils": {
+      "installZsh": false
+    },
+    "ghcr.io/devcontainers/features/python": {
+      "version": "os-provided"
+    },
+    "ghcr.io/devcontainers-community/features/bazel": {},
+    "ghcr.io/devcontainers/features/git": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker": {},
+    "ghcr.io/devcontainers/features/sshd": {},
+  },
+  "mounts": [
+    {
+      "target": "/root/.bashrc",
+      "source": "${env:HOME}/.bashrc-dev",
+      "type": "bind"
+    }
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-python.python",
+        "galexite.bazel-cpp-tools",
+        "BazelBuild.vscode-bazel",
+        "xaver.clang-format",
+        "alesiong.clang-tidy-linter",
+        "xyz.local-history",
+        "oderwat.indent-rainbow",
+        "ajshort.include-autocomplete",
+        "vscjava.vscode-java-pack",
+        "sfdc.bazel-vscode-java",
+        "ms-vscode.cpptools-extension-pack"
+      ],
+      "settings": {}
+    }
+  },
+  "postCreateCommand": "apt-get update && apt-get install -y openjdk-17-jdk g++"
+}
