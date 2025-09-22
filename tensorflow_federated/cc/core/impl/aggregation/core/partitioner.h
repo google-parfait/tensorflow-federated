@@ -35,6 +35,9 @@ class Partitioner {
   static StatusOr<Partitioner> Create(const std::vector<Tensor>& key_tensors,
                                       int num_partitions);
 
+  // Partitions the input key tensor into multiple slices.
+  StatusOr<std::vector<Tensor>> PartitionKeys(const Tensor& key_tensor);
+
  private:
   Partitioner(std::vector<size_t> hashes, int num_partitions)
       : hashes_(hashes), num_partitions_(num_partitions) {}
