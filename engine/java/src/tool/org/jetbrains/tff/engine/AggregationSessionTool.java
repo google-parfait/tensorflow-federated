@@ -1,9 +1,11 @@
-package org.jetbrains.ifed.engine.tff;
+package org.jetbrains.tff.engine;
 
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+
+import org.jetbrains.tff.engine.AggregationSession;
 
 public class AggregationSessionTool {
     public static void main(String[] args) throws Exception {

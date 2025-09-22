@@ -17,7 +17,7 @@
 #include <jni.h>
 #include "absl/status/status.h"
 #include "util.h"
-#include "ifed/cc/aggregation/plan.pb.h"
+#include "engine/cc/aggregation/plan.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/configuration.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tensorflow_checkpoint_builder_factory.h"
@@ -25,9 +25,9 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/converters.h"
 
 #define JFUN(METHOD_NAME) \
-  Java_org_jetbrains_ifed_engine_tff_AggregationSession_##METHOD_NAME
+  Java_org_jetbrains_tff_engine_AggregationSession_##METHOD_NAME
 
-constexpr const char* AG_EXCEPTION_CLASS = "org/jetbrains/ifed/engine/tff/AggregationException";
+constexpr const char* AG_EXCEPTION_CLASS = "org/jetbrains/tff/engine/AggregationException";
 
 // Helper methods
 // ==============
@@ -61,7 +61,7 @@ absl::StatusOr<CheckpointAggregator*> AsAggregator(jlong handle) {
   return reinterpret_cast<CheckpointAggregator*>(handle);
 }
 
-absl::StatusOr<IntrinsicArg> ConvertIntrinsicArg(const ifed::engine::tff::ServerAggregationConfig_IntrinsicArg& arg) {
+absl::StatusOr<IntrinsicArg> ConvertIntrinsicArg(const engine::tff::ServerAggregationConfig_IntrinsicArg& arg) {
   if (arg.has_state_tensor()) {
     return absl::InvalidArgumentError("State tensors are not supported yet.");
   }
@@ -75,7 +75,7 @@ absl::StatusOr<IntrinsicArg> ConvertIntrinsicArg(const ifed::engine::tff::Server
   return result;
 }
 
-absl::StatusOr<IntrinsicConfig> ConvertConfig(const ifed::engine::tff::ServerAggregationConfig& config) {
+absl::StatusOr<IntrinsicConfig> ConvertConfig(const engine::tff::ServerAggregationConfig& config) {
   IntrinsicConfig result;
   for (const auto& aggregation : config.inner_aggregations()) {
     const auto converted = ConvertConfig(aggregation);
@@ -109,7 +109,7 @@ absl::StatusOr<IntrinsicConfig> ConvertConfig(const ifed::engine::tff::ServerAgg
 }
 
 absl::StatusOr<Configuration>
-ExtractAggregationConfigurationFromPlan(const ifed::engine::tff::Plan& plan) {
+ExtractAggregationConfigurationFromPlan(const engine::tff::Plan& plan) {
   if (plan.phase_size() == 0) {
     return absl::Status(absl::StatusCode::kInvalidArgument, "No phases in the plan.");
   }
@@ -342,7 +342,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL JFUN(extractConfiguration)(
   jclass,
   jbyteArray planByteArray
 ) {
-  const auto plan = jni::ParseProtoFromJByteArray<ifed::engine::tff::Plan>(env, planByteArray);
+  const auto plan = jni::ParseProtoFromJByteArray<engine::tff::Plan>(env, planByteArray);
   if (!plan.ok()) {
     ThrowAggregationException(env, plan.status());
     return {};

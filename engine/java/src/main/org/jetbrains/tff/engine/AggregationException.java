@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package org.jetbrains.ifed.engine.tff;
+package org.jetbrains.tff.engine;
 
 /** Exception thrown when interaction with aggregation fails. */
 public final class AggregationException extends Exception {

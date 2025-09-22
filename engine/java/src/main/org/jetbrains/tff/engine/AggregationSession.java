@@ -11,12 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package org.jetbrains.ifed.engine.tff;
+package org.jetbrains.tff.engine;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-import com.google.tff.aggregation.NativeHandle;
+import org.jetbrains.tff.engine.NativeHandle;
 import java.io.Closeable;
 import java.util.List;
 

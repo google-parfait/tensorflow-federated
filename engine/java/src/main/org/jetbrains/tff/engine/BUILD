@@ -20,9 +20,12 @@ java_library(
     srcs = [
         "AggregationSession.java",
     ],
-    runtime_deps = [
-        "//ifed/cc/aggregation:libaggregation-jni.dylib",
-    ],
+    resources = select({
+        "@platforms//os:macos": [":copy_aggregation_jni_to_resources_dylib"],
+        "@platforms//os:linux": [":copy_aggregation_jni_to_resources_so"],
+        "//conditions:default": [],
+    }),
+		resource_strip_prefix = "engine/java/src/main/org/jetbrains/tff/engine",
     deps = [
         ":aggregation_exception",
         ":native_handle",
@@ -41,4 +44,20 @@ java_library(
     name = "native_handle",
     srcs = ["NativeHandle.java"],
     deps = ["@maven//:com_google_guava_guava"],
+)
+
+genrule(
+    name = "copy_aggregation_jni_to_resources_dylib",
+    srcs = ["//engine/cc/aggregation:aggregation-jni"],
+    outs = ["libaggregation-jni.dylib"],
+    cmd = "cp $< $@",
+    target_compatible_with = ["@platforms//os:macos"],
+)
+
+genrule(
+    name = "copy_aggregation_jni_to_resources_so",
+    srcs = ["//engine/cc/aggregation:aggregation-jni"],
+    outs = ["libaggregation-jni.so"],
+    cmd = "cp $< $@",
+    target_compatible_with = ["@platforms//os:linux"],
 )

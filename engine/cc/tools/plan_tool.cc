@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include "absl/flags/usage.h"
-#include "ifed/cc/aggregation/plan.pb.h"
+#include "engine/cc/aggregation/plan.pb.h"
 #include "google/protobuf/util/json_util.h"
 #include "absl/flags/parse.h"
 
@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
   const std::string& command = args[0];
   if (command == "sample") {
     // Minimal Plan with only ServerPhaseV2.aggregations filled
-    ifed::engine::tff::Plan plan;
+    engine::tff::Plan plan;
     auto* spv2 = plan.add_phase()->mutable_server_phase_v2();
     auto* agg = spv2->add_aggregations();
     agg->set_intrinsic_uri("federated_sum");
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
     }
     const std::string& output_bin = args[1];
     std::string json((std::istreambuf_iterator<char>(std::cin)), std::istreambuf_iterator<char>());
-    ifed::engine::tff::Plan plan;
+    engine::tff::Plan plan;
     auto status = google::protobuf::util::JsonStringToMessage(json, &plan);
     if (!status.ok()) {
       std::cerr << "Failed to parse JSON: " << status.ToString() << std::endl;
@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
       std::cerr << "Failed to open input binary: " << input_bin << std::endl;
       return 1;
     }
-    ifed::engine::tff::Plan plan;
+    engine::tff::Plan plan;
     if (!plan.ParseFromIstream(&in)) {
       std::cerr << "Failed to parse Plan proto from binary." << std::endl;
       return 1;

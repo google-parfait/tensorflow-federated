@@ -16,10 +16,12 @@
 using namespace tensorflow_federated::aggregation;
 
 nlohmann::json ParseTensorContent(const tensorflow_federated::aggregation::TensorProto& proto) {
-    nlohmann::json result;
-    const std::string& content = proto.content();
-    int64_t num_elements = 1;
-    for (auto d : proto.shape().dim_sizes()) num_elements *= d;
+  nlohmann::json result;
+  const std::string& content = proto.content();
+  int64_t num_elements = 1;
+  for (auto d : proto.shape().dim_sizes()) {
+    num_elements *= d;
+  }
 
   auto dtype_to_str = [](tensorflow_federated::aggregation::DataType dtype) -> std::string {
     switch (dtype) {
@@ -75,6 +77,7 @@ nlohmann::json ParseTensorContent(const tensorflow_federated::aggregation::Tenso
   }
   result["dtype"] = dtype_to_str(proto.dtype());
   result["shape"] = proto.shape().dim_sizes();
+  result["name"] = proto.name();
   return result;
 }
 

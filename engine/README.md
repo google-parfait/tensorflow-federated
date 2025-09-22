@@ -1,6 +1,6 @@
-# IFED Libraries Overview
+# TFF Engine Libraries Overview
 
-The IFED libraries provide C++ and Java APIs, as well as command-line tools, for working with federated learning artifacts such as TensorFlow checkpoints and aggregation plans. These libraries are designed to facilitate the serialization, parsing, and aggregation of model parameters and plans in distributed and privacy-preserving machine learning workflows.
+The TFF Engine libraries provide C++ and Java APIs, as well as command-line tools, for working with federated learning artifacts such as TensorFlow checkpoints and aggregation plans. These libraries are designed to facilitate the serialization, parsing, and aggregation of model parameters and plans in distributed and privacy-preserving machine learning workflows.
 
 ## Key Components
 
@@ -54,7 +54,7 @@ checkpoint_tool parse model.ckpt > checkpoint.json
 ### Aggregating Checkpoints (Java)
 ```sh
 # Run aggregation session tool (Java)
-ass_tool --plan=plan.bin --inputs=ckpt1.bin,ckpt2.bin --output=agg_ckpt.bin
+ass_tool plan.bin ckpt1.bin ckpt2.bin agg_ckpt.bin
 ```
 
 ### Building and Parsing Plans
