@@ -15,35 +15,46 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
+load("@rules_jvm_external//:defs.bzl", "java_export")
+load("@rules_java//java:java_library.bzl", "java_library")
+
+TFF_ENGINE_VERSION = "1.0.0"
+TFF_ENGINE_PACKAGE = "org.jetbrains:tff-engine-{os}:{version}"
+
 java_library(
-    name = "aggregation",
+    name = "engine",
     srcs = [
         "AggregationSession.java",
+        "NativeLibraryLoader.java",
+        "AggregationException.java",
+        "NativeHandle.java",
     ],
-    resources = select({
-        "@platforms//os:macos": [":copy_aggregation_jni_to_resources_dylib"],
-        "@platforms//os:linux": [":copy_aggregation_jni_to_resources_so"],
-        "//conditions:default": [],
-    }),
-		resource_strip_prefix = "engine/java/src/main/org/jetbrains/tff/engine",
+    resources = [":copy_aggregation_jni_to_resources"],
+	resource_strip_prefix = "engine/java/src/main/org/jetbrains/tff/engine",
     deps = [
-        ":aggregation_exception",
-        ":native_handle",
         "@maven//:com_google_code_findbugs_jsr305",
         "@maven//:com_google_guava_guava",
     ],
 )
 
-java_library(
-    name = "aggregation_exception",
-    srcs = ["AggregationException.java"],
-    deps = [],
+java_export(
+    name = "engine_package_osx",
+    exports = [":engine"],
+    maven_coordinates = TFF_ENGINE_PACKAGE.format(os="osx", version=TFF_ENGINE_VERSION),
 )
 
-java_library(
-    name = "native_handle",
-    srcs = ["NativeHandle.java"],
-    deps = ["@maven//:com_google_guava_guava"],
+java_export(
+    name = "engine_package_linux",
+    exports = [":engine"],
+    maven_coordinates = TFF_ENGINE_PACKAGE.format(os="linux", version=TFF_ENGINE_VERSION),
+)
+
+alias(
+    name = "publish",
+    actual = select({
+        "@platforms//os:macos": ":engine_package_osx.publish",
+        "@platforms//os:linux": ":engine_package_linux.publish",
+    }),
 )
 
 genrule(
@@ -60,4 +71,12 @@ genrule(
     outs = ["libaggregation-jni.so"],
     cmd = "cp $< $@",
     target_compatible_with = ["@platforms//os:linux"],
+)
+
+alias(
+    name = "copy_aggregation_jni_to_resources",
+    actual = select({
+        "@platforms//os:macos": ":copy_aggregation_jni_to_resources_dylib",
+        "@platforms//os:linux": ":copy_aggregation_jni_to_resources_so",
+    }),
 )

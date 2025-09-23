@@ -52,9 +52,15 @@ checkpoint_tool parse model.ckpt > checkpoint.json
 ```
 
 ### Aggregating Checkpoints (Java)
+1. Build agg_tool:
+```sh
+bazel build //engine/java/src/tool/org/jetbrains/tff/engine:agg_tool_deploy.jar
+```
+
+2. Use it:
 ```sh
 # Run aggregation session tool (Java)
-ass_tool plan.bin ckpt1.bin ckpt2.bin agg_ckpt.bin
+java -jar agg_tool_deploy.jar plan.bin ckpt1.bin ckpt2.bin agg_ckpt.bin
 ```
 
 ### Building and Parsing Plans

@@ -380,7 +380,7 @@ load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
 
-# IFed deps
+# Engine deps
 http_archive(
     name = "nlohmann_json",
     url = "https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz",
