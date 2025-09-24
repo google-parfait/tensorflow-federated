@@ -38,7 +38,7 @@ using testing::ServerV;
 using testing::TensorV;
 
 const uint32_t NUM_CLIENTS = 5;
-const v0::Value TENSOR = TensorV(1.0);
+const v0::Value TENSOR = TensorV(1.0);  // NOLINT
 
 class ValueValidationTest : public ::testing::Test {};
 
