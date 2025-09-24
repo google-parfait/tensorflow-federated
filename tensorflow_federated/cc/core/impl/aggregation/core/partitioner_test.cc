@@ -32,6 +32,28 @@ namespace tensorflow_federated {
 namespace aggregation {
 namespace {
 
+StatusOr<Partitioner> CreateDefaultPartitioner(int num_partitions) {
+  std::vector<Tensor> key_tensors;
+  key_tensors.push_back(Tensor::Create(DT_STRING, {3},
+                                       CreateTestData<string_view>({
+                                           "a",
+                                           "b",
+                                           "c",
+                                       }))
+                            .value());
+  key_tensors.push_back(Tensor::Create(DT_INT64, {3},
+                                       CreateTestData<int64_t>({
+                                           1,
+                                           2,
+                                           3,
+                                       }))
+                            .value());
+  key_tensors.push_back(
+      Tensor::Create(DT_DOUBLE, {3}, CreateTestData<double>({2.0, 3.0, 4.0}))
+          .value());
+  return Partitioner::Create(key_tensors, num_partitions);
+}
+
 TEST(PartitionerTest, CreatePartitioner_Succeeds) {
   std::vector<Tensor> key_tensors;
   key_tensors.push_back(Tensor::Create(DT_STRING, {3},
@@ -133,6 +155,30 @@ TEST(PartitionerTest, PartitionKeys_Succeeds) {
               IsTensor<string_view>(TensorShape({1}), {"b"}));
   EXPECT_THAT(partitioned_tensors[1],
               IsTensor<string_view>(TensorShape({2}), {"a", "c"}));
+}
+
+TEST(PartitionerTest, PartitionAggregatorData_Succeeds) {
+  TFF_ASSERT_OK_AND_ASSIGN(Partitioner partitioner,
+                           CreateDefaultPartitioner(/*num_partitions=*/2));
+
+  TFF_ASSERT_OK_AND_ASSIGN(auto slices,
+                           partitioner.PartitionData<double>({1.0, 2.0, 3.0}));
+
+  // Verify the contents of the partitioned tensors.
+  EXPECT_EQ(slices.size(), 2);
+  EXPECT_THAT(slices[0], testing::UnorderedElementsAre(2.0));
+  EXPECT_THAT(slices[1], testing::UnorderedElementsAre(1.0, 3.0));
+}
+
+TEST(PartitionerTest, PartitionData_InvalidInputSize) {
+  TFF_ASSERT_OK_AND_ASSIGN(Partitioner partitioner,
+                           CreateDefaultPartitioner(/*num_partitions=*/2));
+
+  EXPECT_THAT(
+      partitioner.PartitionData<double>({1.0, 2.0, 3.0, 4.0}),
+      StatusIs(INVALID_ARGUMENT,
+               testing::HasSubstr("The number of elements in the input data "
+                                  "should be equal to the number of hashes.")));
 }
 
 }  // namespace

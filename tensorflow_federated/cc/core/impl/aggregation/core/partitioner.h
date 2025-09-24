@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 
@@ -38,9 +39,36 @@ class Partitioner {
   // Partitions the input key tensor into multiple slices.
   StatusOr<std::vector<Tensor>> PartitionKeys(const Tensor& key_tensor);
 
+  // Partitions the input vector data into multiple slices.
+  template <typename T>
+  StatusOr<std::vector<std::vector<T>>> PartitionData(
+      const std::vector<T>& data) {
+    if (data.size() != hashes_.size()) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "The number of elements in the input data should be equal "
+                "to the number of hashes.";
+    }
+    return PartitionInternal<T>(data);
+  }
+
+  // Returns the number of partitions.
+  int GetNumPartitions() const { return num_partitions_; }
+
  private:
   Partitioner(std::vector<size_t> hashes, int num_partitions)
       : hashes_(hashes), num_partitions_(num_partitions) {}
+
+  template <typename T>
+  std::vector<std::vector<T>> PartitionInternal(absl::Span<const T> input) {
+    std::vector<std::vector<T>> slices(num_partitions_);
+
+    for (int index = 0; index < input.size(); ++index) {
+      auto hashed_index = hashes_[index];
+      // TODO: b/437952802 - Calculate and reserve the size of each slice
+      slices[hashed_index].push_back(input[index]);
+    }
+    return slices;
+  }
 
   std::vector<size_t> hashes_;
   int num_partitions_;

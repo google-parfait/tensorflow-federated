@@ -23,7 +23,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -41,18 +40,6 @@ size_t CombineHashes(size_t a, size_t b) {
   return a;
 }
 
-template <typename T>
-std::vector<std::vector<T>> PartitionInternal(
-    absl::Span<const T> input, int num_partitions,
-    const std::vector<size_t>& hashes) {
-  std::vector<std::vector<T>> slices(num_partitions);
-
-  for (int index = 0; index < input.size(); ++index) {
-    auto hashed_index = hashes[index];
-    slices[hashed_index].push_back(input[index]);
-  }
-  return slices;
-}
 }  // namespace
 
 StatusOr<Partitioner> Partitioner::Create(
@@ -92,8 +79,7 @@ StatusOr<std::vector<Tensor>> Partitioner::PartitionKeys(
     const Tensor& key_tensor) {
   std::vector<Tensor> result_tensors;
   DTYPE_CASES(key_tensor.dtype(), T, {
-    auto slices =
-        PartitionInternal<T>(key_tensor.AsSpan<T>(), num_partitions_, hashes_);
+    auto slices = PartitionInternal<T>(key_tensor.AsSpan<T>());
     for (auto& slice : slices) {
       int dim_size = slice.size();
       TFF_ASSIGN_OR_RETURN(
