@@ -30,10 +30,10 @@ py_library(
     ],
     deps = [
         ":executor_stack_bindings",
-        "//tensorflow_federated/python/core/impl/executors:cpp_to_python_executor",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
-        "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "@federated_language//federated_language",
+        "@federated_language//federated_language_executor:cpp_to_python_executor",
+        "@federated_language//federated_language_executor:executor_bindings",
+        "@federated_language//federated_language_executor:executor_errors",
     ],
 )
 
@@ -45,9 +45,9 @@ py_test(
     ],
     deps = [
         ":cpp_executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_test_utils_bindings",
         "@federated_language//federated_language",
+        "@federated_language//federated_language_executor:executor_bindings",
     ],
 )
 
@@ -72,9 +72,9 @@ py_library(
     ],
     deps = [
         "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stack_bindings",
-        "//tensorflow_federated/python/core/impl/executors:data_conversions",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
+        "@federated_language//federated_language_executor:data_conversions",
+        "@federated_language//federated_language_executor:executor_bindings",
     ],
 )
 
@@ -86,8 +86,8 @@ py_test(
     ],
     deps = [
         ":executor_stack_bindings",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
+        "@federated_language//federated_language_executor:executor_bindings",
     ],
 )
 

@@ -18,10 +18,10 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
+from federated_language_executor import executor_pb2
 import grpc
 import numpy as np
 
-from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub

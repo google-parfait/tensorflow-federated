@@ -37,12 +37,12 @@ limitations under the License
 #include "absl/types/span.h"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/struct_traversal_order.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -99,7 +99,7 @@ absl::StatusOr<Embedded> EmbedArraysAsType(
             "vector of length 1."));
       }
 
-      v0::Value tensor_value;
+      federated_language_executor::Value tensor_value;
       *tensor_value.mutable_array() = arrays.at(0);
       return ShareValueId(TFF_TRY(target_executor.CreateValue(tensor_value)));
     }
@@ -158,7 +158,8 @@ class MappedIterator : public SequenceIterator {
 
 class ArrayIterator : public SequenceIterator {
  public:
-  explicit ArrayIterator(v0::Value::Sequence sequence_pb)
+  explicit ArrayIterator(
+      federated_language_executor::Value::Sequence sequence_pb)
       : sequence_pb_(std::move(sequence_pb)), index_(0) {}
 
   ~ArrayIterator() final = default;
@@ -181,14 +182,15 @@ class ArrayIterator : public SequenceIterator {
 
  private:
   ArrayIterator() = delete;
-  v0::Value::Sequence sequence_pb_;
+  federated_language_executor::Value::Sequence sequence_pb_;
   uint32_t index_;
 };
 
 using IteratorFactory =
     std::function<absl::StatusOr<std::unique_ptr<SequenceIterator>>()>;
 
-using SequenceVariant = std::variant<v0::Value, IteratorFactory>;
+using SequenceVariant =
+    std::variant<federated_language_executor::Value, IteratorFactory>;
 
 // Internal interface representing an iterable value embedded
 // in the sequence executor.
@@ -199,14 +201,16 @@ class Sequence {
       : value_(std::move(value)), executor_(executor) {}
 
   inline SequenceValueType type() const {
-    if (std::holds_alternative<v0::Value>(value_)) {
+    if (std::holds_alternative<federated_language_executor::Value>(value_)) {
       return SequenceValueType::VALUE_PROTO;
     } else {
       return SequenceValueType::ITERATOR_FACTORY;
     }
   }
 
-  inline v0::Value& proto() { return std::get<v0::Value>(value_); }
+  inline federated_language_executor::Value& proto() {
+    return std::get<federated_language_executor::Value>(value_);
+  }
 
   absl::StatusOr<Embedded> Embed(Executor& target_executor) {
     if (type() != SequenceValueType::VALUE_PROTO) {
@@ -357,9 +361,9 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
   absl::string_view ExecutorName() final { return "SequenceExecutor"; }
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
-      const v0::Value& value_pb) final {
+      const federated_language_executor::Value& value_pb) final {
     switch (value_pb.value_case()) {
-      case v0::Value::kSequence: {
+      case federated_language_executor::Value::kSequence: {
         // We store the sequence value as a proto in the SequenceExecutor for
         // lazy embedding in the lower-level executor if needed, e.g. in
         // response to a CreateCall, or construction of an iterable from this
@@ -367,7 +371,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
         return ReadyFuture(SequenceExecutorValue::CreateSequence(
             std::make_shared<Sequence>(value_pb, target_executor_)));
       }
-      case v0::Value::kComputation: {
+      case federated_language_executor::Value::kComputation: {
         if (value_pb.computation().has_intrinsic()) {
           absl::string_view intrinsic_uri =
               value_pb.computation().intrinsic().uri();
@@ -481,7 +485,8 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
     return Map(std::vector<ValueFuture>({value}), mapping_fn);
   }
 
-  absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final {
+  absl::Status Materialize(ValueFuture value,
+                           federated_language_executor::Value* value_pb) final {
     SequenceExecutorValue exec_value = TFF_TRY(Wait(value));
     switch (exec_value.type()) {
       case SequenceExecutorValue::ValueType::EMBEDDED:

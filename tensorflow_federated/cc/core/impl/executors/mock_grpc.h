@@ -24,37 +24,46 @@ limitations under the License
 #include "include/grpcpp/security/credentials.h"
 #include "include/grpcpp/security/server_credentials.h"
 #include "include/grpcpp/support/status.h"
-#include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
+#include "third_party/py/federated_language_executor/executor.grpc.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 
 namespace tensorflow_federated {
 
-class MockGrpcExecutorService : public v0::ExecutorGroup::Service {
+class MockGrpcExecutorService
+    : public federated_language_executor::ExecutorGroup::Service {
  public:
   MOCK_METHOD(grpc::Status, GetExecutor,
-              (grpc::ServerContext*, const v0::GetExecutorRequest*,
-               v0::GetExecutorResponse*));
+              (grpc::ServerContext*,
+               const federated_language_executor::GetExecutorRequest*,
+               federated_language_executor::GetExecutorResponse*));
   MOCK_METHOD(grpc::Status, CreateValue,
-              (grpc::ServerContext*, const v0::CreateValueRequest*,
-               v0::CreateValueResponse*));
+              (grpc::ServerContext*,
+               const federated_language_executor::CreateValueRequest*,
+               federated_language_executor::CreateValueResponse*));
   MOCK_METHOD(grpc::Status, CreateCall,
-              (grpc::ServerContext*, const v0::CreateCallRequest*,
-               v0::CreateCallResponse*));
+              (grpc::ServerContext*,
+               const federated_language_executor::CreateCallRequest*,
+               federated_language_executor::CreateCallResponse*));
   MOCK_METHOD(grpc::Status, CreateStruct,
-              (grpc::ServerContext*, const v0::CreateStructRequest*,
-               v0::CreateStructResponse*));
+              (grpc::ServerContext*,
+               const federated_language_executor::CreateStructRequest*,
+               federated_language_executor::CreateStructResponse*));
   MOCK_METHOD(grpc::Status, CreateSelection,
-              (grpc::ServerContext*, const v0::CreateSelectionRequest*,
-               v0::CreateSelectionResponse*));
+              (grpc::ServerContext*,
+               const federated_language_executor::CreateSelectionRequest*,
+               federated_language_executor::CreateSelectionResponse*));
   MOCK_METHOD(grpc::Status, Compute,
-              (grpc::ServerContext*, const v0::ComputeRequest*,
-               v0::ComputeResponse*));
+              (grpc::ServerContext*,
+               const federated_language_executor::ComputeRequest*,
+               federated_language_executor::ComputeResponse*));
   MOCK_METHOD(grpc::Status, Dispose,
-              (grpc::ServerContext*, const v0::DisposeRequest*,
-               v0::DisposeResponse*));
+              (grpc::ServerContext*,
+               const federated_language_executor::DisposeRequest*,
+               federated_language_executor::DisposeResponse*));
   MOCK_METHOD(grpc::Status, DisposeExecutor,
-              (grpc::ServerContext*, const v0::DisposeExecutorRequest*,
-               v0::DisposeExecutorResponse*));
+              (grpc::ServerContext*,
+               const federated_language_executor::DisposeExecutorRequest*,
+               federated_language_executor::DisposeExecutorResponse*));
 };
 
 // A minimal, self-contained, OSS-compatible mock GRPC Executor service.
@@ -79,8 +88,8 @@ class MockGrpcExecutorServer {
 
   MockGrpcExecutorService* service() { return &service_; }
 
-  std::unique_ptr<v0::ExecutorGroup::Stub> NewStub() {
-    return v0::ExecutorGroup::NewStub(
+  std::unique_ptr<federated_language_executor::ExecutorGroup::Stub> NewStub() {
+    return federated_language_executor::ExecutorGroup::NewStub(
         grpc::CreateChannel(absl::StrCat("localhost:", port_),
                             grpc::experimental::LocalCredentials(LOCAL_TCP)));
   }

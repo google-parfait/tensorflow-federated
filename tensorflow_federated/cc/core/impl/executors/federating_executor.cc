@@ -36,13 +36,13 @@ limitations under the License
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -57,15 +57,17 @@ inline std::shared_ptr<OwnedValueId> ShareValueId(OwnedValueId&& id) {
 // Inner (behind shared_ptr) representation of an unplaced value.
 //
 // The primary purpose of this class is to manage values which may be either:
-// (1) a v0::Value proto
+// (1) a federated_language_executor::Value proto
 // (2) embedded in the `server` executor or
 // (3) both.
 class UnplacedInner {
  public:
-  explicit UnplacedInner(std::shared_ptr<v0::Value> proto)
+  explicit UnplacedInner(
+      std::shared_ptr<federated_language_executor::Value> proto)
       : proto_(std::move(proto)) {}
-  explicit UnplacedInner(v0::Value proto)
-      : proto_(std::make_shared<v0::Value>(std::move(proto))) {}
+  explicit UnplacedInner(federated_language_executor::Value proto)
+      : proto_(std::make_shared<federated_language_executor::Value>(
+            std::move(proto))) {}
 
   explicit UnplacedInner(std::shared_ptr<OwnedValueId> embedded)
       : embedded_(std::move(embedded)) {}
@@ -77,14 +79,17 @@ class UnplacedInner {
 
   // Returns the underlying `Proto` value without attempting to create one via
   // a `Materialize` call.
-  std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> GetProto() {
+  std::optional<
+      absl::StatusOr<std::shared_ptr<federated_language_executor::Value>>>
+  GetProto() {
     absl::ReaderMutexLock lock(&mutex_);
     return proto_;
   }
 
   // Gets the proto representation of the inner value. May block on a remote
   // `Materialize` call.
-  absl::StatusOr<std::shared_ptr<v0::Value>> Proto(Executor& server) {
+  absl::StatusOr<std::shared_ptr<federated_language_executor::Value>> Proto(
+      Executor& server) {
     {
       // Try to grab the proto if it already exists.
       absl::ReaderMutexLock lock(&mutex_);
@@ -103,8 +108,8 @@ class UnplacedInner {
       auto proto_or_status =
           server.Materialize(embedded_.value().value()->ref());
       if (proto_or_status.ok()) {
-        proto_ =
-            std::make_shared<v0::Value>(std::move(proto_or_status.value()));
+        proto_ = std::make_shared<federated_language_executor::Value>(
+            std::move(proto_or_status.value()));
       } else {
         proto_ = std::move(proto_or_status.status());
       }
@@ -141,8 +146,8 @@ class UnplacedInner {
   }
 
  private:
-  absl::StatusOr<std::shared_ptr<v0::Value>> ExtractProto() const
-      ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
+  absl::StatusOr<std::shared_ptr<federated_language_executor::Value>>
+  ExtractProto() const ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
     if (proto_.value().ok()) {
       return proto_.value().value();
     } else {
@@ -160,8 +165,9 @@ class UnplacedInner {
   }
 
   absl::Mutex mutex_;
-  std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> proto_
-      ABSL_GUARDED_BY(mutex_);
+  std::optional<
+      absl::StatusOr<std::shared_ptr<federated_language_executor::Value>>>
+      proto_ ABSL_GUARDED_BY(mutex_);
   std::optional<absl::StatusOr<std::shared_ptr<OwnedValueId>>> embedded_
       ABSL_GUARDED_BY(mutex_);
 };
@@ -301,7 +307,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   }
 
   absl::StatusOr<ExecutorValue> CreateFederatedValue(
-      FederatedKind kind, const v0::Value_Federated& federated) {
+      FederatedKind kind,
+      const federated_language_executor::Value_Federated& federated) {
     switch (kind) {
       case FederatedKind::SERVER: {
         return ExecutorValue::CreateServerPlaced(ShareValueId(
@@ -367,14 +374,15 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   }
 
   absl::StatusOr<ExecutorValue> CreateExecutorValue(
-      const v0::Value& value_pb) final {
+      const federated_language_executor::Value& value_pb) final {
     switch (value_pb.value_case()) {
-      case v0::Value::kFederated: {
-        const v0::Value_Federated& federated = value_pb.federated();
+      case federated_language_executor::Value::kFederated: {
+        const federated_language_executor::Value_Federated& federated =
+            value_pb.federated();
         auto kind = TFF_TRY(ValidateFederated(num_clients_, federated));
         return CreateFederatedValue(kind, federated);
       }
-      case v0::Value::kStruct: {
+      case federated_language_executor::Value::kStruct: {
         auto elements = NewStructure();
         elements->reserve(value_pb.struct_().element_size());
         for (const auto& element_pb : value_pb.struct_().element()) {
@@ -383,7 +391,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         }
         return ExecutorValue::CreateStructure(std::move(elements));
       }
-      case v0::Value::kComputation: {
+      case federated_language_executor::Value::kComputation: {
         if (value_pb.computation().has_intrinsic()) {
           auto intrinsic = FederatedIntrinsicFromUri(
               value_pb.computation().intrinsic().uri());
@@ -525,7 +533,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         TFF_TRY(CheckLenForUseAsArgument(arg, "federated_aggregate", 5));
         const auto& value = arg.structure()->at(0);
         const auto& zero = arg.structure()->at(1);
-        v0::Value zero_val;
+        federated_language_executor::Value zero_val;
 
         ParallelTasks tasks;
         TFF_TRY(CreateMaterializeTasks(zero, &zero_val, tasks));
@@ -554,7 +562,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
               TFF_TRY(client_child_->CreateCall(accumulate_child_id, acc_arg));
           current = current_owner.value().ref();
         }
-        v0::Value result_val;
+        federated_language_executor::Value result_val;
         TFF_TRY(client_child_->Materialize(current, &result_val));
 
         auto res = TFF_TRY(server_child_->CreateValue(result_val));
@@ -567,7 +575,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         auto traceme = Trace("CallFederatedBroadcast");
         TFF_TRY(arg.CheckArgumentType(ExecutorValue::ValueType::SERVER,
                                       "`federated_broadcast`"));
-        v0::Value server_val;
+        federated_language_executor::Value server_val;
         TFF_TRY(server_child_->Materialize(arg.server()->ref(), &server_val));
         return ClientsAllEqualValue(
             ShareValueId(TFF_TRY(client_child_->CreateValue(server_val))));
@@ -671,7 +679,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
           {key, TFF_TRY(SelectSliceForKey(key, server_val_child_id,
                                           select_fn_child_id))});
     }
-    v0::Value args_into_sequence_pb;
+    federated_language_executor::Value args_into_sequence_pb;
     args_into_sequence_pb.mutable_computation()->mutable_intrinsic()->set_uri(
         "args_into_sequence");
     OwnedValueId args_into_sequence_id =
@@ -687,7 +695,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
           TFF_TRY(server_child_->CreateStruct(slice_ids_for_client));
       OwnedValueId dataset =
           TFF_TRY(server_child_->CreateCall(args_into_sequence_id, slices));
-      v0::Value dataset_pb;
+      federated_language_executor::Value dataset_pb;
       TFF_TRY(server_child_->Materialize(dataset.ref(), &dataset_pb));
       client_datasets->push_back(
           ShareValueId(TFF_TRY(client_child_->CreateValue(dataset_pb))));
@@ -701,7 +709,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     for (const auto& keys_child_id : *keys_child_ids) {
       // TODO: b/209504748 - Make federating_executor value a future so that
       // these materialize calls don't block.
-      v0::Value keys_for_client_pb =
+      federated_language_executor::Value keys_for_client_pb =
           TFF_TRY(client_child_->Materialize(keys_child_id->ref()));
       federated_language::Array array_pb = keys_for_client_pb.array();
       if (array_pb.dtype() != federated_language::DataType::DT_INT32) {
@@ -735,7 +743,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     array_pb.set_dtype(federated_language::DataType::DT_INT32);
     array_pb.mutable_shape();
     array_pb.mutable_int32_list()->add_value(key);
-    v0::Value key_pb;
+    federated_language_executor::Value key_pb;
     *key_pb.mutable_array() = array_pb;
     OwnedValueId key_id = TFF_TRY(server_child_->CreateValue(key_pb));
     OwnedValueId arg_id =
@@ -776,19 +784,20 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     }
   }
 
-  absl::Status CreateChildMaterializeTask(ValueId id, v0::Value* value_pb,
-                                          std::shared_ptr<Executor> child,
-                                          ParallelTasks& tasks) {
+  absl::Status CreateChildMaterializeTask(
+      ValueId id, federated_language_executor::Value* value_pb,
+      std::shared_ptr<Executor> child, ParallelTasks& tasks) {
     return tasks.add_task(
         [child, id, value_pb]() { return child->Materialize(id, value_pb); });
   }
 
-  absl::Status CreateMaterializeTasks(const ExecutorValue& value,
-                                      v0::Value* value_pb,
-                                      ParallelTasks& tasks) {
+  absl::Status CreateMaterializeTasks(
+      const ExecutorValue& value, federated_language_executor::Value* value_pb,
+      ParallelTasks& tasks) {
     switch (value.type()) {
       case ExecutorValue::ValueType::CLIENTS: {
-        v0::Value_Federated* federated_pb = value_pb->mutable_federated();
+        federated_language_executor::Value_Federated* federated_pb =
+            value_pb->mutable_federated();
         federated_language::FederatedType* type_pb =
             federated_pb->mutable_type();
         // All-equal-ness is not stored, so must be assumed to be false.
@@ -816,7 +825,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
             "Materialization of federated intrinsics is not supported.");
       }
       case ExecutorValue::ValueType::SERVER: {
-        v0::Value_Federated* federated_pb = value_pb->mutable_federated();
+        federated_language_executor::Value_Federated* federated_pb =
+            value_pb->mutable_federated();
         federated_language::FederatedType* type_pb =
             federated_pb->mutable_type();
         // Server placement is assumed to be of cardinality one, and so must be
@@ -829,7 +839,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
                                           server_child_, tasks);
       }
       case ExecutorValue::ValueType::STRUCTURE: {
-        v0::Value_Struct* struct_pb = value_pb->mutable_struct_();
+        federated_language_executor::Value_Struct* struct_pb =
+            value_pb->mutable_struct_();
         for (const auto& element : *value.structure()) {
           TFF_TRY(CreateMaterializeTasks(
               element, struct_pb->add_element()->mutable_value(), tasks));
@@ -839,7 +850,9 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     }
   }
 
-  absl::Status Materialize(ExecutorValue value, v0::Value* value_pb) override {
+  absl::Status Materialize(
+      ExecutorValue value,
+      federated_language_executor::Value* value_pb) override {
     ParallelTasks tasks;
     TFF_TRY(CreateMaterializeTasks(value, value_pb, tasks));
     TFF_TRY(tasks.WaitAll());

@@ -22,6 +22,4 @@ from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stack
 from tensorflow_federated.python.core.impl.executors.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.executors.remote_executor_grpc_stub import RemoteExecutorGrpcStub
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
-from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
-from tensorflow_federated.python.core.impl.executors.value_serialization import serialize_value
 # pylint: enable=g-importing-member

@@ -35,6 +35,7 @@ limitations under the License
 #include "include/grpcpp/security/credentials.h"
 #include "include/grpcpp/support/channel_arguments.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "include/pybind11/cast.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
@@ -51,7 +52,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -116,10 +116,11 @@ PYBIND11_MODULE(executor_bindings, m) {
            py::call_guard<py::gil_scoped_release>())
       .def(
           "materialize",
-          [](Executor& e,
-             const ValueId& value_id) -> absl::StatusOr<v0::Value> {
-            // Construct a new `v0::Value` to write to and return it to Python.
-            v0::Value value_pb;
+          [](Executor& e, const ValueId& value_id)
+              -> absl::StatusOr<federated_language_executor::Value> {
+            // Construct a new `federated_language_executor::Value` to write to
+            // and return it to Python.
+            federated_language_executor::Value value_pb;
             absl::Status result = e.Materialize(value_id, &value_pb);
             if (!result.ok()) {
               return result;

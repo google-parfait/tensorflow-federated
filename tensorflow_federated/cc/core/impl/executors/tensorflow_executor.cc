@@ -49,6 +49,7 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/public/session.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_from_tensor_structures.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -57,7 +58,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -757,8 +757,9 @@ absl::StatusOr<ExecutorValue> CallIntrinsic(Intrinsic intrinsic,
 
 using ValueFuture = std::shared_future<absl::StatusOr<ExecutorValue>>;
 
-absl::Status MaterializeSequence(const tensorflow::Tensor& graph_def_tensor,
-                                 v0::Value::Sequence* sequence_value_pb) {
+absl::Status MaterializeSequence(
+    const tensorflow::Tensor& graph_def_tensor,
+    federated_language_executor::Value::Sequence* sequence_value_pb) {
   std::unique_ptr<tensorflow::data::standalone::Dataset> dataset =
       TFF_TRY(DatasetFromGraphDefTensor(graph_def_tensor));
   std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
@@ -780,7 +781,8 @@ absl::Status MaterializeSequence(const tensorflow::Tensor& graph_def_tensor,
       break;
     }
 
-    v0::Value::Sequence::Element* element_pb = sequence_value_pb->add_element();
+    federated_language_executor::Value::Sequence::Element* element_pb =
+        sequence_value_pb->add_element();
     for (const tensorflow::Tensor& tensor : tensors) {
       element_pb->mutable_flat_value()->Add(TFF_TRY(ArrayFromTensor(tensor)));
     }
@@ -815,15 +817,16 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   absl::Mutex function_cache_mutex_;
   ThreadPool thread_pool_;
 
-  absl::StatusOr<ExecutorValue> CreateValueAny(const v0::Value& value_pb) {
+  absl::StatusOr<ExecutorValue> CreateValueAny(
+      const federated_language_executor::Value& value_pb) {
     switch (value_pb.value_case()) {
-      case v0::Value::kArray:
+      case federated_language_executor::Value::kArray:
         return CreateValueArray(value_pb);
-      case v0::Value::kComputation:
+      case federated_language_executor::Value::kComputation:
         return CreateValueComputation(value_pb.computation());
-      case v0::Value::kStruct:
+      case federated_language_executor::Value::kStruct:
         return CreateValueStruct(value_pb.struct_());
-      case v0::Value::kSequence:
+      case federated_language_executor::Value::kSequence:
         return CreateValueSequence(value_pb.sequence());
       default:
         return absl::UnimplementedError(
@@ -831,7 +834,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
     }
   }
 
-  absl::StatusOr<ExecutorValue> CreateValueArray(const v0::Value& value_pb) {
+  absl::StatusOr<ExecutorValue> CreateValueArray(
+      const federated_language_executor::Value& value_pb) {
     tensorflow::Tensor tensor;
     if (value_pb.array().has_content()) {
       tensor = TFF_TRY(TensorFromArrayContent(value_pb.array()));
@@ -900,24 +904,26 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CreateValueStruct(
-      const v0::Value::Struct& struct_pb) {
+      const federated_language_executor::Value::Struct& struct_pb) {
     auto elements = std::make_shared<std::vector<ExecutorValue>>();
     elements->reserve(struct_pb.element_size());
-    for (const v0::Value::Struct::Element& element_pb : struct_pb.element()) {
+    for (const federated_language_executor::Value::Struct::Element& element_pb :
+         struct_pb.element()) {
       elements->push_back(TFF_TRY(CreateValueAny(element_pb.value())));
     }
     return ExecutorValue(std::move(elements));
   }
 
   absl::StatusOr<ExecutorValue> CreateValueSequence(
-      const v0::Value::Sequence& sequence_pb) const {
+      const federated_language_executor::Value::Sequence& sequence_pb) const {
     tensorflow::Tensor tensor =
         TFF_TRY(GraphDefTensorFromSequence(sequence_pb));
     return ExecutorValue(SequenceTensor(std::move(tensor)));
   }
 
   // NOTE: `value` reference must be valid until `tasks.WaitAll` is called.
-  absl::Status MaterializeValue(const ExecutorValue& value, v0::Value* value_pb,
+  absl::Status MaterializeValue(const ExecutorValue& value,
+                                federated_language_executor::Value* value_pb,
                                 ParallelTasks& tasks) {
     switch (value.type()) {
       case ExecutorValue::ValueType::TENSOR: {
@@ -933,7 +939,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         });
       }
       case ExecutorValue::ValueType::STRUCT: {
-        v0::Value::Struct* struct_pb = value_pb->mutable_struct_();
+        federated_language_executor::Value::Struct* struct_pb =
+            value_pb->mutable_struct_();
         for (const ExecutorValue& element : value.elements()) {
           // NOTE: field names are never returned.
           TFF_TRY(MaterializeValue(
@@ -959,7 +966,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
-      const v0::Value& value_pb) final {
+      const federated_language_executor::Value& value_pb) final {
     return ThreadRun(
         [value_pb, this]() -> absl::StatusOr<ExecutorValue> {
           return TFF_TRY(CreateValueAny(value_pb));
@@ -1022,7 +1029,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         },
         &thread_pool_);
   }
-  absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
+  absl::Status Materialize(ValueFuture value_fut,
+                           federated_language_executor::Value* value_pb) final {
     ExecutorValue value = TFF_TRY(Wait(std::move(value_fut)));
     ParallelTasks tasks(&thread_pool_);
     TFF_TRY(MaterializeValue(value, value_pb, tasks));

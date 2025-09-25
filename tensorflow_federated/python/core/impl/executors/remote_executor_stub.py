@@ -15,7 +15,7 @@
 
 import abc
 
-from tensorflow_federated.proto.v0 import executor_pb2
+from federated_language_executor import executor_pb2
 
 
 class RemoteExecutorStub(abc.ABC):

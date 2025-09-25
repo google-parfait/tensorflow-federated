@@ -19,13 +19,13 @@ import time
 
 from absl.testing import absltest
 import federated_language
+from federated_language_executor import executor_bindings
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
-from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
 def _assert_signature_equal(first_obj, second_obj):
@@ -187,14 +187,10 @@ class LocalCPPExecutionContextTest(absltest.TestCase):
     context = cpp_execution_contexts.create_async_local_cpp_execution_context()
 
     async def multiple_invocations():
-      return await asyncio.gather(
-          *[
-              context.invoke(
-                  sleep_and_multiply, collections.OrderedDict(x=1, y=1)
-              )
-              for _ in range(n_parallel_calls)
-          ]
-      )
+      return await asyncio.gather(*[
+          context.invoke(sleep_and_multiply, collections.OrderedDict(x=1, y=1))
+          for _ in range(n_parallel_calls)
+      ])
 
     loop = asyncio.new_event_loop()
     # This timing-based test seems unfortunate.

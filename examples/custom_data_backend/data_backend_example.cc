@@ -30,7 +30,7 @@ namespace {
 
 using ::federated_language::Data;
 using ::federated_language::Type;
-using ::tensorflow_federated::v0::Value;
+using ::federated_language_executor::Value;
 
 // Constant URIs and values resolved by `DataBackendExample`.
 // These definitions are repeated in data_backend_example_bindings_test.py.
@@ -63,7 +63,7 @@ absl::Status DataBackendExample::ResolveToValue(const Data& data_reference,
   }
   if (uri == INT_STRUCT_URI) {
     tensorflow::Tensor int_tensor(INT_VALUE);
-    tensorflow_federated::v0::Value_Struct* struct_out =
+    federated_language_executor::Value_Struct* struct_out =
         value_out.mutable_struct_();
     PackTensorInto(int_tensor, *struct_out->add_element()->mutable_value());
     return absl::OkStatus();

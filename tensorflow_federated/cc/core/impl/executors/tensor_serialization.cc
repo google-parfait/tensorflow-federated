@@ -20,18 +20,19 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/data_type.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
-absl::Status SerializeTensorValue(const tensorflow::Tensor tensor,
-                                  v0::Value* value_pb) {
+absl::Status SerializeTensorValue(
+    const tensorflow::Tensor tensor,
+    federated_language_executor::Value* value_pb) {
   // Repeated fields are used for strings and constants to maintain
   // compatibility with TensorFlow.
   federated_language::Array array_pb;
@@ -46,7 +47,7 @@ absl::Status SerializeTensorValue(const tensorflow::Tensor tensor,
 }
 
 absl::StatusOr<tensorflow::Tensor> DeserializeTensorValue(
-    const v0::Value& value_pb) {
+    const federated_language_executor::Value& value_pb) {
   if (!value_pb.has_array()) {
     LOG(ERROR) << "Attempted to deserialize non-Array value to a Tensor";
     LOG(ERROR) << "Value proto: " << value_pb.ShortDebugString();

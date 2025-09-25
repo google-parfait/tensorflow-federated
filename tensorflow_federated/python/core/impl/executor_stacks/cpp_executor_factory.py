@@ -21,11 +21,12 @@ from typing import Optional
 from absl import logging
 import cachetools
 import federated_language
+from federated_language_executor import cpp_to_python_executor
+from federated_language_executor import executor_bindings
+from federated_language_executor import executor_errors
 
 from tensorflow_federated.python.core.impl.executor_stacks import executor_stack_bindings
-from tensorflow_federated.python.core.impl.executors import cpp_to_python_executor
-from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import executors_errors
+
 
 # Users likely do not intend to run 4 or more TensorFlow functions sequentially;
 # we special-case to warn users explicitly in this case, in addition to
@@ -177,8 +178,8 @@ def local_cpp_executor_factory(
 
 
 def _handle_error(exception: Exception):
-  if executors_errors.is_absl_status_retryable_error(exception):
-    raise executors_errors.RetryableAbslStatusError() from exception
+  if executor_errors.is_absl_status_retryable_error(exception):
+    raise executor_errors.RetryableAbslStatusError() from exception
   else:
     raise exception
 

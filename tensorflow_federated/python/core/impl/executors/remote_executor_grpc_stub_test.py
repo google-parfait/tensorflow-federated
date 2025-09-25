@@ -16,14 +16,13 @@ from unittest import mock
 
 from absl.testing import absltest
 import federated_language
+from federated_language_executor import executor_pb2
+from federated_language_executor import executor_pb2_grpc
+from federated_language_executor import value_serialization
 import grpc
 import portpicker
 
-from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
-from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
 def create_stub():

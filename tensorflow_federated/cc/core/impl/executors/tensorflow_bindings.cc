@@ -25,6 +25,7 @@ limitations under the License
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "include/pybind11/cast.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
@@ -40,7 +41,6 @@ limitations under the License
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow {
 absl::Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);

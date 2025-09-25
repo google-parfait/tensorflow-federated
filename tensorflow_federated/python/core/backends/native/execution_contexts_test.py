@@ -21,9 +21,9 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
+from federated_language_executor import executor_pb2
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation

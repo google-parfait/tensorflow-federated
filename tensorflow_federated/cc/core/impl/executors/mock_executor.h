@@ -26,9 +26,9 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -41,7 +41,7 @@ class MockExecutor : public Executor,
   ~MockExecutor() override = default;
 
   MOCK_METHOD(absl::StatusOr<OwnedValueId>, CreateValue,
-              (const v0::Value& value_pb), (override));
+              (const federated_language_executor::Value& value_pb), (override));
   MOCK_METHOD(absl::StatusOr<OwnedValueId>, CreateCall,
               (const ValueId function,
                const std::optional<const ValueId> argument),
@@ -51,7 +51,9 @@ class MockExecutor : public Executor,
   MOCK_METHOD(absl::StatusOr<OwnedValueId>, CreateSelection,
               (const ValueId source, const uint32_t index), (override));
   MOCK_METHOD(absl::Status, Materialize,
-              (const ValueId value, v0::Value* value_pb), (override));
+              (const ValueId value,
+               federated_language_executor::Value* value_pb),
+              (override));
   MOCK_METHOD(absl::Status, Dispose, (const ValueId value), (override));
 
   template <typename EXPECTATION>
@@ -64,8 +66,9 @@ class MockExecutor : public Executor,
     return id;
   }
 
-  inline ValueId ExpectCreateValue(const v0::Value& expected,
-                                   ::testing::Cardinality repeatedly = ONCE) {
+  inline ValueId ExpectCreateValue(
+      const federated_language_executor::Value& expected,
+      ::testing::Cardinality repeatedly = ONCE) {
     return ReturnsNewValue(
         EXPECT_CALL(*this, CreateValue(testing::EqualsProto(expected))),
         repeatedly);
@@ -94,7 +97,8 @@ class MockExecutor : public Executor,
                            repeatedly);
   }
 
-  inline void ExpectMaterialize(ValueId id, v0::Value to_return,
+  inline void ExpectMaterialize(ValueId id,
+                                federated_language_executor::Value to_return,
                                 ::testing::Cardinality repeatedly = ONCE) {
     EXPECT_CALL(*this, Materialize(id, ::testing::_))
         .Times(repeatedly)
@@ -104,7 +108,8 @@ class MockExecutor : public Executor,
   }
 
   inline void ExpectCreateMaterialize(
-      v0::Value value_pb, ::testing::Cardinality repeatedly = ONCE) {
+      federated_language_executor::Value value_pb,
+      ::testing::Cardinality repeatedly = ONCE) {
     auto id = ExpectCreateValue(value_pb);
     ExpectMaterialize(id, value_pb);
   }

@@ -24,6 +24,7 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_data_backend.h"
@@ -31,7 +32,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -62,9 +62,9 @@ TEST_F(DataExecutorTest, CreateValueResolvesData) {
   tensor_type->set_dtype(federated_language::DataType::DT_INT32);
   tensor_type->mutable_dims()->Add(1);
   tensor_type->set_unknown_rank(false);
-  v0::Value resolved_data_value = TensorV(22);
+  federated_language_executor::Value resolved_data_value = TensorV(22);
   mock_data_backend_->ExpectResolveToValue(uri, data_type, resolved_data_value);
-  v0::Value unresolved_data_value;
+  federated_language_executor::Value unresolved_data_value;
   federated_language::Computation* unresolved_data_computation =
       unresolved_data_value.mutable_computation();
   unresolved_data_computation->mutable_data()->set_uri(uri);
@@ -76,13 +76,13 @@ TEST_F(DataExecutorTest, CreateValueResolvesData) {
 }
 
 TEST_F(DataExecutorTest, CreateValueUnknownValuesDelegatesToChild) {
-  v0::Value unknown_value = TensorV(5);
+  federated_language_executor::Value unknown_value = TensorV(5);
   mock_executor_child_->ExpectCreateMaterialize(unknown_value);
   ExpectCreateMaterialize(unknown_value);
 }
 
 TEST_F(DataExecutorTest, CreateValueNonDataComputationDelegatesToChild) {
-  v0::Value non_data_computation;
+  federated_language_executor::Value non_data_computation;
   non_data_computation.mutable_computation()->mutable_intrinsic()->set_uri(
       "some_uri");
   mock_executor_child_->ExpectCreateMaterialize(non_data_computation);
@@ -90,11 +90,11 @@ TEST_F(DataExecutorTest, CreateValueNonDataComputationDelegatesToChild) {
 }
 
 TEST_F(DataExecutorTest, CreateStructDelegatesToChild) {
-  v0::Value v1 = TensorV(1);
+  federated_language_executor::Value v1 = TensorV(1);
   ValueId v1_child_id = mock_executor_child_->ExpectCreateValue(v1);
   OwnedValueId v1_id = TFF_ASSERT_OK(test_executor_->CreateValue(v1));
 
-  v0::Value v2 = TensorV(2);
+  federated_language_executor::Value v2 = TensorV(2);
   ValueId v2_child_id = mock_executor_child_->ExpectCreateValue(v2);
   OwnedValueId v2_id = TFF_ASSERT_OK(test_executor_->CreateValue(v2));
 
@@ -103,13 +103,13 @@ TEST_F(DataExecutorTest, CreateStructDelegatesToChild) {
   OwnedValueId struct_id =
       TFF_ASSERT_OK(test_executor_->CreateStruct({v1_id, v2_id}));
 
-  v0::Value result = TensorV("result");
+  federated_language_executor::Value result = TensorV("result");
   mock_executor_child_->ExpectMaterialize(struct_child_id, result);
   ExpectMaterialize(struct_id, result);
 }
 
 TEST_F(DataExecutorTest, CreateSelectionDelegatesToChild) {
-  v0::Value source = TensorV("source");
+  federated_language_executor::Value source = TensorV("source");
   ValueId source_child_id = mock_executor_child_->ExpectCreateValue(source);
   OwnedValueId source_id = TFF_ASSERT_OK(test_executor_->CreateValue(source));
 
@@ -119,13 +119,13 @@ TEST_F(DataExecutorTest, CreateSelectionDelegatesToChild) {
   OwnedValueId selected_id =
       TFF_ASSERT_OK(test_executor_->CreateSelection(source_id, index));
 
-  v0::Value result = TensorV("result");
+  federated_language_executor::Value result = TensorV("result");
   mock_executor_child_->ExpectMaterialize(selected_child_id, result);
   ExpectMaterialize(selected_id, result);
 }
 
 TEST_F(DataExecutorTest, CreateCallNoArgDelegatesToChild) {
-  v0::Value fn = TensorV("fn");
+  federated_language_executor::Value fn = TensorV("fn");
   ValueId fn_child_id = mock_executor_child_->ExpectCreateValue(fn);
   OwnedValueId fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(fn));
 
@@ -134,17 +134,17 @@ TEST_F(DataExecutorTest, CreateCallNoArgDelegatesToChild) {
   OwnedValueId result_id =
       TFF_ASSERT_OK(test_executor_->CreateCall(fn_id, std::nullopt));
 
-  v0::Value result = TensorV("result");
+  federated_language_executor::Value result = TensorV("result");
   mock_executor_child_->ExpectMaterialize(result_child_id, result);
   ExpectMaterialize(result_id, result);
 }
 
 TEST_F(DataExecutorTest, CreateCallWithArgDelegatesToChild) {
-  v0::Value fn = TensorV("fn");
+  federated_language_executor::Value fn = TensorV("fn");
   ValueId fn_child_id = mock_executor_child_->ExpectCreateValue(fn);
   OwnedValueId fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(fn));
 
-  v0::Value arg = TensorV("arg");
+  federated_language_executor::Value arg = TensorV("arg");
   ValueId arg_child_id = mock_executor_child_->ExpectCreateValue(arg);
   OwnedValueId arg_id = TFF_ASSERT_OK(test_executor_->CreateValue(arg));
 
@@ -153,7 +153,7 @@ TEST_F(DataExecutorTest, CreateCallWithArgDelegatesToChild) {
   OwnedValueId result_id =
       TFF_ASSERT_OK(test_executor_->CreateCall(fn_id, arg_id));
 
-  v0::Value result = TensorV("result");
+  federated_language_executor::Value result = TensorV("result");
   mock_executor_child_->ExpectMaterialize(result_child_id, result);
   ExpectMaterialize(result_id, result);
 }

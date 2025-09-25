@@ -19,8 +19,8 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -29,20 +29,22 @@ namespace tensorflow_federated {
 class DataBackend {
  public:
   // Resolves a `federated_language::Data` object to a concrete
-  // `tensorflow_federated::v0::Value` proto, writing the result to `value_out`.
+  // `federated_language_executor::Value` proto, writing the result to
+  // `value_out`.
   //
   // This function must be safe to call concurrently from multiple threads.
   virtual absl::Status ResolveToValue(
       const federated_language::Data& data_reference,
-      const federated_language::Type& data_type, v0::Value& value_out) = 0;
+      const federated_language::Type& data_type,
+      federated_language_executor::Value& value_out) = 0;
 
   // Resolves a `federated_language::Data` object to a concrete
-  // `tensorflow_federated::v0::Value` proto, returning the result as a new
+  // `federated_language_executor::Value` proto, returning the result as a new
   // proto object.
-  absl::StatusOr<v0::Value> ResolveToValue(
+  absl::StatusOr<federated_language_executor::Value> ResolveToValue(
       const federated_language::Data& data_reference,
       const federated_language::Type& data_type) {
-    v0::Value out;
+    federated_language_executor::Value out;
     TFF_TRY(ResolveToValue(data_reference, data_type, out));
     return out;
   }

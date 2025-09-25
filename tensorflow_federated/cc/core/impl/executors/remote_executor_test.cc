@@ -35,6 +35,8 @@ limitations under the License
 #include "include/grpcpp/create_channel.h"
 #include "include/grpcpp/security/credentials.h"
 #include "include/grpcpp/support/status.h"
+#include "third_party/py/federated_language_executor/executor.grpc.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
@@ -42,8 +44,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
-#include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
@@ -67,29 +67,31 @@ auto ReturnOkWithResponseId(std::string response_id) {
       ::testing::Return(grpc::Status::OK));
 }
 
-v0::ComputeResponse ComputeResponseForValue(const v0::Value& value_proto) {
-  v0::ComputeResponse response;
+federated_language_executor::ComputeResponse ComputeResponseForValue(
+    const federated_language_executor::Value& value_proto) {
+  federated_language_executor::ComputeResponse response;
   *response.mutable_value() = value_proto;
   return response;
 }
 
-auto ReturnOkWithComputeResponse(const v0::Value& value_proto) {
+auto ReturnOkWithComputeResponse(
+    const federated_language_executor::Value& value_proto) {
   return ::testing::DoAll(
       ::testing::SetArgPointee<2>(ComputeResponseForValue(value_proto)),
       ::testing::Return(grpc::Status::OK));
 }
 
-v0::CreateValueRequest CreateValueRequestForValue(
-    const v0::Value& value_proto) {
-  v0::CreateValueRequest request;
+federated_language_executor::CreateValueRequest CreateValueRequestForValue(
+    const federated_language_executor::Value& value_proto) {
+  federated_language_executor::CreateValueRequest request;
   request.mutable_executor()->set_id(kExecutorId);
   *request.mutable_value() = value_proto;
   return request;
 }
 
-v0::CreateStructRequest CreateStructRequestForValues(
+federated_language_executor::CreateStructRequest CreateStructRequestForValues(
     const std::vector<absl::string_view>& ref_names) {
-  v0::CreateStructRequest create_struct_request;
+  federated_language_executor::CreateStructRequest create_struct_request;
   create_struct_request.mutable_executor()->set_id(kExecutorId);
   for (absl::string_view ref_name : ref_names) {
     create_struct_request.add_element()->mutable_value_ref()->set_id(
@@ -98,8 +100,9 @@ v0::CreateStructRequest CreateStructRequestForValues(
   return create_struct_request;
 }
 
-v0::ComputeRequest ComputeRequestForId(std::string ref) {
-  v0::ComputeRequest request;
+federated_language_executor::ComputeRequest ComputeRequestForId(
+    std::string ref) {
+  federated_language_executor::ComputeRequest request;
   request.mutable_executor()->set_id(kExecutorId);
   request.mutable_value_ref()->mutable_id()->assign(std::move(ref));
   return request;
@@ -135,7 +138,8 @@ grpc::Status UnimplementedPlaceholder() {
 class RemoteExecutorTest : public ::testing::Test {
  protected:
   RemoteExecutorTest() : mock_executor_service_(mock_executor_.service()) {
-    std::unique_ptr<v0::ExecutorGroup::Stub> stub_ptr(mock_executor_.NewStub());
+    std::unique_ptr<federated_language_executor::ExecutorGroup::Stub> stub_ptr(
+        mock_executor_.NewStub());
     CardinalityMap cardinalities = {{"server", 1}, {"clients", 1}};
     test_executor_ = CreateRemoteExecutor(std::move(stub_ptr), cardinalities);
   }
@@ -148,7 +152,7 @@ class RemoteExecutorTest : public ::testing::Test {
   // `WaitForDisposeExecutor`.
   void ExpectGetAndDisposeExecutor(
       absl::Notification& dispose_notification_out) {
-    v0::GetExecutorResponse get_response;
+    federated_language_executor::GetExecutorResponse get_response;
     *get_response.mutable_executor()->mutable_id() = kExecutorId;
     EXPECT_CALL(*mock_executor_service_,
                 GetExecutor(::testing::_,
@@ -159,7 +163,7 @@ class RemoteExecutorTest : public ::testing::Test {
                                    ::testing::Return(grpc::Status::OK)));
 
     absl::Notification done;
-    v0::DisposeExecutorRequest dispose_request;
+    federated_language_executor::DisposeExecutorRequest dispose_request;
     *dispose_request.mutable_executor()->mutable_id() = kExecutorId;
     EXPECT_CALL(*mock_executor_service_,
                 DisposeExecutor(::testing::_, EqualsProto(dispose_request),
@@ -202,7 +206,7 @@ TEST_F(RemoteExecutorTest, GetExecutorErrorSurfaces) {
                               EqualsProto(kExpectedGetExecutorRequest)),
                           ::testing::_))
       .WillOnce(::testing::Return(UnimplementedPlaceholder()));
-  v0::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
 
   absl::StatusOr<OwnedValueId> value_ref =
       test_executor_->CreateValue(tensor_two);
@@ -214,17 +218,19 @@ TEST_F(RemoteExecutorTest, CreateValueTensor) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
 
-  v0::Value tensor_two = testing::TensorV(2.0f);
-  v0::Value materialized_value;
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value materialized_value;
   absl::Status materialize_status;
   {
     EXPECT_CALL(*mock_executor_service_,
                 CreateValue(::testing::_,
                             EqualsProto(CreateValueRequestForValue(tensor_two)),
                             ::testing::_))
-        .WillOnce(ReturnOkWithResponseId<v0::CreateValueResponse>("value_ref"));
+        .WillOnce(
+            ReturnOkWithResponseId<
+                federated_language_executor::CreateValueResponse>("value_ref"));
 
-    v0::DisposeRequest expected_dispose_request;
+    federated_language_executor::DisposeRequest expected_dispose_request;
     expected_dispose_request.mutable_executor()->set_id(kExecutorId);
     expected_dispose_request.mutable_value_ref()->Add()->set_id("value_ref");
     EXPECT_CALL(*mock_executor_service_,
@@ -250,7 +256,7 @@ TEST_F(RemoteExecutorTest, CreateValueTensor) {
 TEST_F(RemoteExecutorTest, CreateValueWithError) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
-  v0::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
 
   {
     EXPECT_CALL(*mock_executor_service_,
@@ -259,7 +265,7 @@ TEST_F(RemoteExecutorTest, CreateValueWithError) {
 
     OwnedValueId value_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
-    v0::Value materialized_value;
+    federated_language_executor::Value materialized_value;
     // If the CreateValue fails we don't expect a Compute call on the other
     // side. Nor do we expect a dispose, because no value has been created.
     absl::Status materialize_status =
@@ -273,9 +279,9 @@ TEST_F(RemoteExecutorTest, CreateValueWithError) {
 TEST_F(RemoteExecutorTest, MaterializeWithError) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
-  v0::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
 
-  v0::Value materialized_value;
+  federated_language_executor::Value materialized_value;
   absl::Status materialize_status;
 
   {
@@ -283,7 +289,9 @@ TEST_F(RemoteExecutorTest, MaterializeWithError) {
                 CreateValue(::testing::_,
                             EqualsProto(CreateValueRequestForValue(tensor_two)),
                             ::testing::_))
-        .WillOnce(ReturnOkWithResponseId<v0::CreateValueResponse>("value_ref"));
+        .WillOnce(
+            ReturnOkWithResponseId<
+                federated_language_executor::CreateValueResponse>("value_ref"));
     OwnedValueId value_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
 
@@ -301,10 +309,10 @@ TEST_F(RemoteExecutorTest, MaterializeWithError) {
 TEST_F(RemoteExecutorTest, CreateCallFnWithArg) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
-  v0::Value tensor_two = testing::TensorV(2.0f);
-  v0::Value tensor_three = testing::TensorV(3.0f);
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value tensor_three = testing::TensorV(3.0f);
 
-  v0::Value materialized_value;
+  federated_language_executor::Value materialized_value;
   absl::Status materialize_status;
 
   {
@@ -312,22 +320,24 @@ TEST_F(RemoteExecutorTest, CreateCallFnWithArg) {
                 CreateValue(::testing::_,
                             EqualsProto(CreateValueRequestForValue(tensor_two)),
                             ::testing::_))
-        .WillOnce(
-            ReturnOkWithResponseId<v0::CreateValueResponse>("function_ref"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateValueResponse>(
+            "function_ref"));
     EXPECT_CALL(
         *mock_executor_service_,
         CreateValue(::testing::_,
                     EqualsProto(CreateValueRequestForValue(tensor_three)),
                     ::testing::_))
-        .WillOnce(
-            ReturnOkWithResponseId<v0::CreateValueResponse>("argument_ref"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateValueResponse>(
+            "argument_ref"));
 
     // The literal argument itself is thrown away, but is used to identify which
     // CreateValue represents the function and which the argument.
     OwnedValueId fn = TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
     OwnedValueId arg = TFF_ASSERT_OK(test_executor_->CreateValue(tensor_three));
 
-    v0::CreateCallRequest expected_request;
+    federated_language_executor::CreateCallRequest expected_request;
     expected_request.mutable_executor()->set_id(kExecutorId);
     expected_request.mutable_function_ref()->set_id("function_ref");
     expected_request.mutable_argument_ref()->set_id("argument_ref");
@@ -335,7 +345,8 @@ TEST_F(RemoteExecutorTest, CreateCallFnWithArg) {
     EXPECT_CALL(
         *mock_executor_service_,
         CreateCall(::testing::_, EqualsProto(expected_request), ::testing::_))
-        .WillOnce(ReturnOkWithResponseId<v0::CreateCallResponse>("call_ref"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateCallResponse>("call_ref"));
 
     OwnedValueId call_result =
         TFF_ASSERT_OK(test_executor_->CreateCall(fn, arg));
@@ -359,24 +370,26 @@ TEST_F(RemoteExecutorTest, CreateCallNoArgFn) {
   ExpectGetAndDisposeExecutor(dispose_notification);
   EXPECT_CALL(*mock_executor_service_,
               CreateValue(::testing::_, ::testing::_, ::testing::_))
-      .WillOnce(
-          ReturnOkWithResponseId<v0::CreateValueResponse>("function_ref"));
+      .WillOnce(ReturnOkWithResponseId<
+                federated_language_executor::CreateValueResponse>(
+          "function_ref"));
 
   // The literal argument itself is unused.
-  v0::Value tensor_two = testing::TensorV(2.0f);
-  v0::Value materialized_value;
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value materialized_value;
   absl::Status materialize_status;
   {
     OwnedValueId fn = TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
 
-    v0::CreateCallRequest expected_request;
+    federated_language_executor::CreateCallRequest expected_request;
     expected_request.mutable_executor()->set_id(kExecutorId);
     expected_request.mutable_function_ref()->set_id("function_ref");
 
     EXPECT_CALL(
         *mock_executor_service_,
         CreateCall(::testing::_, EqualsProto(expected_request), ::testing::_))
-        .WillOnce(ReturnOkWithResponseId<v0::CreateCallResponse>("call_ref"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateCallResponse>("call_ref"));
 
     OwnedValueId call_result =
         TFF_ASSERT_OK(test_executor_->CreateCall(fn, std::nullopt));
@@ -400,11 +413,12 @@ TEST_F(RemoteExecutorTest, CreateCallError) {
   ExpectGetAndDisposeExecutor(dispose_notification);
   EXPECT_CALL(*mock_executor_service_,
               CreateValue(::testing::_, ::testing::_, ::testing::_))
-      .WillOnce(
-          ReturnOkWithResponseId<v0::CreateValueResponse>("function_ref"));
+      .WillOnce(ReturnOkWithResponseId<
+                federated_language_executor::CreateValueResponse>(
+          "function_ref"));
 
-  v0::Value tensor_two = testing::TensorV(2.0f);
-  v0::Value materialized_value;
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value materialized_value;
   absl::Status materialize_status;
   {
     // The literal value itself is unused.
@@ -430,30 +444,32 @@ TEST_F(RemoteExecutorTest, CreateCallError) {
 TEST_F(RemoteExecutorTest, CreateStructWithTwoElements) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
-  v0::Value tensor_two = testing::TensorV(2.0f);
-  v0::Value tensor_three = testing::TensorV(3.0f);
-  v0::Value materialized_value;
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value tensor_three = testing::TensorV(3.0f);
+  federated_language_executor::Value materialized_value;
   absl::Status materialize_status;
   {
     EXPECT_CALL(*mock_executor_service_,
                 CreateValue(::testing::_,
                             EqualsProto(CreateValueRequestForValue(tensor_two)),
                             ::testing::_))
-        .WillOnce(
-            ReturnOkWithResponseId<v0::CreateValueResponse>("struct_elem1"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateValueResponse>(
+            "struct_elem1"));
     EXPECT_CALL(
         *mock_executor_service_,
         CreateValue(::testing::_,
                     EqualsProto(CreateValueRequestForValue(tensor_three)),
                     ::testing::_))
-        .WillOnce(
-            ReturnOkWithResponseId<v0::CreateValueResponse>("struct_elem2"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateValueResponse>(
+            "struct_elem2"));
     OwnedValueId first_struct_element =
         TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
     OwnedValueId second_struct_element =
         TFF_ASSERT_OK(test_executor_->CreateValue(tensor_three));
 
-    v0::CreateStructRequest expected_request;
+    federated_language_executor::CreateStructRequest expected_request;
     expected_request.mutable_executor()->set_id(kExecutorId);
     expected_request.add_element()->mutable_value_ref()->set_id("struct_elem1");
     expected_request.add_element()->mutable_value_ref()->set_id("struct_elem2");
@@ -461,8 +477,9 @@ TEST_F(RemoteExecutorTest, CreateStructWithTwoElements) {
     EXPECT_CALL(
         *mock_executor_service_,
         CreateStruct(::testing::_, EqualsProto(expected_request), ::testing::_))
-        .WillOnce(
-            ReturnOkWithResponseId<v0::CreateStructResponse>("struct_ref"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateStructResponse>(
+            "struct_ref"));
 
     std::vector<ValueId> struct_to_create = {std::move(first_struct_element),
                                              std::move(second_struct_element)};
@@ -486,17 +503,18 @@ TEST_F(RemoteExecutorTest, CreateStructWithTwoElements) {
 TEST_F(RemoteExecutorTest, CreateStructWithNoElements) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
-  v0::Value tensor_two = testing::TensorV(2.0f);
-  v0::Value materialized_value;
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value materialized_value;
   absl::Status materialize_status;
   {
-    v0::CreateStructRequest expected_request;
+    federated_language_executor::CreateStructRequest expected_request;
     expected_request.mutable_executor()->set_id(kExecutorId);
     EXPECT_CALL(
         *mock_executor_service_,
         CreateStruct(::testing::_, EqualsProto(expected_request), ::testing::_))
-        .WillOnce(
-            ReturnOkWithResponseId<v0::CreateStructResponse>("struct_ref"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateStructResponse>(
+            "struct_ref"));
     std::vector<ValueId> struct_to_create = {};
     OwnedValueId struct_result =
         TFF_ASSERT_OK(test_executor_->CreateStruct(struct_to_create));
@@ -519,7 +537,7 @@ TEST_F(RemoteExecutorTest, CreateStructWithError) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
   {
-    v0::CreateStructRequest expected_request;
+    federated_language_executor::CreateStructRequest expected_request;
     expected_request.mutable_executor()->set_id(kExecutorId);
     EXPECT_CALL(
         *mock_executor_service_,
@@ -532,7 +550,7 @@ TEST_F(RemoteExecutorTest, CreateStructWithError) {
 
     // If the CreateStruct fails we don't expect a Compute call on the other
     // side.
-    v0::Value materialized_value;
+    federated_language_executor::Value materialized_value;
     absl::Status materialize_status =
         test_executor_->Materialize(struct_result, &materialized_value);
     EXPECT_THAT(materialize_status,
@@ -544,8 +562,8 @@ TEST_F(RemoteExecutorTest, CreateStructWithError) {
 TEST_F(RemoteExecutorTest, CreateSelection) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
-  v0::Value tensor_two = testing::TensorV(2.0f);
-  v0::Value materialized_value;
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value materialized_value;
   absl::Status materialize_status;
   {
     EXPECT_CALL(*mock_executor_service_,
@@ -553,13 +571,14 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
                             EqualsProto(CreateValueRequestForValue(
                                 testing::StructV({tensor_two}))),
                             ::testing::_))
-        .WillOnce(
-            ReturnOkWithResponseId<v0::CreateValueResponse>("source_ref"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateValueResponse>(
+            "source_ref"));
 
     OwnedValueId source_value = TFF_ASSERT_OK(
         test_executor_->CreateValue(testing::StructV({tensor_two})));
 
-    v0::CreateSelectionRequest expected_request;
+    federated_language_executor::CreateSelectionRequest expected_request;
     expected_request.mutable_executor()->set_id(kExecutorId);
     expected_request.mutable_source_ref()->set_id("source_ref");
     expected_request.set_index(0);
@@ -567,7 +586,8 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
     EXPECT_CALL(*mock_executor_service_,
                 CreateSelection(::testing::_, EqualsProto(expected_request),
                                 ::testing::_))
-        .WillOnce(ReturnOkWithResponseId<v0::CreateSelectionResponse>(
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateSelectionResponse>(
             "selection_ref"));
 
     OwnedValueId selection_result =
@@ -591,18 +611,19 @@ TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
   ExpectGetAndDisposeExecutor(dispose_notification);
 
   constexpr char kTestErrorMessage[] = "test error message";
-  v0::Value tensor_two = testing::TensorV(2.0f);
-  v0::Value materialized_value;
+  federated_language_executor::Value tensor_two = testing::TensorV(2.0f);
+  federated_language_executor::Value materialized_value;
   absl::Status materialize_status;
   {
     EXPECT_CALL(*mock_executor_service_,
                 CreateValue(::testing::_,
                             EqualsProto(CreateValueRequestForValue(tensor_two)),
                             ::testing::_))
-        .WillOnce(
-            ReturnOkWithResponseId<v0::CreateValueResponse>("source_ref"));
+        .WillOnce(ReturnOkWithResponseId<
+                  federated_language_executor::CreateValueResponse>(
+            "source_ref"));
 
-    v0::CreateSelectionRequest expected_request;
+    federated_language_executor::CreateSelectionRequest expected_request;
     expected_request.mutable_executor()->set_id(kExecutorId);
     expected_request.mutable_source_ref()->set_id("source_ref");
     expected_request.set_index(1);

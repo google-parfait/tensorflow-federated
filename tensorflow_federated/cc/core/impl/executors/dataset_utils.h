@@ -20,14 +20,14 @@ limitations under the License
 
 #include "absl/status/statusor.h"
 #include "federated_language/proto/computation.pb.h"
+#include "third_party/py/federated_language_executor/executor.pb.h"
 #include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
 absl::StatusOr<tensorflow::Tensor> GraphDefTensorFromSequence(
-    const v0::Value::Sequence& sequence_pb);
+    const federated_language_executor::Value::Sequence& sequence_pb);
 
 absl::StatusOr<std::unique_ptr<tensorflow::data::standalone::Dataset>>
 DatasetFromGraphDefTensor(const tensorflow::Tensor& tensor);

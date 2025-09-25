@@ -14,9 +14,9 @@
 
 from absl.testing import absltest
 import federated_language
+from federated_language_executor import executor_bindings
 
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_test_utils_bindings
 
 
