@@ -33,7 +33,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_histogram_test_utils.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
@@ -46,34 +45,6 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
-
-// Peer class for testing private methods of DPOpenDomainHistogram.
-// This allows us to test the creation of the selector, which is not at time of
-// writing exposed in the public API and won't be exposed except through
-// complicated code that should be tested separately.
-class DPOpenDomainHistogramPeer {
- public:
-  explicit DPOpenDomainHistogramPeer(
-      std::unique_ptr<TensorAggregator> aggregator) {
-    auto* raw_ptr = dynamic_cast<DPOpenDomainHistogram*>(aggregator.get());
-    TFF_CHECK(raw_ptr != nullptr)
-        << "Aggregator must be a DPOpenDomainHistogram";
-    dp_histogram_ = std::unique_ptr<DPOpenDomainHistogram>(
-        dynamic_cast<DPOpenDomainHistogram*>(aggregator.release()));
-  }
-
-  bool HasSelector() const { return dp_histogram_->selector_ != nullptr; }
-
-  std::optional<int64_t> GetMaxContributorsToGroup() const {
-    return dp_histogram_->max_contributors_to_group();
-  }
-
- private:
-  std::unique_ptr<DPOpenDomainHistogram> dp_histogram_;
-  friend class DPOpenDomainHistogram;
-  friend class GroupByAggregator;
-};
-
 namespace {
 
 using ::testing::Contains;

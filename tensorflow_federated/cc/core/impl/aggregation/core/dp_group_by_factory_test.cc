@@ -442,7 +442,68 @@ TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
                                                      "DP sums are supported"));
 }
 
-// Phase 3: Test that the factory handles min_contributors_to_group correctly.
+// Phase 3: Test that the factory can create DPClosedDomainHistogram objects.
+TEST(DPClosedDomainHistogramTest, CreateWithPositiveDelta) {
+  // Only L2 bound
+  std::vector<DataType> key_types = {DT_STRING, DT_STRING};
+  Intrinsic intrinsic1 = CreateIntrinsicWithKeyTypes<int32_t, int64_t>(
+      /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/-1,
+      /*linfinity_bound=*/-1, /*l1_bound=*/-1, /*l2_bound=*/10, key_types);
+
+  // Both Linf and L0 bounds
+  TFF_EXPECT_OK(CreateTensorAggregator(intrinsic1).status());
+  Intrinsic intrinsic2 = CreateIntrinsicWithKeyTypes<int32_t, int64_t>(
+      /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/1,
+      /*linfinity_bound=*/5, /*l1_bound=*/-1, /*l2_bound=*/-1, key_types);
+  TFF_EXPECT_OK(CreateTensorAggregator(intrinsic2).status());
+}
+TEST(DPClosedDomainHistogramTest, CreateWithZeroDelta) {
+  // Only L1 bound
+  std::vector<DataType> key_types = {DT_STRING, DT_STRING};
+  Intrinsic intrinsic1 = CreateIntrinsicWithKeyTypes<int32_t, int64_t>(
+      /*epsilon=*/1, /*delta=*/0, /*l0_bound=*/-1,
+      /*linfinity_bound=*/-1, /*l1_bound=*/10, /*l2_bound=*/-1, key_types);
+  TFF_EXPECT_OK(CreateTensorAggregator(intrinsic1).status());
+
+  // Both Linf and L0 bounds
+  Intrinsic intrinsic2 = CreateIntrinsicWithKeyTypes<int32_t, int64_t>(
+      /*epsilon=*/1, /*delta=*/0, /*l0_bound=*/1,
+      /*linfinity_bound=*/5, /*l1_bound=*/-1, /*l2_bound=*/-1, key_types);
+  TFF_EXPECT_OK(CreateTensorAggregator(intrinsic2).status());
+}
+
+// Phase 5: Test that the factory can create DPOpenDomainHistogram objects.
+TEST(DPOpenDomainHistogramTest, CreateWithGroupingKeys) {
+  Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(
+      /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/1,
+      /*linfinity_bound=*/5);
+  TFF_EXPECT_OK(CreateTensorAggregator(intrinsic).status());
+}
+TEST(DPOpenDomainHistogramTest, CreateWithNoGroupingKeys) {
+  Intrinsic intrinsic = {
+      .uri = kDPGroupByUri,
+      .inputs = {},
+      .outputs = {},
+      .parameters = {CreateTopLevelParameters(
+          /*epsilon=*/1.0,
+          /*delta=*/0.001, /*l0_bound=max_groups_contributed=*/-1)},
+      .nested_intrinsics = {}};
+  intrinsic.nested_intrinsics.push_back(
+      Intrinsic{kDPSumUri,
+                {CreateTensorSpec("value", DT_INT32)},
+                {CreateTensorSpec("value", DT_INT64)},
+                {CreateNestedParameters<int32_t>(1000, -1, -1)},
+                {}});
+  StatusOr<std::unique_ptr<TensorAggregator>> aggregator =
+      CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(aggregator.status());
+  // The max_groups_contributed parameter should be changed from -1 to 1 because
+  // 1 simulated group will be made to aggregate all elements.
+  DPOpenDomainHistogramPeer peer(std::move(aggregator).value());
+  EXPECT_EQ(peer.GetMaxGroupsContributed(), 1);
+}
+
+// Phase 5: Test that the factory handles min_contributors_to_group correctly.
 TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsNoKeys) {
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
       /*min_contributors=*/10, /*key_types=*/{});

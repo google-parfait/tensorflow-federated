@@ -29,8 +29,8 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
@@ -76,14 +76,13 @@ DPClosedDomainHistogram::DPClosedDomainHistogram(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
-    TensorSpan domain_tensors, int num_inputs)
-    : GroupByAggregator(input_key_specs, output_key_specs, intrinsics,
-                        std::move(key_combiner), std::move(aggregators),
-                        num_inputs),
-      epsilon_per_agg_(epsilon_per_agg),
-      delta_per_agg_(delta_per_agg),
-      l0_bound_(l0_bound),
+    int num_inputs, double epsilon, double delta,
+    int64_t max_groups_contributed, TensorSpan domain_tensors,
+    int max_string_length)
+    : DPGroupByAggregator(input_key_specs, output_key_specs, intrinsics,
+                          std::move(key_combiner), std::move(aggregators),
+                          num_inputs, epsilon, delta, max_groups_contributed,
+                          max_string_length),
       domain_tensors_(domain_tensors) {}
 
 StatusOr<Tensor> DPClosedDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
@@ -128,12 +127,7 @@ bool DPClosedDomainHistogram::IncrementDomainIndices(
   return true;
 }
 
-StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
-  TFF_RETURN_IF_ERROR(CheckValid());
-  if (!CanReport()) {
-    return TFF_STATUS(FAILED_PRECONDITION)
-           << "DPOpenDomainHistogram::Report: the report goal isn't met";
-  }
+StatusOr<OutputTensorList> DPClosedDomainHistogram::NoisyReport() {
   // Compute the noiseless aggregates.
   OutputTensorList noiseless_aggregates = std::move(*this).TakeOutputs();
 
@@ -150,7 +144,7 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
   for (int i = 0; i < intrinsics().size(); ++i) {
     const Intrinsic& intrinsic = intrinsics()[i];
     // Do not bother making mechanism if epsilon is too large.
-    if (epsilon_per_agg_ >= kEpsilonThreshold) {
+    if (epsilon_per_agg() >= kEpsilonThreshold) {
       mechanisms.push_back(nullptr);
       continue;
     }
@@ -164,7 +158,8 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
     // Create a noise mechanism out of those norm bounds and privacy params.
     TFF_ASSIGN_OR_RETURN(
         DPHistogramBundle noise_mechanism,
-        CreateDPHistogramBundle(epsilon_per_agg_, delta_per_agg_, l0_bound_,
+        CreateDPHistogramBundle(epsilon_per_agg(), delta_per_agg(),
+                                /*l0_bound=*/max_groups_contributed(),
                                 linfinity_bound, l1_bound, l2_bound,
                                 /*open_domain=*/false));
     mechanisms.push_back(std::move(noise_mechanism.mechanism));

@@ -36,6 +36,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -133,16 +134,15 @@ DPOpenDomainHistogram::DPOpenDomainHistogram(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
-    int num_inputs, std::optional<int64_t> min_contributors_to_group,
-    std::vector<int> contributors_to_groups)
-    : GroupByAggregator(input_key_specs, output_key_specs, intrinsics,
-                        std::move(key_combiner), std::move(aggregators),
-                        num_inputs, min_contributors_to_group,
-                        std::move(contributors_to_groups)),
-      epsilon_per_agg_(epsilon_per_agg),
-      delta_per_agg_(delta_per_agg),
-      l0_bound_(l0_bound) {}
+    int num_inputs, double epsilon, double delta,
+    int64_t max_groups_contributed,
+    std::optional<int> min_contributors_to_group,
+    std::vector<int> contributors_to_groups, int max_string_length)
+    : DPGroupByAggregator(
+          input_key_specs, output_key_specs, intrinsics,
+          std::move(key_combiner), std::move(aggregators), num_inputs, epsilon,
+          delta, max_groups_contributed, min_contributors_to_group,
+          std::move(contributors_to_groups), max_string_length) {}
 
 // Factory method to create DPOpenDomainHistogram
 StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
@@ -151,9 +151,10 @@ StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    double epsilon, double delta, int64_t l0_bound, int num_inputs,
-    std::optional<int64_t> min_contributors_to_group,
-    std::vector<int> contributors_to_groups) {
+    int num_inputs, double epsilon, double delta,
+    int64_t max_groups_contributed,
+    std::optional<int> min_contributors_to_group,
+    std::vector<int> contributors_to_groups, int max_string_length) {
   bool need_selector =
       min_contributors_to_group.has_value() && epsilon < kEpsilonThreshold;
 
@@ -167,26 +168,23 @@ StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
     delta_for_aggs /= 2;
   }
 
-  auto num_nested_intrinsics = intrinsics->size();
-  double epsilon_per_agg = (epsilon_for_aggs < kEpsilonThreshold
-                                ? epsilon_for_aggs / num_nested_intrinsics
-                                : kEpsilonThreshold);
-  double delta_per_agg = delta_for_aggs / num_nested_intrinsics;
   auto dp_open_domain_histogram = absl::WrapUnique(new DPOpenDomainHistogram(
       input_key_specs, output_key_specs, intrinsics, std::move(key_combiner),
-      std::move(aggregators), epsilon_per_agg, delta_per_agg, l0_bound,
-      num_inputs, min_contributors_to_group, contributors_to_groups));
+      std::move(aggregators), num_inputs, epsilon_for_aggs, delta_for_aggs,
+      max_groups_contributed, min_contributors_to_group, contributors_to_groups,
+      max_string_length));
 
   if (need_selector) {
     double epsilon_for_selector = epsilon - epsilon_for_aggs;
     double delta_for_selector = delta - delta_for_aggs;
-    TFF_ASSIGN_OR_RETURN(auto generic_selector,
-                         NearTruncatedGeometricPartitionSelection::Builder()
-                             .SetEpsilon(epsilon_for_selector)
-                             .SetDelta(delta_for_selector)
-                             .SetMaxPartitionsContributed(l0_bound)
-                             .SetPreThreshold(*min_contributors_to_group)
-                             .Build());
+    TFF_ASSIGN_OR_RETURN(
+        auto generic_selector,
+        NearTruncatedGeometricPartitionSelection::Builder()
+            .SetEpsilon(epsilon_for_selector)
+            .SetDelta(delta_for_selector)
+            .SetMaxPartitionsContributed(max_groups_contributed)
+            .SetPreThreshold(*min_contributors_to_group)
+            .Build());
     // generic_selector is a unique_ptr to a base class, so we have to cast it
     // to the derived class in order to access the GetSecondCrossover and
     // ShouldKeep methods.
@@ -247,15 +245,10 @@ StatusOr<Tensor> DPOpenDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
                         inputs[0]->shape(), std::move(ordinals));
 }
 
-StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
-  if (!CanReport()) {
-    return TFF_STATUS(FAILED_PRECONDITION)
-           << "DPOpenDomainHistogram::Report: the report goal isn't met";
-  }
-
+StatusOr<OutputTensorList> DPOpenDomainHistogram::NoisyReport() {
   // If epsilon is too large to be meaningful, we perform the non-DP
   // aggregation.
-  if (epsilon_per_agg_ >= kEpsilonThreshold) {
+  if (epsilon_per_agg() >= kEpsilonThreshold) {
     return std::move(*this).GroupByAggregator::Report();
   }
 
@@ -303,7 +296,8 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
       NUMERICAL_ONLY_DTYPE_CASES(
           column_dtypes[column], OutputType,
           TFF_RETURN_IF_ERROR(internal::NoiseAndThreshold<OutputType>(
-              epsilon_per_agg_, delta_per_agg_, l0_bound_,
+              epsilon_per_agg(), delta_per_agg(),
+              /*l0_bound=*/max_groups_contributed(),
               linfinity_tensor.CastToScalar<OutputType>(), l1_bound, l2_bound,
               *column_data[column], survivor_indices)));
     }
@@ -356,7 +350,8 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
     NUMERICAL_ONLY_DTYPE_CASES(
         column_dtypes[column], OutputType,
         TFF_RETURN_IF_ERROR(internal::NoiseWithoutThresholding<OutputType>(
-            epsilon_per_agg_, delta_per_agg_, l0_bound_,
+            epsilon_per_agg(), delta_per_agg(),
+            /*l0_bound=*/max_groups_contributed(),
             linfinity_tensor.CastToScalar<OutputType>(), l1_bound, l2_bound,
             *column_data[column])));
   }

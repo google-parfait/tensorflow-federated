@@ -16,7 +16,6 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_factory.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <iterator>
 #include <limits>
@@ -53,11 +52,11 @@ namespace {
 struct DPParameters {
   double epsilon;
   double delta;
-  int64_t l0_bound;
+  int64_t max_groups_contributed;
 };
 
-Status ValidateDPParameters(double epsilon, double delta, int64_t l0_bound,
-                            bool open_domain) {
+Status ValidateDPParameters(double epsilon, double delta,
+                            int64_t max_groups_contributed, bool open_domain) {
   if (epsilon <= 0) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "DPGroupByFactory: Epsilon must be positive.";
@@ -81,7 +80,7 @@ Status ValidateDPParameters(double epsilon, double delta, int64_t l0_bound,
                 "be less than 1.";
     }
   }
-  if (open_domain && l0_bound <= 0) {
+  if (open_domain && max_groups_contributed <= 0) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "DPGroupByFactory: For open-domain DP histograms, "
               "max_groups_contributed "
@@ -124,21 +123,22 @@ StatusOr<DPParameters> FindDPParameters(
                        FindDPParameterLocationByName(
                            intrinsic, parameter_name_to_index, kDeltaName));
   TFF_ASSIGN_OR_RETURN(
-      int l0_bound_index,
+      int max_groups_contributed_index,
       FindDPParameterLocationByName(intrinsic, parameter_name_to_index,
                                     kMaxGroupsContributedName));
 
   double epsilon = intrinsic.parameters[epsilon_index].CastToScalar<double>();
   double delta = intrinsic.parameters[delta_index].CastToScalar<double>();
-  int64_t l0_bound =
-      intrinsic.parameters[l0_bound_index].CastToScalar<int64_t>();
+  int64_t max_groups_contributed =
+      intrinsic.parameters[max_groups_contributed_index]
+          .CastToScalar<int64_t>();
 
   // If no keys are given, scalar aggregation will occur. There is exactly
   // one "group" in that case.
   if (intrinsic.inputs.empty()) {
-    l0_bound = 1;
+    max_groups_contributed = 1;
   }
-  return DPParameters{epsilon, delta, l0_bound};
+  return DPParameters{epsilon, delta, max_groups_contributed};
 }
 
 // Ensure that the key_names tensor has the correct length and is composed of
@@ -223,7 +223,7 @@ StatusOr<TensorSpan> FindAndValidateKeys(
 Status ValidateNestedIntrinsics(const Intrinsic& intrinsic, bool open_domain,
                                 DPParameters dp_parameters) {
   double delta = dp_parameters.delta;
-  int64_t l0_bound = dp_parameters.l0_bound;
+  int64_t max_groups_contributed = dp_parameters.max_groups_contributed;
   // Currently, we only support nested sums.
   // The following check will be updated when this changes.
   for (const auto& intrinsic : intrinsic.nested_intrinsics) {
@@ -272,8 +272,8 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic, bool open_domain,
           l1 > 0 && l1 != std::numeric_limits<double>::infinity();
       bool has_l2_bound =
           l2 > 0 && l2 != std::numeric_limits<double>::infinity();
-      if ((!has_linfinity_bound || l0_bound <= 0) && !has_l1_bound &&
-          !has_l2_bound) {
+      if ((!has_linfinity_bound || max_groups_contributed <= 0) &&
+          !has_l1_bound && !has_l2_bound) {
         return TFF_STATUS(INVALID_ARGUMENT)
                << "DPGroupByFactory: Closed-domain DP histograms require "
                   "either an L1 bound, an L2 bound, or both Linfinity and L0 "
@@ -283,7 +283,7 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic, bool open_domain,
       // a positive delta). But the Laplace mechanism requires a positive and
       // finite L1 sensitivity.
       bool has_l1_sensitivity =
-          has_l1_bound || (has_linfinity_bound && l0_bound > 0);
+          has_l1_bound || (has_linfinity_bound && max_groups_contributed > 0);
       if (delta <= 0 && !has_l1_sensitivity) {
         return TFF_STATUS(INVALID_ARGUMENT)
                << "DPGroupByFactory: Closed-domain DP histograms require "
@@ -361,9 +361,9 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
                        FindDPParameters(intrinsic, parameter_name_to_index));
   double epsilon = dp_parameters.epsilon;
   double delta = dp_parameters.delta;
-  int64_t l0_bound = dp_parameters.l0_bound;
-  TFF_RETURN_IF_ERROR(
-      ValidateDPParameters(epsilon, delta, l0_bound, open_domain));
+  int64_t max_groups_contributed = dp_parameters.max_groups_contributed;
+  TFF_RETURN_IF_ERROR(ValidateDPParameters(
+      epsilon, delta, max_groups_contributed, open_domain));
 
   // For the closed-domain case we must find the key tensors to pass on. This is
   // guaranteed to be present by the definition of the open_domain variable.
@@ -392,7 +392,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   // Create the DP key combiner, and only populate the key combiner with state
   // if there are keys.
   auto key_combiner = DPOpenDomainHistogram::CreateDPKeyCombiner(
-      intrinsic.inputs, &intrinsic.outputs, l0_bound);
+      intrinsic.inputs, &intrinsic.outputs, max_groups_contributed);
   if (aggregator_state != nullptr && key_combiner != nullptr) {
     TFF_RETURN_IF_ERROR(GroupByFactory::PopulateKeyCombinerFromState(
         *key_combiner, *aggregator_state));
@@ -408,21 +408,15 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
     }
     return DPOpenDomainHistogram::Create(
         intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-        std::move(key_combiner), std::move(nested_aggregators), epsilon, delta,
-        l0_bound, num_inputs, min_contributors_to_group,
+        std::move(key_combiner), std::move(nested_aggregators), num_inputs,
+        epsilon, delta, max_groups_contributed, min_contributors_to_group,
         contributors_to_groups);
   }
 
-  size_t num_nested_intrinsics = intrinsic.nested_intrinsics.size();
-  double epsilon_per_agg =
-      (epsilon < kEpsilonThreshold ? epsilon / num_nested_intrinsics
-                                   : kEpsilonThreshold);
-  double delta_per_agg = delta / num_nested_intrinsics;
-
   return std::unique_ptr<DPClosedDomainHistogram>(new DPClosedDomainHistogram(
       intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-      std::move(key_combiner), std::move(nested_aggregators), epsilon_per_agg,
-      delta_per_agg, l0_bound, key_tensors, num_inputs));
+      std::move(key_combiner), std::move(nested_aggregators), num_inputs,
+      epsilon, delta, max_groups_contributed, key_tensors));
 }
 
 REGISTER_AGGREGATOR_FACTORY(std::string(kDPGroupByUri), DPGroupByFactory);

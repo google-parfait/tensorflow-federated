@@ -17,28 +17,24 @@
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
 
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <vector>
 
-#include "absl/container/flat_hash_set.h"
-#include "absl/status/status.h"
-#include "absl/types/span.h"
 #include "algorithms/partition-selection.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_slice_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
@@ -50,13 +46,7 @@ namespace aggregation {
 // ::Report adds noise to aggregates and removes composite keys that have value
 // below a threshold.
 // This class is not thread safe.
-class DPOpenDomainHistogram : public GroupByAggregator {
- public:
-  // Performs the same checks as TensorAggregator::Report but also checks
-  // magnitude of DP budget. If too large, simply releases noiseless aggregate.
-  // Otherwise, applies NoiseAndThreshold to the noiseless aggregate.
-  StatusOr<OutputTensorList> Report() && override;
-
+class DPOpenDomainHistogram : public DPGroupByAggregator {
  protected:
   friend class DPGroupByFactory;
   friend class DPOpenDomainHistogramPeer;
@@ -66,31 +56,26 @@ class DPOpenDomainHistogram : public GroupByAggregator {
   // should instead create a DPOpenDomainHistogram from an intrinsic using the
   // factory, i.e.
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
-  //
-  // Takes the same inputs as GroupByAggregator, in addition to:
-  // * epsilon: the privacy budget.
-  // * delta: the privacy failure parameter.
-  // * l0_bound: the maximum number of composite keys one user can contribute to
-  //   (assuming each DPOpenDomainHistogram::AggregateTensorsInternal call
-  //    contains data from a unique user)
-  //
-  // The output_key_specs and intrinsics are passed as pointers  as opposed to
-  // references because they are required to outlast the DPOpenDomainHistogram.
   static StatusOr<std::unique_ptr<DPOpenDomainHistogram>> Create(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      double epsilon, double delta, int64_t l0_bound, int num_inputs,
-      std::optional<int64_t> min_contributors_to_group,
-      std::vector<int> contributors_to_groups);
+      int num_inputs, double epsilon, double delta,
+      int64_t max_groups_contributed,
+      std::optional<int> min_contributors_to_group = std::nullopt,
+      std::vector<int> contributors_to_groups = {},
+      int max_string_length = kDefaultMaxStringLength);
 
   // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
   // on the input specification
   static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs, int64_t l0_bound);
+
+  // Applies NoiseAndThreshold to the noiseless aggregate.
+  StatusOr<OutputTensorList> NoisyReport() override;
 
  private:
   // Constructs a DPOpenDomainHistogram. Only called by the Create() method
@@ -101,9 +86,11 @@ class DPOpenDomainHistogram : public GroupByAggregator {
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
-      int num_inputs, std::optional<int64_t> min_contributors_to_group,
-      std::vector<int> contributors_to_groups);
+      int num_inputs, double epsilon, double delta,
+      int64_t max_groups_contributed,
+      std::optional<int> min_contributors_to_group,
+      std::vector<int> contributors_to_groups,
+      int max_string_length = kDefaultMaxStringLength);
 
   // When merging two DPOpenDomainHistograms, norm bounding the aggregates will
   // destroy accuracy and is not needed for privacy. Hence, this function calls
@@ -111,9 +98,6 @@ class DPOpenDomainHistogram : public GroupByAggregator {
   StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs) override;
 
-  double epsilon_per_agg_;
-  double delta_per_agg_;
-  int64_t l0_bound_;
   std::unique_ptr<
       differential_privacy::NearTruncatedGeometricPartitionSelection>
       selector_;

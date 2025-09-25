@@ -26,7 +26,8 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
@@ -43,13 +44,8 @@ namespace aggregation {
 // (ordinals) that any one aggregation can contribute to.
 // ::Report adds noise to aggregates
 // This class is not thread safe.
-class DPClosedDomainHistogram : public GroupByAggregator {
+class DPClosedDomainHistogram : public DPGroupByAggregator {
  public:
-  // Performs the same checks as TensorAggregator::Report but also checks
-  // magnitude of DP budget. If too large, simply releases noiseless aggregate.
-  // Otherwise, adds noise scaled to either L1 or L2 sensitivity.
-  StatusOr<OutputTensorList> Report() && override;
-
   // Accessor to the tensors that specify the domain of each key.
   const TensorSpan& domain_tensors() const { return domain_tensors_; }
 
@@ -62,23 +58,21 @@ class DPClosedDomainHistogram : public GroupByAggregator {
   // factory, i.e.
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
   //
-  // Takes the same inputs as GroupByAggregator, in addition to:
-  // * epsilon_per_agg: the privacy budget per nested intrinsic.
-  // * delta_per_agg: the privacy failure parameter per nested intrinsic.
-  // * l0_bound: the maximum number of composite keys one user can contribute to
-  //   (assuming each DPClosedDomainHistogram::AggregateTensorsInternal call
-  //    contains data from a unique user). Can be negative, in which case no
-  //    bound on the number of composite keys is enforced.
-  // * domain_tensors: a Span of Tensors such that the i-th describes the domain
-  //   of the i-th grouping key.
+  // Takes the same inputs as DPGroupByAggregator, plus `domain_tensors`, a Span
+  // of Tensors where the i-th describes the domain of the i-th grouping key.
   DPClosedDomainHistogram(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
-      TensorSpan domain_tensors, int num_inputs);
+      int num_inputs, double epsilon, double delta,
+      int64_t max_groups_contributed, TensorSpan domain_tensors,
+      int max_string_length = kDefaultMaxStringLength);
+
+  // Checks magnitude of DP budget. If too large, simply releases noiseless
+  // aggregate. Otherwise, adds noise scaled to either L1 or L2 sensitivity.
+  StatusOr<OutputTensorList> NoisyReport() override;
 
  private:
   // When merging two DPClosedDomainHistograms, bounding the aggregates will
@@ -97,10 +91,6 @@ class DPClosedDomainHistogram : public GroupByAggregator {
   // [0, domain_tensors_[i].num_elements()]
   bool IncrementDomainIndices(absl::FixedArray<int64_t>& domain_indices,
                               int64_t which_key = 0);
-
-  double epsilon_per_agg_;
-  double delta_per_agg_;
-  int64_t l0_bound_;
 
   TensorSpan domain_tensors_;
 };
