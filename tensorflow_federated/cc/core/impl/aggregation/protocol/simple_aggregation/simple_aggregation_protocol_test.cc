@@ -30,6 +30,7 @@
 // clang-format on
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -1262,12 +1263,12 @@ TEST_F(SimpleAggregationProtocolTest, ConcurrentAggregation_AbortWhileQueued) {
 
 TEST_F(SimpleAggregationProtocolTest,
        ConcurrentAggregation_CompleteWhileQueued) {
-  const int64_t kNumClients = 10;
   const int64_t kNumClientBeforeBlocking = 3;
 
   // Notifies the aggregation to unblock;
   absl::Notification resume_aggregation_notification;
   absl::Notification aggregation_blocked_notification;
+  absl::Notification resume_complete_notification;
   std::atomic<int> agg_counter = 0;
   FunctionAggregatorFactory agg_factory([&](int a, int b) {
     if (++agg_counter > kNumClientBeforeBlocking &&
@@ -1298,7 +1299,7 @@ TEST_F(SimpleAggregationProtocolTest,
       }
     }
   )pb"));
-  EXPECT_THAT(protocol->Start(kNumClients), IsOk());
+  EXPECT_THAT(protocol->Start(20), IsOk());
 
   EXPECT_CALL(checkpoint_parser_factory_, Create(_)).WillRepeatedly(Invoke([&] {
     auto parser = std::make_unique<MockCheckpointParser>();
@@ -1310,7 +1311,7 @@ TEST_F(SimpleAggregationProtocolTest,
 
   // Schedule receiving inputs on 10 concurrent threads.
   auto scheduler = CreateThreadPoolScheduler(10);
-  for (int64_t i = 0; i < kNumClients; ++i) {
+  for (int64_t i = 0; i < 10; ++i) {
     scheduler->Schedule([&, i]() {
       EXPECT_THAT(protocol->ReceiveClientMessage(i, MakeClientMessage()),
                   IsOk());
@@ -1322,10 +1323,13 @@ TEST_F(SimpleAggregationProtocolTest,
   // Poll until 3 inputs are reported as aggregated and there are no pending
   // clients. The polling is needed to work around the concurrent execution from
   // all clients.
+  // Note that the aggregation is started with 20 pending clients, and
+  // the code above processes 10 clients, so by the end there should be 10
+  // pending clients.
   StatusMessage status_message;
   do {
     status_message = protocol->GetStatus();
-  } while (status_message.num_clients_pending() > 0 ||
+  } while (status_message.num_clients_pending() > 10 ||
            status_message.num_inputs_aggregated_and_included() < 3);
 
   // At this point one input must be blocked inside the aggregation waiting for
@@ -1338,6 +1342,7 @@ TEST_F(SimpleAggregationProtocolTest,
   EXPECT_THAT(protocol->GetStatus(),
               testing::EqualsProto("protocol_state: PROTOCOL_STARTED "
                                    "num_clients_completed: 10 "
+                                   "num_clients_pending: 10 "
                                    "num_inputs_aggregated_and_pending: 7 "
                                    "num_inputs_aggregated_and_included: 3"));
 
@@ -1346,17 +1351,41 @@ TEST_F(SimpleAggregationProtocolTest,
   // Complete and let all blocked aggregations continue.
   auto& checkpoint_builder = ExpectCheckpointBuilder();
   // Verify that foo_out tensor is added to the result checkpoint
-  EXPECT_CALL(checkpoint_builder, Add(StrEq("foo_out"), _))
-      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(checkpoint_builder, Add(StrEq("foo_out"), _)).WillOnce([&]() {
+    // This code is called from inside the Complete() call.
+    // Let's add 10 more inputs.
+    for (int64_t i = 10; i < 20; ++i) {
+      scheduler->Schedule([&, i]() {
+        EXPECT_THAT(protocol->ReceiveClientMessage(i, MakeClientMessage()),
+                    IsOk());
+      });
+    }
+    resume_complete_notification.WaitForNotification();
+    return absl::OkStatus();
+  });
 
-  EXPECT_THAT(protocol->Complete(), IsOk());
+  // Schedule the Complete() call on a separate thread which will add 10 more
+  // inputs.
+  scheduler->Schedule([&]() { EXPECT_THAT(protocol->Complete(), IsOk()); });
+
+  // Wait until all added inputs are discarded.
+  do {
+    status_message = protocol->GetStatus();
+  } while (status_message.num_inputs_discarded() < 10);
+  resume_complete_notification.Notify();
+
   scheduler->WaitUntilIdle();
 
   status_message = protocol->GetStatus();
+  LOG(INFO) << "Final status_message: " << status_message.DebugString();
+
   ASSERT_EQ(status_message.protocol_state(), PROTOCOL_COMPLETED);
-  ASSERT_EQ(status_message.num_clients_completed(), 10);
+  ASSERT_EQ(status_message.num_clients_completed(), 20);
   // At least 4 clients must be aggregated
   ASSERT_GE(status_message.num_inputs_aggregated_and_included(), 4);
+  // At least 10 clients must be discarded - including all the ones that were
+  // added from inside the Complete() call.
+  ASSERT_GE(status_message.num_inputs_discarded(), 10);
 }
 
 TEST_F(SimpleAggregationProtocolTest, OutlierDetection_ClosePendingClients) {

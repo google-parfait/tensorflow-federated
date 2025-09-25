@@ -143,6 +143,8 @@ void SimpleAggregationProtocol::SetProtocolState(ProtocolState state) {
   TFF_CHECK(
       (protocol_state_ == PROTOCOL_CREATED && state == PROTOCOL_STARTED) ||
       (protocol_state_ == PROTOCOL_STARTED &&
+       (state == PROTOCOL_COMPLETING || state == PROTOCOL_ABORTED)) ||
+      (protocol_state_ == PROTOCOL_COMPLETING &&
        (state == PROTOCOL_COMPLETED || state == PROTOCOL_ABORTED)))
       << "Invalid protocol state transition from "
       << ProtocolState_Name(protocol_state_) << " to "
@@ -270,6 +272,9 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
         "Only inline_bytes or uri type of input is supported");
   }
 
+  absl::Status client_completion_status = absl::OkStatus();
+  ClientState client_completion_state = CLIENT_COMPLETED;
+
   // Verify the state.
   absl::Time client_start_time;
   {
@@ -288,13 +293,21 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
                     << ClientStateDebugString(client_state);
       return absl::OkStatus();
     }
+
+    if (protocol_state_ != PROTOCOL_STARTED) {
+      // Discard the client without trying to aggregate it.
+      client_completion_status =
+          absl::AbortedError("Aggregation has already been finished.");
+      SetClientState(client_id, CLIENT_DISCARDED);
+      all_clients_[client_id].server_message =
+          MakeCloseClientMessage(client_completion_status);
+      return absl::OkStatus();
+    }
+
     client_start_time = pending_clients_[client_id];
     SetClientState(client_id, CLIENT_RECEIVED_INPUT_AND_PENDING);
   }
   absl::Duration client_latency = clock_->Now() - client_start_time;
-
-  absl::Status client_completion_status = absl::OkStatus();
-  ClientState client_completion_state = CLIENT_COMPLETED;
 
   absl::Cord report;
   if (message.simple_aggregation().input().has_inline_bytes()) {
@@ -461,13 +474,14 @@ absl::Status SimpleAggregationProtocol::Complete() {
   {
     absl::MutexLock lock(&state_mu_);
     TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_STARTED));
+    SetProtocolState(PROTOCOL_COMPLETING);
   }
 
   auto report = CreateReport();
 
   absl::MutexLock lock(&state_mu_);
   // Make sure the protocol wasn't aborted while creating the report.
-  TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_STARTED));
+  TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_COMPLETING));
   if (report.ok()) {
     SetProtocolState(PROTOCOL_COMPLETED);
     result_ = std::move(report.value());
@@ -482,7 +496,13 @@ absl::Status SimpleAggregationProtocol::Complete() {
 absl::Status SimpleAggregationProtocol::Abort() {
   StopOutlierDetection();
   absl::MutexLock lock(&state_mu_);
-  TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_STARTED));
+  if (!(protocol_state_ == PROTOCOL_STARTED ||
+        protocol_state_ == PROTOCOL_COMPLETING)) {
+    return absl::FailedPreconditionError(
+        absl::StrFormat("The current protocol state is %s, expected "
+                        "PROTOCOL_STARTED or PROTOCOL_COMPLETING",
+                        ProtocolState_Name(protocol_state_)));
+  }
   checkpoint_aggregator_->Abort();
   SetProtocolState(PROTOCOL_ABORTED);
   AwaitAggregationQueueEmpty();
