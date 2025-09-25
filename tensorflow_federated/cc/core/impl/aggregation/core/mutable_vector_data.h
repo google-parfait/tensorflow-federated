@@ -36,6 +36,10 @@ class MutableVectorData : public std::vector<T>, public TensorData {
   // Derive constructors from the base vector class.
   using std::vector<T>::vector;
 
+  // Allow moving from a vector.
+  explicit MutableVectorData(std::vector<T>&& other)
+      : std::vector<T>::vector(std::move(other)) {}
+
   ~MutableVectorData() override = default;
 
   // Implementation of the base class methods.

@@ -32,6 +32,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/partitioner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
@@ -83,6 +84,11 @@ class OneDimBaseGroupingAggregator : public TensorAggregator {
   // Stores the intermediate state of the OneDimBaseGroupingAggregator as a
   // proto.
   virtual OneDimGroupingAggregatorState ToProto() = 0;
+
+  // Partitions the OneDimBaseGroupingAggregator into multiple slices and stores
+  // the intermediate states into a vector of protos.
+  virtual StatusOr<std::vector<OneDimGroupingAggregatorState>>
+  PartitionToProtos(const Partitioner& partitioner) = 0;
 
  protected:
   // Checks that the input tensors param is valid.
@@ -176,10 +182,23 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
   }
 
   OneDimGroupingAggregatorState ToProto() override {
-    OneDimGroupingAggregatorState aggregator_state;
-    aggregator_state.set_num_inputs(num_inputs_);
-    *(aggregator_state.mutable_vector_data()) = data_vector_->EncodeContent();
-    return aggregator_state;
+    // We don't expect the data_vector_ to be used any more after ToProto is
+    // called.
+    return CreateStateFromMutableVectorData(std::move(*data_vector_));
+  }
+
+  StatusOr<std::vector<OneDimGroupingAggregatorState>> PartitionToProtos(
+      const Partitioner& partitioner) override {
+    std::vector<OneDimGroupingAggregatorState> partitioned_states;
+    partitioned_states.reserve(partitioner.GetNumPartitions());
+    TFF_ASSIGN_OR_RETURN(auto partitioned_nested_aggregators,
+                         partitioner.PartitionData<OutputT>(*data_vector_));
+
+    for (auto& slice : partitioned_nested_aggregators) {
+      partitioned_states.push_back(CreateStateFromMutableVectorData(
+          MutableVectorData<OutputT>(std::move(slice))));
+    }
+    return partitioned_states;
   }
 
  protected:
@@ -255,6 +274,15 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
   virtual OutputT GetDefaultValue() = 0;
 
  private:
+  // TODO: b/447139788 - Optimize memory usage when serializing the state.
+  OneDimGroupingAggregatorState CreateStateFromMutableVectorData(
+      MutableVectorData<OutputT>&& data) {
+    OneDimGroupingAggregatorState aggregator_state;
+    aggregator_state.set_num_inputs(num_inputs_);
+    *(aggregator_state.mutable_vector_data()) = data.EncodeContent();
+    return aggregator_state;
+  }
+
   Status ValidateTensorInputs(const InputTensorList& tensors) {
     TFF_CHECK(tensors.size() == 2)
         << "OneDimGroupingAggregator should operate on 2 input tensors";

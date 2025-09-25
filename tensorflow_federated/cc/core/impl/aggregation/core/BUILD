@@ -109,6 +109,7 @@ cc_library(
     deps = [
         ":agg_core_cc_proto",
         ":intrinsic",
+        ":partitioner",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -199,6 +200,7 @@ cc_library(
         ":agg_core_cc_proto",
         ":aggregator",
         ":intrinsic",
+        ":partitioner",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/status",
@@ -649,6 +651,7 @@ cc_test(
     deps = [
         ":agg_core_cc_proto",
         ":one_dim_grouping_aggregator",
+        ":partitioner",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",

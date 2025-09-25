@@ -42,7 +42,7 @@ class Partitioner {
   // Partitions the input vector data into multiple slices.
   template <typename T>
   StatusOr<std::vector<std::vector<T>>> PartitionData(
-      const std::vector<T>& data) {
+      const std::vector<T>& data) const {
     if (data.size() != hashes_.size()) {
       return TFF_STATUS(INVALID_ARGUMENT)
              << "The number of elements in the input data should be equal "
@@ -59,7 +59,8 @@ class Partitioner {
       : hashes_(hashes), num_partitions_(num_partitions) {}
 
   template <typename T>
-  std::vector<std::vector<T>> PartitionInternal(absl::Span<const T> input) {
+  std::vector<std::vector<T>> PartitionInternal(
+      absl::Span<const T> input) const {
     std::vector<std::vector<T>> slices(num_partitions_);
 
     for (int index = 0; index < input.size(); ++index) {

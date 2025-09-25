@@ -19,13 +19,16 @@
 #include <climits>
 #include <cstdint>
 #include <utility>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/partitioner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
@@ -153,6 +156,28 @@ class MinGroupingAggregator final : public OneDimGroupingAggregator<int32_t> {
   }
   int32_t GetDefaultValue() override { return INT_MAX; }
 };
+
+StatusOr<Partitioner> CreateDefaultPartitioner(int num_partitions) {
+  std::vector<Tensor> key_tensors;
+  key_tensors.push_back(Tensor::Create(DT_STRING, {3},
+                                       CreateTestData<string_view>({
+                                           "a",
+                                           "b",
+                                           "c",
+                                       }))
+                            .value());
+  key_tensors.push_back(Tensor::Create(DT_INT64, {3},
+                                       CreateTestData<int64_t>({
+                                           1,
+                                           2,
+                                           3,
+                                       }))
+                            .value());
+  key_tensors.push_back(
+      Tensor::Create(DT_DOUBLE, {3}, CreateTestData<double>({2.0, 3.0, 4.0}))
+          .value());
+  return Partitioner::Create(key_tensors, num_partitions);
+}
 
 TEST_P(OneDimGroupingAggregatorTest, EmptyReport) {
   SumGroupingAggregator<int32_t> aggregator;
@@ -774,6 +799,72 @@ TEST(OneDimGroupingAggregatorTest, Serialize_Unimplmeneted) {
   SumGroupingAggregator<int32_t> aggregator;
   Status s = std::move(aggregator).Serialize().status();
   EXPECT_THAT(s, StatusIs(UNIMPLEMENTED));
+}
+
+TEST(OneDimGroupingAggregatorTest, ToProtoWithPartition_Succeeds) {
+  SumGroupingAggregator<int32_t> aggregator;
+  Tensor ordinal1 =
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({0, 1, 2})).value();
+  Tensor ordinal2 =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 1})).value();
+  Tensor t1 = Tensor::Create(DT_INT32, {3}, CreateTestData({1, 2, 3})).value();
+  Tensor t2 = Tensor::Create(DT_INT32, {3}, CreateTestData({2, 3, 4})).value();
+  Tensor t3 = Tensor::Create(DT_INT32, {2}, CreateTestData({4, 5})).value();
+  EXPECT_THAT(aggregator.Accumulate({&ordinal1, &t1}), IsOk());
+  EXPECT_THAT(aggregator.Accumulate({&ordinal1, &t2}), IsOk());
+
+  TFF_ASSERT_OK_AND_ASSIGN(Partitioner partitioner,
+                           CreateDefaultPartitioner(/*num_partitions=*/2));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto states, std::move(aggregator).PartitionToProtos(partitioner));
+  EXPECT_THAT(states.size(), Eq(2));
+  aggregator = SumGroupingAggregator<int32_t>::FromProto(states[1]);
+
+  EXPECT_THAT(aggregator.Accumulate({&ordinal2, &t3}), IsOk());
+  EXPECT_THAT(aggregator.CanReport(), IsTrue());
+
+  auto result = std::move(aggregator).Report();
+  EXPECT_THAT(result, IsOk());
+  EXPECT_THAT(result.value().size(), Eq(1));
+  // Verify the resulting tensor.
+  EXPECT_THAT(result.value()[0], IsTensor({2}, {7, 12}));
+}
+
+TEST(OneDimGroupingAggregatorTest,
+     ToProtoWithPartition_SucceedsWithEmptySlice) {
+  SumGroupingAggregator<int32_t> aggregator;
+  Tensor ordinal =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 1})).value();
+  Tensor t1 = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 2})).value();
+  Tensor t2 = Tensor::Create(DT_INT32, {2}, CreateTestData({2, 3})).value();
+  Tensor t3 = Tensor::Create(DT_INT32, {1}, CreateTestData({5})).value();
+  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t1}), IsOk());
+  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t2}), IsOk());
+
+  std::vector<Tensor> key_tensors;
+  key_tensors.push_back(Tensor::Create(DT_STRING, {2},
+                                       CreateTestData<string_view>({
+                                           "a",
+                                           "c",
+                                       }))
+                            .value());
+  key_tensors.push_back(Tensor::Create(DT_INT64, {2},
+                                       CreateTestData<int64_t>({
+                                           3,
+                                           5,
+                                       }))
+                            .value());
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto partitioner, Partitioner::Create(key_tensors, /*num_partitions=*/2));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto states, std::move(aggregator).PartitionToProtos(partitioner));
+  EXPECT_THAT(states.size(), Eq(2));
+  aggregator = SumGroupingAggregator<int32_t>::FromProto(states[0]);
+  EXPECT_THAT(aggregator.CanReport(), IsTrue());
+
+  auto result = std::move(aggregator).Report();
+  EXPECT_THAT(result, IsOk());
+  EXPECT_THAT(result.value().size(), Eq(1));
 }
 
 INSTANTIATE_TEST_SUITE_P(
