@@ -2857,8 +2857,35 @@ TEST(GroupByAggregatorTest, Partition_MultipleKeyTensors_Succeeds) {
       auto serialized_states,
       std::move(*group_by_aggregator).Partition(/*num_partitions=*/2));
   ASSERT_EQ(serialized_states.size(), 2);
-  // TODO: b/437952802) - Add tests for deserializing and merging the states to
-  // verify the correctness of the partitioning.
+  group_by_aggregator =
+      DeserializeTensorAggregator(intrinsic, serialized_states[1]).value();
+
+  Tensor sizeKeys3 =
+      Tensor::Create(
+          DT_STRING, shape,
+          CreateTestData<string_view>({"large", "large", "small", "small"}))
+          .value();
+  Tensor animalKeys3 =
+      Tensor::Create(
+          DT_STRING, shape,
+          CreateTestData<string_view>({"dog", "dog", "rabbit", "cat"}))
+          .value();
+  Tensor t3 =
+      Tensor::Create(DT_INT32, shape, CreateTestData({3, 11, 7, 20})).value();
+  EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys3, &animalKeys3, &t3}),
+              IsOk());
+  EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
+  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(3));
+
+  auto result = std::move(*group_by_aggregator).Report();
+  EXPECT_THAT(result, IsOk());
+  EXPECT_THAT(result.value().size(), Eq(3));
+  // Verify the resulting tensors.
+  EXPECT_THAT(result.value()[0],
+              IsTensor<string_view>({4}, {"large", "large", "small", "small"}));
+  EXPECT_THAT(result.value()[1],
+              IsTensor<string_view>({4}, {"cat", "dog", "rabbit", "cat"}));
+  EXPECT_THAT(result.value()[2], IsTensor<int64_t>({4}, {9, 41, 7, 20}));
 }
 
 TEST(GroupByAggregatorTest, Partition_InvalidNumPartitions_Fails) {

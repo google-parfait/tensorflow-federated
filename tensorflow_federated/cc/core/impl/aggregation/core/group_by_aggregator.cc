@@ -341,21 +341,34 @@ StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
                                            "num_partitions must be at least 1.";
   }
 
-  std::vector<std::string> serialized_states(num_partitions);
   std::vector<GroupByAggregatorState> group_by_aggregator_states(
       num_partitions);
   OutputTensorList keys = key_combiner_->GetOutputKeys();
   TFF_ASSIGN_OR_RETURN(Partitioner partitioner,
                        Partitioner::Create(keys, num_partitions));
+  for (auto& group_by_aggregator_state : group_by_aggregator_states) {
+    group_by_aggregator_state.mutable_keys()->Reserve(keys.size());
+    group_by_aggregator_state.mutable_nested_aggregators()->Reserve(
+        aggregators_.size());
+    group_by_aggregator_state.set_num_inputs(num_inputs_);
+  }
   for (const auto& key : keys) {
     TFF_ASSIGN_OR_RETURN(auto partitioned_keys, partitioner.PartitionKeys(key));
-    for (int j = 0; j < num_partitions; ++j) {
-      group_by_aggregator_states[j].mutable_keys()->Add(
-          partitioned_keys[j].ToProto());
+    for (int i = 0; i < num_partitions; ++i) {
+      group_by_aggregator_states[i].mutable_keys()->Add(
+          partitioned_keys[i].ToProto());
     }
   }
-  // TODO: b/437952802 - Serialize the state of the nested aggregators and
-  // contributors to groups.
+  for (const auto& nested_aggregator : aggregators_) {
+    TFF_ASSIGN_OR_RETURN(auto partitioned_nested_aggregators,
+                         nested_aggregator->PartitionToProtos(partitioner));
+    for (int i = 0; i < num_partitions; ++i) {
+      *group_by_aggregator_states[i].mutable_nested_aggregators()->Add() =
+          partitioned_nested_aggregators[i];
+    }
+  }
+  // TODO: b/437952802 - Partition the contributors to groups.
+  std::vector<std::string> serialized_states(num_partitions);
   for (int i = 0; i < num_partitions; ++i) {
     serialized_states[i] =
         std::move(group_by_aggregator_states[i]).SerializeAsString();
@@ -380,7 +393,8 @@ GroupByAggregator::ConvertHistogramToSliceData(OutputTensorList& histogram) {
     if (num_rows != current_rows) {
       return TFF_STATUS(INVALID_ARGUMENT)
              << "GroupByAggregator::ConvertHistogramToSliceData: Expected "
-                "histogram to be a list of tensors of the same size but first "
+                "histogram to be a list of tensors of the same size but "
+                "first "
                 "tensor has size "
              << num_rows << " and tensor at index " << i << " has size "
              << current_rows;
@@ -470,10 +484,10 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
            << "GroupByAggregator::AggregateTensorsInternal should operate on "
            << num_tensors_per_input_ << " input tensors";
   }
-  // Get the shape of the first key tensor in order to ensure that all the value
-  // tensors have the same shape. CompositeKeyCombiner::Accumulate will ensure
-  // that all keys have the same shape before making any changes to its own
-  // internal state.
+  // Get the shape of the first key tensor in order to ensure that all the
+  // value tensors have the same shape. CompositeKeyCombiner::Accumulate will
+  // ensure that all keys have the same shape before making any changes to its
+  // own internal state.
   TensorShape key_shape = tensors[0]->shape();
   if (key_shape.dim_sizes().size() > 1) {
     return TFF_STATUS(INVALID_ARGUMENT)
@@ -482,8 +496,8 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
   }
   // Check all required invariants on the input tensors, so this function can
   // fail before changing the state of this GroupByAggregator if there is an
-  // invalid input tensor. The input tensors should correspond to the Intrinsic
-  // input TensorSpecs since this is an Accumulate operation.
+  // invalid input tensor. The input tensors should correspond to the
+  // Intrinsic input TensorSpecs since this is an Accumulate operation.
   size_t input_index = num_keys_per_input_;
   for (const Intrinsic& intrinsic : intrinsics_) {
     for (const TensorSpec& tensor_spec : intrinsic.inputs) {
@@ -509,10 +523,11 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
     // Accumulate the input tensors into the aggregator.
     Status aggregation_status =
         aggregators_[i]->Accumulate(std::move(intrinsic_inputs));
-    // If the aggregation operation fails on a sub-intrinsic, the key_combiner_
-    // and any previous sub-intrinsics have already been modified. Thus, exit
-    // the program with a CHECK failure rather than a failed status which might
-    // leave the GroupByAggregator in an inconsistent state.
+    // If the aggregation operation fails on a sub-intrinsic, the
+    // key_combiner_ and any previous sub-intrinsics have already been
+    // modified. Thus, exit the program with a CHECK failure rather than a
+    // failed status which might leave the GroupByAggregator in an
+    // inconsistent state.
     TFF_CHECK(aggregation_status.ok())
         << "GroupByAggregator::AggregateTensorsInternal "
         << aggregation_status.message();
@@ -528,10 +543,10 @@ Status GroupByAggregator::MergeTensorsInternal(
            << "GroupByAggregator::MergeTensorsInternal should operate on "
            << num_tensors_per_input_ << " input tensors";
   }
-  // Get the shape of the first key tensor in order to ensure that all the value
-  // tensors have the same shape. CompositeKeyCombiner::Accumulate will ensure
-  // that all keys have the same shape before making any changes to its own
-  // internal state.
+  // Get the shape of the first key tensor in order to ensure that all the
+  // value tensors have the same shape. CompositeKeyCombiner::Accumulate will
+  // ensure that all keys have the same shape before making any changes to its
+  // own internal state.
   TensorShape key_shape = tensors[0]->shape();
   if (key_shape.dim_sizes().size() > 1) {
     return TFF_STATUS(INVALID_ARGUMENT)
@@ -540,8 +555,8 @@ Status GroupByAggregator::MergeTensorsInternal(
   }
   // Check all required invariants on the input tensors, so this function can
   // fail before changing the state of this GroupByAggregator if there is an
-  // invalid input tensor. The input tensors should correspond to the Intrinsic
-  // output TensorSpecs since this is an Merge operation.
+  // invalid input tensor. The input tensors should correspond to the
+  // Intrinsic output TensorSpecs since this is an Merge operation.
   size_t input_index = num_keys_per_input_;
   for (const Intrinsic& intrinsic : intrinsics_) {
     for (const TensorSpec& tensor_spec : intrinsic.outputs) {
@@ -568,10 +583,11 @@ Status GroupByAggregator::MergeTensorsInternal(
     // Merge the input tensors into the aggregator.
     Status aggregation_status = aggregators_[i]->MergeTensors(
         std::move(intrinsic_inputs), num_merged_inputs);
-    // If the aggregation operation fails on a sub-intrinsic, the key_combiner_
-    // and any previous sub-intrinsics have already been modified. Thus, exit
-    // the program with a CHECK failure rather than a failed status which might
-    // leave the GroupByAggregator in an inconsistent state.
+    // If the aggregation operation fails on a sub-intrinsic, the
+    // key_combiner_ and any previous sub-intrinsics have already been
+    // modified. Thus, exit the program with a CHECK failure rather than a
+    // failed status which might leave the GroupByAggregator in an
+    // inconsistent state.
     TFF_CHECK(aggregation_status.ok())
         << "GroupByAggregator::MergeTensorsInternal "
         << aggregation_status.message();
@@ -607,9 +623,9 @@ StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeys(
     }
     return key_combiner_->Accumulate(std::move(keys));
   }
-  // If there are no keys, we should aggregate all elements in a column into one
-  // element, as if there were an imaginary key column with identical values for
-  // all rows.
+  // If there are no keys, we should aggregate all elements in a column into
+  // one element, as if there were an imaginary key column with identical
+  // values for all rows.
   auto ordinals =
       std::make_unique<MutableVectorData<int64_t>>(inputs[0]->num_elements());
   return Tensor::Create(internal::TypeTraits<int64_t>::kDataType,
@@ -617,8 +633,8 @@ StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeys(
 }
 StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeysForMerge(
     const InputTensorList& inputs) {
-  // In this base class, ordinals are made the same way for MergeTensorsInternal
-  // as for AggregateTensorsInternal.
+  // In this base class, ordinals are made the same way for
+  // MergeTensorsInternal as for AggregateTensorsInternal.
   return CreateOrdinalsByGroupingKeys(inputs);
 }
 
@@ -626,10 +642,10 @@ Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
   bool other_has_no_combiner = (other.key_combiner_ == nullptr);
   bool this_has_no_combiner = (key_combiner_ == nullptr);
   if (other_has_no_combiner != this_has_no_combiner) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::MergeWith: "
-              "Expected other GroupByAggregator to have the same key input and "
-              "output specs";
+    return TFF_STATUS(INVALID_ARGUMENT) << "GroupByAggregator::MergeWith: "
+                                           "Expected other GroupByAggregator "
+                                           "to have the same key input and "
+                                           "output specs";
   }
   if (this_has_no_combiner) {
     return absl::OkStatus();
@@ -641,13 +657,13 @@ Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
               "min_contributors_to_group";
   }
   // The constructor validates that input key types match output key types, so
-  // checking that the output key types of both aggregators match is sufficient
-  // to verify key compatibility.
+  // checking that the output key types of both aggregators match is
+  // sufficient to verify key compatibility.
   if (other.output_key_specs_ != output_key_specs_) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::MergeWith: "
-              "Expected other GroupByAggregator to have the same key input and "
-              "output specs";
+    return TFF_STATUS(INVALID_ARGUMENT) << "GroupByAggregator::MergeWith: "
+                                           "Expected other GroupByAggregator "
+                                           "to have the same key input and "
+                                           "output specs";
   }
   if (other.intrinsics_.size() != intrinsics_.size()) {
     return TFF_STATUS(INVALID_ARGUMENT)
@@ -707,7 +723,8 @@ Status GroupByFactory::CheckIntrinsic(const Intrinsic& intrinsic,
   return absl::OkStatus();
 }
 
-// Create a vector of OneDimBaseGroupingAggregators based upon nested intrinsics
+// Create a vector of OneDimBaseGroupingAggregators based upon nested
+// intrinsics
 StatusOr<std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>>>
 GroupByFactory::CreateAggregators(
     const Intrinsic& intrinsic,
@@ -797,7 +814,8 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
     min_contributors_to_group = intrinsic.parameters[0].CastToScalar<int>();
     if (*min_contributors_to_group <= 0) {
       return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupByFactory: The min_contributors_to_group parameter must "
+             << "GroupByFactory: The min_contributors_to_group parameter "
+                "must "
                 "be positive if provided.";
     }
   }
@@ -835,9 +853,9 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
 
   int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
 
-  // Use new rather than make_unique here because the factory function that uses
-  // a non-public constructor can't use std::make_unique, and we don't want to
-  // add a dependency on absl::WrapUnique.
+  // Use new rather than make_unique here because the factory function that
+  // uses a non-public constructor can't use std::make_unique, and we don't
+  // want to add a dependency on absl::WrapUnique.
   return std::unique_ptr<GroupByAggregator>(new GroupByAggregator(
       intrinsic.inputs, &intrinsic.outputs, &intrinsic.nested_intrinsics,
       std::move(key_combiner), std::move(nested_aggregators), num_inputs,
