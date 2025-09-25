@@ -142,6 +142,7 @@ template <>
 StatusOr<Tensor> GetTensorForType<string_view>(
     std::vector<const void*>& key_iters) {
   std::vector<std::string> strings_for_output;
+  strings_for_output.reserve(key_iters.size());
   for (const void*& key_it : key_iters) {
     intptr_t ptr_int;
     std::memcpy(&ptr_int, key_it, sizeof(intptr_t));
