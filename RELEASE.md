@@ -322,6 +322,11 @@ and this project adheres to
 *   `tff.program.NativeValueReference`, use
     `federated_language.program.NativeValueReference` instead.
 
+### Changed
+
+*   `tff.learning.build_sgdm` when momentum is enabled now more closely follows
+    the implementation of other ML frameworks.
+
 ## Release 0.88.0
 
 ### Added
