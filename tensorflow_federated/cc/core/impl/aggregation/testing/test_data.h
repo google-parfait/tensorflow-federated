@@ -19,16 +19,39 @@
 
 #include <initializer_list>
 #include <memory>
+#include <string>
+#include <utility>
 
+#include "absl/strings/string_view.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_unowned_string_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"
 
 namespace tensorflow_federated::aggregation {
 
-// Creates test tensor data based on a vector<T>.
+// Creates test tensor data based on a vector<T> for all arithmetic types.
 template <typename T>
-std::unique_ptr<MutableVectorData<T>> CreateTestData(
-    std::initializer_list<T> values) {
+std::unique_ptr<TensorData> CreateTestData(std::initializer_list<T> values) {
   return std::make_unique<MutableVectorData<T>>(values);
+}
+
+// Creates test tensor data based on a vector<absl::string_view>.
+template <>
+std::unique_ptr<TensorData> CreateTestData(
+    std::initializer_list<absl::string_view> values) {
+  return std::make_unique<MutableUnownedStringData>(values);
+}
+
+// Creates test tensor data based on a vector<std::string>.
+template <>
+std::unique_ptr<TensorData> CreateTestData(
+    std::initializer_list<std::string> values) {
+  auto data = std::make_unique<MutableStringData>(values.size());
+  for (auto value : values) {
+    data->Add(std::move(value));
+  }
+  return data;
 }
 
 }  // namespace tensorflow_federated::aggregation

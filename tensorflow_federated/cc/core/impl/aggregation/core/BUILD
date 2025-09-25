@@ -74,6 +74,7 @@ cc_library(
         "agg_vector_iterator.h",
         "datatype.h",
         "input_tensor_list.h",
+        "mutable_unowned_string_data.h",
         "mutable_vector_data.h",
         "tensor.h",
         "tensor_data.h",
@@ -615,6 +616,17 @@ cc_test(
         ":tensor",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+    ],
+)
+
+cc_test(
+    name = "mutable_unowned_string_data_test",
+    srcs = ["mutable_unowned_string_data_test.cc"],
+    deps = [
+        ":tensor",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
