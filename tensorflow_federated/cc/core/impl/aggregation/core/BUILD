@@ -291,6 +291,23 @@ cc_library(
 )
 
 cc_library(
+    name = "dp_group_by_aggregator",
+    srcs = ["dp_group_by_aggregator.cc"],
+    hdrs = [
+        "dp_group_by_aggregator.h",
+    ],
+    deps = [
+        ":composite_key_combiner",
+        ":dp_fedsql_constants",
+        ":group_by_aggregator",
+        ":intrinsic",
+        ":one_dim_grouping_aggregator",
+        ":tensor",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+    ],
+)
+
+cc_library(
     name = "dp_open_domain_histogram",
     srcs = ["dp_open_domain_histogram.cc"],
     hdrs = [
@@ -657,6 +674,23 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/container:flat_hash_set",
+    ],
+)
+
+cc_test(
+    name = "dp_group_by_aggregator_test",
+    srcs = ["dp_group_by_aggregator_test.cc"],
+    deps = [
+        ":aggregator",
+        ":composite_key_combiner",
+        ":dp_fedsql_constants",
+        ":dp_group_by_aggregator",
+        ":dp_histogram_test_utils",
+        ":intrinsic",
+        ":tensor",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "@com_google_absl//absl/status",
     ],
 )
 

@@ -44,6 +44,9 @@ constexpr char kLinfName[] = "L_inf";
 constexpr char kL1Name[] = "L_1";
 constexpr char kL2Name[] = "L_2";
 
+// The default maximum length of any string datum.
+constexpr int kDefaultMaxStringLength = 256;
+
 // In the DPGroupingFederatedSum intrinsic, the following are the indices of
 // the norm bound parameters.
 constexpr int kLinfinityIndex = 0;

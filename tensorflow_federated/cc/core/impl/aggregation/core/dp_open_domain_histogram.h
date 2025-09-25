@@ -68,8 +68,8 @@ class DPOpenDomainHistogram : public GroupByAggregator {
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
   //
   // Takes the same inputs as GroupByAggregator, in addition to:
-  // * epsilon_per_agg: the privacy budget per nested intrinsic.
-  // * delta_per_agg: the privacy failure parameter per nested intrinsic.
+  // * epsilon: the privacy budget.
+  // * delta: the privacy failure parameter.
   // * l0_bound: the maximum number of composite keys one user can contribute to
   //   (assuming each DPOpenDomainHistogram::AggregateTensorsInternal call
   //    contains data from a unique user)
@@ -82,8 +82,8 @@ class DPOpenDomainHistogram : public GroupByAggregator {
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      double epsilon_per_agg, double delta_per_agg, int64_t l0_bound,
-      int num_inputs, std::optional<int64_t> min_contributors_to_group,
+      double epsilon, double delta, int64_t l0_bound, int num_inputs,
+      std::optional<int64_t> min_contributors_to_group,
       std::vector<int> contributors_to_groups);
 
   // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
