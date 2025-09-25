@@ -138,6 +138,9 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//third_party/py/jax",
+        "//third_party/py/jax/experimental/jax2tf",
+        "//third_party/py/jax_privacy",
         "@federated_language//federated_language",
     ],
 )
@@ -154,6 +157,8 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//third_party/py/jax",
+        "//third_party/py/jax_privacy",
         "@federated_language//federated_language",
     ],
 )

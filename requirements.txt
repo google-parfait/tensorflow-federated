@@ -28,10 +28,13 @@
 absl-py>=1.0,==1.*
 attrs~=23.1
 cachetools~=5.3
+Cython~=3.1.1
 dm-tree==0.1.8
 dp-accounting==0.4.3
 google-vizier==0.1.11
 grpcio~=1.46
+jax~=0.6.1
+jax_privacy @ git+https://github.com/google-deepmind/jax_privacy@95870e4
 ml_dtypes>=0.2.0,==0.2.*
 numpy~=1.25
 portpicker~=1.6
