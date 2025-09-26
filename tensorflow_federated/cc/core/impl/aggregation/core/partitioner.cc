@@ -69,10 +69,12 @@ StatusOr<Partitioner> Partitioner::Create(
       }
     });
   }
+  std::vector<int> partition_sizes(num_partitions, 0);
   for (auto& hash : hashes) {
     hash = hash % num_partitions;
+    partition_sizes[hash]++;
   }
-  return Partitioner(std::move(hashes), num_partitions);
+  return Partitioner(std::move(hashes), std::move(partition_sizes));
 }
 
 StatusOr<std::vector<Tensor>> Partitioner::PartitionKeys(

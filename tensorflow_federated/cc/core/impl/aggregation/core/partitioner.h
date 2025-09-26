@@ -55,17 +55,21 @@ class Partitioner {
   int GetNumPartitions() const { return num_partitions_; }
 
  private:
-  Partitioner(std::vector<size_t> hashes, int num_partitions)
-      : hashes_(hashes), num_partitions_(num_partitions) {}
+  Partitioner(std::vector<size_t> hashes, std::vector<int> partition_sizes)
+      : hashes_(hashes),
+        num_partitions_(partition_sizes.size()),
+        partition_sizes_(partition_sizes) {}
 
   template <typename T>
   std::vector<std::vector<T>> PartitionInternal(
       absl::Span<const T> input) const {
     std::vector<std::vector<T>> slices(num_partitions_);
+    for (int i = 0; i < num_partitions_; ++i) {
+      slices[i].reserve(partition_sizes_[i]);
+    }
 
     for (int index = 0; index < input.size(); ++index) {
       auto hashed_index = hashes_[index];
-      // TODO: b/437952802 - Calculate and reserve the size of each slice
       slices[hashed_index].push_back(input[index]);
     }
     return slices;
@@ -73,6 +77,7 @@ class Partitioner {
 
   std::vector<size_t> hashes_;
   int num_partitions_;
+  std::vector<int> partition_sizes_;
 };
 }  // namespace aggregation
 }  // namespace tensorflow_federated
