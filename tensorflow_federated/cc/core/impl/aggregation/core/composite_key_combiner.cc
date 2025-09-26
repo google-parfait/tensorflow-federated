@@ -34,8 +34,8 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/vector_string_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -117,7 +117,9 @@ TensorShape GetTensorShapeForSize(size_t size) {
 // corresponding to T and the same length as the input vector.
 // Each void* pointer in the input vector is incremented by size(T) bytes.
 template <typename T>
-StatusOr<Tensor> GetTensorForType(std::vector<const void*>& key_iters) {
+StatusOr<Tensor> GetTensorForType(
+    std::vector<const void*>& key_iters,
+    const std::shared_ptr<InternPool>& intern_pool) {
   auto output_tensor_data = std::make_unique<MutableVectorData<T>>();
   output_tensor_data->reserve(key_iters.size());
   for (const void*& key_it : key_iters) {
@@ -131,6 +133,29 @@ StatusOr<Tensor> GetTensorForType(std::vector<const void*>& key_iters) {
                         std::move(output_tensor_data));
 }
 
+// Implementation of TensorData for DT_STRING data type that shares
+// ownership of the intern pool with the CompositeKeyCombiner.
+// This helps to avoid making multiple copies of the strings that are originally
+// interned in the CompositeKeyCombiner.
+class InternedStringData : public TensorData {
+ public:
+  explicit InternedStringData(std::vector<string_view>&& strings_views,
+                              const std::shared_ptr<InternPool>& intern_pool)
+      : string_views_(std::move(strings_views)), intern_pool_(intern_pool) {}
+  ~InternedStringData() override = default;
+
+  // Implementation of TensorData methods.
+  size_t byte_size() const override {
+    return string_views_.size() * sizeof(string_view);
+  }
+  const void* data() const override { return string_views_.data(); }
+
+ private:
+  std::vector<string_view> string_views_;
+  // The intern pool contains the strings that the above string_views point to.
+  std::shared_ptr<InternPool> intern_pool_;
+};
+
 // Specialization of GetTensorForType for DT_STRING data type.
 // Given a vector of void* pointers, where the data pointed to can be safely
 // interpreted as a pointer to a string, returns a tensor of type DT_STRING
@@ -140,9 +165,10 @@ StatusOr<Tensor> GetTensorForType(std::vector<const void*>& key_iters) {
 // to use after this class is destroyed.
 template <>
 StatusOr<Tensor> GetTensorForType<string_view>(
-    std::vector<const void*>& key_iters) {
-  std::vector<std::string> strings_for_output;
-  strings_for_output.reserve(key_iters.size());
+    std::vector<const void*>& key_iters,
+    const std::shared_ptr<InternPool>& intern_pool) {
+  std::vector<string_view> string_views_for_output;
+  string_views_for_output.reserve(key_iters.size());
   for (const void*& key_it : key_iters) {
     intptr_t ptr_int;
     std::memcpy(&ptr_int, key_it, sizeof(intptr_t));
@@ -150,12 +176,12 @@ StatusOr<Tensor> GetTensorForType<string_view>(
     // stored in the intern_pool_. Thus this integer can be safely cast to a
     // pointer and dereferenced to obtain the string.
     const std::string* ptr = reinterpret_cast<const std::string*>(ptr_int);
-    strings_for_output.push_back(*ptr);
+    string_views_for_output.push_back(*ptr);
     AdvancePtr<intptr_t>(key_it);
   }
-  return Tensor::Create(
-      DT_STRING, GetTensorShapeForSize(key_iters.size()),
-      std::make_unique<VectorStringData>(std::move(strings_for_output)));
+  return Tensor::Create(DT_STRING, GetTensorShapeForSize(key_iters.size()),
+                        std::make_unique<InternedStringData>(
+                            std::move(string_views_for_output), intern_pool));
 }
 
 // Size needed to store a key in the composite key.
@@ -175,7 +201,9 @@ size_t GetKeySize<string_view>() {
 }  // namespace
 
 CompositeKeyCombiner::CompositeKeyCombiner(std::vector<DataType> dtypes)
-    : dtypes_(dtypes), composite_key_size_(0) {
+    : dtypes_(dtypes),
+      composite_key_size_(0),
+      intern_pool_(std::make_shared<InternPool>()) {
   // Calculate the size of a composite key for the given data types.
   for (DataType dtype : dtypes) {
     DTYPE_CASES(dtype, T, composite_key_size_ += GetKeySize<T>());
@@ -223,7 +251,7 @@ CompositeKeyCombiner::CreateOrdinals(
       // Copy the 64-bit representation of the element into the position in the
       // composite key data corresponding to this tensor.
       DTYPE_CASES(*(data_type_iter++), T,
-                  CopyToDest<T>(itr, key_ptr, intern_pool_));
+                  CopyToDest<T>(itr, key_ptr, *intern_pool_));
     }
 
     // Get the ordinal associated with the composite key
@@ -252,7 +280,7 @@ OutputTensorList CompositeKeyCombiner::GetOutputKeys() const {
 
   for (DataType dtype : dtypes_) {
     StatusOr<Tensor> t;
-    DTYPE_CASES(dtype, T, t = GetTensorForType<T>(key_iters));
+    DTYPE_CASES(dtype, T, t = GetTensorForType<T>(key_iters, intern_pool_));
     TFF_CHECK(t.status().ok()) << t.status().message();
     output_keys.push_back(std::move(t.value()));
   }

@@ -43,6 +43,7 @@ namespace aggregation {
 // Composite keys are stored as packed bytes - 4 or 8 bytes per key depending
 // on the data type of each key.
 using CompositeKey = std::string;
+using InternPool = absl::node_hash_set<std::string>;
 
 // Class operating on sets of tensors of the same shape to combine indices for
 // which the same combination of elements occurs, or in other words, indices
@@ -139,9 +140,7 @@ class CompositeKeyCombiner {
     return composite_keys_;
   }
   inline int64_t& GetCompositeKeyNext() { return composite_key_next_; }
-  inline absl::node_hash_set<std::string>& GetInternPool() {
-    return intern_pool_;
-  }
+  inline InternPool& GetInternPool() { return *intern_pool_; }
   // Creates a new composite key.
   inline CompositeKey NewCompositeKey() {
     return CompositeKey(composite_key_size_, 0);
@@ -157,7 +156,7 @@ class CompositeKeyCombiner {
   // Accumulate.
   // Used as an optimization to avoid storing the same string multiple
   // times even if it appears in many composite keys.
-  absl::node_hash_set<std::string> intern_pool_;
+  std::shared_ptr<InternPool> intern_pool_;
   // Mapping of byte representations of the composite keys seen so far to
   // their ordinal position in the output tensors returned by GetOutputKeys.
   absl::flat_hash_map<CompositeKey, int64_t> composite_keys_;
