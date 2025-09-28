@@ -496,6 +496,10 @@ absl::Status SimpleAggregationProtocol::Complete() {
 absl::Status SimpleAggregationProtocol::Abort() {
   StopOutlierDetection();
   absl::MutexLock lock(&state_mu_);
+  if (protocol_state_ == PROTOCOL_ABORTED) {
+    return absl::OkStatus();
+  }
+
   if (!(protocol_state_ == PROTOCOL_STARTED ||
         protocol_state_ == PROTOCOL_COMPLETING)) {
     return absl::FailedPreconditionError(
