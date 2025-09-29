@@ -20,11 +20,16 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
+
+Status TensorAggregator::ValidateInputs(const InputTensorList& tensors) const {
+  return absl::OkStatus();
+}
 
 Status TensorAggregator::Accumulate(InputTensorList tensors) {
   TFF_RETURN_IF_ERROR(CheckValid());

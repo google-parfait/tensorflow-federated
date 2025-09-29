@@ -37,6 +37,10 @@ class TensorAggregator
  public:
   ~TensorAggregator() override = default;
 
+  // Check all required invariants on the input tensors, so that we can avoid
+  // changing state via Accumulate if they are invalid.
+  virtual Status ValidateInputs(const InputTensorList& tensors) const;
+
   // Implementation of the base Aggregator class methods.
   Status Accumulate(InputTensorList tensors) override;
   bool CanReport() const override;
