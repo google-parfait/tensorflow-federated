@@ -104,6 +104,10 @@ class CheckpointAggregator {
   // Serialize the internal state of the checkpoint aggregator as a string.
   absl::StatusOr<std::string> Serialize() &&;
 
+  // Partitions the internal state of the CheckpointAggregator and serializes
+  // them as a vector of strings.
+  absl::StatusOr<std::vector<std::string>> Partition(int num_partitions) &&;
+
  private:
   CheckpointAggregator(
       const std::vector<Intrinsic>* intrinsics ABSL_ATTRIBUTE_LIFETIME_BOUND,

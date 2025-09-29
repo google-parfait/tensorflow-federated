@@ -300,6 +300,30 @@ absl::StatusOr<std::string> CheckpointAggregator::Serialize() && {
   return state.SerializeAsString();
 }
 
+absl::StatusOr<std::vector<std::string>> CheckpointAggregator::Partition(
+    int num_partitions) && {
+  absl::MutexLock lock(&aggregation_mu_);
+  if (aggregation_finished_) {
+    return absl::AbortedError("Aggregation has already been finished.");
+  }
+
+  std::vector<CheckpointAggregatorState> states(num_partitions);
+  for (const auto& aggregator : aggregators_) {
+    TFF_ASSIGN_OR_RETURN(std::vector<std::string> partitioned_aggregator,
+                         std::move(*aggregator).Partition(num_partitions));
+    TFF_CHECK(partitioned_aggregator.size() == num_partitions);
+    for (int i = 0; i < num_partitions; ++i) {
+      states[i].add_aggregators(std::move(partitioned_aggregator[i]));
+    }
+  }
+  std::vector<std::string> serialized_states;
+  serialized_states.reserve(states.size());
+  for (const auto& state : states) {
+    serialized_states.push_back(state.SerializeAsString());
+  }
+  return serialized_states;
+}
+
 absl::StatusOr<std::unique_ptr<TensorAggregator>>
 CheckpointAggregator::CreateAggregator(
     const Intrinsic& intrinsic, const std::string* serialized_aggregator) {

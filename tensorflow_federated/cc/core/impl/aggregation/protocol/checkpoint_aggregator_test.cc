@@ -1416,6 +1416,120 @@ TEST_P(CheckpointAggregatorTest, ReportWithMinContributors) {
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
+// A simple test aggregator that adds all values in the AggVector and puts the
+// result into multiple partitions.
+class TestPartitioningAggregator final : public AggVectorAggregator<int> {
+ public:
+  TestPartitioningAggregator(DataType dtype, TensorShape shape)
+      : AggVectorAggregator<int>(dtype, shape) {}
+
+  StatusOr<std::vector<std::string>> Partition(int num_partitions) && override {
+    std::vector<std::string> partitions(num_partitions);
+    auto serialized_state = std::move(*this).Serialize().value();
+    for (int i = 0; i < num_partitions; ++i) {
+      partitions[i] = serialized_state;
+    }
+    return partitions;
+  }
+
+ private:
+  void AggregateVector(const AggVector<int>& agg_vector) override {
+    for (auto [i, v] : agg_vector) {
+      data()[i] = data()[i] + v;
+    }
+  }
+};
+
+// Factory for the TestPartitioningAggregator.
+class TestPartitioningAggregatorFactory final : public TensorAggregatorFactory {
+ public:
+  TestPartitioningAggregatorFactory() = default;
+
+ private:
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Create(
+      const Intrinsic& intrinsic) const override {
+    if (intrinsic.inputs[0].dtype() != DT_INT32) {
+      return absl::InvalidArgumentError("Unsupported dtype: expected DT_INT32");
+    }
+    return std::make_unique<TestPartitioningAggregator>(
+        intrinsic.inputs[0].dtype(), intrinsic.inputs[0].shape());
+  }
+
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
+      const Intrinsic& intrinsic, std::string serialized_state) const override {
+    return TFF_STATUS(UNIMPLEMENTED);
+  }
+};
+
+TEST(CheckpointAggregatorTest, Partition) {
+  RegisterAggregatorFactory("test_partitioning_aggregator",
+                            new TestPartitioningAggregatorFactory());
+  // Add 2 top-level aggregators.
+  Configuration config = PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs {
+      intrinsic_uri: "test_partitioning_aggregator"
+      intrinsic_args {
+        input_tensor {
+          name: "foo"
+          dtype: DT_INT32
+          shape {}
+        }
+      }
+      output_tensors {
+        name: "foo_out"
+        dtype: DT_INT32
+        shape {}
+      }
+    }
+    intrinsic_configs {
+      intrinsic_uri: "test_partitioning_aggregator"
+      intrinsic_args {
+        input_tensor {
+          name: "bar"
+          dtype: DT_INT32
+          shape {}
+        }
+      }
+      output_tensors {
+        name: "bar_out"
+        dtype: DT_INT32
+        shape {}
+      }
+    }
+  )pb");
+  auto aggregator = Create(config);
+  MockCheckpointParser parser;
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillRepeatedly([] {
+    return Tensor::Create(DT_INT32, {}, CreateTestData({1}));
+  });
+  EXPECT_CALL(parser, GetTensor(StrEq("bar"))).WillRepeatedly([] {
+    return Tensor::Create(DT_INT32, {}, CreateTestData({1}));
+  });
+  TFF_EXPECT_OK(aggregator->Accumulate(parser));
+  TFF_EXPECT_OK(aggregator->Accumulate(parser));
+  TFF_EXPECT_OK(aggregator->Accumulate(parser));
+  TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> partitions,
+                           std::move(*aggregator).Partition(3));
+
+  EXPECT_EQ(partitions.size(), 3);
+  TestPartitioningAggregator expected_aggregator(DT_INT32, {});
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor t,
+                           Tensor::Create(DT_INT32, {}, CreateTestData({1})));
+  TFF_EXPECT_OK(expected_aggregator.Accumulate({&t}));
+  TFF_EXPECT_OK(expected_aggregator.Accumulate({&t}));
+  TFF_EXPECT_OK(expected_aggregator.Accumulate({&t}));
+  std::string serialized_aggregator =
+      std::move(expected_aggregator).Serialize().value();
+  // All partitions should be equal.
+  for (const auto& partition : partitions) {
+    CheckpointAggregatorState state;
+    EXPECT_TRUE(state.ParseFromString(partition));
+    EXPECT_EQ(state.aggregators_size(), 2);
+    EXPECT_EQ(state.aggregators(0), serialized_aggregator);
+    EXPECT_EQ(state.aggregators(1), serialized_aggregator);
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     CheckpointAggregatorTestInstantiation, CheckpointAggregatorTest,
     testing::ValuesIn<bool>({false, true}),
