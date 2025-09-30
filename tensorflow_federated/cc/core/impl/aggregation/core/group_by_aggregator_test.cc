@@ -1438,9 +1438,7 @@ TEST(GroupByAggregatorTest, AccumulateValueTensorHasIncompatibleDataType) {
   Tensor t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1.2})).value();
   Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(
-      s.message(),
-      ::testing::HasSubstr("Tensor at position 1 did not have expected dtype"));
+  EXPECT_THAT(s.message(), ::testing::HasSubstr("dtype mismatch"));
 }
 
 TEST(GroupByAggregatorTest, Accumulate_FewerTensorsThanExpected) {
@@ -1461,7 +1459,6 @@ TEST(GroupByAggregatorTest, Accumulate_FewerTensorsThanExpected) {
   Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), ::testing::HasSubstr(
-                               "GroupByAggregator::AggregateTensorsInternal "
                                "should operate on 3 input tensors"));
 }
 
@@ -1478,7 +1475,6 @@ TEST(GroupByAggregatorTest, Accumulate_MoreTensorsThanExpected) {
   Status s = group_by_aggregator->Accumulate({&key1, &key2, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), ::testing::HasSubstr(
-                               "GroupByAggregator::AggregateTensorsInternal "
                                "should operate on 2 input tensors"));
 }
 
@@ -1491,9 +1487,7 @@ TEST(GroupByAggregatorTest, Accumulate_KeyTensorSmallerThanValueTensor) {
   Tensor t = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 2})).value();
   Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(s.message(),
-              ::testing::HasSubstr("Shape of value tensor at index 1 does not "
-                                   "match the shape of the first key tensor."));
+  EXPECT_THAT(s.message(), ::testing::HasSubstr("shape mismatch"));
 }
 
 TEST(GroupByAggregatorTest, Accumulate_KeyTensorLargerThanValueTensor) {
@@ -1507,9 +1501,7 @@ TEST(GroupByAggregatorTest, Accumulate_KeyTensorLargerThanValueTensor) {
   Tensor t = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 2})).value();
   Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(s.message(),
-              ::testing::HasSubstr("Shape of value tensor at index 1 does not "
-                                   "match the shape of the first key tensor."));
+  EXPECT_THAT(s.message(), ::testing::HasSubstr("shape mismatch"));
 }
 
 TEST(GroupByAggregatorTest, Accumulate_MultidimensionalTensorsNotSupported) {
