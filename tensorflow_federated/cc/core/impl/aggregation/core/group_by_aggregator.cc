@@ -367,7 +367,22 @@ StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
           partitioned_nested_aggregators[i];
     }
   }
-  // TODO: b/437952802 - Partition the contributors to groups.
+  if (!contributors_to_groups_.empty()) {
+    TFF_ASSIGN_OR_RETURN(
+        std::vector<std::vector<int>> partitioned_contributors_to_groups,
+        partitioner.PartitionData<int>(contributors_to_groups_));
+    TFF_CHECK(partitioned_contributors_to_groups.size() == num_partitions)
+        << "GroupByAggregator::Partition: partitioned_contributors_to_groups "
+           "size must be equal to num_partitions.";
+    for (int i = 0; i < num_partitions; ++i) {
+      auto& contributors_for_partition = partitioned_contributors_to_groups[i];
+      auto* counters =
+          group_by_aggregator_states[i].mutable_counter_of_contributors();
+      counters->Reserve(contributors_for_partition.size());
+      counters->Add(contributors_for_partition.begin(),
+                    contributors_for_partition.end());
+    }
+  }
   std::vector<std::string> serialized_states(num_partitions);
   for (int i = 0; i < num_partitions; ++i) {
     serialized_states[i] =

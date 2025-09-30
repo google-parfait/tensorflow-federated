@@ -142,8 +142,8 @@ class SumAggregator final : public AggVectorAggregator<T> {
 
  private:
   void AggregateVector(const AggVector<T>& agg_vector) override {
-    // This aggregator is not expected to actually be used for aggregating in
-    // the current tests.
+    // This aggregator is not expected to actually be used for aggregating
+    // in the current tests.
     ASSERT_TRUE(false);
   }
 };
@@ -168,7 +168,8 @@ Intrinsic CreateDefaultIntrinsic() {
   return intrinsic;
 }
 
-// Creates a default intrinsic and adds the min_contributors_to_group parameter.
+// Creates a default intrinsic and adds the min_contributors_to_group
+// parameter.
 Intrinsic CreateIntrinsicWithMinContributors(int min_contributors) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   intrinsic.parameters.push_back(
@@ -209,8 +210,8 @@ StatusOr<std::vector<KeyValuePair<KeyType, ValueType>>> TensorsToKeyValuePairs(
   return result;
 }
 
-// Helper function to convert output tensors to a vector of key-value pairs when
-// there are multiple value tensors.
+// Helper function to convert output tensors to a vector of key-value pairs
+// when there are multiple value tensors.
 template <typename KeyType, typename ValueType>
 StatusOr<std::vector<std::vector<KeyValuePair<KeyType, ValueType>>>>
 TensorsToMultipleKeyValuePairs(const Tensor& keys_tensor,
@@ -685,8 +686,8 @@ TEST_P(GroupByAggregatorTest,
       "fedsql_group_by",
       {CreateTensorSpec("key1", DT_STRING),
        CreateTensorSpec("key2", DT_STRING)},
-      // An empty string in the output keys means that the key should not be
-      // included in the output.
+      // An empty string in the output keys means that the
+      // key should not be included in the output.
       {CreateTensorSpec("", DT_STRING), CreateTensorSpec("animals", DT_STRING)},
       {},
       {}};
@@ -749,8 +750,8 @@ TEST_P(GroupByAggregatorTest,
       "fedsql_group_by",
       {CreateTensorSpec("key1", DT_STRING),
        CreateTensorSpec("key2", DT_STRING)},
-      // An empty string in the output keys means that the key should not be
-      // included in the output.
+      // An empty string in the output keys means that the
+      // key should not be included in the output.
       {CreateTensorSpec("", DT_STRING), CreateTensorSpec("animals", DT_STRING)},
       {},
       {}};
@@ -898,7 +899,8 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleValueTensors_Succeeds) {
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
   EXPECT_THAT(aggregator1->GetNumInputs(), Eq(2));
 
-  // Create a second aggregator and accumulate an input with overlapping keys.
+  // Create a second aggregator and accumulate an input with overlapping
+  // keys.
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
   Tensor keys3 =
       Tensor::Create(
@@ -960,7 +962,8 @@ TEST_P(GroupByAggregatorTest, Merge_NoValueTensors_Succeeds) {
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
   EXPECT_THAT(aggregator1->GetNumInputs(), Eq(2));
 
-  // Create a second aggregator and accumulate an input with overlapping keys.
+  // Create a second aggregator and accumulate an input with overlapping
+  // keys.
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
   Tensor keys3 =
       Tensor::Create(
@@ -1410,9 +1413,9 @@ TEST_P(GroupByAggregatorTest,
 }
 
 // TODO: b/277982238 - Expand on the tests below to check that even when
-// Accumulate or MergeWith return INVALID_ARGUMENT, the internal state of the
-// GroupByAggregator remains unaffected, exactly the same as if the failed
-// operation had never been called.
+// Accumulate or MergeWith return INVALID_ARGUMENT, the internal state of
+// the GroupByAggregator remains unaffected, exactly the same as if the
+// failed operation had never been called.
 TEST(GroupByAggregatorTest, AccumulateKeyTensorHasIncompatibleDataType) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
@@ -1696,8 +1699,8 @@ TEST(GroupByAggregatorTest, Merge_DifferentMinContributors) {
   Intrinsic intrinsic1 = CreateIntrinsicWithMinContributors(5);
   auto aggregator1 = CreateTensorAggregator(intrinsic1).value();
 
-  // The second aggregator has a larger min_contributors_to_group, this is the
-  // more dangerous case from a privacy perspective.
+  // The second aggregator has a larger min_contributors_to_group, this is
+  // the more dangerous case from a privacy perspective.
   Intrinsic intrinsic2 = CreateIntrinsicWithMinContributors(10);
   auto aggregator2 = CreateTensorAggregator(intrinsic2).value();
   Status s = aggregator1->MergeWith(std::move(*aggregator2));
@@ -2028,8 +2031,8 @@ TEST(GroupByAggregatorTest,
 
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  // AddOneContributor should not be called if min_contributors_to_group_ is not
-  // set, thus contributors should remain empty.
+  // AddOneContributor should not be called if min_contributors_to_group_ is
+  // not set, thus contributors should remain empty.
   EXPECT_THAT(peer.GetContributors(), testing::IsEmpty());
 }
 
@@ -2047,9 +2050,9 @@ TEST(GroupByAggregatorTest, AccumulateUpdatesContributorsWithMinContributors) {
 
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  // The call should succeed because max_contributors_to_group is derived from
-  // min_contributors_to_group, which allows the call to AddOneContributor to
-  // succeed.
+  // The call should succeed because max_contributors_to_group is derived
+  // from min_contributors_to_group, which allows the call to
+  // AddOneContributor to succeed.
   EXPECT_THAT(peer.GetContributors(),
               testing::ContainerEq(std::vector<int>{1}));
 }
@@ -2068,8 +2071,8 @@ TEST(GroupByAggregatorTest, AccumulateDoesNotUpdateContributorsWithEmptyInput) {
 
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  // AddOneContributor was given no inputs os the contributors should still be
-  // empty.
+  // AddOneContributor was given no inputs os the contributors should still
+  // be empty.
   EXPECT_THAT(peer.GetContributors(), testing::IsEmpty());
 }
 
@@ -2172,8 +2175,8 @@ TEST_P(GroupByAggregatorTest, MergeHandlesDifferentGroupOrder) {
     ASSERT_THAT(aggregator1->Accumulate({&key, &value}), IsOk());
   }
 
-  // Accumulate into aggregator2 in reverse order: "bar" three times, then "foo"
-  // five times.
+  // Accumulate into aggregator2 in reverse order: "bar" three times, then
+  // "foo" five times.
   for (int i = 0; i < 3; ++i) {
     Tensor key =
         Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"bar"}))
@@ -2208,7 +2211,8 @@ TEST_P(GroupByAggregatorTest, MergeHandlesDifferentGroupOrder) {
 
   GroupByAggregatorPeer peer(std::move(aggregator1));
 
-  // One of the groups should have 6 contributors and the other should have 5.
+  // One of the groups should have 6 contributors and the other should
+  // have 5.
   EXPECT_THAT(peer.GetContributors(), UnorderedElementsAre(6, 5));
 }
 
@@ -2264,7 +2268,8 @@ TEST_P(GroupByAggregatorTest, MergeWithClampsMultipleGroupsIndependently) {
   }
 
   // Merge aggregator2 into aggregator1.
-  // Expected final counts before clamping: foo = 3 + 4 = 7, bar = 1 + 2 = 3.
+  // Expected final counts before clamping: foo = 3 + 4 = 7, bar = 1 + 2
+  // = 3.
   ASSERT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
 
   GroupByAggregatorPeer peer(std::move(aggregator1));
@@ -2565,10 +2570,8 @@ TEST(GroupByAggregatorTest,
 
   EXPECT_THAT(
       GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram),
-      StatusIs(
-          INVALID_ARGUMENT,
-          HasSubstr(
-              "Expected histogram to be a list of tensors of the same size")));
+      StatusIs(INVALID_ARGUMENT, HasSubstr("Expected histogram to be a list of "
+                                           "tensors of the same size")));
 }
 
 TEST(GroupByAggregatorTest, ShrinkHistogramToSurvivorsSucceeds) {
@@ -2894,6 +2897,132 @@ TEST(GroupByAggregatorTest, Partition_InvalidNumPartitions_Fails) {
   EXPECT_THAT(std::move(*group_by_aggregator).Partition(/*num_partitions=*/0),
               StatusIs(INVALID_ARGUMENT,
                        HasSubstr("num_partitions must be at least 1.")));
+}
+
+TEST(GroupByAggregatorTest, Partition_WithMinContributor_Success) {
+  const TensorShape shape = {4};
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
+                                                CreateTestData({10}),
+                                                "min_contributors_to_group")
+                                     .value());
+  auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
+  Tensor keys1 =
+      Tensor::Create(
+          DT_STRING, shape,
+          CreateTestData<string_view>({"zero", "zero", "one", "four"}))
+          .value();
+  Tensor t1 =
+      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
+  EXPECT_THAT(group_by_aggregator->Accumulate({&keys1, &t1}), IsOk());
+  // Totals: [4, 15, 27]
+  Tensor keys2 =
+      Tensor::Create(
+          DT_STRING, shape,
+          CreateTestData<string_view>({"one", "zero", "one", "five"}))
+          .value();
+  Tensor t2 =
+      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
+  EXPECT_THAT(group_by_aggregator->Accumulate({&keys2, &t2}), IsOk());
+  // Totals: [9, 26, 27, 2]
+
+  TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> partitioned_states,
+                           std::move(*group_by_aggregator).Partition(2));
+  EXPECT_EQ(partitioned_states.size(), 2);
+
+  // Check partition 0.
+  TFF_ASSERT_OK_AND_ASSIGN(auto factory, GetAggregatorFactory(intrinsic.uri));
+  std::unique_ptr<TensorAggregator> deserialized_aggregator;
+  TFF_ASSERT_OK_AND_ASSIGN(
+      deserialized_aggregator,
+      factory->Deserialize(intrinsic, std::move(partitioned_states[0])));
+  GroupByAggregator* aggregator_raw_ptr =
+      dynamic_cast<GroupByAggregator*>(deserialized_aggregator.get());
+  auto contributors = aggregator_raw_ptr->GetContributors();
+    EXPECT_THAT(contributors, testing::ContainerEq(std::vector<int>{1}));
+
+  // Check partition 1.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      deserialized_aggregator,
+      factory->Deserialize(intrinsic, std::move(partitioned_states[1])));
+  aggregator_raw_ptr =
+      dynamic_cast<GroupByAggregator*>(deserialized_aggregator.get());
+
+  contributors = aggregator_raw_ptr->GetContributors();
+    EXPECT_THAT(contributors, testing::ContainerEq(std::vector<int>{3, 3, 1}));
+}
+
+TEST(GroupByAggregatorTest,
+     Partition_WithMinContributor_StopsAtMaxContributors) {
+  const TensorShape shape = {4};
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
+                                                CreateTestData({2}),
+                                                "min_contributors_to_group")
+                                     .value());
+  auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
+  Tensor keys1 =
+      Tensor::Create(
+          DT_STRING, shape,
+          CreateTestData<string_view>({"zero", "zero", "zero", "zero"}))
+          .value();
+  Tensor t1 =
+      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 5})).value();
+  EXPECT_THAT(group_by_aggregator->Accumulate({&keys1, &t1}), IsOk());
+  Tensor keys2 =
+      Tensor::Create(
+          DT_STRING, shape,
+          CreateTestData<string_view>({"seven", "seven", "seven", "one"}))
+          .value();
+  Tensor t2 =
+      Tensor::Create(DT_INT32, shape, CreateTestData({10, 27, 1, 2})).value();
+  EXPECT_THAT(group_by_aggregator->Accumulate({&keys2, &t2}), IsOk());
+
+  TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> partitioned_states,
+                           std::move(*group_by_aggregator).Partition(2));
+  EXPECT_EQ(partitioned_states.size(), 2);
+
+  // Check partition 0.
+  TFF_ASSERT_OK_AND_ASSIGN(auto factory, GetAggregatorFactory(intrinsic.uri));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto deserialized_aggregator,
+      factory->Deserialize(intrinsic, std::move(partitioned_states[0])));
+  GroupByAggregator* aggregator_raw_ptr =
+      dynamic_cast<GroupByAggregator*>(deserialized_aggregator.get());
+  auto contributors = aggregator_raw_ptr->GetContributors();
+  // Contributor counts are capped at min_contributors_to_group = 2.
+  // "zero" has 4 contributors in total, so its count is 2.
+  // The contributors vector in partition 0 corresponds to key "zero" and should
+  // be {2}.
+    // The contributors vector in partition 0 corresponds to key "seven".
+    // Internally, before filtering, the counts are {2}.
+    EXPECT_THAT(contributors, testing::ContainerEq(std::vector<int>{2}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result,
+                           std::move(*deserialized_aggregator).Report());
+  EXPECT_THAT(result.size(), Eq(2));
+  EXPECT_THAT(result[0], IsTensor<string_view>({1}, {"seven"}));
+  EXPECT_THAT(result[1], IsTensor<int64_t>({1}, {38}));
+
+  // Check partition 1.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      deserialized_aggregator,
+      factory->Deserialize(intrinsic, std::move(partitioned_states[1])));
+  aggregator_raw_ptr =
+      dynamic_cast<GroupByAggregator*>(deserialized_aggregator.get());
+  contributors = aggregator_raw_ptr->GetContributors();
+  // Contributor counts are capped at min_contributors_to_group = 2.
+  // "seven" has 3 contributors in total, so its count is 2.
+  // "one" has 1 contributor in total, so its count is 1.
+  // The contributors vector in partition 1 corresponds to keys "seven" and
+  // "one". Internally, before filtering, the counts are {2, 1}.
+    // The contributors vector in partition 1 corresponds to keys "zero" and
+    // "one". Internally, before filtering, the counts are {2,1}.
+    EXPECT_THAT(contributors, testing::ContainerEq(std::vector<int>{2,1}));
+  TFF_ASSERT_OK_AND_ASSIGN(result,
+                           std::move(*deserialized_aggregator).Report());
+  EXPECT_THAT(result.size(), Eq(2));
+    EXPECT_THAT(result[0], IsTensor<string_view>({1}, {"zero"}));
+    EXPECT_THAT(result[1], IsTensor<int64_t>({1}, {24}));
 }
 
 INSTANTIATE_TEST_SUITE_P(
