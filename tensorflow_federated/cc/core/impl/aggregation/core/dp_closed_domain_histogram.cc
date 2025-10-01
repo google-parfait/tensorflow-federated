@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -82,7 +83,8 @@ DPClosedDomainHistogram::DPClosedDomainHistogram(
     : DPGroupByAggregator(input_key_specs, output_key_specs, intrinsics,
                           std::move(key_combiner), std::move(aggregators),
                           num_inputs, epsilon, delta, max_groups_contributed,
-                          max_string_length),
+                          /*min_contributors_to_group=*/std::nullopt,
+                          /*contributors_to_groups=*/{}, max_string_length),
       domain_tensors_(domain_tensors) {}
 
 StatusOr<Tensor> DPClosedDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
