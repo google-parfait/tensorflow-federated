@@ -203,6 +203,8 @@ StatusOr<OutputTensorList> GroupByAggregator::Report() && {
 }
 
 Status GroupByAggregator::AggregateTensors(InputTensorList tensors) {
+  TFF_RETURN_IF_ERROR(ValidateInputs(tensors));
+
   TFF_RETURN_IF_ERROR(AggregateTensorsInternal(std::move(tensors)));
   num_inputs_++;
   return absl::OkStatus();
@@ -469,9 +471,10 @@ StatusOr<OutputTensorList> GroupByAggregator::ShrinkHistogramToSurvivors(
   return shrunk_histogram;
 }
 
-inline Status GroupByAggregator::ValidateInputTensor(
+Status GroupByAggregator::ValidateForMerge(
     const InputTensorList& tensors, size_t input_index,
-    const TensorSpec& expected_tensor_spec, const TensorShape& key_shape) {
+    const TensorSpec& expected_tensor_spec,
+    const TensorShape& key_shape) const {
   // Ensure the tensor at input_index has the expected dtype and shape.
   const Tensor* tensor = tensors[input_index];
   if (tensor->dtype() != expected_tensor_spec.dtype()) {
@@ -493,10 +496,10 @@ inline Status GroupByAggregator::ValidateInputTensor(
   return absl::OkStatus();
 }
 
-Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
+Status GroupByAggregator::ValidateInputs(const InputTensorList& tensors) const {
   if (tensors.size() != num_tensors_per_input_) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::AggregateTensorsInternal should operate on "
+           << "GroupByAggregator::ValidateInputs: should operate on "
            << num_tensors_per_input_ << " input tensors";
   }
   // Get the shape of the first key tensor in order to ensure that all the
@@ -506,29 +509,41 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
   TensorShape key_shape = tensors[0]->shape();
   if (key_shape.dim_sizes().size() > 1) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator: Only scalar or one-dimensional tensors are "
+           << "GroupByAggregator::ValidateInputs: Only scalar or "
+           << "one-dimensional tensors are "
               "supported.";
   }
-  // Check all required invariants on the input tensors, so this function can
-  // fail before changing the state of this GroupByAggregator if there is an
-  // invalid input tensor. The input tensors should correspond to the
-  // Intrinsic input TensorSpecs since this is an Accumulate operation.
+  // Check all required invariants on the input tensors via the nested
+  // aggregators. Use a mock ordinals tensor since the nested aggregators
+  // expect to receive one.
+  MutableVectorData<int64_t> ordinals_data(/*count=*/tensors[0]->num_elements(),
+                                           /*value=*/0);
+  TFF_ASSIGN_OR_RETURN(
+      Tensor ordinals,
+      Tensor::Create(DataType::DT_INT64, tensors[0]->shape(),
+                     std::make_unique<MutableVectorData<int64_t>>(
+                         std::move(ordinals_data))));
   size_t input_index = num_keys_per_input_;
-  for (const Intrinsic& intrinsic : intrinsics_) {
-    for (const TensorSpec& tensor_spec : intrinsic.inputs) {
-      TFF_RETURN_IF_ERROR(
-          ValidateInputTensor(tensors, input_index, tensor_spec, key_shape));
-      ++input_index;
+  for (int i = 0; i < intrinsics_.size(); ++i) {
+    InputTensorList intrinsic_inputs(intrinsics_[i].inputs.size() + 1);
+    intrinsic_inputs[0] = &ordinals;
+    for (int j = 0; j < intrinsics_[i].inputs.size(); ++j) {
+      intrinsic_inputs[j + 1] = tensors[input_index++];
     }
+    TFF_RETURN_IF_ERROR(aggregators_[i]->ValidateInputs(intrinsic_inputs));
   }
 
+  return absl::OkStatus();
+}
+
+Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
   TFF_ASSIGN_OR_RETURN(Tensor ordinals, CreateOrdinalsByGroupingKeys(tensors));
 
   if (min_contributors_to_group_.has_value()) {
     TFF_RETURN_IF_ERROR(AddOneContributor(ordinals));
   }
 
-  input_index = num_keys_per_input_;
+  int input_index = num_keys_per_input_;
   for (int i = 0; i < intrinsics_.size(); ++i) {
     InputTensorList intrinsic_inputs(intrinsics_[i].inputs.size() + 1);
     intrinsic_inputs[0] = &ordinals;
@@ -576,7 +591,7 @@ Status GroupByAggregator::MergeTensorsInternal(
   for (const Intrinsic& intrinsic : intrinsics_) {
     for (const TensorSpec& tensor_spec : intrinsic.outputs) {
       TFF_RETURN_IF_ERROR(
-          ValidateInputTensor(tensors, input_index, tensor_spec, key_shape));
+          ValidateForMerge(tensors, input_index, tensor_spec, key_shape));
       ++input_index;
     }
   }
