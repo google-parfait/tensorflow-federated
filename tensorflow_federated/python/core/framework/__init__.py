@@ -14,6 +14,8 @@
 """Libraries for extending the TensorFlow Federated core library."""
 
 # pylint: disable=g-importing-member
+from federated_language_executor import deserialize_value
+from federated_language_executor import serialize_value
 from tensorflow_federated.python.core.impl.compiler.transformations import to_call_dominant
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompExecutionContext
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompForm
@@ -22,6 +24,4 @@ from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stack
 from tensorflow_federated.python.core.impl.executors.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.executors.remote_executor_grpc_stub import RemoteExecutorGrpcStub
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
-from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
-from tensorflow_federated.python.core.impl.executors.value_serialization import serialize_value
 # pylint: enable=g-importing-member

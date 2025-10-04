@@ -15,6 +15,7 @@
 from absl.testing import absltest
 import federated_language
 from federated_language.proto import computation_pb2
+import federated_language_executor
 import numpy as np
 import tensorflow as tf
 from tensorflow_federated.python.core.backends.mapreduce import compiler

@@ -32,10 +32,10 @@ limitations under the License
 #include "include/grpcpp/server_context.h"
 #include "include/grpcpp/support/status.h"
 #include "federated_language/proto/computation.pb.h"
+#include "federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 

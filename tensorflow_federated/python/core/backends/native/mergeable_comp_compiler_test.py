@@ -14,6 +14,7 @@
 
 from absl.testing import absltest
 import federated_language
+import federated_language_executor
 import numpy as np
 
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler

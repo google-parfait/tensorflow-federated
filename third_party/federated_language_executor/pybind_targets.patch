@@ -1,0 +1,99 @@
+# Remove pybind targets.
+#
+# ```
+# buildozer 'add tags nokokoro' //federated_language_executor:executor_bindings
+# buildozer 'add tags nokokoro' //federated_language_executor:executor_bindings_cc
+# buildozer 'add tags nokokoro' //federated_language_executor:executor_bindings_test
+# buildozer 'add tags nokokoro' //federated_language_executor:executor_test_utils_bindings
+# buildozer 'add tags nokokoro' //federated_language_executor:cpp_to_python_executor
+# buildozer 'add tags nokokoro' //federated_language_executor:cpp_to_python_executor_test
+# buildozer 'remove deps :executor_bindings' //federated_language_executor:federated_language_executor
+# ```
+
+diff --git federated_language_executor/BUILD federated_language_executor/BUILD
+index 232ed93..edc2006 100644
+--- federated_language_executor/BUILD
++++ federated_language_executor/BUILD
+@@ -32,7 +32,6 @@ py_library(
+     deps = [
+         ":cpp_to_python_executor",
+         ":data_conversions",
+-        ":executor_bindings",
+         ":executor_errors",
+         ":value_serialization",
+         ":version",
+@@ -42,6 +41,7 @@ py_library(
+ py_library(
+     name = "cpp_to_python_executor",
+     srcs = ["cpp_to_python_executor.py"],
++    tags = ["nokokoro"],
+     deps = [
+         ":executor_bindings",
+         ":executor_errors",
+@@ -53,6 +53,7 @@ py_library(
+ py_test(
+     name = "cpp_to_python_executor_test",
+     srcs = ["cpp_to_python_executor_test.py"],
++    tags = ["nokokoro"],
+     deps = [
+         ":cpp_to_python_executor",
+         ":executor_bindings",
+@@ -120,6 +121,7 @@ py_library(
+     name = "executor_bindings",
+     srcs = ["executor_bindings.py"],
+     data = [":executor_bindings_cc"],
++    tags = ["nokokoro"],
+     deps = [
+         ":data_conversions",
+         "@federated_language_executor_pypi//federated_language",
+@@ -130,6 +132,7 @@ py_test(
+     name = "executor_bindings_test",
+     srcs = ["executor_bindings_test.py"],
+     data = [":executor_test_utils_bindings"],
++    tags = ["nokokoro"],
+     deps = [
+         ":executor_bindings",
+         "@federated_language_executor_pypi//absl_py",
+@@ -141,6 +144,7 @@ py_test(
+ pybind_extension(
+     name = "executor_bindings_cc",
+     srcs = ["executor_bindings.cc"],
++    tags = ["nokokoro"],
+     visibility = ["//visibility:public"],
+     deps = [
+         ":executor_cc_proto",
+@@ -178,6 +182,7 @@ pybind_extension(
+     name = "executor_test_utils_bindings",
+     testonly = True,
+     srcs = ["executor_test_utils_bindings.cc"],
++    tags = ["nokokoro"],
+     visibility = ["//visibility:public"],
+     deps = ["@org_tensorflow_federated//tensorflow_federated/cc/core/impl/executors:mock_executor"],
+ )
+diff --git federated_language_executor/__init__.py federated_language_executor/__init__.py
+index 99efe0a..392c6e2 100644
+--- federated_language_executor/__init__.py
++++ federated_language_executor/__init__.py
+@@ -16,14 +16,14 @@
+ # pylint: disable=g-importing-member
+ from federated_language_executor.cpp_to_python_executor import CppToPythonExecutorBridge
+ from federated_language_executor.data_conversions import convert_cardinalities_dict_to_string_keyed
+-from federated_language_executor.executor_bindings import create_federating_executor
+-from federated_language_executor.executor_bindings import create_insecure_grpc_channel
+-from federated_language_executor.executor_bindings import create_reference_resolving_executor
+-from federated_language_executor.executor_bindings import create_remote_executor
+-from federated_language_executor.executor_bindings import create_sequence_executor
+-from federated_language_executor.executor_bindings import Executor
+-from federated_language_executor.executor_bindings import GRPCChannel
+-from federated_language_executor.executor_bindings import OwnedValueId
++# from federated_language_executor.executor_bindings import create_federating_executor
++# from federated_language_executor.executor_bindings import create_insecure_grpc_channel
++# from federated_language_executor.executor_bindings import create_reference_resolving_executor
++# from federated_language_executor.executor_bindings import create_remote_executor
++# from federated_language_executor.executor_bindings import create_sequence_executor
++# from federated_language_executor.executor_bindings import Executor
++# from federated_language_executor.executor_bindings import GRPCChannel
++# from federated_language_executor.executor_bindings import OwnedValueId
+ from federated_language_executor.executor_errors import get_grpc_retryable_error_codes
+ from federated_language_executor.executor_errors import is_absl_status_retryable_error
+ from federated_language_executor.executor_errors import RetryableAbslStatusError

@@ -16,16 +16,15 @@
 from collections.abc import Mapping, Sequence
 
 import federated_language
+import federated_language_executor
 
 from tensorflow_federated.cc.core.impl.executor_stacks import executor_stack_bindings
-from tensorflow_federated.python.core.impl.executors import data_conversions
-from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
 def filter_to_live_channels(
-    channels: Sequence[executor_bindings.GRPCChannel],
+    channels: Sequence[federated_language_executor.GRPCChannel],
     wait_connected_duration_millis: int = 1000,
-) -> Sequence[executor_bindings.GRPCChannel]:
+) -> Sequence[federated_language_executor.GRPCChannel]:
   """Waits and filters channels that are ready or idle."""
   return executor_stack_bindings.filter_to_live_channels(
       channels, wait_connected_duration_millis
@@ -33,13 +32,15 @@ def filter_to_live_channels(
 
 
 def create_remote_executor_stack(
-    channels: Sequence[executor_bindings.GRPCChannel],
+    channels: Sequence[federated_language_executor.GRPCChannel],
     cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
     max_concurrent_computation_calls: int = -1,
-) -> executor_bindings.Executor:
+) -> federated_language_executor.Executor:
   """Constructs a RemoteExecutor proxying services on `targets`."""
   uri_cardinalities = (
-      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+      federated_language_executor.convert_cardinalities_dict_to_string_keyed(
+          cardinalities
+      )
   )
   return executor_stack_bindings.create_remote_executor_stack(
       channels, uri_cardinalities, max_concurrent_computation_calls
@@ -47,12 +48,14 @@ def create_remote_executor_stack(
 
 
 def create_streaming_remote_executor_stack(
-    channels: Sequence[executor_bindings.GRPCChannel],
+    channels: Sequence[federated_language_executor.GRPCChannel],
     cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
-) -> executor_bindings.Executor:
+) -> federated_language_executor.Executor:
   """Constructs a RemoteExecutor proxying services on `targets`."""
   uri_cardinalities = (
-      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+      federated_language_executor.convert_cardinalities_dict_to_string_keyed(
+          cardinalities
+      )
   )
   return executor_stack_bindings.create_streaming_remote_executor_stack(
       channels, uri_cardinalities

@@ -19,14 +19,14 @@ import weakref
 
 from absl import logging
 import federated_language
+import federated_language_executor
+from federated_language_executor import executor_pb2
 import grpc
 
-from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import cardinality
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
-from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
 class RemoteValue(federated_language.framework.ExecutorValue):
@@ -219,7 +219,7 @@ class RemoteExecutor(federated_language.framework.Executor):
 
     @federated_language.framework.trace
     def serialize_value():
-      return value_serialization.serialize_value(value, type_spec)
+      return federated_language_executor.serialize_value(value, type_spec)
 
     if self._stream_structs and isinstance(
         type_spec, federated_language.StructType
@@ -325,5 +325,7 @@ class RemoteExecutor(federated_language.framework.Executor):
     )
     response = self._stub.compute(request)
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
-    value, _ = value_serialization.deserialize_value(response.value, type_spec)
+    value, _ = federated_language_executor.deserialize_value(
+        response.value, type_spec
+    )
     return value

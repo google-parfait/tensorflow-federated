@@ -1,0 +1,130 @@
+# Remove python dependencies.
+#
+# ```
+# buildozer 'remove deps @federated_language_executor_pypi//absl_py' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//dm_tree' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//numpy' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//typing_extensions' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//portpicker' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//federated_language' //...:*
+# ```
+
+diff --git federated_language_executor/BUILD federated_language_executor/BUILD
+index edc2006..6e2d216 100644
+--- federated_language_executor/BUILD
++++ federated_language_executor/BUILD
+@@ -46,7 +46,6 @@ py_library(
+         ":executor_bindings",
+         ":executor_errors",
+         ":value_serialization",
+-        "@federated_language_executor_pypi//federated_language",
+     ],
+ )
+ 
+@@ -58,26 +57,18 @@ py_test(
+         ":cpp_to_python_executor",
+         ":executor_bindings",
+         ":value_serialization",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//numpy",
+     ],
+ )
+ 
+ py_library(
+     name = "data_conversions",
+     srcs = ["data_conversions.py"],
+-    deps = ["@federated_language_executor_pypi//federated_language"],
+ )
+ 
+ py_test(
+     name = "data_conversions_test",
+     srcs = ["data_conversions_test.py"],
+-    deps = [
+-        ":data_conversions",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-    ],
++    deps = [":data_conversions"],
+ )
+ 
+ proto_library(
+@@ -122,10 +113,7 @@ py_library(
+     srcs = ["executor_bindings.py"],
+     data = [":executor_bindings_cc"],
+     tags = ["nokokoro"],
+-    deps = [
+-        ":data_conversions",
+-        "@federated_language_executor_pypi//federated_language",
+-    ],
++    deps = [":data_conversions"],
+ )
+ 
+ py_test(
+@@ -133,12 +121,7 @@ py_test(
+     srcs = ["executor_bindings_test.py"],
+     data = [":executor_test_utils_bindings"],
+     tags = ["nokokoro"],
+-    deps = [
+-        ":executor_bindings",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//portpicker",
+-    ],
++    deps = [":executor_bindings"],
+ )
+ 
+ pybind_extension(
+@@ -171,11 +154,7 @@ pybind_extension(
+ py_library(
+     name = "executor_errors",
+     srcs = ["executor_errors.py"],
+-    deps = [
+-        "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//typing_extensions",
+-    ],
++    deps = ["@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio"],
+ )
+ 
+ pybind_extension(
+@@ -190,18 +169,12 @@ pybind_extension(
+ py_library(
+     name = "executor_utils",
+     srcs = ["executor_utils.py"],
+-    deps = ["@federated_language_executor_pypi//federated_language"],
+ )
+ 
+ py_test(
+     name = "executor_utils_test",
+     srcs = ["executor_utils_test.py"],
+-    deps = [
+-        ":executor_utils",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//numpy",
+-    ],
++    deps = [":executor_utils"],
+ )
+ 
+ py_library(
+@@ -213,9 +186,6 @@ py_library(
+         "@federated_language//federated_language/common_libs:structure",
+         "@federated_language//federated_language/proto:array_py_pb2",
+         "@federated_language//federated_language/proto:computation_py_pb2",
+-        "@federated_language_executor_pypi//dm_tree",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//numpy",
+     ],
+ )
+ 
+@@ -227,9 +197,6 @@ py_test(
+         ":value_serialization",
+         "@federated_language//federated_language/common_libs:structure",
+         "@federated_language//federated_language/proto:computation_py_pb2",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//numpy",
+     ],
+ )
+ 

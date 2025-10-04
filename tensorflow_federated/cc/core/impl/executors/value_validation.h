@@ -19,8 +19,8 @@ limitations under the License
 #include <cstdint>
 
 #include "absl/status/statusor.h"
+#include "federated_language_executor/executor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 
