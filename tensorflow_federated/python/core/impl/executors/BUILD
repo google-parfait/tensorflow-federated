@@ -195,7 +195,6 @@ py_test(
     name = "remote_executor_grpc_stub_test",
     srcs = ["remote_executor_grpc_stub_test.py"],
     deps = [
-        ":executors_errors",
         ":remote_executor_grpc_stub",
         ":value_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
