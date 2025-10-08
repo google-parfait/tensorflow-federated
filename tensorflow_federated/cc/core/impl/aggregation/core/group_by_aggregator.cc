@@ -236,13 +236,13 @@ OutputTensorList GroupByAggregator::TakeOutputs() && {
 
 Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
   if (ordinals.dtype() != DT_INT64) {
-    return TFF_STATUS(INVALID_ARGUMENT)
+    return TFF_STATUS(FAILED_PRECONDITION)
            << "GroupByAggregator::AddOneContributor: Expected int64 ordinals "
               "but got "
            << ordinals.dtype();
   }
   if (!max_contributors_to_group_.has_value()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
+    return TFF_STATUS(FAILED_PRECONDITION)
            << "GroupByAggregator::AddOneContributor: Expected "
               "max_contributors_to_group_ to be set but it is not.";
   }

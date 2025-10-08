@@ -283,37 +283,6 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
     return aggregator_state;
   }
 
-  Status ValidateTensorInputs(const InputTensorList& tensors) {
-    TFF_CHECK(tensors.size() == 2)
-        << "OneDimGroupingAggregator should operate on 2 input tensors";
-
-    const Tensor* ordinals = tensors[0];
-    if (ordinals->dtype() != DT_INT64) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "OneDimGroupingAggregator::AggregateTensors: dtype mismatch "
-                "for tensor 0. Expected DT_INT64.";
-    }
-    const Tensor* tensor = tensors[1];
-    if (ordinals->shape() != tensor->shape()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "OneDimGroupingAggregator::AggregateTensors: tensor shape "
-                "mismatch. Shape of both tensors must be the same.";
-    }
-    size_t num_dimensions = tensor->shape().dim_sizes().size();
-    if (num_dimensions > (size_t)1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "OneDimGroupingAggregator::AggregateTensors: Only 1 "
-                "dimensional tensors supported. Input tensor has "
-             << num_dimensions << " dimensions.";
-    }
-    if (!ordinals->is_dense() || !tensor->is_dense()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "OneDimGroupingAggregator::AggregateTensors: Only dense "
-                "tensors are supported.";
-    }
-    return absl::OkStatus();
-  }
-
   void ResizeDataVector(const AggVector<int64_t>& ordinals_vector) {
     size_t final_size = data_vector_->size();
     for (auto o : ordinals_vector) {

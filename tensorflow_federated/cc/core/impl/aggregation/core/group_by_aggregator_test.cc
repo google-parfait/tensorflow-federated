@@ -1857,8 +1857,9 @@ TEST(GroupByAggregatorTest, AddOneContributor_FailsWithInvalidDtype) {
   Tensor ordinals =
       Tensor::Create(DT_INT32, {2}, CreateTestData({0, 1})).value();
 
-  EXPECT_THAT(peer.AddOneContributor(std::move(ordinals)),
-              StatusIs(INVALID_ARGUMENT, HasSubstr("Expected int64 ordinals")));
+  EXPECT_THAT(
+      peer.AddOneContributor(std::move(ordinals)),
+      StatusIs(FAILED_PRECONDITION, HasSubstr("Expected int64 ordinals")));
 }
 
 TEST(GroupByAggregatorTest, AddOneContributor_FailsWhenMaxContributorsNotSet) {
@@ -1872,7 +1873,7 @@ TEST(GroupByAggregatorTest, AddOneContributor_FailsWhenMaxContributorsNotSet) {
   EXPECT_THAT(
       peer.AddOneContributor(std::move(ordinals)),
       StatusIs(
-          INVALID_ARGUMENT,
+          FAILED_PRECONDITION,
           HasSubstr("max_contributors_to_group_ to be set but it is not")));
 }
 

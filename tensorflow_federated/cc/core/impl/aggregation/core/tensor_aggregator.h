@@ -38,6 +38,9 @@ class TensorAggregator
   ~TensorAggregator() override = default;
 
   // Implementation of the base Aggregator class methods.
+  // For Accumulate, the INVALID_ARGUMENT status code is used to indicate that
+  // the input tensors are not compatible with the aggregator or otherwise
+  // malformed. Derived classes should not change internal state in that case.
   Status Accumulate(InputTensorList tensors) override;
   bool CanReport() const override;
   StatusOr<OutputTensorList> Report() && override;

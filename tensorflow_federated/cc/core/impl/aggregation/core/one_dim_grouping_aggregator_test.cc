@@ -707,14 +707,25 @@ TEST_P(OneDimGroupingAggregatorTest,
   EXPECT_TRUE(result.value()[0].is_dense());
 }
 
+TEST(OneDimGroupingAggregatorTest, Aggregate_TooFewInputs) {
+  SumGroupingAggregator<int32_t> aggregator;
+  Tensor ordinal =
+      Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({0})).value();
+  EXPECT_THAT(aggregator.Accumulate({&ordinal}),
+              StatusIs(INVALID_ARGUMENT,
+                       HasSubstr("ValidateTensorInputs: should operate on 2"
+                                 " input tensors but got 1")));
+}
+
 TEST(OneDimGroupingAggregatorTest,
      Aggregate_OrdinalTensorHasIncompatibleDataType) {
   SumGroupingAggregator<int32_t> aggregator;
   Tensor ordinal =
       Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({0})).value();
   Tensor t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({0})).value();
-  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t}),
-              StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      aggregator.Accumulate({&ordinal, &t}),
+      StatusIs(INVALID_ARGUMENT, HasSubstr("dtype mismatch for tensor 0")));
 }
 
 TEST(OneDimGroupingAggregatorTest, Aggregate_IncompatibleDataType) {
@@ -722,8 +733,9 @@ TEST(OneDimGroupingAggregatorTest, Aggregate_IncompatibleDataType) {
   Tensor ordinal =
       Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({0})).value();
   Tensor t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({0})).value();
-  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t}),
-              StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      aggregator.Accumulate({&ordinal, &t}),
+      StatusIs(INVALID_ARGUMENT, HasSubstr("dtype mismatch for tensor 1")));
 }
 
 TEST(OneDimGroupingAggregatorTest,
@@ -732,8 +744,10 @@ TEST(OneDimGroupingAggregatorTest,
   Tensor ordinal =
       Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({0})).value();
   Tensor t = Tensor::Create(DT_INT32, {2}, CreateTestData({0, 1})).value();
-  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t}),
-              StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      aggregator.Accumulate({&ordinal, &t}),
+      StatusIs(INVALID_ARGUMENT, HasSubstr("ValidateTensorInputs: tensor"
+                                           " shape mismatch")));
 }
 
 TEST(OneDimGroupingAggregatorTest,
@@ -744,8 +758,11 @@ TEST(OneDimGroupingAggregatorTest,
           .value();
   Tensor t =
       Tensor::Create(DT_INT32, {2, 2}, CreateTestData({0, 1, 2, 3})).value();
-  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t}),
-              StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      aggregator.Accumulate({&ordinal, &t}),
+      StatusIs(INVALID_ARGUMENT,
+               HasSubstr("ValidateTensorInputs: Only 1 dimensional tensors "
+                         "supported")));
 }
 
 TEST(OneDimGroupingAggregatorTest, Merge_IncompatibleDataType) {

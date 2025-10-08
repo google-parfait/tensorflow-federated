@@ -43,31 +43,33 @@ Status OneDimBaseGroupingAggregator::MergeWith(TensorAggregator&& other) {
 
 Status OneDimBaseGroupingAggregator::ValidateTensorInputs(
     const InputTensorList& tensors) {
-  TFF_CHECK(tensors.size() == 2)
-      << "OneDimGroupingAggregator should operate on 2 input tensors";
-
+  if (tensors.size() != 2) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "OneDimGroupingAggregator::ValidateTensorInputs: should operate"
+           << " on 2 input tensors but got " << tensors.size();
+  }
   const Tensor* ordinals = tensors[0];
   if (ordinals->dtype() != DT_INT64) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimGroupingAggregator::AggregateTensors: dtype mismatch "
+           << "OneDimGroupingAggregator::ValidateTensorInputs: dtype mismatch "
               "for tensor 0. Expected DT_INT64.";
   }
   const Tensor* tensor = tensors[1];
   if (ordinals->shape() != tensor->shape()) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimGroupingAggregator::AggregateTensors: tensor shape "
+           << "OneDimGroupingAggregator::ValidateTensorInputs: tensor shape "
               "mismatch. Shape of both tensors must be the same.";
   }
   size_t num_dimensions = tensor->shape().dim_sizes().size();
   if (num_dimensions > (size_t)1) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimGroupingAggregator::AggregateTensors: Only 1 "
+           << "OneDimGroupingAggregator::ValidateTensorInputs: Only 1 "
               "dimensional tensors supported. Input tensor has "
            << num_dimensions << " dimensions.";
   }
   if (!ordinals->is_dense() || !tensor->is_dense()) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimGroupingAggregator::AggregateTensors: Only dense "
+           << "OneDimGroupingAggregator::ValidateTensorInputs: Only dense "
               "tensors are supported.";
   }
   return absl::OkStatus();
