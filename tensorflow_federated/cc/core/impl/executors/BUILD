@@ -684,6 +684,7 @@ cc_library(
     name = "sequence_executor",
     srcs = ["sequence_executor.cc"],
     hdrs = ["sequence_executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":executor",
         ":sequence_intrinsics",
@@ -799,6 +800,7 @@ cc_library(
     name = "streaming_remote_executor",
     srcs = ["streaming_remote_executor.cc"],
     hdrs = ["streaming_remote_executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
         ":executor",
