@@ -17,15 +17,14 @@ import collections
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
+import federated_language_executor
+from federated_language_executor import executor_pb2
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
-from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
 # Creating logical devices should be done only once before TF runtime startup
@@ -74,17 +73,17 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = get_executor()
     # 1. Test a simple tensor.
     expected_type_spec = federated_language.TensorType(np.int64, [3])
-    value_pb, _ = value_serialization.serialize_value(
+    value_pb, _ = federated_language_executor.serialize_value(
         [1, 2, 3], expected_type_spec
     )
     value = executor.create_value(value_pb)
-    self.assertIsInstance(value, executor_bindings.OwnedValueId)
+    self.assertIsInstance(value, federated_language_executor.OwnedValueId)
     self.assertEqual(value.ref, 0)
     self.assertEqual(str(value), '0')
     self.assertEqual(repr(value), r'<OwnedValueId: 0>')
     materialized_value = executor.materialize(value.ref)
-    deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value
+    deserialized_value, type_spec = (
+        federated_language_executor.deserialize_value(materialized_value)
     )
     self.assertEqual(type_spec, expected_type_spec)
     self.assertAllEqual(deserialized_value, [1, 2, 3])
@@ -97,16 +96,18 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         a=np.array([1, 2, 3], np.int64),
         b=np.array(42.0, np.float32),
     )
-    value_pb, _ = value_serialization.serialize_value(value, expected_type_spec)
+    value_pb, _ = federated_language_executor.serialize_value(
+        value, expected_type_spec
+    )
     value = executor.create_value(value_pb)
-    self.assertIsInstance(value, executor_bindings.OwnedValueId)
+    self.assertIsInstance(value, federated_language_executor.OwnedValueId)
     # Assert the value ID was incremented.
     self.assertEqual(value.ref, 1)
     self.assertEqual(str(value), '1')
     self.assertEqual(repr(value), r'<OwnedValueId: 1>')
     materialized_value = executor.materialize(value.ref)
-    deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value
+    deserialized_value, type_spec = (
+        federated_language_executor.deserialize_value(materialized_value)
     )
     # Note: here we've lost the names `a` and `b` in the output. The output
     # is a more _strict_ type.
@@ -127,7 +128,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
     value_pb = executor_pb2.Value(computation=foo)
     value = executor.create_value(value_pb)
-    self.assertIsInstance(value, executor_bindings.OwnedValueId)
+    self.assertIsInstance(value, federated_language_executor.OwnedValueId)
     # Assert the value ID was incremented again.
     self.assertEqual(value.ref, 2)
     self.assertEqual(str(value), '2')
@@ -162,7 +163,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
     element_type = tensorflow_types.to_type(dataset.element_spec)
     sequence_type = federated_language.SequenceType(element_type)
-    arg_value_pb, _ = value_serialization.serialize_value(
+    arg_value_pb, _ = federated_language_executor.serialize_value(
         sequence, sequence_type
     )
     arg = executor.create_value(arg_value_pb)
@@ -181,7 +182,9 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
-    result, result_type_spec = value_serialization.deserialize_value(output_pb)
+    result, result_type_spec = federated_language_executor.deserialize_value(
+        output_pb
+    )
     self.assertEqual(
         result_type_spec,
         federated_language.TensorType(sequence_type.element.dtype),
@@ -196,7 +199,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         federated_language.SequenceType(element_type),
         federated_language.SequenceType(element_type),
     ])
-    arg_value_pb, _ = value_serialization.serialize_value(
+    arg_value_pb, _ = federated_language_executor.serialize_value(
         sequences, struct_of_sequence_type
     )
     arg = executor.create_value(arg_value_pb)
@@ -219,7 +222,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
-    _, result_type_spec = value_serialization.deserialize_value(
+    _, result_type_spec = federated_language_executor.deserialize_value(
         output_pb, type_hint=struct_of_sequence_type
     )
     self.assertEqual(result_type_spec, struct_of_sequence_type)
@@ -227,7 +230,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_create_struct(self):
     executor = get_executor()
     expected_type_spec = federated_language.TensorType(np.int64, [3])
-    value_pb, _ = value_serialization.serialize_value(
+    value_pb, _ = federated_language_executor.serialize_value(
         np.array([1, 2, 3], np.int64), expected_type_spec
     )
     value = executor.create_value(value_pb)
@@ -236,8 +239,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     struct_value = executor.create_struct([value.ref, value.ref])
     self.assertEqual(struct_value.ref, 1)
     materialized_value = executor.materialize(struct_value.ref)
-    deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value
+    deserialized_value, type_spec = (
+        federated_language_executor.deserialize_value(materialized_value)
     )
     struct_type_spec = federated_language.to_type(
         [expected_type_spec, expected_type_spec]
@@ -250,8 +253,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     # 2. Create a struct from the struct and another value.
     new_struct_value = executor.create_struct([struct_value.ref, value.ref])
     materialized_value = executor.materialize(new_struct_value.ref)
-    deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value
+    deserialized_value, type_spec = (
+        federated_language_executor.deserialize_value(materialized_value)
     )
     struct_type_spec = federated_language.to_type(
         [struct_type_spec, expected_type_spec]
@@ -265,7 +268,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_create_selection(self):
     executor = get_executor()
     expected_type_spec = federated_language.TensorType(np.int64, [3])
-    value_pb, _ = value_serialization.serialize_value(
+    value_pb, _ = federated_language_executor.serialize_value(
         np.array([1, 2, 3], np.int64), expected_type_spec
     )
     value = executor.create_value(value_pb)
@@ -274,8 +277,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     struct_value = executor.create_struct([value.ref, value.ref])
     self.assertEqual(struct_value.ref, 1)
     materialized_value = executor.materialize(struct_value.ref)
-    deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value
+    deserialized_value, type_spec = (
+        federated_language_executor.deserialize_value(materialized_value)
     )
     struct_type_spec = federated_language.to_type(
         [expected_type_spec, expected_type_spec]
@@ -288,8 +291,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     # 2. Select the first value out of the struct.
     new_value = executor.create_selection(struct_value.ref, 0)
     materialized_value = executor.materialize(new_value.ref)
-    deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value
+    deserialized_value, type_spec = (
+        federated_language_executor.deserialize_value(materialized_value)
     )
     self.assertTrue(type_spec.is_equivalent_to(expected_type_spec))
     deserialized_value = federated_language.framework.type_to_py_container(
@@ -299,7 +302,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_call_with_arg(self):
     executor = get_executor()
-    value_pb, _ = value_serialization.serialize_value(
+    value_pb, _ = federated_language_executor.serialize_value(
         np.array([1, 2, 3], np.int64),
         federated_language.TensorType(np.int64, [3]),
     )
@@ -316,7 +319,9 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     result_value_pb = executor.materialize(result.ref)
-    result_tensor, _ = value_serialization.deserialize_value(result_value_pb)
+    result_tensor, _ = federated_language_executor.deserialize_value(
+        result_value_pb
+    )
     self.assertAllEqual(result_tensor, [2, 4, 6])
 
   def test_call_no_arg(self):
@@ -330,7 +335,9 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, None)
     result_value_pb = executor.materialize(result.ref)
-    result_tensor, _ = value_serialization.deserialize_value(result_value_pb)
+    result_tensor, _ = federated_language_executor.deserialize_value(
+        result_value_pb
+    )
     self.assertEqual(result_tensor, 123.0)
 
   def test_materialize_on_unkown_fails(self):

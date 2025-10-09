@@ -24,8 +24,8 @@ limitations under the License
 #include "include/grpcpp/security/credentials.h"
 #include "include/grpcpp/security/server_credentials.h"
 #include "include/grpcpp/support/status.h"
-#include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
+#include "federated_language_executor/executor.grpc.pb.h"
+#include "federated_language_executor/executor.pb.h"
 
 namespace tensorflow_federated {
 

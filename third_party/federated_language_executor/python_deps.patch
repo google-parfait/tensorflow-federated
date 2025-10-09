@@ -1,0 +1,159 @@
+# Remove python dependencies.
+#
+# ```
+# buildozer 'remove deps @federated_language_executor_pypi//absl_py' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//dm_tree' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//numpy' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//typing_extensions' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//portpicker' //...:*
+# buildozer 'remove deps @federated_language_executor_pypi//federated_language' //...:*
+# buildozer 'add tags nokokoro' //federated_language_executor:executor_bindings
+# buildozer 'add tags nokokoro' //federated_language_executor:executor_bindings_cc
+# buildozer 'add tags nokokoro' //federated_language_executor:executor_bindings_test
+# buildozer 'add tags nokokoro' //federated_language_executor:executor_test_utils_bindings
+# buildozer 'add tags nokokoro' //federated_language_executor:cpp_to_python_executor
+# buildozer 'add tags nokokoro' //federated_language_executor:cpp_to_python_executor_test
+# ```
+
+diff --git federated_language_executor/BUILD federated_language_executor/BUILD
+index 232ed93..42993f0 100644
+--- federated_language_executor/BUILD
++++ federated_language_executor/BUILD
+@@ -42,41 +42,34 @@ py_library(
+ py_library(
+     name = "cpp_to_python_executor",
+     srcs = ["cpp_to_python_executor.py"],
++    tags = ["nokokoro"],
+     deps = [
+         ":executor_bindings",
+         ":executor_errors",
+         ":value_serialization",
+-        "@federated_language_executor_pypi//federated_language",
+     ],
+ )
+ 
+ py_test(
+     name = "cpp_to_python_executor_test",
+     srcs = ["cpp_to_python_executor_test.py"],
++    tags = ["nokokoro"],
+     deps = [
+         ":cpp_to_python_executor",
+         ":executor_bindings",
+         ":value_serialization",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//numpy",
+     ],
+ )
+ 
+ py_library(
+     name = "data_conversions",
+     srcs = ["data_conversions.py"],
+-    deps = ["@federated_language_executor_pypi//federated_language"],
+ )
+ 
+ py_test(
+     name = "data_conversions_test",
+     srcs = ["data_conversions_test.py"],
+-    deps = [
+-        ":data_conversions",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-    ],
++    deps = [":data_conversions"],
+ )
+ 
+ proto_library(
+@@ -120,27 +113,22 @@ py_library(
+     name = "executor_bindings",
+     srcs = ["executor_bindings.py"],
+     data = [":executor_bindings_cc"],
+-    deps = [
+-        ":data_conversions",
+-        "@federated_language_executor_pypi//federated_language",
+-    ],
++    tags = ["nokokoro"],
++    deps = [":data_conversions"],
+ )
+ 
+ py_test(
+     name = "executor_bindings_test",
+     srcs = ["executor_bindings_test.py"],
+     data = [":executor_test_utils_bindings"],
+-    deps = [
+-        ":executor_bindings",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//portpicker",
+-    ],
++    tags = ["nokokoro"],
++    deps = [":executor_bindings"],
+ )
+ 
+ pybind_extension(
+     name = "executor_bindings_cc",
+     srcs = ["executor_bindings.cc"],
++    tags = ["nokokoro"],
+     visibility = ["//visibility:public"],
+     deps = [
+         ":executor_cc_proto",
+@@ -167,17 +155,14 @@ pybind_extension(
+ py_library(
+     name = "executor_errors",
+     srcs = ["executor_errors.py"],
+-    deps = [
+-        "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//typing_extensions",
+-    ],
++    deps = ["@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio"],
+ )
+ 
+ pybind_extension(
+     name = "executor_test_utils_bindings",
+     testonly = True,
+     srcs = ["executor_test_utils_bindings.cc"],
++    tags = ["nokokoro"],
+     visibility = ["//visibility:public"],
+     deps = ["@org_tensorflow_federated//tensorflow_federated/cc/core/impl/executors:mock_executor"],
+ )
+@@ -185,18 +170,12 @@ pybind_extension(
+ py_library(
+     name = "executor_utils",
+     srcs = ["executor_utils.py"],
+-    deps = ["@federated_language_executor_pypi//federated_language"],
+ )
+ 
+ py_test(
+     name = "executor_utils_test",
+     srcs = ["executor_utils_test.py"],
+-    deps = [
+-        ":executor_utils",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//numpy",
+-    ],
++    deps = [":executor_utils"],
+ )
+ 
+ py_library(
+@@ -208,9 +187,6 @@ py_library(
+         "@federated_language//federated_language/common_libs:structure",
+         "@federated_language//federated_language/proto:array_py_pb2",
+         "@federated_language//federated_language/proto:computation_py_pb2",
+-        "@federated_language_executor_pypi//dm_tree",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//numpy",
+     ],
+ )
+ 
+@@ -222,9 +198,6 @@ py_test(
+         ":value_serialization",
+         "@federated_language//federated_language/common_libs:structure",
+         "@federated_language//federated_language/proto:computation_py_pb2",
+-        "@federated_language_executor_pypi//absl_py",
+-        "@federated_language_executor_pypi//federated_language",
+-        "@federated_language_executor_pypi//numpy",
+     ],
+ )
+ 

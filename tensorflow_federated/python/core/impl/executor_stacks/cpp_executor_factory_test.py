@@ -14,23 +14,25 @@
 
 from absl.testing import absltest
 import federated_language
+import federated_language_executor
+from federated_language_executor import executor_test_utils_bindings
 
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import executor_test_utils_bindings
 
 
 def _create_mock_execution_stack(
     max_concurrent_computation_calls: int,
-) -> executor_bindings.Executor:
+) -> federated_language_executor.Executor:
   """Constructs the default leaf executor stack."""
   del max_concurrent_computation_calls  # Unused.
 
   mock_executor = executor_test_utils_bindings.create_mock_executor()
   reference_resolving_executor = (
-      executor_bindings.create_reference_resolving_executor(mock_executor)
+      federated_language_executor.create_reference_resolving_executor(
+          mock_executor
+      )
   )
-  return executor_bindings.create_sequence_executor(
+  return federated_language_executor.create_sequence_executor(
       reference_resolving_executor
   )
 
@@ -71,7 +73,8 @@ class CPPExecutorFactoryTest(absltest.TestCase):
   def test_create_remote_cpp_factory_constructs(self):
     targets = ['localhost:8000', 'localhost:8001']
     channels = [
-        executor_bindings.create_insecure_grpc_channel(t) for t in targets
+        federated_language_executor.create_insecure_grpc_channel(t)
+        for t in targets
     ]
     remote_cpp_factory = cpp_executor_factory.remote_cpp_executor_factory(
         channels=channels, default_num_clients=0
@@ -83,7 +86,8 @@ class CPPExecutorFactoryTest(absltest.TestCase):
   def test_create_remote_cpp_factory_raises_with_no_available_workers(self):
     targets = ['localhost:8000', 'localhost:8001']
     channels = [
-        executor_bindings.create_insecure_grpc_channel(t) for t in targets
+        federated_language_executor.create_insecure_grpc_channel(t)
+        for t in targets
     ]
     remote_cpp_factory = cpp_executor_factory.remote_cpp_executor_factory(
         channels=channels, default_num_clients=0

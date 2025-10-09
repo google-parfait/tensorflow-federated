@@ -15,10 +15,10 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
+import federated_language_executor
 import numpy as np
 
 from tensorflow_federated.python.core.impl.executor_stacks import executor_stack_bindings
-from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 _TARGET_LIST = ['localhost:8000', 'localhost:8001']
 _CARDINALITIES = {federated_language.CLIENTS: 5}
@@ -36,12 +36,10 @@ class ExecutorStackBindingsTest(parameterized.TestCase):
   ):
     with self.assertRaisesRegex(Exception, 'UNAVAILABLE'):
       executor_stack_bindings.create_remote_executor_stack(
-          channels=container_constructor(
-              [
-                  executor_bindings.create_insecure_grpc_channel(t)
-                  for t in _TARGET_LIST
-              ]
-          ),
+          channels=container_constructor([
+              federated_language_executor.create_insecure_grpc_channel(t)
+              for t in _TARGET_LIST
+          ]),
           cardinalities=_CARDINALITIES,
       )
 
