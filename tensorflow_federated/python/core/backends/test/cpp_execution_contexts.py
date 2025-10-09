@@ -22,6 +22,7 @@ import sys
 from absl import flags
 from absl import logging
 import federated_language
+import federated_language_executor
 import portpicker
 
 from tensorflow_federated.python.core.backends.native import compiler as native_compiler
@@ -29,7 +30,6 @@ from tensorflow_federated.python.core.backends.test import compiler as test_comp
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
 FLAGS = flags.FLAGS
@@ -37,15 +37,17 @@ FLAGS = flags.FLAGS
 
 def _create_tensorflow_backend_execution_stack(
     max_concurrent_computation_calls: int,
-) -> executor_bindings.Executor:
+) -> federated_language_executor.Executor:
   """Returns a leaf executor for Tensorflow based executor."""
   tensorflow_executor = tensorflow_executor_bindings.create_tensorflow_executor(
       max_concurrent_computation_calls
   )
   reference_resolving_executor = (
-      executor_bindings.create_reference_resolving_executor(tensorflow_executor)
+      federated_language_executor.create_reference_resolving_executor(
+          tensorflow_executor
+      )
   )
-  return executor_bindings.create_sequence_executor(
+  return federated_language_executor.create_sequence_executor(
       reference_resolving_executor
   )
 
@@ -224,7 +226,7 @@ def create_sync_interprocess_cpp_execution_context(
         return
       process, port = start_process()
       self._process = process
-      self._channel = executor_bindings.create_insecure_grpc_channel(
+      self._channel = federated_language_executor.create_insecure_grpc_channel(
           f'localhost:{port}'
       )
 

@@ -16,25 +16,27 @@
 from collections.abc import Sequence
 
 import federated_language
+import federated_language_executor
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
 def _create_tensorflow_backend_execution_stack(
     max_concurrent_computation_calls: int,
-) -> executor_bindings.Executor:
+) -> federated_language_executor.Executor:
   """Returns a leaf executor for Tensorflow based executor."""
   tensorflow_executor = tensorflow_executor_bindings.create_tensorflow_executor(
       max_concurrent_computation_calls
   )
   reference_resolving_executor = (
-      executor_bindings.create_reference_resolving_executor(tensorflow_executor)
+      federated_language_executor.create_reference_resolving_executor(
+          tensorflow_executor
+      )
   )
-  return executor_bindings.create_sequence_executor(
+  return federated_language_executor.create_sequence_executor(
       reference_resolving_executor
   )
 
@@ -158,7 +160,7 @@ def set_async_local_cpp_execution_context(
 
 
 def create_sync_remote_cpp_execution_context(
-    channels: Sequence[executor_bindings.GRPCChannel],
+    channels: Sequence[federated_language_executor.GRPCChannel],
     default_num_clients: int = 0,
 ) -> federated_language.framework.SyncExecutionContext:
   """Creates a remote execution context backed by TFF-C++ runtime."""
@@ -175,7 +177,7 @@ def create_sync_remote_cpp_execution_context(
 
 
 def set_sync_remote_cpp_execution_context(
-    channels: Sequence[executor_bindings.GRPCChannel],
+    channels: Sequence[federated_language_executor.GRPCChannel],
     default_num_clients: int = 0,
 ):
   context = create_sync_remote_cpp_execution_context(
@@ -185,7 +187,7 @@ def set_sync_remote_cpp_execution_context(
 
 
 def create_async_remote_cpp_execution_context(
-    channels: Sequence[executor_bindings.GRPCChannel],
+    channels: Sequence[federated_language_executor.GRPCChannel],
     default_num_clients: int = 0,
 ) -> federated_language.framework.AsyncExecutionContext:
   """Creates a remote execution context backed by TFF-C++ runtime."""

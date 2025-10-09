@@ -16,13 +16,13 @@ from unittest import mock
 
 from absl.testing import absltest
 import federated_language
+import federated_language_executor
+from federated_language_executor import executor_pb2
+from federated_language_executor import executor_pb2_grpc
 import grpc
 import portpicker
 
-from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
-from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
 def create_stub():
@@ -86,7 +86,7 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
 
     instance.Compute.assert_called_once()
 
-    value, _ = value_serialization.deserialize_value(result.value)
+    value, _ = federated_language_executor.deserialize_value(result.value)
     self.assertEqual(value, proto)
 
   def test_compute_raises_retryable_error_on_grpc_error_unavailable(

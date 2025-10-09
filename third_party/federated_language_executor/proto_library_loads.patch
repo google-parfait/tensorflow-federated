@@ -1,0 +1,31 @@
+# Fix the proto_library loads.
+#
+# ```
+# buildozer 'replace_load @rules_cc//cc:defs.bzl cc_proto_library' //...:*
+# buildozer 'replace_load @com_github_grpc_grpc//bazel:cc_grpc_library.bzl cc_grpc_library' //...:*
+# buildozer 'replace_load @com_github_grpc_grpc//bazel:python_rules.bzl py_proto_library' //...:*
+# buildozer 'replace_load @com_github_grpc_grpc//bazel:python_rules.bzl py_grpc_library' //...:*
+# buildozer 'fix unusedLoads' //...:*
+# find "." -type f -print0 | xargs -0 \
+#     sed --regexp-extended --in-place \
+#     -e '/^load\(\"@com_google_protobuf\/\/bazel:proto_library\.bzl\", \"proto_library\"\)$/d'
+# ```
+
+diff --git federated_language_executor/BUILD federated_language_executor/BUILD
+index 61c2488..232ed93 100644
+--- federated_language_executor/BUILD
++++ federated_language_executor/BUILD
+@@ -13,11 +13,9 @@
+ # limitations under the License.
+ 
+ load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
+-load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library")
+-load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+-load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
+-load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
++load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+ load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
++load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+ load("@rules_python//python:defs.bzl", "py_library", "py_test")
+ 
+ package(
