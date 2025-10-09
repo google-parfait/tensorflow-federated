@@ -15,11 +15,11 @@
 
 from absl import logging
 import federated_language
+import federated_language_executor
+from federated_language_executor import executor_pb2
+from federated_language_executor import executor_pb2_grpc
 import grpc
 
-from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 
 
@@ -32,10 +32,11 @@ def _request(rpc_func, request):
     except grpc.RpcError as e:
       if (
           isinstance(e, grpc.Call)
-          and e.code() in executors_errors.get_grpc_retryable_error_codes()
+          and e.code()
+          in federated_language_executor.get_grpc_retryable_error_codes()
       ):
         logging.info('Received retryable gRPC error: %s', e)
-        raise executors_errors.RetryableGRPCError(e)
+        raise federated_language_executor.RetryableGRPCError(e)
       else:
         raise e
 

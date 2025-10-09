@@ -106,6 +106,22 @@ http_archive(
     url = "https://github.com/google-parfait/federated-language/archive/16e734b633e68b613bb92918e6f3304774853e9b.tar.gz",
 )
 
+http_archive(
+    name = "federated_language_executor",
+    patches = [
+        "//third_party/federated_language_executor:proto_library_loads.patch",
+        "//third_party/federated_language_executor:pybind_targets.patch",
+        "//third_party/federated_language_executor:python_deps.patch",
+        "//third_party/federated_language_executor:python_toolchain.patch",
+    ],
+    repo_mapping = {
+        "@abseil-cpp": "@com_google_absl",
+    },
+    # sha256 = "aaa33158683cb2ab8dd34c4696a993f527d5b941ae1a30da404d3a18a880197a",
+    strip_prefix = "federated-language-jax-cl-817054260/third_party/federated_language_executor",
+    url = "https://github.com/google-parfait/federated-language-jax/archive/refs/heads/cl/817054260.zip",
+)
+
 # The version of TensorFlow should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
 http_archive(

@@ -17,8 +17,7 @@ from collections.abc import Mapping, Sequence
 
 import federated_language
 from federated_language.proto import computation_pb2
-
-from tensorflow_federated.proto.v0 import executor_pb2
+from federated_language_executor import executor_pb2
 
 
 def serialize_cardinalities(

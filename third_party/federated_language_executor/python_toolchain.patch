@@ -1,0 +1,40 @@
+# Fix the Python toolchain.
+#
+# This patch was created manually.
+
+diff --git BUILD BUILD
+index 6466458..900c314 100644
+--- BUILD
++++ BUILD
+@@ -12,7 +12,7 @@
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ 
+-load("@python//:defs.bzl", "compile_pip_requirements")
++# load("@python//:defs.bzl", "compile_pip_requirements")
+ load("@rules_license//rules:license.bzl", "license")
+ 
+ # TODO: b/419584204 - Enable all supported versions of Python.
+@@ -71,14 +71,14 @@ exports_files([
+ #     requirements_txt = "//:requirements_lock_3_11.txt",
+ # )
+ 
+-compile_pip_requirements(
+-    name = "requirements_3_12",
+-    src = "//:requirements.in",
+-    extra_args = [
+-        "--strip-extras",
+-    ],
+-    requirements_txt = "//:requirements_lock_3_12.txt",
+-)
++# compile_pip_requirements(
++#     name = "requirements_3_12",
++#     src = "//:requirements.in",
++#     extra_args = [
++#         "--strip-extras",
++#     ],
++#     requirements_txt = "//:requirements_lock_3_12.txt",
++# )
+ 
+ # TODO: b/419584204 - Enable all supported versions of Python.
+ # compile_pip_requirements_3_13(

@@ -16,8 +16,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
 from federated_language.proto import computation_pb2
+from federated_language_executor import executor_pb2
 
-from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.impl.executors import cardinality
 
 
