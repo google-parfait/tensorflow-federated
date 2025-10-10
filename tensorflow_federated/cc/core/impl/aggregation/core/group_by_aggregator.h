@@ -63,6 +63,10 @@ namespace aggregation {
 // This class is not thread safe.
 class GroupByAggregator : public TensorAggregator {
  public:
+  // Validates the input tensors for Accumulate. Returns an InvalidArgument
+  // Status if the input tensors are not valid. Otherwise, returns an Ok Status.
+  Status ValidateInputs(const InputTensorList& tensors) const override;
+
   // Merge this GroupByAggregator with another GroupByAggregator that operates
   // on compatible types using compatible inner intrinsics.
   Status MergeWith(TensorAggregator&& other) override;
@@ -308,10 +312,9 @@ class GroupByAggregator : public TensorAggregator {
 
   // Checks that the input tensor at the provided index has the expected type
   // and shape.
-  static Status ValidateInputTensor(const InputTensorList& tensors,
-                                    size_t input_index,
-                                    const TensorSpec& expected_tensor_spec,
-                                    const TensorShape& key_shape);
+  Status ValidateIndexedTensor(const Tensor& tensor, size_t input_index,
+                               DataType expected_dtype,
+                               const TensorShape& key_shape) const;
 
   // Internal implementation to accumulate the input tensors into the state of
   // this GroupByAggregator.

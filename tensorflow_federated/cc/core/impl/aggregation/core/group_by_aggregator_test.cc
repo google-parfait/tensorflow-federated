@@ -1460,9 +1460,9 @@ TEST(GroupByAggregatorTest, Accumulate_FewerTensorsThanExpected) {
   Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
   Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(s.message(), ::testing::HasSubstr(
-                               "GroupByAggregator::AggregateTensorsInternal "
-                               "should operate on 3 input tensors"));
+  EXPECT_THAT(s.message(),
+              ::testing::HasSubstr("GroupByAggregator::ValidateInputs: "
+                                   "should operate on 3 input tensors"));
 }
 
 TEST(GroupByAggregatorTest, Accumulate_MoreTensorsThanExpected) {
@@ -1477,9 +1477,9 @@ TEST(GroupByAggregatorTest, Accumulate_MoreTensorsThanExpected) {
   Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
   Status s = group_by_aggregator->Accumulate({&key1, &key2, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(s.message(), ::testing::HasSubstr(
-                               "GroupByAggregator::AggregateTensorsInternal "
-                               "should operate on 2 input tensors"));
+  EXPECT_THAT(s.message(),
+              ::testing::HasSubstr("GroupByAggregator::ValidateInputs: "
+                                   "should operate on 2 input tensors"));
 }
 
 TEST(GroupByAggregatorTest, Accumulate_KeyTensorSmallerThanValueTensor) {
