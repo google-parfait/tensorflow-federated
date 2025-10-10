@@ -22,20 +22,30 @@
 #include <utility>
 #include <vector>
 
+#include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_histogram_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
+#include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
 namespace {
+
+using ::tensorflow_federated::aggregation::dp_histogram_testing::
+    CreateTensorSpec;
+using ::testing::HasSubstr;
 
 // Mock class for testing the abstract DPGroupByAggregator.
 class MockDPGroupByAggregator : public DPGroupByAggregator {
@@ -83,7 +93,8 @@ MockDPGroupByAggregator CreateMockForTestingEpsilonAndDeltaSplit(
   }
   return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
                                  &intrinsics, nullptr, std::move(aggregators),
-                                 0, epsilon, delta, 1);
+                                 /*num_inputs=*/0, epsilon, delta,
+                                 /*max_groups_contributed=*/1);
 }
 
 // First batch of tests: ensure that epsilon is split when appropriate
@@ -120,6 +131,51 @@ TEST(DPGroupByAggregatorTest, SplitDeltaWhenManyIntrinsics) {
   EXPECT_EQ(aggregator.GetDeltaPerAgg(), 0.05);
 }
 
+// Third batch of tests: ensure that the string length is checked.
+TEST(DPGroupByAggregatorTest, StringLengthCheck) {
+  // The first step is to prepare the inner intrinsic and aggregator.
+  Intrinsic intrinsic{"GoogleSQL:sum",
+                      {CreateTensorSpec("value", DT_INT32)},
+                      {CreateTensorSpec("value", DT_INT64)},
+                      {},
+                      {}};
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(std::move(intrinsic));
+  std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
+
+  // Next we make the top-level MockDPGroupByAggregator with a max string
+  // length of 9.
+  auto one_dim_base_aggregator = std::unique_ptr<OneDimBaseGroupingAggregator>(
+      dynamic_cast<OneDimBaseGroupingAggregator*>(aggregator.release()));
+  aggregators.push_back(std::move(one_dim_base_aggregator));
+  std::vector<TensorSpec> input_key_specs;
+  input_key_specs.push_back(
+      dp_histogram_testing::CreateTensorSpec("key", DT_STRING));
+  std::vector<TensorSpec> output_key_specs;
+  output_key_specs.push_back(
+      dp_histogram_testing::CreateTensorSpec("key_out", DT_STRING));
+  MockDPGroupByAggregator top_aggregator(
+      input_key_specs, &output_key_specs, &intrinsics, nullptr,
+      std::move(aggregators),
+      /*num_inputs=*/0, /*epsilon=*/0.1, /*delta=*/0.1,
+      /*max_groups_contributed=*/1, std::nullopt, {}, /*max_string_length=*/9);
+
+  // Finally we show that a long string is rejected but a short one is accepted.
+  Tensor short_keys =
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"short"}))
+          .value();
+  Tensor long_keys = Tensor::Create(DT_STRING, {1},
+                                    CreateTestData<string_view>({"0123456789"}))
+                         .value();
+  Tensor v1 =
+      Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})).value();
+  Tensor v2 =
+      Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({2})).value();
+  TFF_EXPECT_OK(top_aggregator.ValidateInputs({&short_keys, &v1}));
+  EXPECT_THAT(top_aggregator.ValidateInputs({&long_keys, &v2}),
+              StatusIs(INVALID_ARGUMENT, HasSubstr("tensor 0")));
+}
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated

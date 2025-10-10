@@ -22,10 +22,13 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
@@ -64,5 +67,25 @@ StatusOr<OutputTensorList> DPGroupByAggregator::Report() && {
   TFF_RETURN_IF_ERROR(CheckValid());
   return NoisyReport();
 }
+
+Status DPGroupByAggregator::ValidateInputs(
+    const InputTensorList& tensors) const {
+  TFF_RETURN_IF_ERROR(GroupByAggregator::ValidateInputs(tensors));
+  // Check that each string tensor has no string that exceeds the max length.
+  for (int i = 0; i < tensors.size(); ++i) {
+    if (tensors[i]->dtype() != DT_STRING) {
+      continue;
+    }
+    for (int j = 0; j < tensors[i]->num_elements(); ++j) {
+      if (tensors[i]->AsSpan<string_view>()[j].size() > max_string_length_) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "The maximum length of a string key is " << max_string_length_
+               << " but got a string exceeding that length in tensor " << i;
+      }
+    }
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace aggregation
 }  // namespace tensorflow_federated

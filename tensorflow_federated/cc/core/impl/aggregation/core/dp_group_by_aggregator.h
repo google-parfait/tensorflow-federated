@@ -25,6 +25,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
@@ -40,6 +41,10 @@ class DPGroupByAggregator : public GroupByAggregator {
   // Every DPGroupByAggregator's Report() has the same form: check preconditions
   // and then call NoisyReport().
   StatusOr<OutputTensorList> Report() && override;
+
+  // Validates the input tensors, adding the string length check on top of what
+  // GroupByAggregator::ValidateInputs does.
+  Status ValidateInputs(const InputTensorList& tensors) const override;
 
  protected:
   // Constructs a DPGroupByAggregator. Only intended for use by child classes.

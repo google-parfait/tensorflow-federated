@@ -306,6 +306,7 @@ cc_library(
         ":one_dim_grouping_aggregator",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/status",
     ],
 )
 
@@ -690,10 +691,13 @@ cc_test(
         ":dp_fedsql_constants",
         ":dp_group_by_aggregator",
         ":dp_histogram_test_utils",
+        ":grouping_federated_sum",
         ":intrinsic",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/status",
     ],
 )
