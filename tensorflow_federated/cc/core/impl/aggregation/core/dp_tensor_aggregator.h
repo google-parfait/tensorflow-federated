@@ -45,7 +45,7 @@ class DPTensorAggregator : public TensorAggregator {
   // Called within DPTensorAggregator::AggregateTensors(). Also called by
   // DPTensorAggregatorBundle::AggregateTensors(), to check all inputs before
   // passing them to the child aggregators.
-  Status InputMatchesSpec(const InputTensorList& input) const;
+  Status ValidateInputs(const InputTensorList& input) const override;
 
   // Verify that the other aggregator can be merged with this one.
   // Called by MergeWith. Also called by DPTensorAggregatorBundle::IsCompatible,
@@ -64,7 +64,7 @@ class DPTensorAggregator : public TensorAggregator {
   // Verify that the input tensors match the expected specs and then call
   // AggregateTensorsInternal().
   Status AggregateTensors(InputTensorList tensors) override {
-    TFF_RETURN_IF_ERROR(InputMatchesSpec(tensors));
+    TFF_RETURN_IF_ERROR(ValidateInputs(tensors));
     return AggregateTensorsInternal(std::move(tensors));
   }
 

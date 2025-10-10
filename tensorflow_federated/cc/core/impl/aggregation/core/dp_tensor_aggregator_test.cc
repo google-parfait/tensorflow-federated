@@ -38,7 +38,7 @@ namespace aggregation {
 namespace {
 using ::testing::HasSubstr;
 
-// To test InputMatchesSpec, we instantiate DPQuantileAggregator and throw a
+// To test ValidateInputs, we instantiate DPQuantileAggregator and throw a
 // variety of inputs at it.
 
 // Multiple tensors are not valid input.
@@ -59,7 +59,7 @@ TEST(DPTensorAggregatorTest, WrongNumberOfInputs) {
   Tensor t2 =
       Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({2})).value();
   auto* ptr = dynamic_cast<DPTensorAggregator*>(aggregator.get());
-  auto status = ptr->InputMatchesSpec(InputTensorList({&t1, &t2}));
+  auto status = ptr->ValidateInputs(InputTensorList({&t1, &t2}));
   EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(status.message(),
               HasSubstr("Expected exactly 1 tensors, but got 2"));
@@ -81,7 +81,7 @@ TEST(DPTensorAggregatorTest, WrongShape) {
   Tensor t =
       Tensor::Create(DT_DOUBLE, {2}, CreateTestData<double>({1, 2})).value();
   auto* ptr = dynamic_cast<DPTensorAggregator*>(aggregator.get());
-  auto status = ptr->InputMatchesSpec(InputTensorList({&t}));
+  auto status = ptr->ValidateInputs(InputTensorList({&t}));
   EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(status.message(),
               HasSubstr("Expected input with shape {}, but got {2}"));
@@ -102,14 +102,14 @@ TEST(DPTensorAggregatorTest, WrongDType) {
   auto aggregator = std::move(aggregator_status.value());
   Tensor t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1.0})).value();
   auto* ptr = dynamic_cast<DPTensorAggregator*>(aggregator.get());
-  auto status = ptr->InputMatchesSpec(InputTensorList({&t}));
+  auto status = ptr->ValidateInputs(InputTensorList({&t}));
   EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(status.message(),
               HasSubstr("Expected an input of type 2,"  // DT_DOUBLE
                         " but got 1"));                 // DT_FLOAT
 }
 
-// InputMatchesSpec returns OK for valid input.
+// ValidateInputs returns OK for valid input.
 TEST(DPTensorAggregatorTest, ValidInput) {
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
                                   {TensorSpec("value", DT_DOUBLE, {})},
@@ -125,7 +125,7 @@ TEST(DPTensorAggregatorTest, ValidInput) {
   Tensor t =
       Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({1.0})).value();
   auto* ptr = dynamic_cast<DPTensorAggregator*>(aggregator.get());
-  auto status = ptr->InputMatchesSpec(InputTensorList({&t}));
+  auto status = ptr->ValidateInputs(InputTensorList({&t}));
   TFF_EXPECT_OK(status);
 }
 

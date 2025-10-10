@@ -41,11 +41,10 @@ std::string TensorShapeToString(const TensorShape& shape) {
                             : output_str.erase(output_str.size() - 1);
 }
 
-Status DPTensorAggregator::InputMatchesSpec(
-    const InputTensorList& input) const {
+Status DPTensorAggregator::ValidateInputs(const InputTensorList& input) const {
   if (input.size() != input_specs_.size()) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregator::InputMatchesSpec: Expected exactly "
+           << "DPTensorAggregator::ValidateInputs: Expected exactly "
            << input_specs_.size() << " tensors, but got " << input.size();
   }
 
@@ -55,7 +54,7 @@ Status DPTensorAggregator::InputMatchesSpec(
     // Data type of input must match the spec.
     if (input_tensor->dtype() != input_spec.dtype()) {
       return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPTensorAggregator::InputMatchesSpec: Expected an input of "
+             << "DPTensorAggregator::ValidateInputs: Expected an input of "
                 "type"
              << " " << input_spec.dtype() << ", but got "
              << input_tensor->dtype() << " for input[" << i << "]";
@@ -65,7 +64,7 @@ Status DPTensorAggregator::InputMatchesSpec(
     if (input_spec.shape() != TensorShape{-1} &&
         input_tensor->shape() != input_spec.shape()) {
       return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPTensorAggregator::InputMatchesSpec: Expected input with "
+             << "DPTensorAggregator::ValidateInputs: Expected input with "
                 "shape"
              << " {" << TensorShapeToString(input_spec.shape()) << "},"
              << " but got"
