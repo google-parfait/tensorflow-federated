@@ -708,43 +708,43 @@ TEST_P(OneDimGroupingAggregatorTest,
 }
 
 TEST(OneDimGroupingAggregatorTest,
-     Aggregate_OrdinalTensorHasIncompatibleDataType) {
+     ValidateInputs_OrdinalTensorHasIncompatibleDataType) {
   SumGroupingAggregator<int32_t> aggregator;
   Tensor ordinal =
       Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({0})).value();
   Tensor t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({0})).value();
-  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t}),
+  EXPECT_THAT(aggregator.ValidateInputs({&ordinal, &t}),
               StatusIs(INVALID_ARGUMENT));
 }
 
-TEST(OneDimGroupingAggregatorTest, Aggregate_IncompatibleDataType) {
+TEST(OneDimGroupingAggregatorTest, ValidateInputs_IncompatibleDataType) {
   SumGroupingAggregator<int32_t> aggregator;
   Tensor ordinal =
       Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({0})).value();
   Tensor t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({0})).value();
-  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t}),
+  EXPECT_THAT(aggregator.ValidateInputs({&ordinal, &t}),
               StatusIs(INVALID_ARGUMENT));
 }
 
 TEST(OneDimGroupingAggregatorTest,
-     Aggregate_OrdinalAndValueTensorsHaveIncompatibleShapes) {
+     ValidateInputs_OrdinalAndValueTensorsHaveIncompatibleShapes) {
   SumGroupingAggregator<int32_t> aggregator;
   Tensor ordinal =
       Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({0})).value();
   Tensor t = Tensor::Create(DT_INT32, {2}, CreateTestData({0, 1})).value();
-  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t}),
+  EXPECT_THAT(aggregator.ValidateInputs({&ordinal, &t}),
               StatusIs(INVALID_ARGUMENT));
 }
 
 TEST(OneDimGroupingAggregatorTest,
-     Aggregate_MultidimensionalTensorsNotSupported) {
+     ValidateInputs_MultidimensionalTensorsNotSupported) {
   SumGroupingAggregator<int32_t> aggregator;
   Tensor ordinal =
       Tensor::Create(DT_INT64, {2, 2}, CreateTestData<int64_t>({0, 0, 0, 0}))
           .value();
   Tensor t =
       Tensor::Create(DT_INT32, {2, 2}, CreateTestData({0, 1, 2, 3})).value();
-  EXPECT_THAT(aggregator.Accumulate({&ordinal, &t}),
+  EXPECT_THAT(aggregator.ValidateInputs({&ordinal, &t}),
               StatusIs(INVALID_ARGUMENT));
 }
 

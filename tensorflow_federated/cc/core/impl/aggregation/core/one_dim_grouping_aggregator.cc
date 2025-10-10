@@ -41,34 +41,42 @@ Status OneDimBaseGroupingAggregator::MergeWith(TensorAggregator&& other) {
             "MergeTensors instead.";
 }
 
-Status OneDimBaseGroupingAggregator::ValidateTensorInputs(
-    const InputTensorList& tensors) {
+Status OneDimBaseGroupingAggregator::ValidateInputs(
+    const InputTensorList& tensors) const {
   TFF_CHECK(tensors.size() == 2)
-      << "OneDimGroupingAggregator should operate on 2 input tensors";
+      << "OneBaseDimGroupingAggregator should operate on 2 input tensors";
 
   const Tensor* ordinals = tensors[0];
   if (ordinals->dtype() != DT_INT64) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimGroupingAggregator::AggregateTensors: dtype mismatch "
+           << "OneDimBaseGroupingAggregator::ValidateInputs: dtype "
+              "mismatch "
               "for tensor 0. Expected DT_INT64.";
   }
   const Tensor* tensor = tensors[1];
   if (ordinals->shape() != tensor->shape()) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimGroupingAggregator::AggregateTensors: tensor shape "
+           << "OneDimBaseGroupingAggregator::ValidateInputs: tensor "
+              "shape "
               "mismatch. Shape of both tensors must be the same.";
   }
   size_t num_dimensions = tensor->shape().dim_sizes().size();
   if (num_dimensions > (size_t)1) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimGroupingAggregator::AggregateTensors: Only 1 "
+           << "OneDimBaseGroupingAggregator::ValidateInputs: Only 1 "
               "dimensional tensors supported. Input tensor has "
            << num_dimensions << " dimensions.";
   }
   if (!ordinals->is_dense() || !tensor->is_dense()) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimGroupingAggregator::AggregateTensors: Only dense "
+           << "OneDimBaseGroupingAggregator::ValidateInputs: Only dense "
               "tensors are supported.";
+  }
+  if (tensor->dtype() != GetValidType()) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "OneDimBaseGroupingAggregator::ValidateInputs: dtype "
+              "mismatch for tensor 1. Expected "
+           << GetValidType() << " but got " << tensor->dtype() << ".";
   }
   return absl::OkStatus();
 }
