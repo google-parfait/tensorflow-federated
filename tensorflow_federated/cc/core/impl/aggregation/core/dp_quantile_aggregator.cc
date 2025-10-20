@@ -105,8 +105,7 @@ Status DPQuantileAggregator<T>::MergeWith(TensorAggregator&& other) {
 
 // Push back the input into the buffer or perform reservoir sampling.
 template <typename T>
-Status DPQuantileAggregator<T>::AggregateTensorsInternal(
-    InputTensorList tensors) {
+Status DPQuantileAggregator<T>::AggregateTensors(InputTensorList tensors) {
   num_inputs_++;
   T value = tensors[0]->CastToScalar<T>();
   if (buffer_.size() < kDPQuantileMaxInputs) {

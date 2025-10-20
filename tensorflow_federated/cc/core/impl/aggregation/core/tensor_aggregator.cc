@@ -32,6 +32,11 @@ Status TensorAggregator::ValidateInputs(const InputTensorList& tensors) const {
 }
 
 Status TensorAggregator::Accumulate(InputTensorList tensors) {
+  TFF_RETURN_IF_ERROR(ValidateInputs(tensors));
+  return AccumulateWithoutValidation(std::move(tensors));
+}
+
+Status TensorAggregator::AccumulateWithoutValidation(InputTensorList tensors) {
   TFF_RETURN_IF_ERROR(CheckValid());
 
   // Delegate aggregation to the derived class.

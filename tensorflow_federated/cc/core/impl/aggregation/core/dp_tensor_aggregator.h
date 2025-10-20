@@ -17,7 +17,6 @@
 #ifndef TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_TENSOR_AGGREGATOR_H_
 #define TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_TENSOR_AGGREGATOR_H_
 
-#include <utility>
 #include <vector>
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
@@ -56,16 +55,6 @@ class DPTensorAggregator : public TensorAggregator {
   // TakeOutputs() is deprecated given the use of ReportWithEpsilonAndDelta().
   OutputTensorList TakeOutputs() && override {
     TFF_CHECK(false) << "DPTensorAggregator::TakeOutputs: Not implemented.";
-  }
-
-  // Child-specific implementation of AggregateTensors().
-  virtual Status AggregateTensorsInternal(InputTensorList tensors) = 0;
-
-  // Verify that the input tensors match the expected specs and then call
-  // AggregateTensorsInternal().
-  Status AggregateTensors(InputTensorList tensors) override {
-    TFF_RETURN_IF_ERROR(ValidateInputs(tensors));
-    return AggregateTensorsInternal(std::move(tensors));
   }
 
  private:

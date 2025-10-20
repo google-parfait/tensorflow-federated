@@ -187,7 +187,8 @@ absl::Status CheckpointAggregator::Accumulate(
       TFF_RETURN_IF_ERROR(aggregators_[i]->ValidateInputs(inputs[i]));
     }
     for (int i = 0; i < intrinsics_.size(); ++i) {
-      TFF_RETURN_IF_ERROR(aggregators_[i]->Accumulate(std::move(inputs[i])));
+      TFF_RETURN_IF_ERROR(
+          aggregators_[i]->AccumulateWithoutValidation(std::move(inputs[i])));
     }
   }
   return absl::OkStatus();

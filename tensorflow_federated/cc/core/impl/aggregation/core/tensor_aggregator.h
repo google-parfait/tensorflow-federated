@@ -46,6 +46,11 @@ class TensorAggregator
   bool CanReport() const override;
   StatusOr<OutputTensorList> Report() && override;
 
+  // The Accumulate method includes input validation. This variant makes the
+  // assumption that validation has already been performed; naturally, it should
+  // only be called after ValidateInputs() has returned an OK Status.
+  Status AccumulateWithoutValidation(InputTensorList tensors);
+
   // Returns the number of aggregated inputs.
   virtual int GetNumInputs() const = 0;
 

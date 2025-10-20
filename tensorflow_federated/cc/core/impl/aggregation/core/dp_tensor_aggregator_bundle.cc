@@ -76,8 +76,6 @@ Status DPTensorAggregatorBundle::ValidateInputs(
 }
 
 Status DPTensorAggregatorBundle::AggregateTensors(InputTensorList tensors) {
-  TFF_RETURN_IF_ERROR(ValidateInputs(tensors));
-
   // Split input according to num_tensors_per_agg_ and delegate aggregation to
   // the nested aggregators.
   int current_tensor_index = 0;

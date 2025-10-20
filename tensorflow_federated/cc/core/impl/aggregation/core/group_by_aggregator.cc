@@ -203,8 +203,6 @@ StatusOr<OutputTensorList> GroupByAggregator::Report() && {
 }
 
 Status GroupByAggregator::AggregateTensors(InputTensorList tensors) {
-  TFF_RETURN_IF_ERROR(ValidateInputs(tensors));
-
   TFF_RETURN_IF_ERROR(AggregateTensorsInternal(std::move(tensors)));
   num_inputs_++;
   return absl::OkStatus();

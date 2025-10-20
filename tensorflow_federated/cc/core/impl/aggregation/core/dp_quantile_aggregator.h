@@ -145,7 +145,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // This DP mechanism expects one scalar tensor in the input. It pushes the
   // scalar into the buffer if the buffer is smaller than kDPQuantileMaxInputs.
   // Otherwise, it will perform reservoir sampling
-  Status AggregateTensorsInternal(InputTensorList tensors) override;
+  Status AggregateTensors(InputTensorList tensors) override;
 
   // Checks if the output has not already been consumed.
   Status CheckValid() const override;

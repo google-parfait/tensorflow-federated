@@ -219,8 +219,6 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
   // Accumulates the values into the positions in the output tensor which are
   // indicated by the corresponding ordinals.
   Status AggregateTensors(InputTensorList tensors) override {
-    TFF_RETURN_IF_ERROR(ValidateInputs(tensors));
-
     num_inputs_++;
     AggVector<InputT> value_vector = tensors[1]->AsAggVector<InputT>();
     AggVector<int64_t> ordinals_vector = tensors[0]->AsAggVector<int64_t>();
