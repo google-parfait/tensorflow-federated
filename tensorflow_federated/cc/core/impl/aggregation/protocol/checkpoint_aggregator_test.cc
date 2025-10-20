@@ -57,6 +57,7 @@ namespace {
 
 using ::testing::AnyOf;
 using ::testing::ByMove;
+using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::StrEq;
@@ -420,9 +421,9 @@ TEST_P(CheckpointAggregatorTest, CreateFromIntrinsicsAccumulateSuccess) {
             .value();
   }
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({2}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator->Accumulate(parser));
 }
 
@@ -437,18 +438,18 @@ TEST(CheckpointAggregatorTest, AccumulateMissingTensor) {
 TEST(CheckpointAggregatorTest, AccumulateMismatchingTensor) {
   auto aggregator = CreateWithDefaultConfig();
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {}, CreateTestData({2.f}));
-  }));
+  });
   EXPECT_THAT(aggregator->Accumulate(parser), StatusIs(INVALID_ARGUMENT));
 }
 
 TEST(CheckpointAggregatorTest, AccumulateSuccess) {
   auto aggregator = CreateWithDefaultConfig();
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({2}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator->Accumulate(parser));
 }
 
@@ -461,9 +462,9 @@ TEST(CheckpointAggregatorTest, AccumulateAfterReport) {
   TFF_EXPECT_OK(aggregator->Report(builder));
 
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({2}));
-  }));
+  });
   EXPECT_THAT(aggregator->Accumulate(parser), StatusIs(ABORTED));
 }
 
@@ -471,9 +472,9 @@ TEST(CheckpointAggregatorTest, AccumulateAfterAbort) {
   auto aggregator = CreateWithDefaultConfig();
   aggregator->Abort();
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({2}));
-  }));
+  });
   EXPECT_THAT(aggregator->Accumulate(parser), StatusIs(ABORTED));
 }
 
@@ -500,9 +501,9 @@ TEST_P(CheckpointAggregatorTest, ReportZeroInputs) {
 TEST_P(CheckpointAggregatorTest, ReportOneInput) {
   auto aggregator = CreateWithDefaultConfig();
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({2}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator->Accumulate(parser));
 
   if (GetParam()) {
@@ -585,13 +586,13 @@ TEST_P(CheckpointAggregatorTest, ReportMultipleTensors) {
   auto aggregator = Create(config_message);
 
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_INT32, {3}, CreateTestData({1, 2, 3}));
-  }));
-  EXPECT_CALL(parser, GetTensor(StrEq("bar"))).WillOnce(Invoke([] {
+  });
+  EXPECT_CALL(parser, GetTensor(StrEq("bar"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {2, 2},
                           CreateTestData({1.f, 2.f, 3.f, 4.f}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator->Accumulate(parser));
 
   if (GetParam()) {
@@ -772,13 +773,13 @@ TEST(CheckpointAggregatorTest, GetNumCheckpointsAggregatedFailsOnMismatch) {
     })pb");
   auto aggregator = Create(config_message);
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_INT32, {3}, CreateTestData({1, 2, 3}));
-  }));
-  EXPECT_CALL(parser, GetTensor(StrEq("bar"))).WillOnce(Invoke([] {
+  });
+  EXPECT_CALL(parser, GetTensor(StrEq("bar"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {2, 2},
                           CreateTestData({1.f, 2.f, 3.f, 4.f}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator->Accumulate(parser));
 
   // The number of aggregated checkpoints is undefined because the inner
@@ -875,16 +876,139 @@ TEST_P(CheckpointAggregatorTest, ReportFedSqlZeroInputs) {
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
+Configuration string_fedsql_configuration() {
+  return PARSE_TEXT_PROTO(R"pb(
+    intrinsic_configs: {
+      intrinsic_uri: "fedsql_dp_group_by"
+      intrinsic_args:
+      [ {
+        input_tensor {
+          name: "key1"
+          dtype: DT_STRING
+          shape { dim_sizes: -1 }
+        }
+      }
+        , {
+          parameter {
+            name: "epsilon"
+            dtype: DT_DOUBLE
+            shape {}
+            double_val: 1.0
+          }
+        }
+        , {
+          parameter {
+            name: "delta"
+            dtype: DT_DOUBLE
+            shape {}
+            double_val: 0.0001
+          }
+        }
+        , {
+          parameter {
+            name: "max_groups_contributed"
+            dtype: DT_INT64
+            shape {}
+            int64_val: 1
+          }
+        }]
+      output_tensors {
+        name: "key_out"
+        dtype: DT_STRING
+        shape { dim_sizes: -1 }
+      }
+      inner_intrinsics:
+      [ {
+        intrinsic_uri: "GoogleSQL:$differential_privacy_sum"
+        intrinsic_args:
+        [ {
+          input_tensor {
+            name: "val1"
+            dtype: DT_INT32
+            shape {}
+          }
+        }]
+        output_tensors {
+          name: "value_out"
+          dtype: DT_INT64
+          shape {}
+        }
+        intrinsic_args:
+        [ {
+          parameter {
+            dtype: DT_DOUBLE
+            shape {}
+            double_val: 2.0
+          }
+        }
+          , {
+            parameter {
+              dtype: DT_DOUBLE
+              shape {}
+              double_val: -1.0
+            }
+          }
+          , {
+            parameter {
+              dtype: DT_DOUBLE
+              shape {}
+              double_val: -1.0
+            }
+          }]
+      }]
+    }
+  )pb");
+}
+
+TEST_P(CheckpointAggregatorTest, OnlyCatchLongStrings) {
+  std::unique_ptr<CheckpointAggregator> aggregator =
+      Create(string_fedsql_configuration());
+
+  MockCheckpointParser parser;
+  EXPECT_CALL(parser, GetTensor(StrEq("key1"))).WillOnce([] {
+    return Tensor::Create(DT_STRING, {2},
+                          CreateTestData<string_view>({"a", "b"}));
+  });
+  EXPECT_CALL(parser, GetTensor(StrEq("val1"))).WillOnce([] {
+    return Tensor::Create(DT_INT32, {2}, CreateTestData({1, 2}));
+  });
+  TFF_EXPECT_OK(aggregator->Accumulate(parser));
+
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator = CheckpointAggregator::Deserialize(
+                     string_fedsql_configuration(), serialized_state)
+                     .value();
+  }
+  MockCheckpointParser parser2;
+  EXPECT_CALL(parser2, GetTensor(StrEq("key1"))).WillOnce([] {
+    return Tensor::Create(DT_STRING, {2},
+                          CreateTestData<string_view>({"short string", R"(
+  This is a massive string. It is meant to test the code that enforces the
+  maximum length of a string key. At the time of writing, the maximum length
+  is 256 characters. This string's length exceeds that limit, so an error Status
+  should be returned by DPGroupByAggregator::ValidateInputs. That value will be
+  propagated up to the CheckpointAggregator.
+    )"}));
+  });
+  EXPECT_CALL(parser2, GetTensor(StrEq("val1"))).WillOnce([] {
+    return Tensor::Create(DT_INT32, {2}, CreateTestData({1, 2}));
+  });
+  EXPECT_THAT(aggregator->Accumulate(parser2),
+              StatusIs(INVALID_ARGUMENT, HasSubstr("got a string exceeding that"
+                                                   " length in tensor 0")));
+}
+
 TEST_P(CheckpointAggregatorTest, ReportFedSqlsOneInput) {
   auto aggregator = CreateWithDefaultFedSqlConfig();
 
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("key1"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("key1"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {2}, CreateTestData({1.f, 2.f}));
-  }));
-  EXPECT_CALL(parser, GetTensor(StrEq("val1"))).WillOnce(Invoke([] {
+  });
+  EXPECT_CALL(parser, GetTensor(StrEq("val1"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {2}, CreateTestData({.1f, .2f}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator->Accumulate(parser));
 
   if (GetParam()) {
@@ -910,12 +1034,12 @@ TEST_P(CheckpointAggregatorTest, ReportFedSqlsTwoInputs) {
   auto aggregator = CreateWithDefaultFedSqlConfig();
 
   MockCheckpointParser parser1;
-  EXPECT_CALL(parser1, GetTensor(StrEq("key1"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser1, GetTensor(StrEq("key1"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {3}, CreateTestData({1.f, 2.f, 3.f}));
-  }));
-  EXPECT_CALL(parser1, GetTensor(StrEq("val1"))).WillOnce(Invoke([] {
+  });
+  EXPECT_CALL(parser1, GetTensor(StrEq("val1"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {3}, CreateTestData({.1f, .2f, .3f}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator->Accumulate(parser1));
 
   if (GetParam()) {
@@ -926,12 +1050,12 @@ TEST_P(CheckpointAggregatorTest, ReportFedSqlsTwoInputs) {
   }
 
   MockCheckpointParser parser2;
-  EXPECT_CALL(parser2, GetTensor(StrEq("key1"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser2, GetTensor(StrEq("key1"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {2}, CreateTestData({2.f, 4.f}));
-  }));
-  EXPECT_CALL(parser2, GetTensor(StrEq("val1"))).WillOnce(Invoke([] {
+  });
+  EXPECT_CALL(parser2, GetTensor(StrEq("val1"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {2}, CreateTestData({.4f, .5f}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator->Accumulate(parser2));
 
   MockCheckpointBuilder builder;
@@ -952,12 +1076,12 @@ TEST_P(CheckpointAggregatorTest, ReportFedSqlsEmptyInput) {
   auto aggregator = CreateWithDefaultFedSqlConfig();
 
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("key1"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser, GetTensor(StrEq("key1"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {0}, CreateTestData<float>({}));
-  }));
-  EXPECT_CALL(parser, GetTensor(StrEq("val1"))).WillOnce(Invoke([] {
+  });
+  EXPECT_CALL(parser, GetTensor(StrEq("val1"))).WillOnce([] {
     return Tensor::Create(DT_FLOAT, {0}, CreateTestData<float>({}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator->Accumulate(parser));
 
   if (GetParam()) {
@@ -983,16 +1107,16 @@ TEST_P(CheckpointAggregatorTest, ReportFedSqlsEmptyInput) {
 TEST_P(CheckpointAggregatorTest, MergeSuccess) {
   auto aggregator1 = CreateWithDefaultConfig();
   MockCheckpointParser parser1;
-  EXPECT_CALL(parser1, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser1, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({5}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator1->Accumulate(parser1));
 
   auto aggregator2 = CreateWithDefaultConfig();
   MockCheckpointParser parser2;
-  EXPECT_CALL(parser2, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
+  EXPECT_CALL(parser2, GetTensor(StrEq("foo"))).WillOnce([] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({7}));
-  }));
+  });
   TFF_EXPECT_OK(aggregator2->Accumulate(parser2));
 
   if (GetParam()) {
@@ -1038,9 +1162,9 @@ TEST(CheckpointAggregatorTest, ConcurrentAccumulationSuccess) {
   // incrementing values.
   std::atomic<int> tensor_value = 0;
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillRepeatedly(Invoke([&] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillRepeatedly([&] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({++tensor_value}));
-  }));
+  });
 
   // Schedule receiving inputs on 4 concurrent threads.
   auto scheduler = CreateThreadPoolScheduler(4);
@@ -1141,9 +1265,9 @@ TEST(CheckpointAggregatorTest, ConcurrentAccumulationAbortWhileQueued) {
   )pb"));
 
   MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillRepeatedly(Invoke([&] {
+  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillRepeatedly([&] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({1}));
-  }));
+  });
 
   // Schedule receiving inputs on 10 concurrent threads.
   auto scheduler = CreateThreadPoolScheduler(10);
@@ -1257,12 +1381,12 @@ TEST(CheckpointAggregatorTest,
   // Feed many copies of the same input to the aggregator.
   for (int i = 0; i < 25000; i++) {
     MockCheckpointParser parser;
-    EXPECT_CALL(parser, GetTensor(StrEq("L0"))).WillOnce(Invoke([] {
+    EXPECT_CALL(parser, GetTensor(StrEq("L0"))).WillOnce([] {
       return Tensor::Create(DT_INT32, {1}, CreateTestData({1}));
-    }));
-    EXPECT_CALL(parser, GetTensor(StrEq("L1_1"))).WillOnce(Invoke([] {
+    });
+    EXPECT_CALL(parser, GetTensor(StrEq("L1_1"))).WillOnce([] {
       return Tensor::Create(DT_DOUBLE, {1}, CreateTestData({0.1}));
-    }));
+    });
     TFF_EXPECT_OK(aggregator->Accumulate(parser));
   }
   // Given the duplication, the output should be (1.0, 0.1) even with DP noise.

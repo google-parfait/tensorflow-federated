@@ -28,6 +28,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/synchronization/mutex.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -174,17 +175,19 @@ absl::Status CheckpointAggregator::Accumulate(
         PopulateInputs(intrinsics_[i], tensor_map, 0, input_list));
     inputs.push_back(std::move(input_list));
   }
-
   {
     absl::MutexLock lock(&aggregation_mu_);
     if (aggregation_finished_) {
       return absl::AbortedError("Aggregation has already been finished.");
     }
+    // Perform a validation pass before accumulating.
     for (int i = 0; i < intrinsics_.size(); ++i) {
       TFF_CHECK(aggregators_[i] != nullptr)
           << "Report() has already been called.";
-      auto& input_list = inputs[i];
-      TFF_RETURN_IF_ERROR(aggregators_[i]->Accumulate(std::move(input_list)));
+      TFF_RETURN_IF_ERROR(aggregators_[i]->ValidateInputs(inputs[i]));
+    }
+    for (int i = 0; i < intrinsics_.size(); ++i) {
+      TFF_RETURN_IF_ERROR(aggregators_[i]->Accumulate(std::move(inputs[i])));
     }
   }
   return absl::OkStatus();
@@ -363,11 +366,21 @@ absl::Status AddInputsToMap(const Intrinsic& intrinsic,
     }
 
     TFF_ASSIGN_OR_RETURN(Tensor tensor, parser.GetTensor(input_spec.name()));
-    if (tensor.dtype() != input_spec.dtype() ||
-        !input_spec.shape().MatchesKnownDimensions(tensor.shape())) {
-      // TODO: b/253099587 - Detailed diagnostics including the expected vs
-      // actual data types and shapes.
-      return absl::InvalidArgumentError("Input tensor spec mismatch.");
+    if (tensor.dtype() != input_spec.dtype()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Input tensor spec mismatch. Expected dtype ",
+                       DataType_Name(input_spec.dtype()), " but got ",
+                       DataType_Name(tensor.dtype()), " for input tensor ",
+                       input_spec.name()));
+    }
+    if (!input_spec.shape().MatchesKnownDimensions(tensor.shape())) {
+      std::string expected_shape =
+          absl::StrJoin(input_spec.shape().dim_sizes(), ",");
+      std::string actual_shape = absl::StrJoin(tensor.shape().dim_sizes(), ",");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Input tensor spec mismatch. Expected shape (",
+                       expected_shape, ") but got (", actual_shape,
+                       ") for input tensor ", input_spec.name()));
     }
     tensor_map.emplace(input_spec.name(), std::move(tensor));
   }
