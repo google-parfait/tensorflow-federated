@@ -91,24 +91,30 @@ class AggVectorAggregator : public TensorAggregator {
     return aggregator_state.SerializeAsString();
   }
 
- protected:
-  // Implementation of the tensor aggregation.
-  Status AggregateTensors(InputTensorList tensors) override {
-    TFF_CHECK(tensors.size() == 1)
-        << "AggVectorAggregator should operate on a single input tensor";
-
-    const Tensor* tensor = tensors[0];
-    if (tensor->dtype() != internal::TypeTraits<T>::kDataType) {
+  Status ValidateInputs(const InputTensorList& tensors) const override {
+    if (tensors.size() != 1) {
       return TFF_STATUS(INVALID_ARGUMENT)
-             << "AggVectorAggregator::AggregateTensors: dtype mismatch";
+             << "AggVectorAggregator::ValidateInputs: Expected 1 tensor, got "
+             << tensors.size();
+    }
+    const Tensor* tensor = tensors[0];
+    if (tensor->dtype() != dtype_) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "AggVectorAggregator::ValidateInputs: dtype mismatch";
     }
     if (tensor->shape() != shape_) {
       return TFF_STATUS(INVALID_ARGUMENT)
-             << "AggVectorAggregator::AggregateTensors: tensor shape mismatch";
+             << "AggVectorAggregator::ValidateInputs: tensor shape mismatch";
     }
+    return TFF_STATUS(OK);
+  }
+
+ protected:
+  // Implementation of the tensor aggregation.
+  Status AggregateTensors(InputTensorList tensors) override {
     // Delegate the actual aggregation to the specific aggregation
     // intrinsic implementation.
-    AggregateVector(tensor->AsAggVector<T>());
+    AggregateVector(tensors[0]->AsAggVector<T>());
     num_inputs_++;
     return TFF_STATUS(OK);
   }

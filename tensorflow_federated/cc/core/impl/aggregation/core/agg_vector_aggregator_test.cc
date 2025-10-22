@@ -130,6 +130,13 @@ TEST(AggVectorAggregationTest, Aggregate_IncompatibleShape) {
   EXPECT_THAT(aggregator.Accumulate(t), StatusIs(INVALID_ARGUMENT));
 }
 
+TEST(AggVectorAggregationTest, Aggregate_IncompatibleNumberOfInputs) {
+  SumAggregator<int32_t> aggregator(DT_INT32, {});
+  Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
+  Tensor t2 = Tensor::Create(DT_INT32, {}, CreateTestData({2})).value();
+  EXPECT_THAT(aggregator.Accumulate({&t1, &t2}), StatusIs(INVALID_ARGUMENT));
+}
+
 TEST(AggVectorAggregationTest, Merge_IncompatibleDataType) {
   SumAggregator<int32_t> aggregator1(DT_INT32, {});
   SumAggregator<float> aggregator2(DT_FLOAT, {});

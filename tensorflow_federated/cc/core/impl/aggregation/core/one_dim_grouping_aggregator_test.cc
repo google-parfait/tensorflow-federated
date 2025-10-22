@@ -707,6 +707,16 @@ TEST_P(OneDimGroupingAggregatorTest,
   EXPECT_TRUE(result.value()[0].is_dense());
 }
 
+TEST(OneDimGroupingAggregatorTest, ValidateInputs_WrongNumberOfInputs) {
+  SumGroupingAggregator<int32_t> aggregator;
+  Tensor ordinal =
+      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({0})).value();
+  Tensor t1 = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({0})).value();
+  Tensor t2 = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({0})).value();
+  EXPECT_THAT(aggregator.ValidateInputs({&ordinal, &t1, &t2}),
+              StatusIs(INVALID_ARGUMENT));
+}
+
 TEST(OneDimGroupingAggregatorTest,
      ValidateInputs_OrdinalTensorHasIncompatibleDataType) {
   SumGroupingAggregator<int32_t> aggregator;

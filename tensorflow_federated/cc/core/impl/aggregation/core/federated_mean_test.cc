@@ -43,6 +43,48 @@ using testing::TestWithParam;
 
 using FederatedMeanTest = TestWithParam<bool>;
 
+TEST_P(FederatedMeanTest, ValidateInputs_FailsWithNegativeWeight) {
+  Intrinsic federated_mean_intrinsic{
+      "federated_weighted_mean",
+      {TensorSpec{"foo", DT_FLOAT, {}}, TensorSpec{"bar", DT_FLOAT, {}}},
+      {TensorSpec{"foo_out", DT_FLOAT, {}}},
+      {},
+      {}};
+  auto aggregator = CreateTensorAggregator(federated_mean_intrinsic).value();
+  Tensor v = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1})).value();
+  Tensor w = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({-1})).value();
+  EXPECT_THAT(aggregator->ValidateInputs({&v, &w}), StatusIs(INVALID_ARGUMENT));
+
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize();
+    aggregator = DeserializeTensorAggregator(federated_mean_intrinsic,
+                                             serialized_state.value())
+                     .value();
+    EXPECT_THAT(aggregator->GetNumInputs(), Eq(0));
+  }
+}
+
+TEST_P(FederatedMeanTest, ValidateInputs_FailsWithTooManyWeights) {
+  Intrinsic federated_mean_intrinsic{
+      "federated_weighted_mean",
+      {TensorSpec{"foo", DT_FLOAT, {}}, TensorSpec{"bar", DT_FLOAT, {}}},
+      {TensorSpec{"foo_out", DT_FLOAT, {}}},
+      {},
+      {}};
+  auto aggregator = CreateTensorAggregator(federated_mean_intrinsic).value();
+  Tensor v = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1})).value();
+  Tensor w =
+      Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({1, 2})).value();
+  EXPECT_THAT(aggregator->ValidateInputs({&v, &w}), StatusIs(INVALID_ARGUMENT));
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize();
+    aggregator = DeserializeTensorAggregator(federated_mean_intrinsic,
+                                             serialized_state.value())
+                     .value();
+    EXPECT_THAT(aggregator->GetNumInputs(), Eq(0));
+  }
+}
+
 TEST_P(FederatedMeanTest, ScalarAggregation_Succeeds) {
   Intrinsic federated_mean_intrinsic{"federated_mean",
                                      {TensorSpec{"foo", DT_FLOAT, {}}},

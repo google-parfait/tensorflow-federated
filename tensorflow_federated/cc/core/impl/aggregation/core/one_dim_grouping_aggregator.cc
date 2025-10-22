@@ -43,8 +43,10 @@ Status OneDimBaseGroupingAggregator::MergeWith(TensorAggregator&& other) {
 
 Status OneDimBaseGroupingAggregator::ValidateInputs(
     const InputTensorList& tensors) const {
-  TFF_CHECK(tensors.size() == 2)
-      << "OneBaseDimGroupingAggregator should operate on 2 input tensors";
+  if (tensors.size() != 2) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "OneBaseDimGroupingAggregator should operate on 2 input tensors";
+  }
 
   const Tensor* ordinals = tensors[0];
   if (ordinals->dtype() != DT_INT64) {

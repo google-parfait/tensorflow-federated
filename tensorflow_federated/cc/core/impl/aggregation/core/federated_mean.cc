@@ -95,29 +95,39 @@ class FederatedMean final : public TensorAggregator {
     return TFF_STATUS(OK);
   }
 
-  Status AggregateTensors(InputTensorList tensors) override {
+  Status ValidateInputs(const InputTensorList& tensors) const override {
     for (const Tensor* tensor : tensors) {
       if (!tensor->is_dense()) {
         return TFF_STATUS(INVALID_ARGUMENT)
-               << "FederatedMean::AggregateTensorsInternal: Only dense "
+               << "FederatedMean::ValidateInputs: Only dense "
                   "tensors are supported.";
       }
     }
 
-    AggVector<V> values = tensors[0]->AsAggVector<V>();
     // If the intrinsic is federated_weighted_mean, the second input tensor
-    // will contain a scalar weight.
+    // should contain a positive scalar weight - check that it is the case.
     if (tensors.size() > 1) {
-      TFF_CHECK(tensors[1]->num_elements() == 1)
-          << "FederatedMean::AggregateTensorsInternal: The weight must be a "
-             "scalar.";
+      if (tensors[1]->num_elements() != 1) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "FederatedMean::ValidateInputs: The weight must be a "
+                  "scalar.";
+      }
       AggVector<W> weights = tensors[1]->AsAggVector<W>();
       W weight = weights.begin().value();
       if (weight <= 0) {
         return TFF_STATUS(INVALID_ARGUMENT)
-               << "FederatedMean::AggregateTensorsInternal: Only positive "
+               << "FederatedMean::ValidateInputs: Only positive "
                   "weights are allowed.";
       }
+    }
+    return TFF_STATUS(OK);
+  }
+
+  Status AggregateTensors(InputTensorList tensors) override {
+    AggVector<V> values = tensors[0]->AsAggVector<V>();
+    if (tensors.size() > 1) {
+      AggVector<W> weights = tensors[1]->AsAggVector<W>();
+      W weight = weights.begin().value();
       for (auto value : values) {
         (*weighted_values_sum_)[value.index] += value.value * weight;
       }

@@ -55,7 +55,7 @@ Status DPTensorAggregatorBundle::ValidateInputs(
     const InputTensorList& tensors) const {
   if (tensors.size() != num_tensors_per_input_) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundle::AggregateTensors: Expected "
+           << "DPTensorAggregatorBundle::ValidateInputs: Expected "
            << num_tensors_per_input_ << " tensors, got " << tensors.size();
   }
 
