@@ -472,7 +472,7 @@ TEST(DPClosedDomainHistogramTest, CreateWithZeroDelta) {
   TFF_EXPECT_OK(CreateTensorAggregator(intrinsic2).status());
 }
 
-// Phase 5: Test that the factory can create DPOpenDomainHistogram objects.
+// Phase 4: Test that the factory can create DPOpenDomainHistogram objects.
 TEST(DPOpenDomainHistogramTest, CreateWithGroupingKeys) {
   Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(
       /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/1,
@@ -569,6 +569,39 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithKeysNoMinContributors_Success) {
   auto* dp_closed_domain_histogram =
       dynamic_cast<DPClosedDomainHistogram*>(aggregator.get());
   ASSERT_NE(dp_closed_domain_histogram, nullptr);
+}
+
+// Phase 6: Test that the factory can create aggregators with custom choice of
+// max_string_length.
+TEST(DPGroupByFactoryTest, CreateAggregatorWithMaxStringLength) {
+  Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
+      /*epsilon=*/1, /*delta=*/1e-6, /*l0_bound=*/1, /*linfinity_bound=*/1,
+      /*l1_bound=*/-1, /*l2_bound=*/-1, /*key_types=*/{DT_STRING});
+  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
+                                                CreateTestData({2}),
+                                                /*name=*/"max_string_length")
+                                     .value());
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator,
+                           CreateTensorAggregator(intrinsic));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor short_keys,
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"ab", "b"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor short_values,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
+  TFF_EXPECT_OK(aggregator->ValidateInputs({&short_keys, &short_values}));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor long_keys,
+      Tensor::Create(DT_STRING, {2},
+                     CreateTestData<string_view>({"abc", "bcde"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor long_values,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
+  EXPECT_THAT(aggregator->ValidateInputs({&long_keys, &long_values}),
+              StatusIs(INVALID_ARGUMENT, HasSubstr("got a string exceeding that"
+                                                   " length in tensor 0")));
 }
 
 }  // namespace
