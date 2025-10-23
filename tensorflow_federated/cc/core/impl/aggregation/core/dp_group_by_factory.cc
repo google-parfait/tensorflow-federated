@@ -295,23 +295,23 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic, bool open_domain,
   return TFF_STATUS(OK);
 }
 
-// Find the min_contributors_to_group parameter in the intrinsic. If it is not
-// present, return nullopt. If it is present but non-positive, return an error.
-StatusOr<std::optional<int64_t>> FindMinContributorsToGroup(
+// Find the parameter in the intrinsic and cast it to a scalar type. If it is
+// not present, return nullopt. If it is non-positive, return a bad Status.
+template <typename T>
+StatusOr<std::optional<T>> FindPositiveParameter(
     const Intrinsic& intrinsic,
-    const absl::flat_hash_map<std::string, int>& parameter_name_to_index) {
-  std::optional<int64_t> min_contributors_to_group = std::nullopt;
-  auto it = parameter_name_to_index.find("min_contributors_to_group");
+    const absl::flat_hash_map<std::string, int>& parameter_name_to_index,
+    absl::string_view name) {
+  std::optional<T> parameter = std::nullopt;
+  auto it = parameter_name_to_index.find(name);
   if (it != parameter_name_to_index.end()) {
-    min_contributors_to_group =
-        intrinsic.parameters[it->second].CastToScalar<int64_t>();
+    parameter = intrinsic.parameters[it->second].CastToScalar<T>();
   }
-  if (min_contributors_to_group.has_value() &&
-      *min_contributors_to_group <= 0) {
+  if (parameter.has_value() && *parameter <= 0) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: min_contributors_to_group must be positive.";
+           << "DPGroupByFactory: " << name << " must be positive if given.";
   }
-  return min_contributors_to_group;
+  return parameter;
 }
 
 }  // namespace
@@ -350,7 +350,14 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
 
   TFF_ASSIGN_OR_RETURN(
       std::optional<int64_t> min_contributors_to_group,
-      FindMinContributorsToGroup(intrinsic, parameter_name_to_index));
+      FindPositiveParameter<int64_t>(intrinsic, parameter_name_to_index,
+                                     kMinContributorsToGroupName));
+  TFF_ASSIGN_OR_RETURN(
+      std::optional<int64_t> max_string_length_opt,
+      FindPositiveParameter<int64_t>(intrinsic, parameter_name_to_index,
+                                     kMaxStringLengthName));
+  int64_t max_string_length =
+      max_string_length_opt.value_or(kDefaultMaxStringLength);
 
   bool open_domain = min_contributors_to_group.has_value() ||
                      !parameter_name_to_index.contains("key_names");
@@ -410,13 +417,13 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
         intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
         std::move(key_combiner), std::move(nested_aggregators), num_inputs,
         epsilon, delta, max_groups_contributed, min_contributors_to_group,
-        contributors_to_groups);
+        contributors_to_groups, max_string_length);
   }
 
   return std::unique_ptr<DPClosedDomainHistogram>(new DPClosedDomainHistogram(
       intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
       std::move(key_combiner), std::move(nested_aggregators), num_inputs,
-      epsilon, delta, max_groups_contributed, key_tensors));
+      epsilon, delta, max_groups_contributed, key_tensors, max_string_length));
 }
 
 REGISTER_AGGREGATOR_FACTORY(std::string(kDPGroupByUri), DPGroupByFactory);
