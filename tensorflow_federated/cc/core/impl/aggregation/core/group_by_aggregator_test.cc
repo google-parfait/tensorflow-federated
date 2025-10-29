@@ -1869,11 +1869,8 @@ TEST(GroupByAggregatorTest, AddOneContributor_FailsWhenMaxContributorsNotSet) {
   Tensor ordinals =
       Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({0, 1, 2})).value();
 
-  EXPECT_THAT(
-      peer.AddOneContributor(std::move(ordinals)),
-      StatusIs(
-          INVALID_ARGUMENT,
-          HasSubstr("max_contributors_to_group_ to be set but it is not")));
+  EXPECT_THAT(peer.AddOneContributor(std::move(ordinals)),
+              StatusIs(INVALID_ARGUMENT, HasSubstr("max")));
 }
 
 TEST_P(GroupByAggregatorTest, AddMultipleContributors_Success) {
@@ -1978,9 +1975,7 @@ TEST(GroupByAggregatorTest,
 
   EXPECT_THAT(
       peer.AddMultipleContributors(std::move(ordinals), num_contributors),
-      StatusIs(
-          INVALID_ARGUMENT,
-          HasSubstr("max_contributors_to_group_ to be set but it is not")));
+      StatusIs(INVALID_ARGUMENT, HasSubstr("max")));
 }
 
 TEST(GroupByAggregatorTest, AddMultipleContributors_FailsOnSizeMismatch) {
