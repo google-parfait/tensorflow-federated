@@ -68,10 +68,7 @@ class FederatedComputeCheckpointParser final : public CheckpointParser {
 absl::StatusOr<std::unique_ptr<CheckpointParser>>
 FederatedComputeCheckpointParserFactory::Create(
     const absl::Cord& serialized_checkpoint) const {
-  absl::Cord flattenable_checkpoint(serialized_checkpoint);
-  absl::string_view str = flattenable_checkpoint.Flatten();
-  google::protobuf::io::ArrayInputStream input(str.data(), static_cast<int>(str.size()));
-
+  google::protobuf::io::CordInputStream input(&serialized_checkpoint);
   google::protobuf::io::CodedInputStream stream(&input);
 
   std::string header;
