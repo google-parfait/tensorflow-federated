@@ -41,6 +41,21 @@ def _serialize_computation_value(
 
 
 @federated_language.framework.trace
+def _serialize_array_value(
+    array: array_pb2.Array, type_spec: Optional[federated_language.Type]
+) -> tuple[executor_pb2.Value, federated_language.Type]:
+  """Serializes a array proto into `executor_pb2.Value`."""
+  type_spec = executor_utils.reconcile_value_type_with_type_spec(
+      federated_language.TensorType(
+          federated_language.dtype_from_proto(array.dtype),
+          federated_language.array_shape_from_proto(array.shape),
+      ),
+      type_spec,
+  )
+  return executor_pb2.Value(array=array), type_spec
+
+
+@federated_language.framework.trace
 def _serialize_tensor_value(
     value: object,
     type_spec: federated_language.TensorType,
@@ -260,6 +275,8 @@ def serialize_value(
         value.to_proto(),
         executor_utils.reconcile_value_with_type_spec(value, type_spec),
     )
+  elif isinstance(value, array_pb2.Array):
+    return _serialize_array_value(value, type_spec)
   elif type_spec is None:
     raise TypeError(
         'A type hint is required when serializing a value which '

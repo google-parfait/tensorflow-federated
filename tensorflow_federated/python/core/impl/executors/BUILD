@@ -225,6 +225,8 @@ py_test(
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
+        "@federated_language//federated_language/proto:array_py_pb2",
         "@federated_language//federated_language/proto:computation_py_pb2",
+        "@federated_language//federated_language/proto:data_type_py_pb2",
     ],
 )

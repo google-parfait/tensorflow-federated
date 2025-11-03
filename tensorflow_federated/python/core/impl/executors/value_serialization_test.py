@@ -18,7 +18,9 @@ from typing import NamedTuple
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
+from federated_language.proto import array_pb2
 from federated_language.proto import computation_pb2
+from federated_language.proto import data_type_pb2
 import numpy as np
 
 from tensorflow_federated.proto.v0 import executor_pb2
@@ -279,6 +281,25 @@ class ValueSerializationTest(parameterized.TestCase):
         type_spec,
         federated_language.FunctionType(parameter=np.int32, result=np.int32),
     )
+
+  def test_serialize_deserialize_array_value(self):
+    x = array_pb2.Array(
+        dtype=data_type_pb2.DataType.DT_INT32,
+        shape=array_pb2.ArrayShape(dim=[2], unknown_rank=False),
+        content=np.array([10, 20], dtype=np.int32).tobytes(),
+    )
+    value_proto, value_type = value_serialization.serialize_value(x)
+    self.assertEqual(value_proto.WhichOneof('value'), 'array')
+    self.assertEqual(
+        value_type,
+        federated_language.TensorType(np.int32, [2]),
+    )
+    y, type_spec = value_serialization.deserialize_value(value_proto)
+    self.assertEqual(
+        type_spec,
+        federated_language.TensorType(np.int32, [2]),
+    )
+    self.assertEqual(y.tolist(), [10, 20])
 
   def test_serialize_deserialize_nested_tuple_value_with_names(self):
     x = collections.OrderedDict(
