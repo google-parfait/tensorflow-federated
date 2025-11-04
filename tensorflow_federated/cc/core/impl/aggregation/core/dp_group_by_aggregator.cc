@@ -45,11 +45,11 @@ DPGroupByAggregator::DPGroupByAggregator(
     int num_inputs, double epsilon, double delta,
     int64_t max_groups_contributed,
     std::optional<int> min_contributors_to_group,
-    std::vector<int> contributors_to_groups, int max_string_length)
+    std::vector<int> contributor_counts, int max_string_length)
     : GroupByAggregator(input_key_specs, output_key_specs, intrinsics,
                         std::move(key_combiner), std::move(aggregators),
                         num_inputs, min_contributors_to_group,
-                        contributors_to_groups),
+                        contributor_counts),
       epsilon_(epsilon),
       delta_(delta),
       max_groups_contributed_(max_groups_contributed),
