@@ -33,6 +33,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/contributors_to_groups.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -75,15 +76,14 @@ GroupByAggregator::GroupByAggregator(
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
     int num_inputs, std::optional<int> min_contributors_to_group,
-    std::vector<int> contributors_to_groups)
+    std::vector<int> contributor_counts)
     : num_inputs_(num_inputs),
       num_keys_per_input_(input_key_specs.size()),
       key_combiner_(std::move(key_combiner)),
       intrinsics_(*intrinsics),
       output_key_specs_(*output_key_specs),
       aggregators_(std::move(aggregators)),
-      min_contributors_to_group_(min_contributors_to_group),
-      contributors_to_groups_(std::move(contributors_to_groups)) {
+      min_contributors_to_group_(min_contributors_to_group) {
   // Most invariants on construction of the GroupByAggregator such as which
   // nested intrinsics are supported should be enforced in the factory class.
   // This constructor just performs a few backup checks.
@@ -100,16 +100,17 @@ GroupByAggregator::GroupByAggregator(
       << "GroupByAggregator: Size of input_key_specs must match size of "
          "output_key_specs.";
 
+  if (!contributor_counts.empty() && !min_contributors_to_group_.has_value()) {
+    TFF_CHECK(false) << "GroupByAggregator: contributors_to_groups can only be "
+                        "set if min_contributors_to_group is set.";
+  }
+
   if (min_contributors_to_group.has_value()) {
     TFF_CHECK(*min_contributors_to_group > 0)
         << "GroupByAggregator: min_contributors_to_group must be positive.";
     max_contributors_to_group_ = min_contributors_to_group;
-  }
-
-  if (!contributors_to_groups_.empty() &&
-      !min_contributors_to_group_.has_value()) {
-    TFF_CHECK(false) << "GroupByAggregator: contributors_to_groups can only be "
-                        "set if min_contributors_to_group is set.";
+    contributors_to_groups_ = ContributorsToGroups(
+        *max_contributors_to_group_, std::move(contributor_counts));
   }
 }
 
@@ -189,8 +190,9 @@ StatusOr<OutputTensorList> GroupByAggregator::Report() && {
   }
 
   absl::flat_hash_set<size_t> survivor_indices;
-  for (size_t i = 0; i < contributors_to_groups_.size(); i++) {
-    if (contributors_to_groups_[i] >= min_contributors_to_group_) {
+  std::vector<int> counts = contributors_to_groups_.GetCounts();
+  for (size_t i = 0; i < counts.size(); i++) {
+    if (counts[i] >= min_contributors_to_group_) {
       survivor_indices.insert(i);
     }
   }
@@ -251,13 +253,10 @@ Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
     return absl::OkStatus();
   }
   int64_t max_ordinal = *absl::c_max_element(ordinals_span);
-  if (max_ordinal >= contributors_to_groups_.size()) {
-    contributors_to_groups_.resize(max_ordinal + 1);
-  }
+  contributors_to_groups_.ExtendTo(max_ordinal);
   for (auto& ordinal : ordinals_span) {
-    if (contributors_to_groups_[ordinal] < max_contributors_to_group_) {
-      contributors_to_groups_[ordinal]++;
-    }
+    TFF_RETURN_IF_ERROR(
+        contributors_to_groups_.AddToGroup(ordinal, std::nullopt));
   }
   return absl::OkStatus();
 }
@@ -293,16 +292,11 @@ Status GroupByAggregator::AddMultipleContributors(
     return absl::OkStatus();
   }
   auto ordinals_span = ordinals.AsSpan<int64_t>();
-  int64_t max_ordinal = *absl::c_max_element(ordinals_span);
-  if (max_ordinal >= contributors_to_groups_.size()) {
-    contributors_to_groups_.resize(max_ordinal + 1);
-  }
+  contributors_to_groups_.ExtendTo(*absl::c_max_element(ordinals_span));
   for (int i = 0; i < num_ordinals; ++i) {
     int64_t ordinal = ordinals_span[i];
-    contributors_to_groups_[ordinal] += other_contributors[i];
-    if (contributors_to_groups_[ordinal] > max_contributors_to_group_) {
-      contributors_to_groups_[ordinal] = *max_contributors_to_group_;
-    }
+    TFF_RETURN_IF_ERROR(contributors_to_groups_.AddCountToContributors(
+        ordinal, other_contributors[i]));
   }
   return absl::OkStatus();
 }
@@ -326,11 +320,10 @@ StatusOr<std::string> GroupByAggregator::Serialize() && {
   for (auto const& nested_aggregator : aggregators_) {
     nested_aggregators_proto->Add(nested_aggregator->ToProto());
   }
-  // Store contributors to groups.
-  state.mutable_counter_of_contributors()->Reserve(
-      contributors_to_groups_.size());
-  state.mutable_counter_of_contributors()->Add(contributors_to_groups_.begin(),
-                                               contributors_to_groups_.end());
+  // Store contributor counts from `contributors_to_groups_`.
+  std::vector<int> counts = contributors_to_groups_.GetCounts();
+  state.mutable_counter_of_contributors()->Reserve(counts.size());
+  state.mutable_counter_of_contributors()->Add(counts.begin(), counts.end());
   return state.SerializeAsString();
 }
 
@@ -367,20 +360,20 @@ StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
           partitioned_nested_aggregators[i];
     }
   }
-  if (!contributors_to_groups_.empty()) {
+  std::vector<int> contributor_counts = contributors_to_groups_.GetCounts();
+  if (!contributor_counts.empty()) {
     TFF_ASSIGN_OR_RETURN(
-        std::vector<std::vector<int>> partitioned_contributors_to_groups,
-        partitioner.PartitionData<int>(contributors_to_groups_));
-    TFF_CHECK(partitioned_contributors_to_groups.size() == num_partitions)
+        std::vector<std::vector<int>> partitioned_contributor_counts,
+        partitioner.PartitionData<int>(contributor_counts));
+    TFF_CHECK(partitioned_contributor_counts.size() == num_partitions)
         << "GroupByAggregator::Partition: partitioned_contributors_to_groups "
            "size must be equal to num_partitions.";
     for (int i = 0; i < num_partitions; ++i) {
-      auto& contributors_for_partition = partitioned_contributors_to_groups[i];
+      auto& counts_for_partition = partitioned_contributor_counts[i];
       auto* counters =
           group_by_aggregator_states[i].mutable_counter_of_contributors();
-      counters->Reserve(contributors_for_partition.size());
-      counters->Add(contributors_for_partition.begin(),
-                    contributors_for_partition.end());
+      counters->Reserve(counts_for_partition.size());
+      counters->Add(counts_for_partition.begin(), counts_for_partition.end());
     }
   }
   std::vector<std::string> serialized_states(num_partitions);

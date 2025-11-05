@@ -65,7 +65,7 @@ class DPOpenDomainHistogram : public DPGroupByAggregator {
       int num_inputs, double epsilon, double delta,
       int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group = std::nullopt,
-      std::vector<int> contributors_to_groups = {},
+      std::vector<int> contributor_counts = {},
       int max_string_length = kDefaultMaxStringLength);
 
   // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
@@ -89,7 +89,7 @@ class DPOpenDomainHistogram : public DPGroupByAggregator {
       int num_inputs, double epsilon, double delta,
       int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group,
-      std::vector<int> contributors_to_groups,
+      std::vector<int> contributor_counts,
       int max_string_length = kDefaultMaxStringLength);
 
   // When merging two DPOpenDomainHistograms, norm bounding the aggregates will

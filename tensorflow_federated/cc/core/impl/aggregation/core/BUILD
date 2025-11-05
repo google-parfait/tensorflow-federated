@@ -232,6 +232,7 @@ cc_library(
         ":agg_core_cc_proto",
         ":aggregator",
         ":composite_key_combiner",
+        ":contributors_to_groups",
         ":fedsql_constants",
         ":intrinsic",
         ":partitioner",
@@ -879,6 +880,28 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+    ],
+)
+
+cc_library(
+    name = "contributors_to_groups",
+    srcs = ["contributors_to_groups.cc"],
+    hdrs = ["contributors_to_groups.h"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "contributors_to_groups_test",
+    srcs = ["contributors_to_groups_test.cc"],
+    deps = [
+        ":contributors_to_groups",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/status",
     ],
 )
 

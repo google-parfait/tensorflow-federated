@@ -84,7 +84,7 @@ DPClosedDomainHistogram::DPClosedDomainHistogram(
                           std::move(key_combiner), std::move(aggregators),
                           num_inputs, epsilon, delta, max_groups_contributed,
                           /*min_contributors_to_group=*/std::nullopt,
-                          /*contributors_to_groups=*/{}, max_string_length),
+                          /*contributor_counts=*/{}, max_string_length),
       domain_tensors_(domain_tensors) {}
 
 StatusOr<Tensor> DPClosedDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
