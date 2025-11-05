@@ -236,117 +236,6 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertFalse(process.is_weighted)
 
-  @parameterized.named_parameters(
-      ('simple', False, False, None),
-      ('zeroing', True, False, None),
-      ('clipping', False, True, None),
-      ('zeroing_and_clipping', True, True, None),
-      (
-          'debug_measurements',
-          False,
-          False,
-          debug_measurements.add_debug_measurements,
-      ),
-      (
-          'zeroing_clipping_debug_measurements',
-          True,
-          True,
-          debug_measurements.add_debug_measurements,
-      ),
-  )
-  def test_compression_aggregator_weighted(
-      self, zeroing, clipping, debug_measurements_fn
-  ):
-    factory_ = model_update_aggregator.compression_aggregator(
-        zeroing=zeroing,
-        clipping=clipping,
-        debug_measurements_fn=debug_measurements_fn,
-    )
-
-    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create(_FLOAT_TYPE, _FLOAT_TYPE)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-    self.assertTrue(process.is_weighted)
-
-  @parameterized.named_parameters(
-      ('simple', False, False, None),
-      ('zeroing', True, False, None),
-      ('clipping', False, True, None),
-      ('zeroing_and_clipping', True, True, None),
-      (
-          'debug_measurements',
-          False,
-          False,
-          debug_measurements.add_debug_measurements,
-      ),
-      (
-          'zeroing_clipping_debug_measurements',
-          True,
-          True,
-          debug_measurements.add_debug_measurements,
-      ),
-  )
-  def test_compression_aggregator_unweighted(
-      self, zeroing, clipping, debug_measurements_fn
-  ):
-    factory_ = model_update_aggregator.compression_aggregator(
-        zeroing=zeroing,
-        clipping=clipping,
-        weighted=False,
-        debug_measurements_fn=debug_measurements_fn,
-    )
-
-    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    process = factory_.create(_FLOAT_TYPE)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-    self.assertFalse(process.is_weighted)
-
-  @parameterized.named_parameters(
-      (
-          'debug_measurements',
-          False,
-          False,
-          debug_measurements.add_debug_measurements_with_mixed_dtype,
-      ),
-      (
-          'zeroing_clipping_debug_measurements',
-          True,
-          True,
-          debug_measurements.add_debug_measurements_with_mixed_dtype,
-      ),
-  )
-  def test_compression_aggregator_weighted_mixed_dtype(
-      self, zeroing, clipping, debug_measurements_fn
-  ):
-    factory_ = model_update_aggregator.compression_aggregator(
-        zeroing=zeroing,
-        clipping=clipping,
-        debug_measurements_fn=debug_measurements_fn,
-    )
-
-    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create(_FLOAT_TYPE, _FLOAT_TYPE)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-    self.assertTrue(process.is_weighted)
-
-  def test_wrong_debug_measurements_fn_compression_aggregator(self):
-    """Expect error if debug_measurements_fn is wrong."""
-    with self.assertRaises(TypeError):
-
-      def wrong_debug_measurements_fn(
-          aggregation_factory: factory.AggregationFactory,
-      ) -> ...:
-        del aggregation_factory
-        return (
-            debug_measurements._calculate_client_update_statistics_mixed_dtype(
-                [1.0], [1.0]
-            )
-        )
-
-      model_update_aggregator.compression_aggregator(
-          debug_measurements_fn=wrong_debug_measurements_fn
-      )
-
 
 def _num_elements_in_type(type_spec: federated_language.Type) -> int:
   count = 0
@@ -405,13 +294,6 @@ class CompilerIntegrationTest(parameterized.TestCase):
 
     # The MapReduceForm should be using secure aggregation.
     self.assertTrue(mrf.securely_aggregates_tensors)
-
-  def test_compression_aggregator(self):
-    aggregator = model_update_aggregator.compression_aggregator().create(
-        _FLOAT_MATRIX_TYPE, _FLOAT_TYPE
-    )
-    # Default compression should reduce the size aggregated by more than 60%.
-    self._check_aggregated_scalar_count(aggregator, 60000 * 0.4)
 
   def test_ddp_secure_aggregator(self):
     self.skipTest('b/305747127')

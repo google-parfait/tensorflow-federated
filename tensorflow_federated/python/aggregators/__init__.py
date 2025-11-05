@@ -23,7 +23,6 @@ https://www.tensorflow.org/federated/tutorials/custom_aggregators) tutorial.
 
 from tensorflow_federated.python.aggregators.concat import concat_factory
 from tensorflow_federated.python.aggregators.differential_privacy import DifferentiallyPrivateFactory
-from tensorflow_federated.python.aggregators.encoded import EncodedSumFactory
 from tensorflow_federated.python.aggregators.factory import AggregationFactory
 from tensorflow_federated.python.aggregators.factory import UnweightedAggregationFactory
 from tensorflow_federated.python.aggregators.factory import WeightedAggregationFactory

@@ -40,7 +40,6 @@ class FedProxConstructionTest(parameterized.TestCase):
       ],
       aggregation_factory=[
           model_update_aggregator.robust_aggregator,
-          model_update_aggregator.compression_aggregator,
           model_update_aggregator.secure_aggregator,
       ],
   )

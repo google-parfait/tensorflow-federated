@@ -63,7 +63,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/aggregators:distributed_dp",
-        "//tensorflow_federated/python/aggregators:encoded",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:quantile_estimation",

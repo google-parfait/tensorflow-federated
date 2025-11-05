@@ -162,10 +162,6 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('robust_aggregator', model_update_aggregator.robust_aggregator),
-      (
-          'compression_aggregator',
-          model_update_aggregator.compression_aggregator,
-      ),
       ('secure_aggreagtor', model_update_aggregator.secure_aggregator),
   )
   def test_construction_calls_model_fn(self, aggregation_factory):

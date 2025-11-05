@@ -274,9 +274,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   value to be summed.
 
   For the case when floating point values are to be securely summed and more
-  aggressive quantization is needed (i.e. less than 32 bits), the recommended
-  pattern is to use `tff.aggregators.EncodedSumFactory` with this factory class
-  as its inner aggregation factory.
+  aggressive quantization is needed (i.e. less than 32 bits).
 
   If the `value_type` passed to the `create` method is a structure, all its
   constituent `federated_language.TensorType`s must have the same dtype (i.e.
