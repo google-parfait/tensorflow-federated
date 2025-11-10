@@ -16,6 +16,8 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -85,6 +87,62 @@ Status DPGroupByAggregator::ValidateInputs(
     }
   }
   return absl::OkStatus();
+}
+
+// Number of bytes to represent a number in `varint` format.
+int64_t CalculateVarintByteSize(int64_t value) {
+  int64_t b = 1;
+  double num_bits = 1;
+  while (b <= value) {
+    b *= 2;
+    num_bits += 1;
+  }
+  num_bits = std::max(num_bits - 1, 1.0);
+  return static_cast<int64_t>(std::ceil(num_bits / 7.0));
+}
+
+int64_t StringTensorSensitivity(int64_t max_groups_contributed,
+                                int64_t max_string_length) {
+  int64_t n = max_groups_contributed *
+              (max_string_length + CalculateVarintByteSize(max_string_length));
+  return n + CalculateVarintByteSize(n);
+}
+
+int64_t NumericalTensorSensitivity(int64_t max_groups_contributed,
+                                   int64_t bytes_per_value) {
+  int64_t n = max_groups_contributed * bytes_per_value;
+  return n + CalculateVarintByteSize(n);
+}
+
+int64_t DPGroupByAggregator::CalculateSerializeSensitivity() {
+  int64_t sensitivity = 0;
+  // First calculate the sensitivity of the keys to one Accumulate call.
+  for (DataType key_type : GroupByAggregator::key_combiner()->dtypes()) {
+    if (key_type == DT_STRING) {
+      sensitivity +=
+          StringTensorSensitivity(max_groups_contributed_, max_string_length_);
+    } else if (key_type == DT_FLOAT || key_type == DT_INT32) {
+      sensitivity += NumericalTensorSensitivity(max_groups_contributed_, 4);
+    } else {
+      sensitivity += NumericalTensorSensitivity(max_groups_contributed_, 8);
+    }
+  }
+  // Then calculate the sensitivity of the state of the aggregations to one
+  // Accumulate call. The state consists of OneDimGroupingAggregatorStates, but
+  // these are serialized the same way as numerical tensors.
+  for (const Intrinsic& intrinsic : intrinsics()) {
+    DataType aggregation_type = intrinsic.outputs[0].dtype();
+    if (aggregation_type == DT_FLOAT || aggregation_type == DT_INT32) {
+      sensitivity += NumericalTensorSensitivity(max_groups_contributed_, 4);
+    } else {
+      sensitivity += NumericalTensorSensitivity(max_groups_contributed_, 8);
+    }
+  }
+  // Finally, we bound sensitivity of the state of contributors_to_groups.
+  // This should be updated when we update the way we track contributors.
+  sensitivity += max_groups_contributed_ +
+                 CalculateVarintByteSize(max_groups_contributed_);
+  return sensitivity;
 }
 
 }  // namespace aggregation

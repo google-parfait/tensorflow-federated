@@ -34,6 +34,9 @@ message GroupByAggregatorState {
   // The number of contributors to each combination of keys. It should be of the
   // same length as each of the tensors in keys.
   repeated uint64 counter_of_contributors = 4;
+  // We can add a random number of zeroes to mask the influence of any single
+  // client on this state.
+  repeated bytes padding = 5;
 }
 
 // Internal state representation of a DPQuantileAggregator.
