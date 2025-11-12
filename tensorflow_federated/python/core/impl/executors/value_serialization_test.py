@@ -288,7 +288,8 @@ class ValueSerializationTest(parameterized.TestCase):
         shape=array_pb2.ArrayShape(dim=[2], unknown_rank=False),
         content=np.array([10, 20], dtype=np.int32).tobytes(),
     )
-    value_proto, value_type = value_serialization.serialize_value(x)
+    x_type = federated_language.TensorType(np.int32, [None])
+    value_proto, value_type = value_serialization.serialize_value(x, x_type)
     self.assertEqual(value_proto.WhichOneof('value'), 'array')
     self.assertEqual(
         value_type,

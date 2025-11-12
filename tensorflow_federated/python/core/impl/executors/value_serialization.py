@@ -42,17 +42,26 @@ def _serialize_computation_value(
 
 @federated_language.framework.trace
 def _serialize_array_value(
-    array: array_pb2.Array, type_spec: Optional[federated_language.Type]
+    array: array_pb2.Array,
+    type_spec: Optional[federated_language.Type],
 ) -> tuple[executor_pb2.Value, federated_language.Type]:
   """Serializes a array proto into `executor_pb2.Value`."""
-  type_spec = executor_utils.reconcile_value_type_with_type_spec(
-      federated_language.TensorType(
-          federated_language.dtype_from_proto(array.dtype),
-          federated_language.array_shape_from_proto(array.shape),
-      ),
-      type_spec,
+  array_type = federated_language.TensorType(
+      federated_language.dtype_from_proto(array.dtype),
+      federated_language.array_shape_from_proto(array.shape),
   )
-  return executor_pb2.Value(array=array), type_spec
+  if type_spec:
+    if not isinstance(type_spec, federated_language.TensorType):
+      raise TypeError(
+          'Expected `type_spec` to be a `federated_language.TensorType`, found'
+          f' {type_spec}.'
+      )
+    if not type_spec.is_assignable_from(array_type):
+      raise TypeError(
+          f'Type spec {type_spec} is not assignable from array type'
+          f' {array_type}.'
+      )
+  return executor_pb2.Value(array=array), array_type
 
 
 @federated_language.framework.trace
