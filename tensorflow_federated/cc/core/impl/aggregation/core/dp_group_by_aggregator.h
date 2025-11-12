@@ -86,6 +86,10 @@ class DPGroupByAggregator : public GroupByAggregator {
   // Access the delta budget allocated to each aggregation.
   inline double delta_per_agg() const { return delta_per_agg_; }
 
+  // Calculate how much a single Accumulate call impacts the length of the
+  // output of Serialize().
+  int64_t CalculateSerializeSensitivity();
+
  private:
   double epsilon_;
   double delta_;

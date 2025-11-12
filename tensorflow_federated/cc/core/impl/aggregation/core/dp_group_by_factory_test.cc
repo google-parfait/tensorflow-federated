@@ -299,6 +299,8 @@ TEST(DPClosedDomainHistogramTest, CatchInvalidParameterValues) {
       CreateIntrinsicWithKeyTypes<int64_t, int64_t>(/*epsilon=*/-1,
                                                     /*delta=*/0.001,
                                                     /*l0_bound=*/10);
+  Intrinsic delta_too_small = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
+      1, /*delta=*/0, 10, 10, -1, -1);
   Intrinsic delta_too_large = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
       1, /*delta=*/2, 10, 10, -1, -1);
   Intrinsic missing_norm_bounds = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
@@ -313,18 +315,18 @@ TEST(DPClosedDomainHistogramTest, CatchInvalidParameterValues) {
       CreateTensorAggregator(negative_epsilon),
       StatusIs(INVALID_ARGUMENT, HasSubstr("Epsilon must be positive")));
   EXPECT_THAT(
+      CreateTensorAggregator(delta_too_small),
+      StatusIs(INVALID_ARGUMENT, HasSubstr("must lie between 0 and 1")));
+  EXPECT_THAT(
       CreateTensorAggregator(delta_too_large),
-      StatusIs(INVALID_ARGUMENT, HasSubstr("delta must be less than 1")));
-  EXPECT_THAT(CreateTensorAggregator(missing_norm_bounds),
-              StatusIs(INVALID_ARGUMENT,
-                       HasSubstr("either an L1 bound, an L2 bound,"
-                                 " or both Linfinity and L0 bounds")));
+      StatusIs(INVALID_ARGUMENT, HasSubstr("must lie between 0 and 1")));
+  EXPECT_THAT(
+      CreateTensorAggregator(missing_norm_bounds),
+      StatusIs(INVALID_ARGUMENT, HasSubstr("either an L1 bound, an L2 bound,"
+                                           " or an Linfinity bound")));
   EXPECT_THAT(
       CreateTensorAggregator(no_delta_only_l2_bound),
-      StatusIs(
-          INVALID_ARGUMENT,
-          HasSubstr("either a positive delta or one of the following: "
-                    "(a) an L1 bound (b) an Linfinity bound and an L0 bound")));
+      StatusIs(INVALID_ARGUMENT, HasSubstr("must lie between 0 and 1")));
 }
 
 TEST(DPClosedDomainHistogramTest, CatchDuplicateParameterNames) {
@@ -444,30 +446,16 @@ TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
 
 // Phase 3: Test that the factory can create DPClosedDomainHistogram objects.
 TEST(DPClosedDomainHistogramTest, CreateWithPositiveDelta) {
-  // Only L2 bound
+  // L0 and L2 bound
   std::vector<DataType> key_types = {DT_STRING, DT_STRING};
   Intrinsic intrinsic1 = CreateIntrinsicWithKeyTypes<int32_t, int64_t>(
-      /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/-1,
+      /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/5,
       /*linfinity_bound=*/-1, /*l1_bound=*/-1, /*l2_bound=*/10, key_types);
-
-  // Both Linf and L0 bounds
   TFF_EXPECT_OK(CreateTensorAggregator(intrinsic1).status());
+
+  // L0 and Linf bounds
   Intrinsic intrinsic2 = CreateIntrinsicWithKeyTypes<int32_t, int64_t>(
       /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/1,
-      /*linfinity_bound=*/5, /*l1_bound=*/-1, /*l2_bound=*/-1, key_types);
-  TFF_EXPECT_OK(CreateTensorAggregator(intrinsic2).status());
-}
-TEST(DPClosedDomainHistogramTest, CreateWithZeroDelta) {
-  // Only L1 bound
-  std::vector<DataType> key_types = {DT_STRING, DT_STRING};
-  Intrinsic intrinsic1 = CreateIntrinsicWithKeyTypes<int32_t, int64_t>(
-      /*epsilon=*/1, /*delta=*/0, /*l0_bound=*/-1,
-      /*linfinity_bound=*/-1, /*l1_bound=*/10, /*l2_bound=*/-1, key_types);
-  TFF_EXPECT_OK(CreateTensorAggregator(intrinsic1).status());
-
-  // Both Linf and L0 bounds
-  Intrinsic intrinsic2 = CreateIntrinsicWithKeyTypes<int32_t, int64_t>(
-      /*epsilon=*/1, /*delta=*/0, /*l0_bound=*/1,
       /*linfinity_bound=*/5, /*l1_bound=*/-1, /*l2_bound=*/-1, key_types);
   TFF_EXPECT_OK(CreateTensorAggregator(intrinsic2).status());
 }
