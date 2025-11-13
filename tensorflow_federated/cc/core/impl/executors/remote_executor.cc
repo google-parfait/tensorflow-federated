@@ -241,7 +241,6 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateStruct(
     grpc::ClientContext context;
     std::vector<std::shared_ptr<ExecutorValue>> values =
         TFF_TRY(WaitAll(futures));
-    federated_language::Type result_type;
     for (const std::shared_ptr<ExecutorValue>& element : values) {
       v0::CreateStructRequest_Element struct_elem;
       *struct_elem.mutable_value_ref() = element->Get();
