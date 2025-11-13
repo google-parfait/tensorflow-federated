@@ -61,31 +61,15 @@ Status ValidateDPParameters(double epsilon, double delta,
     return TFF_STATUS(INVALID_ARGUMENT)
            << "DPGroupByFactory: Epsilon must be positive.";
   }
-
-  if (open_domain) {
-    // If open-domain, delta must lie between 0 and 1.
-    if (delta <= 0 || delta >= 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: For open-domain DP histograms, delta "
-                "must "
-                "lie between 0 and 1.";
-    }
-  } else {
-    // Else, delta must be less than 1. A non-positive delta requires a
-    // positive L1 bound.
-    if (delta >= 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: For closed-domain DP histograms, delta "
-                "must "
-                "be less than 1.";
-    }
-  }
-  if (open_domain && max_groups_contributed <= 0) {
+  if (delta <= 0 || delta >= 1) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: For open-domain DP histograms, "
-              "max_groups_contributed "
-              "must "
-              "be positive.";
+           << "DPGroupByFactory: For DP histograms, delta must lie between 0 "
+           << "and 1.";
+  }
+  if (max_groups_contributed <= 0) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPGroupByFactory: For DP histograms, max_groups_contributed must"
+              " be positive.";
   }
   return TFF_STATUS(OK);
 }
@@ -222,8 +206,6 @@ StatusOr<TensorSpan> FindAndValidateKeys(
 
 Status ValidateNestedIntrinsics(const Intrinsic& intrinsic, bool open_domain,
                                 DPParameters dp_parameters) {
-  double delta = dp_parameters.delta;
-  int64_t max_groups_contributed = dp_parameters.max_groups_contributed;
   // Currently, we only support nested sums.
   // The following check will be updated when this changes.
   for (const auto& intrinsic : intrinsic.nested_intrinsics) {
@@ -266,29 +248,15 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic, bool open_domain,
                   "intrinsic must provide a positive Linfinity bound.";
       }
     } else {
-      // Closed-domain histogram requires either an L1 bound, an L2 bound, or
-      // both Linfinity and L0 bounds.
+      // Closed-domain histogram requires any of L1, L2, or Linfinity bounds.
       bool has_l1_bound =
           l1 > 0 && l1 != std::numeric_limits<double>::infinity();
       bool has_l2_bound =
           l2 > 0 && l2 != std::numeric_limits<double>::infinity();
-      if ((!has_linfinity_bound || max_groups_contributed <= 0) &&
-          !has_l1_bound && !has_l2_bound) {
+      if (!has_linfinity_bound && !has_l1_bound && !has_l2_bound) {
         return TFF_STATUS(INVALID_ARGUMENT)
                << "DPGroupByFactory: Closed-domain DP histograms require "
-                  "either an L1 bound, an L2 bound, or both Linfinity and L0 "
-                  "bounds.";
-      }
-      // If delta is 0, we will employ the Laplace mechanism (Gaussian requires
-      // a positive delta). But the Laplace mechanism requires a positive and
-      // finite L1 sensitivity.
-      bool has_l1_sensitivity =
-          has_l1_bound || (has_linfinity_bound && max_groups_contributed > 0);
-      if (delta <= 0 && !has_l1_sensitivity) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "DPGroupByFactory: Closed-domain DP histograms require "
-                  "either a positive delta or one of the following: "
-               << "(a) an L1 bound (b) an Linfinity bound and an L0 bound";
+                  "either an L1 bound, an L2 bound, or an Linfinity bound.";
       }
     }
   }
