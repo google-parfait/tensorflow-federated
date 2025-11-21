@@ -110,6 +110,9 @@ class Tensor final {
   // TODO: b/266974165 - Implement sparse tensors.
   bool is_dense() const { return true; }
 
+  // Returns true if the tensor is a scalar.
+  bool is_scalar() const { return num_elements() == 1; }
+
   // Provides access to the tensor data via a strongly typed AggVector.
   template <typename T>
   AggVector<T> AsAggVector() const {
@@ -130,7 +133,7 @@ class Tensor final {
   template <typename T, typename std::enable_if<
                             std::is_integral<T>::value>::type* = nullptr>
   T CastToScalar() const {
-    TFF_CHECK(num_elements() == 1)
+    TFF_CHECK(is_scalar())
         << "CastToScalar should only be used on scalar tensors";
     T scalar_val;
     NUMERICAL_ONLY_DTYPE_CASES(
@@ -143,7 +146,7 @@ class Tensor final {
   template <typename T, typename std::enable_if<
                             std::is_floating_point<T>::value>::type* = nullptr>
   T CastToScalar() const {
-    TFF_CHECK(num_elements() == 1)
+    TFF_CHECK(is_scalar())
         << "CastToScalar should only be used on scalar tensors";
     T scalar_val;
     NUMERICAL_ONLY_DTYPE_CASES(dtype_, K,
@@ -155,7 +158,7 @@ class Tensor final {
   template <typename T, typename std::enable_if<std::is_same<
                             string_view, T>::value>::type* = nullptr>
   T CastToScalar() const {
-    TFF_CHECK(num_elements() == 1)
+    TFF_CHECK(is_scalar())
         << "CastToScalar should only be used on scalar tensors";
     return *GetData<T>();
   }
@@ -163,8 +166,7 @@ class Tensor final {
   // Provides access to the tensor data as a scalar.
   template <typename T>
   T AsScalar() const {
-    TFF_CHECK(num_elements() == 1)
-        << "AsScalar should only be used on scalar tensors";
+    TFF_CHECK(is_scalar()) << "AsScalar should only be used on scalar tensors";
     return *GetData<T>();
   }
 

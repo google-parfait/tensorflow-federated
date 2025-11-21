@@ -67,6 +67,7 @@ TEST(TensorTest, Create_ScalarTensor) {
   EXPECT_THAT(t->shape(), Eq(TensorShape{}));
   EXPECT_THAT(t->num_elements(), Eq(1));
   EXPECT_TRUE(t->is_dense());
+  EXPECT_TRUE(t->is_scalar());
   EXPECT_THAT(t->AsAggVector<int>().size(), Eq(1));
   EXPECT_THAT(t->AsAggVector<int>().begin().value(), Eq(555));
 }
@@ -79,6 +80,7 @@ TEST(TensorTest, Create_StringTensor) {
   EXPECT_THAT(t->shape(), Eq(TensorShape{2}));
   EXPECT_THAT(t->num_elements(), Eq(2));
   EXPECT_TRUE(t->is_dense());
+  EXPECT_FALSE(t->is_scalar());
   EXPECT_THAT(t->AsAggVector<string_view>().size(), Eq(2));
 }
 
