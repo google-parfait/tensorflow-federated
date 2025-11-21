@@ -255,6 +255,11 @@ Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
     contributors_to_groups_.resize(max_ordinal + 1);
   }
   for (auto& ordinal : ordinals_span) {
+    // A derived class may call this function on negative ordinals, which should
+    // be ignored.
+    if (ordinal < 0) {
+      continue;
+    }
     if (contributors_to_groups_[ordinal] < max_contributors_to_group_) {
       contributors_to_groups_[ordinal]++;
     }

@@ -50,8 +50,7 @@ namespace aggregation {
 // This allows us to test the creation of the selector, which is not at time of
 // writing exposed in the public API and won't be exposed except through
 // complicated code that should be tested separately. We also have access to
-// some other internals that are useful to test (e.g. max_groups_contributed and
-// max_contributors_to_group).
+// some other internals that are useful to test.
 class DPOpenDomainHistogramPeer {
  public:
   explicit DPOpenDomainHistogramPeer(
@@ -71,6 +70,10 @@ class DPOpenDomainHistogramPeer {
 
   std::optional<int64_t> GetMaxContributorsToGroup() const {
     return dp_histogram_->max_contributors_to_group();
+  }
+
+  const std::vector<int>& GetContributorsToGroups() const {
+    return dp_histogram_->contributors_to_groups();
   }
 
  private:

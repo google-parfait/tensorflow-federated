@@ -227,6 +227,9 @@ class GroupByAggregator : public TensorAggregator {
   inline const std::vector<TensorSpec>& output_key_specs() const {
     return output_key_specs_;
   }
+  inline const std::vector<int>& contributors_to_groups() const {
+    return contributors_to_groups_;
+  }
   inline std::optional<int> min_contributors_to_group() const {
     return min_contributors_to_group_;
   }

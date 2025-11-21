@@ -942,8 +942,34 @@ TEST(DPOpenDomainHistogramTest,
   EXPECT_THAT(peer.GetMaxContributorsToGroup(), Eq(std::nullopt));
 }
 
-// Tenth test batch: Report applies k-thresholding and DP noise correctly when
-// min_contributors_to_group is set.
+// Tenth test batch: the k-thresholding feature does not break Accumulate - the
+// logic that updates the contribution counts should account for groups that
+// were dropped due to enforcing the L0 bound a.k.a. max_groups_contributed.
+TEST(DPOpenDomainHistogramTest, AccumulateWhileKThresholding) {
+  Intrinsic intrinsic = CreateIntrinsic2Agg<int64_t, int64_t>(
+      /*epsilon=*/1.0, /*delta=*/1e-8, /*l0_bound=*/2, /*linfinity_bound1=*/1);
+  intrinsic.parameters.push_back(Tensor::Create(DT_INT64, {},
+                                                CreateTestData<int64_t>({5}),
+                                                "min_contributors_to_group")
+                                     .value());
+  // A simulated client will offer contributions to 3 groups but our L0 value
+  // is 2 so one of those groups will be dropped (an ordinal will be -1).
+  auto agg = CreateTensorAggregator(intrinsic).value();
+  Tensor keys = Tensor::Create(DT_STRING, {3},
+                               CreateTestData<string_view>({"a", "b", "c"}))
+                    .value();
+  Tensor value_tensor1 =
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({1, 1, 1})).value();
+  Tensor value_tensor2 =
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({1, 1, 1})).value();
+  auto acc_status = agg->Accumulate({&keys, &value_tensor1, &value_tensor2});
+  TFF_ASSERT_OK(acc_status);
+  DPOpenDomainHistogramPeer peer(std::move(agg));
+  EXPECT_THAT(peer.GetContributorsToGroups(), ElementsAreArray({1, 1}));
+}
+
+// Eleventh test batch: Report applies k-thresholding and DP noise correctly
+// when min_contributors_to_group is set.
 
 TEST_P(DPOpenDomainHistogramTest,
        SingleKeyAndMinContributorsAggregatesWithValueZeroCanSurvive) {
