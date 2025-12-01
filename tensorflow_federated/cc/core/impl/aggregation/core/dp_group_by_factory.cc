@@ -291,8 +291,20 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Create(
 
 StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Deserialize(
     const Intrinsic& intrinsic, std::string serialized_state) const {
+  // Retrieve padding length from the first characters of the string.
+  int64_t padding_length = *reinterpret_cast<int64_t*>(serialized_state.data());
+  std::cout << "padding_length: " << padding_length << "\n";
+  int64_t characters_to_skip = sizeof(int64_t) + padding_length;
+  if (padding_length < 0 || characters_to_skip > serialized_state.size()) {
+    return TFF_STATUS(INVALID_ARGUMENT) << "DPGroupByFactory::Deserialize: "
+                                           "Failed to parse padding length.";
+  }
+  size_t content_length = serialized_state.size() - characters_to_skip;
+  absl::string_view content(serialized_state.data() + characters_to_skip,
+                            content_length);
+
   GroupByAggregatorState aggregator_state;
-  if (!aggregator_state.ParseFromString(serialized_state)) {
+  if (!aggregator_state.ParseFromString(content)) {
     return TFF_STATUS(INVALID_ARGUMENT) << "DPGroupByFactory::Deserialize: "
                                            "Failed to parse serialized state.";
   }

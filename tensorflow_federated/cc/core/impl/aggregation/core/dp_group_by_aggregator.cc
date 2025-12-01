@@ -20,14 +20,17 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -142,24 +145,28 @@ StatusOr<int64_t> NumericalTensorSensitivity(int64_t max_groups_contributed,
 StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
   int64_t sensitivity = 0;
   // First calculate the sensitivity of the keys to one Accumulate call.
-  for (DataType key_type : GroupByAggregator::key_combiner()->dtypes()) {
-    int64_t tensor_sensitivity = 0;
-    if (key_type == DT_STRING) {
-      TFF_ASSIGN_OR_RETURN(
-          tensor_sensitivity,
-          StringTensorSensitivity(max_groups_contributed_, max_string_length_));
-    } else if (key_type == DT_FLOAT || key_type == DT_INT32) {
-      TFF_ASSIGN_OR_RETURN(tensor_sensitivity, NumericalTensorSensitivity(
-                                                   max_groups_contributed_, 4));
-    } else if (key_type == DT_INT64 || key_type == DT_DOUBLE ||
-               key_type == DT_UINT64) {
-      TFF_ASSIGN_OR_RETURN(tensor_sensitivity, NumericalTensorSensitivity(
-                                                   max_groups_contributed_, 8));
-    } else {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Unsupported key type: " << key_type;
+  if (key_combiner() != nullptr) {
+    for (DataType key_type : GroupByAggregator::key_combiner()->dtypes()) {
+      int64_t tensor_sensitivity = 0;
+      if (key_type == DT_STRING) {
+        TFF_ASSIGN_OR_RETURN(tensor_sensitivity,
+                             StringTensorSensitivity(max_groups_contributed_,
+                                                     max_string_length_));
+      } else if (key_type == DT_FLOAT || key_type == DT_INT32) {
+        TFF_ASSIGN_OR_RETURN(
+            tensor_sensitivity,
+            NumericalTensorSensitivity(max_groups_contributed_, 4));
+      } else if (key_type == DT_INT64 || key_type == DT_DOUBLE ||
+                 key_type == DT_UINT64) {
+        TFF_ASSIGN_OR_RETURN(
+            tensor_sensitivity,
+            NumericalTensorSensitivity(max_groups_contributed_, 8));
+      } else {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "Unsupported key type: " << key_type;
+      }
+      sensitivity += tensor_sensitivity;
     }
-    sensitivity += tensor_sensitivity;
   }
   // Then calculate the sensitivity of the state of the aggregations to one
   // Accumulate call.
@@ -196,6 +203,29 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
   sensitivity +=
       max_groups_contributed_ + bytes_to_encode_max_groups_contributed;
   return sensitivity;
+}
+
+StatusOr<std::string> DPGroupByAggregator::Serialize() && {
+  TFF_ASSIGN_OR_RETURN(std::string serialized_state,
+                       std::move(*this).GroupByAggregator::Serialize());
+  int64_t padding_length = 0;
+  if (epsilon_ < kEpsilonThreshold) {
+    // For DP, lengthen the serialized state by an amount determined by
+    // PositiveLaplaceMechanism.
+    TFF_ASSIGN_OR_RETURN(int64_t sensitivity, CalculateSerializeSensitivity());
+    TFF_ASSIGN_OR_RETURN(
+        std::unique_ptr<PositiveLaplaceMechanism> mechanism,
+        PositiveLaplaceMechanism::Create(epsilon_, delta_, sensitivity));
+    int64_t raw_length = serialized_state.size();
+    int64_t final_length = mechanism->AddNoise(raw_length);
+    padding_length = final_length - raw_length;
+  }
+  // Precede padding with bytes that represent the length of the padding.
+  std::string padding(padding_length, kPaddingCharacter);
+  std::string padding_length_bytes(reinterpret_cast<char*>(&padding_length),
+                                   sizeof(padding_length));
+
+  return absl::StrCat(padding_length_bytes, padding, serialized_state);
 }
 
 }  // namespace aggregation
