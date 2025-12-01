@@ -137,12 +137,12 @@ DPOpenDomainHistogram::DPOpenDomainHistogram(
     int num_inputs, double epsilon, double delta,
     int64_t max_groups_contributed,
     std::optional<int> min_contributors_to_group,
-    std::vector<int> contributors_to_groups, int max_string_length)
-    : DPGroupByAggregator(
-          input_key_specs, output_key_specs, intrinsics,
-          std::move(key_combiner), std::move(aggregators), num_inputs, epsilon,
-          delta, max_groups_contributed, min_contributors_to_group,
-          std::move(contributors_to_groups), max_string_length) {}
+    std::vector<int> contributor_counts, int max_string_length)
+    : DPGroupByAggregator(input_key_specs, output_key_specs, intrinsics,
+                          std::move(key_combiner), std::move(aggregators),
+                          num_inputs, epsilon, delta, max_groups_contributed,
+                          min_contributors_to_group,
+                          std::move(contributor_counts), max_string_length) {}
 
 // Factory method to create DPOpenDomainHistogram
 StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
@@ -154,7 +154,7 @@ StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
     int num_inputs, double epsilon, double delta,
     int64_t max_groups_contributed,
     std::optional<int> min_contributors_to_group,
-    std::vector<int> contributors_to_groups, int max_string_length) {
+    std::vector<int> contributor_counts, int max_string_length) {
   bool need_selector =
       min_contributors_to_group.has_value() && epsilon < kEpsilonThreshold;
 
@@ -171,7 +171,7 @@ StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
   auto dp_open_domain_histogram = absl::WrapUnique(new DPOpenDomainHistogram(
       input_key_specs, output_key_specs, intrinsics, std::move(key_combiner),
       std::move(aggregators), num_inputs, epsilon_for_aggs, delta_for_aggs,
-      max_groups_contributed, min_contributors_to_group, contributors_to_groups,
+      max_groups_contributed, min_contributors_to_group, contributor_counts,
       max_string_length));
 
   if (need_selector) {
@@ -200,8 +200,8 @@ StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
 
     // The selector publishes every group with strictly greater than second
     // crossover elements.
-    dp_open_domain_histogram->set_max_contributors_to_group(
-        ceil(selector->GetSecondCrossover()));
+    TFF_RETURN_IF_ERROR(dp_open_domain_histogram->set_max_contributors_to_group(
+        ceil(selector->GetSecondCrossover())));
     dp_open_domain_histogram->selector_ = std::move(selector);
   }
   return dp_open_domain_histogram;
