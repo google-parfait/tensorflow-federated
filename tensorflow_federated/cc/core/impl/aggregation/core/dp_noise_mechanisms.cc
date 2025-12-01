@@ -18,6 +18,8 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <memory>
+#include <utility>
 
 #include "absl/status/statusor.h"
 #include "algorithms/numerical-mechanisms.h"
@@ -271,6 +273,52 @@ absl::StatusOr<DPHistogramBundle> CreateDPHistogramBundle(
     return gaussian_mechanism;
   }
   return laplace_mechanism;
+}
+
+PositiveLaplaceMechanism::PositiveLaplaceMechanism(
+    std::unique_ptr<differential_privacy::NumericalMechanism>&& mechanism,
+    double offset)
+    : mechanism_(std::move(mechanism)),
+      offset_for_doubles_(offset),
+      offset_for_integers_(std::ceil(offset)) {}
+
+absl::StatusOr<std::unique_ptr<PositiveLaplaceMechanism>>
+PositiveLaplaceMechanism::Create(double epsilon, double delta,
+                                 double sensitivity) {
+  if (epsilon <= 0 || epsilon >= kEpsilonThreshold) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "PositiveLaplaceMechanism::Create: Epsilon must be positive "
+              "and smaller than "
+           << kEpsilonThreshold;
+  }
+  if (delta <= 0 || delta >= 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "PositiveLaplaceMechanism::Create: Delta must be within (0, 1).";
+  }
+  differential_privacy::LaplaceMechanism::Builder builder;
+  builder.SetL1Sensitivity(sensitivity).SetEpsilon(epsilon);
+  TFF_ASSIGN_OR_RETURN(auto mechanism, builder.Build());
+
+  // The offset is a number such that applying it to a Laplace-noised value
+  // results in a distribution that places at most delta mass on numbers bounded
+  // by (value + sensitivity). This allows us to move mass around while being
+  // confident that any neighbouring pair of inputs correspond to a pair of
+  // distributions that are within delta of each other.
+  double offset = sensitivity + std::abs(mechanism->Quantile(delta));
+  return std::make_unique<PositiveLaplaceMechanism>(std::move(mechanism),
+                                                    offset);
+}
+
+double PositiveLaplaceMechanism::AddDoubleNoise(double value) {
+  double noisy_value =
+      mechanism_->AddNoise<double>(value) + offset_for_doubles_;
+  return (noisy_value < value) ? value : noisy_value;
+}
+
+int64_t PositiveLaplaceMechanism::AddIntNoise(int64_t value) {
+  int64_t noisy_value =
+      mechanism_->AddNoise<int64_t>(value) + offset_for_integers_;
+  return (noisy_value < value) ? value : noisy_value;
 }
 
 }  // namespace aggregation

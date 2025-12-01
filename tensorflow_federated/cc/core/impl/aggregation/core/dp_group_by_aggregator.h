@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
@@ -47,6 +48,10 @@ class DPGroupByAggregator : public GroupByAggregator {
   // Validates the input tensors, adding the string length check on top of what
   // GroupByAggregator::ValidateInputs does.
   Status ValidateInputs(const InputTensorList& tensors) const override;
+
+  // Serializes the aggregator state. Pads the length with a random amount of
+  // kPaddingCharacter when DP is enabled.
+  StatusOr<std::string> Serialize() && override;
 
  protected:
   // Constructs a DPGroupByAggregator. Only intended for use by child classes.

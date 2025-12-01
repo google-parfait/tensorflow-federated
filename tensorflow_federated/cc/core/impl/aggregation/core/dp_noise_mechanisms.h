@@ -20,6 +20,8 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <type_traits>
+#include <utility>
 
 #include "absl/status/statusor.h"
 #include "algorithms/numerical-mechanisms.h"
@@ -112,6 +114,43 @@ absl::StatusOr<DPHistogramBundle> CreateDPHistogramBundle(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
     double l1_bound, double l2_bound, bool threshold_by_value);
 
+// Wrapper class around the Laplace mechanism which ensures that the noise
+// added is positive. This is done by shifting the result upwards by an offset.
+// The shifted value is returned when larger than the input, otherwise the input
+// is returned. This transformation requires a positive delta DP parameter.
+class PositiveLaplaceMechanism {
+ public:
+  PositiveLaplaceMechanism() = delete;
+  PositiveLaplaceMechanism(PositiveLaplaceMechanism&& other)
+      : mechanism_(std::move(other.mechanism_)),
+        offset_for_doubles_(other.offset_for_doubles_),
+        offset_for_integers_(other.offset_for_integers_) {}
+  PositiveLaplaceMechanism(
+      std::unique_ptr<differential_privacy::NumericalMechanism>&& mechanism,
+      double offset);
+
+  static absl::StatusOr<std::unique_ptr<PositiveLaplaceMechanism>> Create(
+      double epsilon, double delta, double sensitivity);
+
+  template <typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
+  int64_t AddNoise(T result) {
+    return AddIntNoise(result);
+  }
+
+  template <typename T,
+            std::enable_if_t<std::is_floating_point<T>::value>* = nullptr>
+  double AddNoise(T result) {
+    return AddDoubleNoise(result);
+  }
+
+ private:
+  double AddDoubleNoise(double value);
+  int64_t AddIntNoise(int64_t value);
+
+  std::unique_ptr<differential_privacy::NumericalMechanism> mechanism_;
+  double offset_for_doubles_;
+  int64_t offset_for_integers_;
+};
 }  // namespace aggregation
 }  // namespace tensorflow_federated
 
