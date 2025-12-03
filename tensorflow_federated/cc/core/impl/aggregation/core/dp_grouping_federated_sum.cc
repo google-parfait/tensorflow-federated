@@ -286,6 +286,14 @@ class DPGroupingFederatedSumFactory final
       }
     }
 
+    // Edge case: linfinity tensor is negative (not provided) but the input type
+    // is unsigned. Reset to 0 so the no-clamping behavior is preserved.
+    if (linfinity_tensor.CastToScalar<double>() < 0 &&
+        input_type == DataType::DT_UINT64) {
+      return CreateDPGroupingFederatedSum<uint64_t, uint64_t>(
+          /*linfinity_bound=*/0, l1, l2, aggregator_state);
+    }
+
     StatusOr<std::unique_ptr<TensorAggregator>> aggregator;
     DTYPE_CASES(
         input_type, T,
