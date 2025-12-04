@@ -64,11 +64,6 @@ Status Tensor::CheckValid() const {
 }
 
 Status Tensor::set_name(absl::string_view name) {
-  // This check isn't relied on and could be removed later if needed.
-  if (!name_.empty()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Tensor already has a name: " << name_;
-  }
   name_ = name;
   return TFF_STATUS(OK);
 }

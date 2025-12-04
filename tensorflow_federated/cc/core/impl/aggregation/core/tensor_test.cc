@@ -40,7 +40,7 @@ using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
 
-TEST(TensorTest, Create_Dense) {
+TEST(TensorTest, CreateDense) {
   auto t = Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1, 2, 3}));
   EXPECT_THAT(t, IsOk());
   EXPECT_THAT(t->dtype(), Eq(DT_FLOAT));
@@ -50,7 +50,7 @@ TEST(TensorTest, Create_Dense) {
   EXPECT_THAT(t->AsAggVector<float>().size(), Eq(3));
 }
 
-TEST(TensorTest, Create_ZeroDataSize) {
+TEST(TensorTest, CreateZeroDataSize) {
   auto t = Tensor::Create(DT_INT32, {0}, CreateTestData<int>({}));
   EXPECT_THAT(t, IsOk());
   EXPECT_THAT(t->dtype(), Eq(DT_INT32));
@@ -60,7 +60,7 @@ TEST(TensorTest, Create_ZeroDataSize) {
   EXPECT_THAT(t->AsAggVector<int>().size(), Eq(0));
 }
 
-TEST(TensorTest, Create_ScalarTensor) {
+TEST(TensorTest, CreateScalarTensor) {
   auto t = Tensor::Create(DT_INT32, {}, CreateTestData<int>({555}));
   EXPECT_THAT(t, IsOk());
   EXPECT_THAT(t->dtype(), Eq(DT_INT32));
@@ -72,7 +72,7 @@ TEST(TensorTest, Create_ScalarTensor) {
   EXPECT_THAT(t->AsAggVector<int>().begin().value(), Eq(555));
 }
 
-TEST(TensorTest, Create_StringTensor) {
+TEST(TensorTest, CreateStringTensor) {
   auto t = Tensor::Create(DT_STRING, {2},
                           CreateTestData<string_view>({"foo", "bar"}));
   EXPECT_THAT(t, IsOk());
@@ -84,7 +84,7 @@ TEST(TensorTest, Create_StringTensor) {
   EXPECT_THAT(t->AsAggVector<string_view>().size(), Eq(2));
 }
 
-TEST(TensorTest, TensorCreate_WithName_Success) {
+TEST(TensorTest, TensorCreateWithNameSuccess) {
   TFF_ASSERT_OK_AND_ASSIGN(
       Tensor t,
       Tensor::Create(/*dtype=*/DT_INT32, /*shape=*/{1},
@@ -92,44 +92,44 @@ TEST(TensorTest, TensorCreate_WithName_Success) {
   EXPECT_EQ(t.name(), "test_name");
 }
 
-TEST(TensorTest, Create_ShapeWithUnknownDimensions) {
+TEST(TensorTest, CreateShapeWithUnknownDimensions) {
   auto t = Tensor::Create(DT_FLOAT, {-1}, CreateTestData<float>({1, 2, 3}));
   EXPECT_THAT(t, StatusIs(INVALID_ARGUMENT));
 }
 
-TEST(TensorTest, Create_DataValidationError) {
+TEST(TensorTest, CreateDataValidationError) {
   auto t = Tensor::Create(DT_FLOAT, {}, CreateTestData<char>({'a', 'b', 'c'}));
   EXPECT_THAT(t, StatusIs(FAILED_PRECONDITION));
 }
 
-TEST(TensorTest, Create_DataSizeError) {
+TEST(TensorTest, CreateDataSizeError) {
   auto t = Tensor::Create(DT_FLOAT, {1}, CreateTestData<float>({1, 2}));
   EXPECT_THAT(t, StatusIs(FAILED_PRECONDITION));
 }
 
 struct FooBar {};
 
-TEST(TensorTest, AsAggVector_TypeCheckFailure) {
+TEST(TensorTest, AsAggVectorTypeCheckFailure) {
   auto t = Tensor::Create(DT_FLOAT, {1}, CreateTestData<float>({1}));
   EXPECT_DEATH(t->AsAggVector<FooBar>(), "Incompatible tensor dtype()");
   EXPECT_DEATH(t->AsAggVector<int>(), "Incompatible tensor dtype()");
 }
 
-TEST(TensorTest, CastToScalar_IntScalarTensor) {
+TEST(TensorTest, CastToScalarIntScalarTensor) {
   auto t = Tensor::Create(DT_INT32, {}, CreateTestData<int>({10}));
   EXPECT_THAT(t->CastToScalar<float>(), ::testing::FloatNear(10, 1e-5f));
   EXPECT_THAT(t->CastToScalar<double>(), ::testing::DoubleNear(10, 1e-5));
   EXPECT_EQ(t->CastToScalar<int>(), 10);
 }
 
-TEST(TensorTest, CastToScalar_FloatScalarTensor) {
+TEST(TensorTest, CastToScalarFloatScalarTensor) {
   auto t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({5.3f}));
   EXPECT_THAT(t->CastToScalar<float>(), ::testing::FloatNear(5.3f, 1e-5f));
   EXPECT_THAT(t->CastToScalar<double>(), ::testing::DoubleNear(5.3, 1e-5));
   EXPECT_EQ(t->CastToScalar<int>(), 5);
 }
 
-TEST(TensorTest, CastToScalar_NumericalScalarTensorWithRounding) {
+TEST(TensorTest, CastToScalarNumericalScalarTensorWithRounding) {
   auto t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({2.9999f}));
   EXPECT_EQ(t->CastToScalar<int>(), 3);
 
@@ -143,12 +143,12 @@ TEST(TensorTest, CastToScalar_NumericalScalarTensorWithRounding) {
   EXPECT_EQ(t->CastToScalar<int>(), -3);
 }
 
-TEST(TensorTest, CastToScalar_StringScalarTensor) {
+TEST(TensorTest, CastToScalarStringScalarTensor) {
   auto t = Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}));
   EXPECT_EQ(t->CastToScalar<string_view>(), "foo");
 }
 
-TEST(TensorTest, CastToScalar_MismatchType) {
+TEST(TensorTest, CastToScalarMismatchType) {
   auto t = Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}));
   EXPECT_DEATH(t->CastToScalar<int>(), "Unsupported type");
 
@@ -156,7 +156,7 @@ TEST(TensorTest, CastToScalar_MismatchType) {
   EXPECT_DEATH(t->CastToScalar<string_view>(), "Incompatible tensor dtype()");
 }
 
-TEST(TensorTest, CastToScalar_NonScalar) {
+TEST(TensorTest, CastToScalarNonScalar) {
   auto t = Tensor::Create(DT_STRING, {2},
                           CreateTestData<string_view>({"foo", "bar"}));
   EXPECT_DEATH(t->CastToScalar<string_view>(),
@@ -167,22 +167,22 @@ TEST(TensorTest, CastToScalar_NonScalar) {
                "CastToScalar should only be used on scalar tensors");
 }
 
-TEST(TensorTest, AsScalar_IntScalarTensor) {
+TEST(TensorTest, AsScalarIntScalarTensor) {
   auto t = Tensor::Create(DT_INT32, {}, CreateTestData<int>({10}));
   EXPECT_EQ(t->AsScalar<int>(), 10);
 }
 
-TEST(TensorTest, AsScalar_FloatScalarTensor) {
+TEST(TensorTest, AsScalarFloatScalarTensor) {
   auto t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({5.3f}));
   EXPECT_THAT(t->AsScalar<float>(), ::testing::FloatNear(5.3f, 1e-5f));
 }
 
-TEST(TensorTest, AsScalar_StringScalarTensor) {
+TEST(TensorTest, AsScalarStringScalarTensor) {
   auto t = Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}));
   EXPECT_EQ(t->AsScalar<string_view>(), "foo");
 }
 
-TEST(TensorTest, AsScalar_MismatchType) {
+TEST(TensorTest, AsScalarMismatchType) {
   auto t = Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}));
   EXPECT_DEATH(t->AsScalar<int>(), "Incompatible tensor dtype()");
 
@@ -190,7 +190,7 @@ TEST(TensorTest, AsScalar_MismatchType) {
   EXPECT_DEATH(t->AsScalar<string_view>(), "Incompatible tensor dtype()");
 }
 
-TEST(TensorTest, AsScalar_NonScalar) {
+TEST(TensorTest, AsScalarNonScalar) {
   auto t = Tensor::Create(DT_STRING, {2},
                           CreateTestData<string_view>({"foo", "bar"}));
   EXPECT_DEATH(t->AsScalar<string_view>(),
@@ -201,7 +201,7 @@ TEST(TensorTest, AsScalar_NonScalar) {
                "AsScalar should only be used on scalar tensors");
 }
 
-TEST(TensorTest, AsSpan_NumericTensor) {
+TEST(TensorTest, AsSpanNumericTensor) {
   auto t =
       Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({5.5f, 5.7f, 5.9f}));
   auto span = t->AsSpan<float>();
@@ -211,7 +211,7 @@ TEST(TensorTest, AsSpan_NumericTensor) {
   EXPECT_EQ(span.at(2), 5.9f);
 }
 
-TEST(TensorTest, AsSpan_StringTensor) {
+TEST(TensorTest, AsSpanStringTensor) {
   auto t = Tensor::Create(DT_STRING, {2},
                           CreateTestData<string_view>({"foo", "bar"}));
   auto span = t->AsSpan<string_view>();
@@ -220,13 +220,13 @@ TEST(TensorTest, AsSpan_StringTensor) {
   EXPECT_EQ(span.at(1), "bar");
 }
 
-TEST(TensorTest, AsSpan_MismatchType) {
+TEST(TensorTest, AsSpanMismatchType) {
   auto t = Tensor::Create(DT_STRING, {2},
                           CreateTestData<string_view>({"foo", "bar"}));
   EXPECT_DEATH(t->AsSpan<int>(), "Incompatible tensor dtype()");
 }
 
-TEST(TensorTest, ToProto_Int32_Success) {
+TEST(TensorTest, ToProtoInt32Success) {
   std::initializer_list<int32_t> values{1, 2, 3, 4};
   auto t = Tensor::Create(DT_INT32, {2, 2}, CreateTestData(values));
   TensorProto expected_proto;
@@ -237,7 +237,7 @@ TEST(TensorTest, ToProto_Int32_Success) {
   EXPECT_THAT(t->ToProto(), testing::EqualsProto(expected_proto));
 }
 
-TEST(TensorTest, ToProto_Uint64_Success) {
+TEST(TensorTest, ToProtoUint64Success) {
   std::initializer_list<uint64_t> values{4294967296, 4294967297, 4294967298,
                                          4294967299};
   auto t = Tensor::Create(DT_UINT64, {2, 2}, CreateTestData(values));
@@ -249,7 +249,7 @@ TEST(TensorTest, ToProto_Uint64_Success) {
   EXPECT_THAT(t->ToProto(), testing::EqualsProto(expected_proto));
 }
 
-TEST(TensorTest, ToProto_String_Success) {
+TEST(TensorTest, ToProtoStringSuccess) {
   std::initializer_list<string_view> values{"abc",  "de",    "",
                                             "fghi", "jklmn", "o"};
   auto t = Tensor::Create(DT_STRING, {2, 3}, CreateTestData(values));
@@ -261,7 +261,7 @@ TEST(TensorTest, ToProto_String_Success) {
   EXPECT_THAT(t->ToProto(), testing::EqualsProto(expected_proto));
 }
 
-TEST(TensorTest, ToProto_WithName_Success) {
+TEST(TensorTest, ToProtoWithNameSuccess) {
   std::initializer_list<int32_t> values{1};
   auto t = Tensor::Create(DT_INT32, {1}, CreateTestData(values), "test_name");
   TensorProto expected_proto;
@@ -272,7 +272,7 @@ TEST(TensorTest, ToProto_WithName_Success) {
   EXPECT_THAT(t->ToProto(), testing::EqualsProto(expected_proto));
 }
 
-TEST(TensorTest, FromProto_Int32_Success) {
+TEST(TensorTest, FromProtoInt32Success) {
   std::initializer_list<int32_t> values{5, 6, 7, 8, 9, 10};
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_INT32);
@@ -284,7 +284,7 @@ TEST(TensorTest, FromProto_Int32_Success) {
   EXPECT_THAT(*t, IsTensor({2, 3}, values));
 }
 
-TEST(TensorTest, FromProto_Uint64_Success) {
+TEST(TensorTest, FromProtoUint64Success) {
   std::initializer_list<uint64_t> values{4294967296, 4294967297, 4294967298,
                                          4294967299, 4294967300, 4294967301};
   TensorProto tensor_proto;
@@ -297,7 +297,7 @@ TEST(TensorTest, FromProto_Uint64_Success) {
   EXPECT_THAT(*t, IsTensor({2, 3}, values));
 }
 
-TEST(TensorTest, FromProto_String_Success) {
+TEST(TensorTest, FromProtoStringSuccess) {
   std::initializer_list<string_view> values{"aaaaaaaa", "b", "cccc", "ddddddd"};
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_STRING);
@@ -309,7 +309,7 @@ TEST(TensorTest, FromProto_String_Success) {
   EXPECT_THAT(*t, IsTensor({2, 2}, values));
 }
 
-TEST(TensorTest, FromProto_Int32_WithoutContent_Success) {
+TEST(TensorTest, FromProtoInt32WithoutContentSuccess) {
   std::initializer_list<int32_t> values{5, 6, 7, 8, 9, 10};
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_INT32);
@@ -323,7 +323,7 @@ TEST(TensorTest, FromProto_Int32_WithoutContent_Success) {
   EXPECT_THAT(*t, IsTensor({2, 3}, values));
 }
 
-TEST(TensorTest, FromProto_Float_WithoutContent_Success) {
+TEST(TensorTest, FromProtoFloatWithoutContentSuccess) {
   std::initializer_list<float> values{1.2, 1.4, 1.6};
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_FLOAT);
@@ -336,7 +336,7 @@ TEST(TensorTest, FromProto_Float_WithoutContent_Success) {
   EXPECT_THAT(*t, IsTensor({3}, values));
 }
 
-TEST(TensorTest, FromProto_String_WithoutContent_Success) {
+TEST(TensorTest, FromProtoStringWithoutContentSuccess) {
   std::initializer_list<string_view> values{"a", "b", "c", "d"};
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_STRING);
@@ -348,7 +348,7 @@ TEST(TensorTest, FromProto_String_WithoutContent_Success) {
   EXPECT_THAT(t, IsOkAndHolds(IsTensor({4}, values)));
 }
 
-TEST(TensorTest, FromProto_WithName_Success) {
+TEST(TensorTest, FromProtoWithNameSuccess) {
   std::initializer_list<int32_t> values{1};
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_INT32);
@@ -371,7 +371,7 @@ TEST(TensorTest, LargeStringValuesSerialization) {
   EXPECT_THAT(*t2, IsTensor<string_view>({3}, {s1, s2, s3}));
 }
 
-TEST(TensorTest, FromProto_Mutable_Success) {
+TEST(TensorTest, FromProtoMutableSuccess) {
   std::initializer_list<int32_t> values{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_INT32);
@@ -385,7 +385,7 @@ TEST(TensorTest, FromProto_Mutable_Success) {
   EXPECT_EQ(data_ptr, t->data().data());
 }
 
-TEST(TensorTest, FromProto_NegativeDimSize) {
+TEST(TensorTest, FromProtoNegativeDimSize) {
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_INT32);
   tensor_proto.mutable_shape()->add_dim_sizes(-1);
@@ -393,7 +393,7 @@ TEST(TensorTest, FromProto_NegativeDimSize) {
   EXPECT_THAT(Tensor::FromProto(tensor_proto), StatusIs(INVALID_ARGUMENT));
 }
 
-TEST(TensorTest, FromProto_MultipleFields) {
+TEST(TensorTest, FromProtoMultipleFields) {
   std::initializer_list<int32_t> values{5, 6, 7, 8, 9, 10};
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_INT32);
@@ -410,7 +410,7 @@ TEST(TensorTest, FromProto_MultipleFields) {
       HasSubstr("Tensor proto contains multiple representations of data."));
 }
 
-TEST(TensorTest, FromProto_MismatchedType) {
+TEST(TensorTest, FromProtoMismatchedType) {
   std::initializer_list<int32_t> values{5, 6, 7, 8, 9, 10};
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_FLOAT);
@@ -425,7 +425,7 @@ TEST(TensorTest, FromProto_MismatchedType) {
               HasSubstr("Tensor proto contains data of unexpected data type"));
 }
 
-TEST(TensorTest, FromProto_NoData) {
+TEST(TensorTest, FromProtoNoData) {
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_STRING);
   tensor_proto.mutable_shape()->add_dim_sizes(0);
@@ -435,7 +435,7 @@ TEST(TensorTest, FromProto_NoData) {
   EXPECT_THAT(t->shape().dim_sizes()[0], 0);
 }
 
-TEST(TensorTest, FromProto_NoData_MismatchShape) {
+TEST(TensorTest, FromProtoNoDataMismatchShape) {
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_STRING);
   tensor_proto.mutable_shape()->add_dim_sizes(2);
@@ -445,7 +445,7 @@ TEST(TensorTest, FromProto_NoData_MismatchShape) {
                                      "shape indicates it is non-empty"));
 }
 
-TEST(TensorTest, FromProto_InvalidStringContent) {
+TEST(TensorTest, FromProtoInvalidStringContent) {
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_STRING);
   tensor_proto.mutable_shape()->add_dim_sizes(1);
@@ -459,7 +459,7 @@ TEST(TensorTest, FromProto_InvalidStringContent) {
   EXPECT_THAT(Tensor::FromProto(tensor_proto), StatusIs(INVALID_ARGUMENT));
 }
 
-TEST(TensorTest, RoundTrip_Data_Int) {
+TEST(TensorTest, RoundTripDataInt) {
   std::initializer_list<int32_t> values{1, 2, 3, 4};
   auto t = Tensor::Create(DT_INT32, {2, 2}, CreateTestData(values));
 
@@ -473,7 +473,7 @@ TEST(TensorTest, RoundTrip_Data_Int) {
   EXPECT_THAT(*result, IsTensor({2, 2}, values));
 }
 
-TEST(TensorTest, RoundTrip_Data_String) {
+TEST(TensorTest, RoundTripDataString) {
   std::initializer_list<string_view> values{"abc",  "de",    "",
                                             "fghi", "jklmn", "o"};
   auto t = Tensor::Create(DT_STRING, {2, 3}, CreateTestData(values));
@@ -488,7 +488,7 @@ TEST(TensorTest, RoundTrip_Data_String) {
   EXPECT_THAT(*result, IsTensor({2, 3}, values));
 }
 
-TEST(TensorTest, RoundTrip_NoData_Int) {
+TEST(TensorTest, RoundTripNoDataInt) {
   std::initializer_list<int32_t> values{};
   auto t = Tensor::Create(DT_INT32, {0}, CreateTestData(values));
 
@@ -501,7 +501,7 @@ TEST(TensorTest, RoundTrip_NoData_Int) {
   EXPECT_THAT(*result, IsTensor({0}, values));
 }
 
-TEST(TensorTest, RoundTrip_NoData_String) {
+TEST(TensorTest, RoundTripNoDataString) {
   std::initializer_list<string_view> values{};
   auto t = Tensor::Create(DT_STRING, {0}, CreateTestData(values));
 
@@ -526,25 +526,6 @@ TEST(TensorTest, SetNameSuccess) {
 
   // Verify the name has been set correctly.
   EXPECT_THAT(tensor.name(), Eq("my_test_tensor"));
-}
-
-TEST(TensorTest, SetNameFailsIfNameAlreadySet) {
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor tensor,
-      Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1.0f})));
-
-  // Set an initial tensor name.
-  TFF_EXPECT_OK(tensor.set_name("first_name"));
-  EXPECT_THAT(tensor.name(), Eq("first_name"));
-
-  // Attempting to set the name again should return an error.
-  Status status = tensor.set_name("second_name");
-  EXPECT_THAT(status,
-              StatusIs(INVALID_ARGUMENT,
-                       HasSubstr("Tensor already has a name: first_name")));
-
-  // The name should remain unchanged.
-  EXPECT_THAT(tensor.name(), Eq("first_name"));
 }
 
 }  // namespace

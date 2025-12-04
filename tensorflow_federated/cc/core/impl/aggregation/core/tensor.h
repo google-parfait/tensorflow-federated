@@ -178,8 +178,7 @@ class Tensor final {
     return absl::Span<const T>(GetData<T>(), num_elements());
   }
 
-  // Adds a name to an unnamed tensor, returns error if tensor already has a
-  // name.
+  // Updates the tensor name.
   Status set_name(absl::string_view name);
 
   // TODO: b/222605809 - Add serialization functions.
