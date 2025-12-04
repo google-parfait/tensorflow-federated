@@ -33,6 +33,8 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
+// Number of bytes to represent a number in `varint` format.
+StatusOr<int64_t> CalculateVarintByteSize(int64_t value);
 
 // The DPGroupByAggregator is an abstract base class for GroupBy aggregations
 // that enforce differential privacy (DP).
@@ -85,6 +87,10 @@ class DPGroupByAggregator : public GroupByAggregator {
 
   // Access the delta budget allocated to each aggregation.
   inline double delta_per_agg() const { return delta_per_agg_; }
+
+  // Calculate how much a single Accumulate call impacts the length of the
+  // output of Serialize().
+  StatusOr<int64_t> CalculateSerializeSensitivity();
 
  private:
   double epsilon_;

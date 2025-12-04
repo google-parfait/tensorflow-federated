@@ -27,8 +27,6 @@ namespace {
 using ::testing::ElementsAre;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
-using ::testing::status::IsOkAndHolds;
-using ::testing::status::StatusIs;
 
 TEST(ContributorsToGroupsTest, AddToGroupNoPrivId) {
   ContributorsToGroups ctg(/*max_contributors_to_group=*/3);

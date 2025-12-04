@@ -44,7 +44,7 @@ namespace aggregation {
 namespace {
 
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
-    CreateTensorSpec;
+    CreateInnerIntrinsic;
 using ::testing::HasSubstr;
 
 // Mock class for testing the abstract DPGroupByAggregator.
@@ -54,26 +54,38 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
-      std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
       int num_inputs, double epsilon, double delta,
       int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributors_to_groups = {},
       int max_string_length = kDefaultMaxStringLength)
-      : DPGroupByAggregator(input_key_specs, output_key_specs, intrinsics,
-                            std::move(key_combiner), std::move(aggregators),
-                            num_inputs, epsilon, delta, max_groups_contributed,
-                            min_contributors_to_group, contributors_to_groups,
-                            max_string_length) {}
+      : DPGroupByAggregator(
+            input_key_specs, output_key_specs, intrinsics,
+            std::make_unique<CompositeKeyCombiner>(CreateKeyTypes(
+                input_key_specs.size(), input_key_specs, *output_key_specs)),
+            std::move(aggregators), num_inputs, epsilon, delta,
+            max_groups_contributed, min_contributors_to_group,
+            contributors_to_groups, max_string_length) {}
   inline double GetEpsilonPerAgg() { return epsilon_per_agg(); }
   inline double GetDeltaPerAgg() { return delta_per_agg(); }
+  inline StatusOr<int64_t> SerializeSensitivity() {
+    return DPGroupByAggregator::CalculateSerializeSensitivity();
+  }
 
  protected:
   StatusOr<OutputTensorList> NoisyReport() override {
     return absl::UnimplementedError("Not implemented.");
   }
 };
+
+// Creates a default inner intrinsic for testing.
+template <typename InputType, typename OutputType>
+Intrinsic CreateDefaultInnerIntrinsic() {
+  // The parameters will not be used in this suite of tests; the types are what
+  // are important.
+  return CreateInnerIntrinsic<InputType, OutputType>(1, -1, -1);
+}
 
 MockDPGroupByAggregator CreateMockForTestingEpsilonAndDeltaSplit(
     double epsilon, double delta, int num_intrinsics) {
@@ -85,14 +97,14 @@ MockDPGroupByAggregator CreateMockForTestingEpsilonAndDeltaSplit(
       dp_histogram_testing::CreateTensorSpec("key_out", DT_STRING));
   std::vector<Intrinsic> intrinsics;
   for (int i = 0; i < num_intrinsics; ++i) {
-    intrinsics.push_back(Intrinsic());
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
   }
   std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
   for (int i = 0; i < num_intrinsics; ++i) {
     aggregators.push_back(nullptr);
   }
   return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
-                                 &intrinsics, nullptr, std::move(aggregators),
+                                 &intrinsics, std::move(aggregators),
                                  /*num_inputs=*/0, epsilon, delta,
                                  /*max_groups_contributed=*/1);
 }
@@ -134,21 +146,17 @@ TEST(DPGroupByAggregatorTest, SplitDeltaWhenManyIntrinsics) {
 // Third batch of tests: ensure that the string length is checked.
 TEST(DPGroupByAggregatorTest, StringLengthCheck) {
   // The first step is to prepare the inner intrinsic and aggregator.
-  Intrinsic intrinsic{"GoogleSQL:sum",
-                      {CreateTensorSpec("value", DT_INT32)},
-                      {CreateTensorSpec("value", DT_INT64)},
-                      {},
-                      {}};
+  Intrinsic intrinsic = CreateDefaultInnerIntrinsic<int32_t, int64_t>();
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   std::vector<Intrinsic> intrinsics;
   intrinsics.push_back(std::move(intrinsic));
   std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
-
-  // Next we make the top-level MockDPGroupByAggregator with a max string
-  // length of 9.
   auto one_dim_base_aggregator = std::unique_ptr<OneDimBaseGroupingAggregator>(
       dynamic_cast<OneDimBaseGroupingAggregator*>(aggregator.release()));
   aggregators.push_back(std::move(one_dim_base_aggregator));
+
+  // Next we make the top-level MockDPGroupByAggregator with a max string
+  // length of 9.
   std::vector<TensorSpec> input_key_specs;
   input_key_specs.push_back(
       dp_histogram_testing::CreateTensorSpec("key", DT_STRING));
@@ -156,8 +164,7 @@ TEST(DPGroupByAggregatorTest, StringLengthCheck) {
   output_key_specs.push_back(
       dp_histogram_testing::CreateTensorSpec("key_out", DT_STRING));
   MockDPGroupByAggregator top_aggregator(
-      input_key_specs, &output_key_specs, &intrinsics, nullptr,
-      std::move(aggregators),
+      input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
       /*num_inputs=*/0, /*epsilon=*/0.1, /*delta=*/0.1,
       /*max_groups_contributed=*/1, std::nullopt, {}, /*max_string_length=*/9);
 
@@ -176,6 +183,104 @@ TEST(DPGroupByAggregatorTest, StringLengthCheck) {
   EXPECT_THAT(top_aggregator.ValidateInputs({&long_keys, &v2}),
               StatusIs(INVALID_ARGUMENT, HasSubstr("tensor 0")));
 }
+
+// Fourth batch of tests: ensure that the sensitivity of Serialize is calculated
+// correctly.
+// As a building block, we need to calculate the number of bytes for a varint.
+TEST(DPGroupByAggregatorTest, CalculateVarintByteSize) {
+  EXPECT_THAT(CalculateVarintByteSize(1), IsOkAndHolds(1));
+  EXPECT_THAT(CalculateVarintByteSize(150), IsOkAndHolds(2));
+}
+TEST(DPGroupByAggregatorTest, CalculateVarintByteSize_Negative) {
+  EXPECT_THAT(CalculateVarintByteSize(-1),
+              StatusIs(INVALID_ARGUMENT, HasSubstr("Value must be positive")));
+}
+
+// Creates a MockDPGroupByAggregator for testing SerializeSensitivity.
+MockDPGroupByAggregator CreateMockForTestingSerializeSensitivity(
+    std::vector<Intrinsic>& intrinsics, int max_groups_contributed,
+    int max_string_length) {
+  std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
+  for (const Intrinsic& intrinsic : intrinsics) {
+    auto aggregator = CreateTensorAggregator(intrinsic).value();
+    auto one_dim_base_aggregator =
+        std::unique_ptr<OneDimBaseGroupingAggregator>(
+            dynamic_cast<OneDimBaseGroupingAggregator*>(aggregator.release()));
+    aggregators.push_back(std::move(one_dim_base_aggregator));
+  }
+  std::vector<TensorSpec> input_key_specs;
+  input_key_specs.push_back(
+      dp_histogram_testing::CreateTensorSpec("key1", DT_STRING));
+  input_key_specs.push_back(
+      dp_histogram_testing::CreateTensorSpec("key2", DT_STRING));
+  std::vector<TensorSpec> output_key_specs;
+  output_key_specs.push_back(
+      dp_histogram_testing::CreateTensorSpec("key1_out", DT_STRING));
+  output_key_specs.push_back(
+      dp_histogram_testing::CreateTensorSpec("key2_out", DT_STRING));
+  return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
+                                 &intrinsics, std::move(aggregators),
+                                 /*num_inputs=*/0, /*epsilon=*/0.1,
+                                 /*delta=*/0.1, max_groups_contributed,
+                                 std::nullopt, {}, max_string_length);
+}
+TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysTwoSums) {
+  std::vector<Intrinsic> intrinsics;
+  for (int i = 0; i < 2; ++i) {
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
+  }
+  MockDPGroupByAggregator top_aggregator =
+      CreateMockForTestingSerializeSensitivity(intrinsics,
+                                               /*max_groups_contributed=*/1,
+                                               /*max_string_length=*/8);
+  EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(40));
+}
+TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSum) {
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
+  MockDPGroupByAggregator top_aggregator =
+      CreateMockForTestingSerializeSensitivity(intrinsics,
+                                               /*max_groups_contributed=*/1,
+                                               /*max_string_length=*/8);
+  EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(31));
+}
+TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSumFloatingType) {
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(CreateDefaultInnerIntrinsic<float, double>());
+  MockDPGroupByAggregator top_aggregator =
+      CreateMockForTestingSerializeSensitivity(intrinsics,
+                                               /*max_groups_contributed=*/1,
+                                               /*max_string_length=*/8);
+  EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(31));
+}
+TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSumShorterType) {
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
+  MockDPGroupByAggregator top_aggregator =
+      CreateMockForTestingSerializeSensitivity(intrinsics,
+                                               /*max_groups_contributed=*/1,
+                                               /*max_string_length=*/8);
+  EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(27));
+}
+TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSumTwoMaxGroups) {
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
+  MockDPGroupByAggregator top_aggregator =
+      CreateMockForTestingSerializeSensitivity(intrinsics,
+                                               /*max_groups_contributed=*/2,
+                                               /*max_string_length=*/8);
+  EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(58));
+}
+TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSumLongStrings) {
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
+  MockDPGroupByAggregator top_aggregator =
+      CreateMockForTestingSerializeSensitivity(intrinsics,
+                                               /*max_groups_contributed=*/1,
+                                               /*max_string_length=*/64);
+  EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(143));
+}
+
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated
