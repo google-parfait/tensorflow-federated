@@ -21,7 +21,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 // clang-format off
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/parse_text_proto.h"
@@ -40,7 +39,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/vector_string_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
@@ -233,11 +231,8 @@ TEST(ConvertersTest, ConvertsNumericAggTensorToTfTensor) {
 }
 
 TEST(ConvertersTest, ConvertsAggStringTensorToTfTensor) {
-  auto tensor = Tensor::Create(
-      DT_STRING, {3},
-      std::make_unique<VectorStringData>(
-          std::vector<std::string>({"abcd", "whimsy", "zzzzz"})));
-  absl::StatusOr<tf::Tensor> tf_tensor = ToTfTensor(std::move(*tensor));
+  auto tensor = Tensor({"abcd", "whimsy", "zzzzz"});
+  absl::StatusOr<tf::Tensor> tf_tensor = ToTfTensor(std::move(tensor));
   ASSERT_OK(tf_tensor);
   EXPECT_EQ(tf::DT_STRING, tf_tensor->dtype());
   EXPECT_EQ(tf::TensorShape({3}), tf_tensor->shape());

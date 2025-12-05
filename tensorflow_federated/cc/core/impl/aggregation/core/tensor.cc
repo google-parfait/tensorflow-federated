@@ -33,7 +33,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/vector_string_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/vector_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -73,9 +73,8 @@ Status Tensor::set_name(absl::string_view name) {
 StatusOr<Tensor> Tensor::Create(DataType dtype, TensorShape shape,
                                 std::unique_ptr<TensorData> data,
                                 std::string name) {
-  TFF_ASSIGN_OR_RETURN(size_t num_elements, shape.NumElements());
-  Tensor tensor(dtype, std::move(shape), num_elements, std::move(data),
-                std::move(name));
+  TFF_RETURN_IF_ERROR(shape.NumElements().status());
+  Tensor tensor(dtype, std::move(shape), std::move(data), std::move(name));
   TFF_RETURN_IF_ERROR(tensor.CheckValid());
   return std::move(tensor);
 }
@@ -258,21 +257,6 @@ class ZeroTensorData : public TensorData {
 };
 
 template <typename T>
-class VectorNumericData : public TensorData {
- public:
-  explicit VectorNumericData(std::vector<T> values)
-      : values_(std::move(values)) {}
-  ~VectorNumericData() override = default;
-
-  // Implementation of TensorData methods.
-  size_t byte_size() const override { return values_.size() * sizeof(T); }
-  const void* data() const override { return values_.data(); }
-
- private:
-  std::vector<T> values_;
-};
-
-template <typename T>
 StatusOr<std::unique_ptr<TensorData>> CreateDataFromNumericVector(
     DataType datatype_from_proto, absl::Span<const T> values,
     std::unique_ptr<TensorData>& data) {
@@ -284,7 +268,7 @@ StatusOr<std::unique_ptr<TensorData>> CreateDataFromNumericVector(
     return TFF_STATUS(INVALID_ARGUMENT)
            << "Tensor proto contains multiple representations of data.";
   }
-  return std::make_unique<VectorNumericData<T>>(
+  return std::make_unique<VectorData<T>>(
       std::vector<T>(values.begin(), values.end()));
 }
 
@@ -299,7 +283,7 @@ StatusOr<std::unique_ptr<TensorData>> CreateDataFromStringVector(
     return TFF_STATUS(INVALID_ARGUMENT)
            << "Tensor proto contains data of unexpected data type.";
   }
-  return std::make_unique<VectorStringData>(std::move(values));
+  return std::make_unique<VectorData<string_view>>(std::move(values));
 }
 
 StatusOr<Tensor> Tensor::FromProto(const TensorProto& tensor_proto) {

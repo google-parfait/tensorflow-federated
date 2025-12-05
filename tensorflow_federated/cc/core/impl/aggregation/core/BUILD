@@ -75,12 +75,13 @@ cc_library(
         "datatype.h",
         "input_tensor_list.h",
         "mutable_vector_data.h",
+        "scalar_data.h",
         "tensor.h",
         "tensor_data.h",
         "tensor_shape.h",
         "tensor_slice_data.h",
         "tensor_spec.h",
-        "vector_string_data.h",
+        "vector_data.h",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -463,6 +464,7 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
@@ -616,19 +618,6 @@ cc_test(
 cc_test(
     name = "mutable_vector_data_test",
     srcs = ["mutable_vector_data_test.cc"],
-    deps = [
-        ":tensor",
-        "//tensorflow_federated/cc/testing:oss_test_main",
-        "//tensorflow_federated/cc/testing:status_matchers",
-    ],
-)
-
-cc_test(
-    name = "vector_string_data_test",
-    srcs = [
-        "vector_string_data.h",
-        "vector_string_data_test.cc",
-    ],
     deps = [
         ":tensor",
         "//tensorflow_federated/cc/testing:oss_test_main",

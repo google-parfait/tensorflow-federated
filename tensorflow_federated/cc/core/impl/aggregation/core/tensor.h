@@ -19,6 +19,8 @@
 
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -31,9 +33,11 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/scalar_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/vector_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -73,6 +77,55 @@ class Tensor final {
   // A tensor created with the default constructor is not valid and thus should
   // not actually be used.
   Tensor() : dtype_(DT_INVALID), shape_{}, data_(nullptr), name_("") {}
+
+  // Constructor for a scalar tensor of type T.
+  template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+  explicit Tensor(T value, std::string name = "")
+      : dtype_(internal::TypeTraits<T>::kDataType),
+        shape_{},
+        data_(std::make_unique<ScalarData<T>>(value)),
+        name_(std::move(name)) {
+    static_assert(internal::TypeTraits<T>::kDataType != DT_INVALID,
+                  "Incompatible tensor dtype()");
+  }
+
+  template <typename T, typename = std::enable_if_t<
+                            std::is_constructible_v<std::string, T>>>
+  explicit Tensor(T&& value, std::string name = "")
+      : dtype_(DT_STRING),
+        shape_{},
+        data_(std::make_unique<ScalarData<absl::string_view>>(
+            std::string(std::forward<T>(value)))),
+        name_(std::move(name)) {}
+
+  // Constructor for a one-dimensional tensor of type T.
+  template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+  explicit Tensor(std::vector<T>&& values, std::string name = "")
+      : dtype_(internal::TypeTraits<T>::kDataType),
+        shape_{static_cast<int64_t>(values.size())},
+        data_(std::make_unique<VectorData<T>>(std::move(values))),
+        name_(std::move(name)) {
+    static_assert(internal::TypeTraits<T>::kDataType != DT_INVALID,
+                  "Incompatible tensor dtype()");
+  }
+
+  // Constructor for a one-dimensional string tensor.
+  explicit Tensor(std::vector<std::string>&& values, std::string name = "")
+      : dtype_(DT_STRING),
+        shape_{static_cast<int64_t>(values.size())},
+        data_(
+            std::make_unique<VectorData<absl::string_view>>(std::move(values))),
+        name_(std::move(name)) {}
+
+  // Constructor for one-dimensional numeric tensor from an initializer list.
+  template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+  Tensor(std::initializer_list<T> values, std::string name = "")
+      : Tensor(std::vector<T>(values.begin(), values.end()), std::move(name)) {}
+
+  // Constructor for one-dimensional string tensor from an initializer list.
+  Tensor(std::initializer_list<std::string> values, std::string name = "")
+      : Tensor(std::vector<std::string>(values.begin(), values.end()),
+               std::move(name)) {}
 
   // Validates parameters and creates a Tensor instance.
   static StatusOr<Tensor> Create(DataType dtype, TensorShape shape,
@@ -184,8 +237,8 @@ class Tensor final {
   // TODO: b/222605809 - Add serialization functions.
 
  private:
-  Tensor(DataType dtype, TensorShape shape, size_t num_elements,
-         std::unique_ptr<TensorData> data, std::string name = "")
+  Tensor(DataType dtype, TensorShape shape, std::unique_ptr<TensorData> data,
+         std::string name = "")
       : dtype_(dtype),
         shape_(std::move(shape)),
         data_(std::move(data)),

@@ -14,38 +14,51 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_VECTOR_STRING_DATA_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_VECTOR_STRING_DATA_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_VECTOR_DATA_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_VECTOR_DATA_H_
 
 #include <cstddef>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
 
-class VectorStringData : public TensorData {
+// Immutable vector of values of type T.
+template <typename T>
+class VectorData : public TensorData {
  public:
-  explicit VectorStringData(std::vector<std::string>&& strings)
-      : strings_(std::move(strings)) {
+  explicit VectorData(std::vector<T>&& values) : values_(std::move(values)) {}
+
+  const void* data() const override { return values_.data(); }
+  size_t byte_size() const override { return values_.size() * sizeof(T); }
+
+ private:
+  std::vector<T> values_;
+};
+
+template <>
+class VectorData<absl::string_view> : public TensorData {
+ public:
+  explicit VectorData(std::vector<std::string>&& values)
+      : strings_(std::move(values)) {
     string_views_.reserve(strings_.size());
     for (const std::string& s : strings_) string_views_.emplace_back(s);
   }
-  ~VectorStringData() override = default;
 
   // Implementation of TensorData methods.
   size_t byte_size() const override {
-    return string_views_.size() * sizeof(string_view);
+    return string_views_.size() * sizeof(absl::string_view);
   }
   const void* data() const override { return string_views_.data(); }
 
  private:
   std::vector<std::string> strings_;
-  std::vector<string_view> string_views_;
+  std::vector<absl::string_view> string_views_;
 };
 
 }  // namespace aggregation

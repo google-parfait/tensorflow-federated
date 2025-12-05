@@ -23,6 +23,7 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
@@ -40,14 +41,109 @@ using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
 
+TEST(TensorTest, ConstructNumericScalar) {
+  Tensor t(1);
+  EXPECT_THAT(t.dtype(), Eq(DT_INT32));
+  EXPECT_THAT(t.shape(), Eq(TensorShape{}));
+  EXPECT_THAT(t.num_elements(), Eq(1));
+  EXPECT_TRUE(t.is_scalar());
+  EXPECT_THAT(t.name(), IsEmpty());
+  EXPECT_THAT(t, IsTensor<int>({}, {1}));
+}
+
+TEST(TensorTest, ConstructStringScalarLiteral) {
+  Tensor t("foo");
+  EXPECT_THAT(t.dtype(), Eq(DT_STRING));
+  EXPECT_THAT(t.num_elements(), Eq(1));
+  EXPECT_TRUE(t.is_scalar());
+  EXPECT_THAT(t, IsTensor<string_view>({}, {"foo"}));
+}
+
+TEST(TensorTest, ConstructStringScalarStringView) {
+  absl::string_view s = "foo";
+  Tensor t(s);
+  EXPECT_THAT(t.dtype(), Eq(DT_STRING));
+  EXPECT_THAT(t.num_elements(), Eq(1));
+  EXPECT_TRUE(t.is_scalar());
+  EXPECT_THAT(t, IsTensor<string_view>({}, {"foo"}));
+}
+
+TEST(TensorTest, ConstructStringScalarStringByConstRef) {
+  std::string s = "foo";
+  const auto& ref = s;
+  Tensor t(ref);
+  EXPECT_THAT(t.dtype(), Eq(DT_STRING));
+  EXPECT_THAT(t.num_elements(), Eq(1));
+  EXPECT_TRUE(t.is_scalar());
+  EXPECT_THAT(t, IsTensor<string_view>({}, {"foo"}));
+}
+
+TEST(TensorTest, ConstructStringScalarStringByCopy) {
+  std::string s = "foo";
+  Tensor t(s);
+  EXPECT_THAT(t.dtype(), Eq(DT_STRING));
+  EXPECT_THAT(t.num_elements(), Eq(1));
+  EXPECT_TRUE(t.is_scalar());
+  EXPECT_THAT(t, IsTensor<string_view>({}, {"foo"}));
+}
+
+TEST(TensorTest, ConstructStringScalarStringByMove) {
+  std::string s = "foo";
+  Tensor t(std::move(s));
+  EXPECT_THAT(t.dtype(), Eq(DT_STRING));
+  EXPECT_THAT(t.num_elements(), Eq(1));
+  EXPECT_TRUE(t.is_scalar());
+  EXPECT_THAT(t, IsTensor<string_view>({}, {"foo"}));
+}
+
+TEST(TensorTest, ConstructNumericVector) {
+  Tensor t({1, 2, 3});
+  EXPECT_THAT(t.dtype(), Eq(DT_INT32));
+  EXPECT_THAT(t.num_elements(), Eq(3));
+  EXPECT_FALSE(t.is_scalar());
+  EXPECT_THAT(t, IsTensor<int>({3}, {1, 2, 3}));
+}
+
+TEST(TensorTest, ConstructStringVector) {
+  Tensor t({"foo", "bar"});
+  EXPECT_THAT(t.dtype(), Eq(DT_STRING));
+  EXPECT_THAT(t.num_elements(), Eq(2));
+  EXPECT_FALSE(t.is_scalar());
+  EXPECT_THAT(t, IsTensor<string_view>({2}, {"foo", "bar"}));
+}
+
+TEST(TensorTest, ConstructNumericScalarWithName) {
+  Tensor t(1, "test_name");
+  EXPECT_THAT(t.name(), Eq("test_name"));
+  EXPECT_THAT(t, IsTensor<int>({}, {1}));
+}
+
+TEST(TensorTest, ConstructStringScalarWithName) {
+  Tensor t("abc", "test_name");
+  EXPECT_THAT(t.name(), Eq("test_name"));
+  EXPECT_THAT(t, IsTensor<string_view>({}, {"abc"}));
+}
+
+TEST(TensorTest, ConstructNumericVectorWithName) {
+  Tensor t({1, 2, 3}, "test_name");
+  EXPECT_THAT(t.name(), Eq("test_name"));
+  EXPECT_THAT(t, IsTensor<int>({3}, {1, 2, 3}));
+}
+
+TEST(TensorTest, ConstructStringVectorWithName) {
+  Tensor t({"foo", "bar"}, "test_name");
+  EXPECT_THAT(t.name(), Eq("test_name"));
+  EXPECT_THAT(t, IsTensor<string_view>({2}, {"foo", "bar"}));
+}
+
 TEST(TensorTest, CreateDense) {
-  auto t = Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1, 2, 3}));
+  auto t =
+      Tensor::Create(DT_FLOAT, {2, 2}, CreateTestData<float>({1, 2, 3, 4}));
   EXPECT_THAT(t, IsOk());
   EXPECT_THAT(t->dtype(), Eq(DT_FLOAT));
-  EXPECT_THAT(t->shape(), Eq(TensorShape{3}));
-  EXPECT_THAT(t->num_elements(), Eq(3));
+  EXPECT_THAT(t->num_elements(), Eq(4));
   EXPECT_TRUE(t->is_dense());
-  EXPECT_THAT(t->AsAggVector<float>().size(), Eq(3));
+  EXPECT_THAT(*t, IsTensor({2, 2}, {1.f, 2.f, 3.f, 4.f}));
 }
 
 TEST(TensorTest, CreateZeroDataSize) {
@@ -58,30 +154,6 @@ TEST(TensorTest, CreateZeroDataSize) {
   EXPECT_THAT(t->num_elements(), Eq(0));
   EXPECT_TRUE(t->is_dense());
   EXPECT_THAT(t->AsAggVector<int>().size(), Eq(0));
-}
-
-TEST(TensorTest, CreateScalarTensor) {
-  auto t = Tensor::Create(DT_INT32, {}, CreateTestData<int>({555}));
-  EXPECT_THAT(t, IsOk());
-  EXPECT_THAT(t->dtype(), Eq(DT_INT32));
-  EXPECT_THAT(t->shape(), Eq(TensorShape{}));
-  EXPECT_THAT(t->num_elements(), Eq(1));
-  EXPECT_TRUE(t->is_dense());
-  EXPECT_TRUE(t->is_scalar());
-  EXPECT_THAT(t->AsAggVector<int>().size(), Eq(1));
-  EXPECT_THAT(t->AsAggVector<int>().begin().value(), Eq(555));
-}
-
-TEST(TensorTest, CreateStringTensor) {
-  auto t = Tensor::Create(DT_STRING, {2},
-                          CreateTestData<string_view>({"foo", "bar"}));
-  EXPECT_THAT(t, IsOk());
-  EXPECT_THAT(t->dtype(), Eq(DT_STRING));
-  EXPECT_THAT(t->shape(), Eq(TensorShape{2}));
-  EXPECT_THAT(t->num_elements(), Eq(2));
-  EXPECT_TRUE(t->is_dense());
-  EXPECT_FALSE(t->is_scalar());
-  EXPECT_THAT(t->AsAggVector<string_view>().size(), Eq(2));
 }
 
 TEST(TensorTest, TensorCreateWithNameSuccess) {
@@ -110,101 +182,98 @@ TEST(TensorTest, CreateDataSizeError) {
 struct FooBar {};
 
 TEST(TensorTest, AsAggVectorTypeCheckFailure) {
-  auto t = Tensor::Create(DT_FLOAT, {1}, CreateTestData<float>({1}));
-  EXPECT_DEATH(t->AsAggVector<FooBar>(), "Incompatible tensor dtype()");
-  EXPECT_DEATH(t->AsAggVector<int>(), "Incompatible tensor dtype()");
+  Tensor t({1.f});
+  EXPECT_DEATH(t.AsAggVector<FooBar>(), "Incompatible tensor dtype()");
+  EXPECT_DEATH(t.AsAggVector<int>(), "Incompatible tensor dtype()");
 }
 
 TEST(TensorTest, CastToScalarIntScalarTensor) {
-  auto t = Tensor::Create(DT_INT32, {}, CreateTestData<int>({10}));
-  EXPECT_THAT(t->CastToScalar<float>(), ::testing::FloatNear(10, 1e-5f));
-  EXPECT_THAT(t->CastToScalar<double>(), ::testing::DoubleNear(10, 1e-5));
-  EXPECT_EQ(t->CastToScalar<int>(), 10);
+  Tensor t(10);
+  EXPECT_THAT(t.CastToScalar<float>(), ::testing::FloatNear(10, 1e-5f));
+  EXPECT_THAT(t.CastToScalar<double>(), ::testing::DoubleNear(10, 1e-5));
+  EXPECT_EQ(t.CastToScalar<int>(), 10);
 }
 
 TEST(TensorTest, CastToScalarFloatScalarTensor) {
-  auto t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({5.3f}));
-  EXPECT_THAT(t->CastToScalar<float>(), ::testing::FloatNear(5.3f, 1e-5f));
-  EXPECT_THAT(t->CastToScalar<double>(), ::testing::DoubleNear(5.3, 1e-5));
-  EXPECT_EQ(t->CastToScalar<int>(), 5);
+  Tensor t(5.3f);
+  EXPECT_THAT(t.CastToScalar<float>(), ::testing::FloatNear(5.3f, 1e-5f));
+  EXPECT_THAT(t.CastToScalar<double>(), ::testing::DoubleNear(5.3, 1e-5));
+  EXPECT_EQ(t.CastToScalar<int>(), 5);
 }
 
 TEST(TensorTest, CastToScalarNumericalScalarTensorWithRounding) {
-  auto t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({2.9999f}));
-  EXPECT_EQ(t->CastToScalar<int>(), 3);
+  Tensor t1(2.9999f);
+  EXPECT_EQ(t1.CastToScalar<int>(), 3);
 
-  t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({3.0001f}));
-  EXPECT_EQ(t->CastToScalar<int>(), 3);
+  Tensor t2(3.0001f);
+  EXPECT_EQ(t2.CastToScalar<int>(), 3);
 
-  t = Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({-2.9999}));
-  EXPECT_EQ(t->CastToScalar<int>(), -3);
+  Tensor t3(-2.9999);
+  EXPECT_EQ(t3.CastToScalar<int>(), -3);
 
-  t = Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({-3.0001}));
-  EXPECT_EQ(t->CastToScalar<int>(), -3);
+  Tensor t4(-3.0001);
+  EXPECT_EQ(t4.CastToScalar<int>(), -3);
 }
 
 TEST(TensorTest, CastToScalarStringScalarTensor) {
-  auto t = Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}));
-  EXPECT_EQ(t->CastToScalar<string_view>(), "foo");
+  Tensor t("foo");
+  EXPECT_EQ(t.CastToScalar<string_view>(), "foo");
 }
 
 TEST(TensorTest, CastToScalarMismatchType) {
-  auto t = Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}));
-  EXPECT_DEATH(t->CastToScalar<int>(), "Unsupported type");
+  Tensor t1("foo");
+  EXPECT_DEATH(t1.CastToScalar<int>(), "Unsupported type");
 
-  t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({5.5f}));
-  EXPECT_DEATH(t->CastToScalar<string_view>(), "Incompatible tensor dtype()");
+  Tensor t2(5.5f);
+  EXPECT_DEATH(t2.CastToScalar<string_view>(), "Incompatible tensor dtype()");
 }
 
 TEST(TensorTest, CastToScalarNonScalar) {
-  auto t = Tensor::Create(DT_STRING, {2},
-                          CreateTestData<string_view>({"foo", "bar"}));
-  EXPECT_DEATH(t->CastToScalar<string_view>(),
+  Tensor t1({"foo", "bar"});
+  EXPECT_DEATH(t1.CastToScalar<string_view>(),
                "CastToScalar should only be used on scalar tensors");
 
-  t = Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({5.5f, 5.7f, 5.9f}));
-  EXPECT_DEATH(t->CastToScalar<float>(),
+  Tensor t2({5.5f, 5.7f, 5.9f});
+  EXPECT_DEATH(t2.CastToScalar<float>(),
                "CastToScalar should only be used on scalar tensors");
 }
 
 TEST(TensorTest, AsScalarIntScalarTensor) {
-  auto t = Tensor::Create(DT_INT32, {}, CreateTestData<int>({10}));
-  EXPECT_EQ(t->AsScalar<int>(), 10);
+  Tensor t(10);
+  EXPECT_EQ(t.AsScalar<int>(), 10);
 }
 
 TEST(TensorTest, AsScalarFloatScalarTensor) {
-  auto t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({5.3f}));
-  EXPECT_THAT(t->AsScalar<float>(), ::testing::FloatNear(5.3f, 1e-5f));
+  Tensor t(5.3f);
+  EXPECT_THAT(t.AsScalar<float>(), ::testing::FloatNear(5.3f, 1e-5f));
 }
 
 TEST(TensorTest, AsScalarStringScalarTensor) {
-  auto t = Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}));
-  EXPECT_EQ(t->AsScalar<string_view>(), "foo");
+  Tensor t("foo");
+  EXPECT_EQ(t.AsScalar<string_view>(), "foo");
 }
 
 TEST(TensorTest, AsScalarMismatchType) {
-  auto t = Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}));
-  EXPECT_DEATH(t->AsScalar<int>(), "Incompatible tensor dtype()");
+  Tensor t1("foo");
+  EXPECT_DEATH(t1.AsScalar<int>(), "Incompatible tensor dtype()");
 
-  t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({5.5f}));
-  EXPECT_DEATH(t->AsScalar<string_view>(), "Incompatible tensor dtype()");
+  Tensor t2(5.5f);
+  EXPECT_DEATH(t2.AsScalar<string_view>(), "Incompatible tensor dtype()");
 }
 
 TEST(TensorTest, AsScalarNonScalar) {
-  auto t = Tensor::Create(DT_STRING, {2},
-                          CreateTestData<string_view>({"foo", "bar"}));
-  EXPECT_DEATH(t->AsScalar<string_view>(),
+  Tensor t1({"foo", "bar"});
+  EXPECT_DEATH(t1.AsScalar<string_view>(),
                "AsScalar should only be used on scalar tensors");
 
-  t = Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({5.5f, 5.7f, 5.9f}));
-  EXPECT_DEATH(t->AsScalar<float>(),
+  Tensor t2({5.5f, 5.7f, 5.9f});
+  EXPECT_DEATH(t2.AsScalar<float>(),
                "AsScalar should only be used on scalar tensors");
 }
 
 TEST(TensorTest, AsSpanNumericTensor) {
-  auto t =
-      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({5.5f, 5.7f, 5.9f}));
-  auto span = t->AsSpan<float>();
+  Tensor t({5.5f, 5.7f, 5.9f});
+  auto span = t.AsSpan<float>();
   EXPECT_EQ(span.size(), 3);
   EXPECT_EQ(span.at(0), 5.5f);
   EXPECT_EQ(span.at(1), 5.7f);
@@ -212,18 +281,16 @@ TEST(TensorTest, AsSpanNumericTensor) {
 }
 
 TEST(TensorTest, AsSpanStringTensor) {
-  auto t = Tensor::Create(DT_STRING, {2},
-                          CreateTestData<string_view>({"foo", "bar"}));
-  auto span = t->AsSpan<string_view>();
+  Tensor t({"foo", "bar"});
+  auto span = t.AsSpan<string_view>();
   EXPECT_EQ(span.size(), 2);
   EXPECT_EQ(span.at(0), "foo");
   EXPECT_EQ(span.at(1), "bar");
 }
 
 TEST(TensorTest, AsSpanMismatchType) {
-  auto t = Tensor::Create(DT_STRING, {2},
-                          CreateTestData<string_view>({"foo", "bar"}));
-  EXPECT_DEATH(t->AsSpan<int>(), "Incompatible tensor dtype()");
+  Tensor t({"foo", "bar"});
+  EXPECT_DEATH(t.AsSpan<int>(), "Incompatible tensor dtype()");
 }
 
 TEST(TensorTest, ToProtoInt32Success) {
