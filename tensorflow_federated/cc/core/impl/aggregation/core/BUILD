@@ -267,9 +267,10 @@ cc_library(
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//third_party/re2",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],
     alwayslink = 1,
@@ -307,7 +308,9 @@ cc_library(
         ":one_dim_grouping_aggregator",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/core:dp_noise_mechanisms",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
     ],
 )
 

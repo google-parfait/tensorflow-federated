@@ -281,6 +281,15 @@ TEST(DPNoiseMechanismsTest, CalculateLaplaceThresholdSucceedsLargeDelta) {
               1e-5);
 }
 
+// Check that the PositiveLaplaceMechanism only shifts values up, not down.
+TEST(DPNoiseMechanismsTest, PositiveLaplaceMechanismIsPositive) {
+  auto mechanism = PositiveLaplaceMechanism::Create(kSmallEpsilon, 1e-8, 1.0);
+  EXPECT_THAT(mechanism, IsOk());
+  EXPECT_GE((*mechanism)->AddNoise(1000.0), 1000.0);
+  EXPECT_GE((*mechanism)->AddNoise(1000), 1000);
+  EXPECT_GE((*mechanism)->AddNoise(0), 0);
+}
+
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated

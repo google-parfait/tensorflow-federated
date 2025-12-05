@@ -27,8 +27,10 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "third_party/re2/re2.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -291,6 +293,13 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Create(
 
 StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Deserialize(
     const Intrinsic& intrinsic, std::string serialized_state) const {
+  // If the string begins with zero or more copies of kPaddingCharacter followed
+  // by kPaddingDelimiter, then remove those characters.
+  std::string regex = absl::StrCat("^", std::string(1, kPaddingCharacter), "*",
+                                   kPaddingDelimiter);
+  RE2 regex_object = {regex};
+  RE2::Replace(&serialized_state, regex_object, "");
+
   GroupByAggregatorState aggregator_state;
   if (!aggregator_state.ParseFromString(serialized_state)) {
     return TFF_STATUS(INVALID_ARGUMENT) << "DPGroupByFactory::Deserialize: "

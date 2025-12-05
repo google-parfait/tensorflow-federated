@@ -75,6 +75,13 @@ constexpr double kDPQuantileLinearRate = 0.1;
 constexpr double kDPQuantileExponentialRate = 1.01;
 constexpr double kDPQuantileEndOfLinearGrowth = 100;
 
+// When state is serialized to a string, its length is correlated with the
+// content of the state. DP aggregators will add random padding to mask that
+// correlation. The padding is made out of copies of the following character.
+constexpr char kPaddingCharacter = 'a';
+// The following string is used to separate the real content from the padding.
+constexpr char kPaddingDelimiter[] = "THIS STRING SEPARATES PADDING FROM DATA";
+
 }  // namespace aggregation
 }  // namespace tensorflow_federated
 
