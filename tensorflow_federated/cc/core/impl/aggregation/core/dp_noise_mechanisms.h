@@ -20,6 +20,8 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <type_traits>
+#include <utility>
 
 #include "absl/status/statusor.h"
 #include "algorithms/numerical-mechanisms.h"
@@ -112,6 +114,53 @@ absl::StatusOr<DPHistogramBundle> CreateDPHistogramBundle(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
     double l1_bound, double l2_bound, bool threshold_by_value);
 
+// Wrapper class around the Laplace mechanism which ensures that output of
+// `AddNoise(value)` is at least as large as the `value`. This transformation
+// requires a positive delta DP parameter; `AddNoise(value)` is equal to `value`
+// with probability at most delta.
+class PositiveLaplaceMechanism {
+ public:
+  // The mechanism requires parameters.
+  PositiveLaplaceMechanism() = delete;
+
+  // Primary interface for creating a `PositiveLaplaceMechanism`.
+  static absl::StatusOr<std::unique_ptr<PositiveLaplaceMechanism>> Create(
+      double epsilon, double delta, double sensitivity);
+
+  // Move constructor.
+  PositiveLaplaceMechanism(PositiveLaplaceMechanism&& other)
+      : mechanism_(std::move(other.mechanism_)),
+        offset_for_doubles_(other.offset_for_doubles_),
+        offset_for_integers_(other.offset_for_integers_) {}
+
+  // Leveraged by the Create function after it validates the parameters.
+  PositiveLaplaceMechanism(
+      std::unique_ptr<differential_privacy::NumericalMechanism>&& mechanism,
+      double offset);
+
+  // Wrappers around the LaplaceMechanism's AddNoise interface.
+  template <typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
+  int64_t AddNoise(T result) {
+    return AddIntNoise(result);
+  }
+  template <typename T,
+            std::enable_if_t<std::is_floating_point<T>::value>* = nullptr>
+  double AddNoise(T result) {
+    return AddDoubleNoise(result);
+  }
+
+ private:
+  double AddDoubleNoise(double value);
+  int64_t AddIntNoise(int64_t value);
+
+  // The underlying Laplace mechanism. The type is `NumericalMechanism` due to
+  // that class' Builder (and we do not require Laplace-specific functionality).
+  std::unique_ptr<differential_privacy::NumericalMechanism> mechanism_;
+
+  // Offsets to the Laplace mechanism's output.
+  double offset_for_doubles_;
+  int64_t offset_for_integers_;
+};
 }  // namespace aggregation
 }  // namespace tensorflow_federated
 

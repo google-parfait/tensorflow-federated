@@ -281,6 +281,34 @@ TEST(DPNoiseMechanismsTest, CalculateLaplaceThresholdSucceedsLargeDelta) {
               1e-5);
 }
 
+// Validate creation of PositiveLaplaceMechanism
+TEST(DPNoiseMechanismsTest, PositiveLaplaceMechanismCreate_InvalidEpsilon) {
+  auto mechanism = PositiveLaplaceMechanism::Create(0, 1e-8, 1.0);
+  EXPECT_THAT(mechanism, StatusIs(INVALID_ARGUMENT,
+                                  HasSubstr("Epsilon must be positive")));
+}
+TEST(DPNoiseMechanismsTest, PositiveLaplaceMechanismCreate_InvalidDelta) {
+  auto mechanism = PositiveLaplaceMechanism::Create(1.0, 0, 1.0);
+  EXPECT_THAT(mechanism, StatusIs(INVALID_ARGUMENT,
+                                  HasSubstr("Delta must be within (0, 1)")));
+}
+TEST(DPNoiseMechanismsTest, PositiveLaplaceMechanismCreate_InvalidSensitivity) {
+  auto mechanism = PositiveLaplaceMechanism::Create(1.0, 1e-8, 0);
+  EXPECT_THAT(mechanism, StatusIs(INVALID_ARGUMENT,
+                                  HasSubstr("Sensitivity must be positive")));
+}
+
+// Check that the PositiveLaplaceMechanism only shifts values up, not down.
+TEST(DPNoiseMechanismsTest, PositiveLaplaceMechanismIsPositive) {
+  auto mechanism = PositiveLaplaceMechanism::Create(kSmallEpsilon, 1e-8, 1.0);
+  EXPECT_THAT(mechanism, IsOk());
+  // Technically, there is a chance that output == input but it is bounded by
+  // delta = 1e-8.
+  EXPECT_GT((*mechanism)->AddNoise(1000.0), 1000.0);
+  EXPECT_GT((*mechanism)->AddNoise(1000), 1000);
+  EXPECT_GT((*mechanism)->AddNoise(0), 0);
+}
+
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated

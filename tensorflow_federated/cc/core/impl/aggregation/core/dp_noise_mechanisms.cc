@@ -18,6 +18,8 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <memory>
+#include <utility>
 
 #include "absl/status/statusor.h"
 #include "algorithms/numerical-mechanisms.h"
@@ -271,6 +273,64 @@ absl::StatusOr<DPHistogramBundle> CreateDPHistogramBundle(
     return gaussian_mechanism;
   }
   return laplace_mechanism;
+}
+
+PositiveLaplaceMechanism::PositiveLaplaceMechanism(
+    std::unique_ptr<differential_privacy::NumericalMechanism>&& mechanism,
+    double offset)
+    : mechanism_(std::move(mechanism)),
+      offset_for_doubles_(offset),
+      offset_for_integers_(std::ceil(offset)) {}
+
+double PositiveLaplaceMechanism::AddDoubleNoise(double value) {
+  // If we shift the result of the Laplace mechanism by a positive offset, it
+  // drives down the probability that the noised value is less than the input.
+  double noisy_value =
+      mechanism_->AddNoise<double>(value) + offset_for_doubles_;
+  // But we want the probability to be 0, so we reset the noisy value to be
+  // `value` when it dips below. This manipulation of the distribution forces
+  // us to use delta > 0; refer to Create to understand how offset is chosen
+  // to achieve the target delta.
+  return (noisy_value < value) ? value : noisy_value;
+}
+
+int64_t PositiveLaplaceMechanism::AddIntNoise(int64_t value) {
+  int64_t noisy_value =
+      mechanism_->AddNoise<int64_t>(value) + offset_for_integers_;
+  return (noisy_value < value) ? value : noisy_value;
+}
+
+absl::StatusOr<std::unique_ptr<PositiveLaplaceMechanism>>
+PositiveLaplaceMechanism::Create(double epsilon, double delta,
+                                 double sensitivity) {
+  if (epsilon <= 0 || epsilon >= kEpsilonThreshold) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "PositiveLaplaceMechanism::Create: Epsilon must be positive "
+              "and smaller than "
+           << kEpsilonThreshold;
+  }
+  if (delta <= 0 || delta >= 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "PositiveLaplaceMechanism::Create: Delta must be within (0, 1).";
+  }
+  if (sensitivity <= 0) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "PositiveLaplaceMechanism::Create: Sensitivity must be positive.";
+  }
+
+  differential_privacy::LaplaceMechanism::Builder builder;
+  builder.SetL1Sensitivity(sensitivity).SetEpsilon(epsilon);
+  TFF_ASSIGN_OR_RETURN(auto mechanism, builder.Build());
+
+  // When we feed `x` to PositiveLaplaceMechanism::AddNoise, the numbers in the
+  // interval I := [`x`, `x+sensitivity`] are possible outputs. But when we feed
+  // in `x+sensitivity`, only `x+sensitivity` is a possible output because we
+  // reset smaller values to that value.
+  // We set `offset` such that `delta` is an upper bound on the probability
+  // mass placed on I by PositiveLaplaceMechanism::AddNoise(x).
+  double offset = sensitivity + std::abs(mechanism->Quantile(delta));
+  return std::make_unique<PositiveLaplaceMechanism>(std::move(mechanism),
+                                                    offset);
 }
 
 }  // namespace aggregation
