@@ -16,9 +16,12 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -221,7 +224,7 @@ MockDPGroupByAggregator CreateMockForTestingSerializeSensitivity(
   return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
                                  &intrinsics, std::move(aggregators),
                                  /*num_inputs=*/0, /*epsilon=*/0.1,
-                                 /*delta=*/0.1, max_groups_contributed,
+                                 /*delta=*/1e-6, max_groups_contributed,
                                  std::nullopt, {}, max_string_length);
 }
 TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysTwoSums) {
@@ -279,6 +282,49 @@ TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSumLongStrings) {
                                                /*max_groups_contributed=*/1,
                                                /*max_string_length=*/64);
   EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(143));
+}
+
+// Fifth behavior to test: the outcome of Serialize() has a random length that
+// scales with sensitivity.
+TEST(DPGroupByAggregatorTest, SerializedStateVarianceDependsOnSensitivity) {
+  // Low sensitivity (27)
+  size_t min_length = 1000000;
+  size_t max_length = 0;
+  for (int i = 0; i < 10; ++i) {
+    std::vector<Intrinsic> intrinsics;
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
+    MockDPGroupByAggregator top_aggregator =
+        CreateMockForTestingSerializeSensitivity(intrinsics,
+                                                 /*max_groups_contributed=*/1,
+                                                 /*max_string_length=*/8);
+    std::string serialized_state =
+        std::move(top_aggregator).Serialize().value();
+    min_length = std::min(min_length, serialized_state.size());
+    max_length = std::max(max_length, serialized_state.size());
+  }
+  int low_sensitivity_range = max_length - min_length;
+  // Randomness should cause the range to have some width.
+  EXPECT_GT(low_sensitivity_range, 0);
+
+  // High sensitivity (143)
+  min_length = 1000000;
+  max_length = 0;
+  for (int i = 0; i < 10; ++i) {
+    std::vector<Intrinsic> intrinsics;
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
+    MockDPGroupByAggregator top_aggregator =
+        CreateMockForTestingSerializeSensitivity(intrinsics,
+                                                 /*max_groups_contributed=*/1,
+                                                 /*max_string_length=*/64);
+    std::string serialized_state =
+        std::move(top_aggregator).Serialize().value();
+    min_length = std::min(min_length, serialized_state.size());
+    max_length = std::max(max_length, serialized_state.size());
+  }
+  int high_sensitivity_range = max_length - min_length;
+
+  // The noise scale for the high-sensitivity case should be bigger.
+  EXPECT_GT(high_sensitivity_range, low_sensitivity_range);
 }
 
 }  // namespace
