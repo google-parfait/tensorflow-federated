@@ -1,22 +1,25 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/contributors_to_groups.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -26,18 +29,26 @@
 namespace tensorflow_federated {
 namespace aggregation {
 
-ContributorsToGroups::ContributorsToGroups(int max_contributors_to_group)
-    : max_contributors_to_group_(max_contributors_to_group) {}
+ContributorsToGroups::ContributorsToGroups(int max_contributors_to_group,
+                                           std::vector<int> contributor_counts)
+    : max_contributors_to_group_(max_contributors_to_group) {
+  counts_ = std::move(contributor_counts);
+}
 
 absl::Status ContributorsToGroups::AddToGroup(size_t group_index,
                                               std::optional<PrivID> priv_id) {
   if (priv_id.has_value()) {
     return absl::UnimplementedError("priv_id is not supported yet.");
   }
+  if (!max_contributors_to_group_.has_value()) {
+    return absl::InvalidArgumentError(
+        "AddToGroup should not be called if "
+        "max_contributors_to_group_ is not set.");
+  }
   if (group_index >= counts_.size()) {
     counts_.resize(group_index + 1, 0);
   }
-  if (counts_[group_index] < max_contributors_to_group_) {
+  if (counts_[group_index] < *max_contributors_to_group_) {
     ++counts_[group_index];
   }
   return absl::OkStatus();
@@ -49,11 +60,27 @@ absl::Status ContributorsToGroups::AddCountToContributors(size_t group_index,
     return absl::InvalidArgumentError(
         absl::StrCat("Count must be non-negative, but got ", count));
   }
+  if (!max_contributors_to_group_.has_value()) {
+    return absl::InvalidArgumentError(
+        "AddCountToContributors should not be called if "
+        "max_contributors_to_group_ is not set.");
+  }
   if (group_index >= counts_.size()) {
     counts_.resize(group_index + 1, 0);
   }
   counts_[group_index] =
-      std::min(counts_[group_index] + count, max_contributors_to_group_);
+      std::min(counts_[group_index] + count, *max_contributors_to_group_);
+  return absl::OkStatus();
+}
+
+absl::Status ContributorsToGroups::IncreaseMaxContributorsToGroup(
+    int max_contributors_to_group) {
+  if (max_contributors_to_group_.has_value() &&
+      max_contributors_to_group < *max_contributors_to_group_) {
+    return absl::InvalidArgumentError(
+        "max_contributors_to_group cannot be decreased.");
+  }
+  max_contributors_to_group_ = max_contributors_to_group;
   return absl::OkStatus();
 }
 

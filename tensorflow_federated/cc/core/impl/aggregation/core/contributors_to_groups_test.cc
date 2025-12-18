@@ -1,16 +1,18 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/contributors_to_groups.h"
 
@@ -62,6 +64,12 @@ TEST(ContributorsToGroupsTest, AddToGroupWithPrivIdUnimplemented) {
                        HasSubstr("priv_id is not supported yet")));
 }
 
+TEST(ContributorsToGroupsTest, AddToGroupNoMaxContributorsToGroup) {
+  ContributorsToGroups ctg;
+  EXPECT_THAT(ctg.AddToGroup(0, std::nullopt),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
 TEST(ContributorsToGroupsTest, AddCountToContributors) {
   ContributorsToGroups ctg(/*max_contributors_to_group=*/5);
 
@@ -109,6 +117,12 @@ TEST(ContributorsToGroupsTest, AddCountToContributorsNegativeOrZeroCount) {
   EXPECT_THAT(ctg.GetCount(0), IsOkAndHolds(2));
 }
 
+TEST(ContributorsToGroupsTest, AddCountToContributorsNoMaxContributorsToGroup) {
+  ContributorsToGroups ctg;
+  EXPECT_THAT(ctg.AddCountToContributors(0, 1),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
 TEST(ContributorsToGroupsTest, GetCountOutOfBounds) {
   ContributorsToGroups ctg(/*max_contributors_to_group=*/3);
   EXPECT_THAT(ctg.GetCount(0), StatusIs(absl::StatusCode::kInvalidArgument));
@@ -131,6 +145,42 @@ TEST(ContributorsToGroupsTest, GetCounts) {
 
   TFF_EXPECT_OK(ctg.AddCountToContributors(1, 4));
   EXPECT_THAT(ctg.GetCounts(), ElementsAre(2, 4, 3));
+}
+
+TEST(ContributorsToGroupsTest, IncreaseMaxContributorsToGroupSuccess) {
+  ContributorsToGroups ctg(/*max_contributors_to_group=*/3);
+  TFF_EXPECT_OK(ctg.AddCountToContributors(0, 3));
+  EXPECT_THAT(ctg.GetCount(0), IsOkAndHolds(3));
+
+  TFF_EXPECT_OK(ctg.IncreaseMaxContributorsToGroup(5));
+  TFF_EXPECT_OK(ctg.AddCountToContributors(0, 1));
+  EXPECT_THAT(ctg.GetCount(0), IsOkAndHolds(4));
+
+  TFF_EXPECT_OK(ctg.AddCountToContributors(0, 2));
+  EXPECT_THAT(ctg.GetCount(0), IsOkAndHolds(5));
+}
+
+TEST(ContributorsToGroupsTest, IncreaseMaxContributorsToGroupNoChange) {
+  ContributorsToGroups ctg(/*max_contributors_to_group=*/3);
+  TFF_EXPECT_OK(ctg.AddCountToContributors(0, 2));
+  TFF_EXPECT_OK(ctg.IncreaseMaxContributorsToGroup(3));
+  EXPECT_THAT(ctg.GetCount(0), IsOkAndHolds(2));
+}
+
+TEST(ContributorsToGroupsTest, IncreaseMaxContributorsToGroupFailDecrease) {
+  ContributorsToGroups ctg(/*max_contributors_to_group=*/3);
+  EXPECT_THAT(ctg.IncreaseMaxContributorsToGroup(2),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ContributorsToGroupsTest, IncreaseMaxContributorsToGroupKeepsCounts) {
+  ContributorsToGroups ctg(/*max_contributors_to_group=*/3);
+  TFF_EXPECT_OK(ctg.AddCountToContributors(0, 2));
+  TFF_EXPECT_OK(ctg.AddCountToContributors(1, 3));
+  EXPECT_THAT(ctg.GetCounts(), ElementsAre(2, 3));
+
+  TFF_EXPECT_OK(ctg.IncreaseMaxContributorsToGroup(5));
+  EXPECT_THAT(ctg.GetCounts(), ElementsAre(2, 3));
 }
 
 }  // namespace

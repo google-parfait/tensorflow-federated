@@ -30,6 +30,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/contributors_to_groups.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
@@ -75,10 +76,10 @@ class GroupByAggregator : public TensorAggregator {
   // GroupByAggregator.
   int GetNumInputs() const override { return num_inputs_; }
 
-  // Returns the number of contributors that have been accumulated or merged
-  // into this GroupByAggregator.
+  // Returns the number of contributors that have contributed to each group. The
+  // reference is valid for the lifetime of this object.
   const std::vector<int>& GetContributors() const {
-    return contributors_to_groups_;
+    return contributors_to_groups_.GetCounts();
   }
 
   // Override CanReport to ensure that outputs of Report will contain all
@@ -161,7 +162,7 @@ class GroupByAggregator : public TensorAggregator {
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
       int num_inputs,
       std::optional<int> min_contributors_to_group = std::nullopt,
-      std::vector<int> contributors_to_groups = {});
+      std::vector<int> contributor_counts = {});
 
   // Creates a vector of DataTypes that describe the keys in the input & output.
   // A pre-processing function that sets the stage for CompositeKeyCombiners.
@@ -200,8 +201,8 @@ class GroupByAggregator : public TensorAggregator {
   // an ordinal in the ordinals tensor.
   Status AddOneContributor(const Tensor& ordinals);
 
-  // Increases the number of contributors (as recorded in the
-  // contributors_to_groups_ vector) to each of the groups represented by an
+  // Increases the number of contributors (as recorded in
+  // contributors_to_groups_) to each of the groups represented by an
   // ordinal in the ordinals tensor by the amount given in the corresponding
   // entry of contributors.
   Status AddMultipleContributors(const Tensor& ordinals,
@@ -228,17 +229,19 @@ class GroupByAggregator : public TensorAggregator {
     return output_key_specs_;
   }
   inline const std::vector<int>& contributors_to_groups() const {
-    return contributors_to_groups_;
+    return contributors_to_groups_.GetCounts();
   }
   inline std::optional<int> min_contributors_to_group() const {
     return min_contributors_to_group_;
   }
   inline std::optional<int> max_contributors_to_group() const {
-    return max_contributors_to_group_;
+    return contributors_to_groups_.GetMaxContributorsToGroup();
   }
 
-  inline void set_max_contributors_to_group(int max_contributors_to_group) {
-    max_contributors_to_group_ = max_contributors_to_group;
+  inline absl::Status set_max_contributors_to_group(
+      int max_contributors_to_group) {
+    return contributors_to_groups_.IncreaseMaxContributorsToGroup(
+        max_contributors_to_group);
   }
 
   // Given a column of data and a set of survivor indices, shrink the column to
@@ -359,8 +362,7 @@ class GroupByAggregator : public TensorAggregator {
   const std::vector<TensorSpec>& output_key_specs_;
   std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators_;
   std::optional<int> min_contributors_to_group_;
-  std::optional<int> max_contributors_to_group_;
-  std::vector<int> contributors_to_groups_;
+  ContributorsToGroups contributors_to_groups_;
 };
 
 // Factory class for the GroupByAggregator.

@@ -1873,7 +1873,8 @@ TEST(GroupByAggregatorTest, AddOneContributor_FailsWhenMaxContributorsNotSet) {
       peer.AddOneContributor(std::move(ordinals)),
       StatusIs(
           INVALID_ARGUMENT,
-          HasSubstr("max_contributors_to_group_ to be set but it is not")));
+          HasSubstr(
+              "Expected max contributors to group to be set but it is not")));
 }
 
 TEST_P(GroupByAggregatorTest, AddMultipleContributors_Success) {
@@ -1980,7 +1981,8 @@ TEST(GroupByAggregatorTest,
       peer.AddMultipleContributors(std::move(ordinals), num_contributors),
       StatusIs(
           INVALID_ARGUMENT,
-          HasSubstr("max_contributors_to_group_ to be set but it is not")));
+          HasSubstr(
+              "Expected max contributors to group to be set but it is not")));
 }
 
 TEST(GroupByAggregatorTest, AddMultipleContributors_FailsOnSizeMismatch) {

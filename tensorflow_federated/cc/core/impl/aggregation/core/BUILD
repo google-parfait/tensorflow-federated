@@ -233,6 +233,7 @@ cc_library(
         ":agg_core_cc_proto",
         ":aggregator",
         ":composite_key_combiner",
+        ":contributors_to_groups",
         ":fedsql_constants",
         ":intrinsic",
         ":partitioner",
