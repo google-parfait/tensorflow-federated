@@ -36,11 +36,16 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       self,
       learning_rate: optimizer.Float,
       momentum: Optional[optimizer.Float] = None,
+      nesterov: bool = False,
   ):
     """Initializes SGD optimizer."""
     if not tf.is_symbolic_tensor(learning_rate) and learning_rate < 0.0:
       raise ValueError(
           f'SGD `learning_rate` must be nonnegative, found {learning_rate}.'
+      )
+    if not momentum and nesterov:
+      raise ValueError(
+          'Nesterov momentum requires `momentum` to be set to a float > 0.'
       )
     if momentum:
       # We should only track momentum as a hparam in the case that it is both
@@ -57,6 +62,7 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       self._hparams_keys = [optimizer.LEARNING_RATE_KEY]
     self._lr = learning_rate
     self._momentum = momentum
+    self._nesterov = nesterov
 
   def initialize(self, specs: Any) -> State:
     state = collections.OrderedDict([(optimizer.LEARNING_RATE_KEY, self._lr)])
@@ -98,7 +104,10 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         if g is None:
           return w, a
         a = momentum * a + g
-        w = w - lr * a
+        if self._nesterov:
+          w = w - lr * (g + momentum * a)
+        else:
+          w = w - lr * a
         return w, a
 
       updated_weights, updated_accumulator = nest_utils.map_at_leaves(
@@ -127,6 +136,7 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 def build_sgdm(
     learning_rate: optimizer.Float = 0.01,
     momentum: Optional[optimizer.Float] = None,
+    nesterov: bool = False,
 ) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for momentum SGD.
 
@@ -148,9 +158,17 @@ def build_sgdm(
 
   where `v` is the velocity from previous steps of the optimizer.
 
+  If `nesterov=True`, the update rule is:
+  ```
+  v = m * v + g
+  w = w - lr * (g + m * v)
+  ```
+
   Args:
     learning_rate: A positive float for learning rate, default to 0.01.
     momentum: An optional float between 0.0 and 1.0. If `None`, no momentum is
       used.
+    nesterov: A boolean indicating whether to apply Nesterov momentum. Defaults
+      to `False`.
   """
-  return _SGD(learning_rate=learning_rate, momentum=momentum)
+  return _SGD(learning_rate=learning_rate, momentum=momentum, nesterov=nesterov)

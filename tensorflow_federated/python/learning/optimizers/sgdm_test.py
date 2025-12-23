@@ -84,6 +84,19 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
       history.append(weights)
     self.assertAllClose([[1.0], [0.98], [0.95], [0.915], [0.8775]], history)
 
+  def test_math_momentum_0_5_nesterov(self):
+    weights = tf.constant([1.0], tf.float32)
+    gradients = tf.constant([2.0], tf.float32)
+    optimizer = sgdm.build_sgdm(0.01, momentum=0.5, nesterov=True)
+    history = [weights]
+
+    state = optimizer.initialize(_SCALAR_SPEC)
+
+    for _ in range(4):
+      state, weights = optimizer.next(state, weights, gradients)
+      history.append(weights)
+    self.assertAllClose([[1.0], [0.97], [0.935], [0.8975], [0.85875]], history)
+
   @parameterized.named_parameters(
       ('scalar_spec', _SCALAR_SPEC, None),
       ('struct_spec', _STRUCT_SPEC, None),
@@ -168,18 +181,23 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     self.assertLess(fn(weights), 0.005)
 
   @parameterized.named_parameters(
-      ('lr_0_1_m_none', 0.1, None), ('lr_0_01_m_0_9', 0.01, 0.9)
+      ('lr_0_1_m_none', 0.1, None, False),
+      ('lr_0_01_m_0_9', 0.01, 0.9, False),
+      ('lr_0_01_m_0_9_nesterov', 0.01, 0.9, True),
   )
-  def test_build_sgdm(self, learning_rate, momentum):
-    optimizer = sgdm.build_sgdm(learning_rate, momentum)
+  def test_build_sgdm(self, learning_rate, momentum, nesterov):
+    optimizer = sgdm.build_sgdm(learning_rate, momentum, nesterov)
     self.assertIsInstance(optimizer, optimizer_base.Optimizer)
     self.assertEqual(learning_rate, optimizer._lr)
     self.assertEqual(momentum, optimizer._momentum)
+    self.assertEqual(nesterov, optimizer._nesterov)
 
   @parameterized.named_parameters(
-      ('lr_0_1_m_0', 0.1, 0.0), ('lr_0_01_m_0_9', 0.01, 0.9)
+      ('lr_0_1_m_0', 0.1, 0.0, False),
+      ('lr_0_01_m_0_9', 0.01, 0.9, False),
+      ('lr_0_01_m_0_9_nesterov', 0.01, 0.9, True),
   )
-  def test_match_keras(self, learning_rate, momentum):
+  def test_match_keras(self, learning_rate, momentum, nesterov):
     weight_spec = [
         tf.TensorSpec([10, 2], tf.float32),
         tf.TensorSpec([2], tf.float32),
@@ -195,23 +213,26 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     initial_weight = random_vector()
     model_variables_fn = lambda: [tf.Variable(v) for v in initial_weight]
     gradients = [random_vector() for _ in range(steps)]
-    tff_optimizer_fn = lambda: sgdm.build_sgdm(learning_rate, momentum)
+    tff_optimizer_fn = lambda: sgdm.build_sgdm(
+        learning_rate, momentum, nesterov=nesterov
+    )
 
     def keras_optimizer_fn():
-      return tf.keras.optimizers.SGD(learning_rate, momentum)
+      return tf.keras.optimizers.SGD(learning_rate, momentum, nesterov=nesterov)
 
     self.assert_optimizers_numerically_close(
         model_variables_fn, gradients, tff_optimizer_fn, keras_optimizer_fn
     )
 
   @parameterized.named_parameters(
-      ('negative_lr', -1.0, 0.9, 'learning_rate'),
-      ('negative_momentum', 1.0, -0.9, 'momentum'),
-      ('momentum_larger_than_one', 1.0, 1.1, 'momentum'),
+      ('negative_lr', -1.0, 0.9, False, 'learning_rate'),
+      ('negative_momentum', 1.0, -0.9, False, 'momentum'),
+      ('momentum_larger_than_one', 1.0, 1.1, False, 'momentum'),
+      ('nesterov_without_momentum', 0.1, None, True, 'Nesterov'),
   )
-  def test_invalid_args_raises(self, lr, momentum, regex):
+  def test_invalid_args_raises(self, lr, momentum, nesterov, regex):
     with self.assertRaisesRegex(ValueError, regex):
-      sgdm.build_sgdm(lr, momentum)
+      sgdm.build_sgdm(lr, momentum, nesterov)
 
   def test_weights_gradients_mismatch_raises(self):
     optimizer = sgdm.build_sgdm(0.1)
