@@ -35,6 +35,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_closed_domain_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -291,6 +292,9 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Create(
 
 StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Deserialize(
     const Intrinsic& intrinsic, std::string serialized_state) const {
+  TFF_ASSIGN_OR_RETURN(int64_t content_size,
+                       DPGroupByAggregator::GetContentSize(serialized_state));
+  serialized_state.resize(content_size);
   GroupByAggregatorState aggregator_state;
   if (!aggregator_state.ParseFromString(serialized_state)) {
     return TFF_STATUS(INVALID_ARGUMENT) << "DPGroupByFactory::Deserialize: "

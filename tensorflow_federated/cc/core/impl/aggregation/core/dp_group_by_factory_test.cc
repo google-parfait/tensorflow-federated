@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -460,7 +461,7 @@ TEST(DPClosedDomainHistogramTest, CreateWithPositiveDelta) {
   TFF_EXPECT_OK(CreateTensorAggregator(intrinsic2).status());
 }
 
-// Phase 5: Test that the factory can create DPOpenDomainHistogram objects.
+// Phase 4: Test that the factory can create DPOpenDomainHistogram objects.
 TEST(DPOpenDomainHistogramTest, CreateWithGroupingKeys) {
   Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(
       /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/1,
@@ -530,8 +531,8 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithNegativeMinContributors_Fails) {
                HasSubstr("min_contributors_to_group must be positive")));
 }
 
-// Make sure we can successfully create a DPOpenDomainHistogram object with no
-// keys.
+// Phase 6: Make sure we can successfully create a DPOpenDomainHistogram object
+// with no keys.
 TEST(DPGroupByFactoryTest, CreateAggregatorNoKeys_Success) {
   // Create intrinsic with default parameters except no key_types.
   Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
@@ -557,6 +558,26 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithKeysNoMinContributors_Success) {
   auto* dp_closed_domain_histogram =
       dynamic_cast<DPClosedDomainHistogram*>(aggregator.get());
   ASSERT_NE(dp_closed_domain_histogram, nullptr);
+}
+
+// Phase 7: Validate that the factory can catch bad serialized states.
+TEST(DPOpenDomainHistogramTest, Deserialize_FailToParseProto) {
+  // Suffix of state does not correspond to a valid length.
+  auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
+  std::string invalid_state("invalid_state");
+  Status s = DeserializeTensorAggregator(intrinsic, invalid_state).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), HasSubstr("Failed to parse padding length"));
+
+  // Prefix of state does not correspond to a valid proto.
+  int64_t padding_length = 0;
+  std::string padding_length_bytes(reinterpret_cast<char*>(&padding_length),
+                                   sizeof(padding_length));
+  std::string invalid_state2 =
+      absl::StrCat("invalid_state", padding_length_bytes);
+  s = DeserializeTensorAggregator(intrinsic, invalid_state2).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), HasSubstr("Failed to parse serialized state"));
 }
 
 }  // namespace

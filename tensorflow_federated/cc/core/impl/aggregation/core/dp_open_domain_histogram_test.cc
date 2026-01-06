@@ -51,7 +51,6 @@ using ::testing::Contains;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Gt;
-using ::testing::HasSubstr;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::Lt;
@@ -75,14 +74,6 @@ using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateTopLevelParameters;
 
 using DPOpenDomainHistogramTest = TestWithParam<bool>;
-
-TEST(DPOpenDomainHistogramTest, Deserialize_FailToParseProto) {
-  auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
-  std::string invalid_state("invalid_state");
-  Status s = DeserializeTensorAggregator(intrinsic, invalid_state).status();
-  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(s.message(), HasSubstr("Failed to parse"));
-}
 
 // Function to execute the DPOpenDomainHistogram on one input where there is
 // just one key per contribution and each contribution is to one aggregation

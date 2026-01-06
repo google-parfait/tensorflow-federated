@@ -19,8 +19,10 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
@@ -47,6 +49,16 @@ class DPGroupByAggregator : public GroupByAggregator {
   // Validates the input tensors, adding the string length check on top of what
   // GroupByAggregator::ValidateInputs does.
   Status ValidateInputs(const InputTensorList& tensors) const override;
+
+  // Serializes the aggregator state. Pads the length with a random amount of
+  // kPaddingCharacter when DP is enabled. Terminates with a fixed number of
+  // bytes representing the length of the padding.
+  StatusOr<std::string> Serialize() && override;
+
+  // Given a serialized state, returns how many bytes convey information about
+  // uploads (length minus # of bytes for padding and encoding padding length).
+  // Returns an error status when the padding length cannot be parsed.
+  static StatusOr<int64_t> GetContentSize(absl::string_view serialized_state);
 
  protected:
   // Constructs a DPGroupByAggregator. Only intended for use by child classes.

@@ -18,16 +18,21 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -142,24 +147,28 @@ StatusOr<int64_t> NumericalTensorSensitivity(int64_t max_groups_contributed,
 StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
   int64_t sensitivity = 0;
   // First calculate the sensitivity of the keys to one Accumulate call.
-  for (DataType key_type : GroupByAggregator::key_combiner()->dtypes()) {
-    int64_t tensor_sensitivity = 0;
-    if (key_type == DT_STRING) {
-      TFF_ASSIGN_OR_RETURN(
-          tensor_sensitivity,
-          StringTensorSensitivity(max_groups_contributed_, max_string_length_));
-    } else if (key_type == DT_FLOAT || key_type == DT_INT32) {
-      TFF_ASSIGN_OR_RETURN(tensor_sensitivity, NumericalTensorSensitivity(
-                                                   max_groups_contributed_, 4));
-    } else if (key_type == DT_INT64 || key_type == DT_DOUBLE ||
-               key_type == DT_UINT64) {
-      TFF_ASSIGN_OR_RETURN(tensor_sensitivity, NumericalTensorSensitivity(
-                                                   max_groups_contributed_, 8));
-    } else {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Unsupported key type: " << key_type;
+  if (key_combiner() != nullptr) {
+    for (DataType key_type : GroupByAggregator::key_combiner()->dtypes()) {
+      int64_t tensor_sensitivity = 0;
+      if (key_type == DT_STRING) {
+        TFF_ASSIGN_OR_RETURN(tensor_sensitivity,
+                             StringTensorSensitivity(max_groups_contributed_,
+                                                     max_string_length_));
+      } else if (key_type == DT_FLOAT || key_type == DT_INT32) {
+        TFF_ASSIGN_OR_RETURN(
+            tensor_sensitivity,
+            NumericalTensorSensitivity(max_groups_contributed_, 4));
+      } else if (key_type == DT_INT64 || key_type == DT_DOUBLE ||
+                 key_type == DT_UINT64) {
+        TFF_ASSIGN_OR_RETURN(
+            tensor_sensitivity,
+            NumericalTensorSensitivity(max_groups_contributed_, 8));
+      } else {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "Unsupported key type: " << key_type;
+      }
+      sensitivity += tensor_sensitivity;
     }
-    sensitivity += tensor_sensitivity;
   }
   // Then calculate the sensitivity of the state of the aggregations to one
   // Accumulate call.
@@ -196,6 +205,45 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
   sensitivity +=
       max_groups_contributed_ + bytes_to_encode_max_groups_contributed;
   return sensitivity;
+}
+
+StatusOr<std::string> DPGroupByAggregator::Serialize() && {
+  TFF_ASSIGN_OR_RETURN(std::string serialized_state,
+                       std::move(*this).GroupByAggregator::Serialize());
+  int64_t padding_length = 0;
+  if (epsilon_ < kEpsilonThreshold) {
+    // When epsilon is meaningful, lengthen the serialized state by an amount
+    // determined by PositiveLaplaceMechanism.
+    TFF_ASSIGN_OR_RETURN(int64_t sensitivity, CalculateSerializeSensitivity());
+    TFF_ASSIGN_OR_RETURN(
+        std::unique_ptr<PositiveLaplaceMechanism> mechanism,
+        PositiveLaplaceMechanism::Create(epsilon_, delta_, sensitivity));
+    padding_length = mechanism->AddNoise(0);
+  }
+  // Couple the padding with bytes that represent the length of the padding.
+  std::string padding(padding_length, kPaddingCharacter);
+  std::string padding_length_bytes(reinterpret_cast<char*>(&padding_length),
+                                   sizeof(padding_length));
+  return absl::StrCat(serialized_state, padding, padding_length_bytes);
+}
+
+StatusOr<int64_t> DPGroupByAggregator::GetContentSize(
+    absl::string_view serialized_state) {
+  // Retrieve padding length. Although Serialize() used reinterpret_cast, use
+  // memcpy here to avoid alignment issues.
+  int64_t total_size = serialized_state.size();
+  const char* padding_length_ptr =
+      serialized_state.data() + (total_size - sizeof(int64_t));
+  int64_t padding_length;
+  std::memcpy(&padding_length, padding_length_ptr, sizeof(int64_t));
+  // Clip the suffix of the serialized state (padding & padding length).
+  int64_t characters_to_remove = sizeof(int64_t) + padding_length;
+  if (padding_length < 0 || characters_to_remove > total_size) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPGroupByAggregator::ComputeContentSize:"
+              " Failed to parse padding length.";
+  }
+  return total_size - characters_to_remove;
 }
 
 }  // namespace aggregation
