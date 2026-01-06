@@ -14,6 +14,9 @@
 """Libraries for interacting with a TensorFlow frontend and backend."""
 
 # pylint: disable=g-importing-member
+from tensorflow_federated.python.core.environments.tensorflow_backend.compiled_computation_transformations import optimize_tensorflow_graphs
+from tensorflow_federated.python.core.environments.tensorflow_backend.compiled_computation_transformations import transform_tf_add_ids
+from tensorflow_federated.python.core.environments.tensorflow_backend.compiled_computation_transformations import transform_tf_call_ops_to_disable_grappler
 from tensorflow_federated.python.core.environments.tensorflow_backend.tensorflow_tree_transformations import replace_intrinsics_with_bodies
 from tensorflow_federated.python.core.environments.tensorflow_backend.type_conversions import structure_from_tensor_type_tree
 from tensorflow_federated.python.core.environments.tensorflow_backend.type_conversions import type_to_tf_tensor_specs
