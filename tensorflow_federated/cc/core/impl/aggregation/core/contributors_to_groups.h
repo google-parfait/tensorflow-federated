@@ -22,12 +22,15 @@
 #include <optional>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 
 namespace tensorflow_federated::aggregation {
 
 using PrivID = int64_t;
+// Peer class for testing private methods.
+class ContributorsToGroupsPeer;
 
 class ContributorsToGroups {
  public:
@@ -76,10 +79,16 @@ class ContributorsToGroups {
   }
 
  private:
+  friend class ContributorsToGroupsPeer;
   std::optional<int> max_contributors_to_group_;
   // The number of contributors for each group, the group indices are guaranteed
   // to be contiguous and start at 0.
   std::vector<int> counts_;
+  // The set of known unique contributors for each group, the group indices are
+  // guaranteed to be contiguous and start at 0. If no priv_id is ever provided
+  // to AddToGroup, then this vector is not extended with empty sets to save
+  // memory.
+  std::vector<absl::flat_hash_set<PrivID>> contributors_;
 };
 
 }  // namespace tensorflow_federated::aggregation
