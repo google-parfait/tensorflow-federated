@@ -184,48 +184,6 @@ py_test(
 )
 
 py_library(
-    name = "distributed_dp",
-    srcs = ["distributed_dp.py"],
-    deps = [
-        ":concat",
-        ":differential_privacy",
-        ":discretization",
-        ":factory",
-        ":modular_clipping",
-        ":quantile_estimation",
-        ":robust",
-        ":rotation",
-        ":secure",
-        "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-        "@federated_language//federated_language",
-    ],
-)
-
-py_test(
-    name = "distributed_dp_test",
-    timeout = "eternal",
-    srcs = ["distributed_dp_test.py"],
-    deps = [
-        ":concat",
-        ":differential_privacy",
-        ":discretization",
-        ":distributed_dp",
-        ":factory",
-        ":robust",
-        ":rotation",
-        ":secure",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:estimation_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-        "@federated_language//federated_language",
-    ],
-)
-
-py_library(
     name = "factory",
     srcs = ["factory.py"],
     deps = [

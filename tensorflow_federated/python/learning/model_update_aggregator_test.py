@@ -207,35 +207,6 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         )
     )
 
-  def test_ddp_secure_aggregator_only_contains_secure_aggregation(self):
-    aggregator = model_update_aggregator.ddp_secure_aggregator(
-        noise_multiplier=1e-2, expected_clients_per_round=10
-    ).create(_FLOAT_MATRIX_TYPE)
-    self.assertFalse(
-        federated_language.framework.computation_contains_unsecure_aggregation(
-            aggregator.next
-        )
-    )
-
-  @parameterized.named_parameters(
-      ('zeroing_float', True, _FLOAT_TYPE),
-      ('zeroing_float_matrix', True, _FLOAT_MATRIX_TYPE),
-      ('no_zeroing_float', False, _FLOAT_TYPE),
-      ('no_zeroing_float_matrix', False, _FLOAT_MATRIX_TYPE),
-  )
-  def test_ddp_secure_aggregator_unweighted(self, zeroing, dtype):
-    aggregator = model_update_aggregator.ddp_secure_aggregator(
-        noise_multiplier=1e-2,
-        expected_clients_per_round=10,
-        bits=16,
-        zeroing=zeroing,
-    )
-
-    self.assertIsInstance(aggregator, factory.UnweightedAggregationFactory)
-    process = aggregator.create(dtype)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-    self.assertFalse(process.is_weighted)
-
 
 def _num_elements_in_type(type_spec: federated_language.Type) -> int:
   count = 0
@@ -291,17 +262,6 @@ class CompilerIntegrationTest(parameterized.TestCase):
         _FLOAT_MATRIX_TYPE, _FLOAT_TYPE
     )
     mrf = self._check_aggregated_scalar_count(aggregator, 60000 * 1.01, 60000)
-
-    # The MapReduceForm should be using secure aggregation.
-    self.assertTrue(mrf.securely_aggregates_tensors)
-
-  def test_ddp_secure_aggregator(self):
-    self.skipTest('b/305747127')
-    aggregator = model_update_aggregator.ddp_secure_aggregator(
-        noise_multiplier=1e-2, expected_clients_per_round=10
-    ).create(_FLOAT_MATRIX_TYPE)
-    # The Hadmard transform requires padding to next power of 2
-    mrf = self._check_aggregated_scalar_count(aggregator, 2**16 * 1.01, 60000)
 
     # The MapReduceForm should be using secure aggregation.
     self.assertTrue(mrf.securely_aggregates_tensors)

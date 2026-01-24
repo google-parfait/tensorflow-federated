@@ -62,7 +62,6 @@ py_library(
     srcs = ["model_update_aggregator.py"],
     deps = [
         "//tensorflow_federated/python/aggregators:differential_privacy",
-        "//tensorflow_federated/python/aggregators:distributed_dp",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
