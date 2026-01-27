@@ -18,9 +18,10 @@ from absl.testing import parameterized
 import federated_language
 import numpy as np
 import tensorflow as tf
-import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import quantile_estimation
+from tensorflow_federated.python.aggregators.privacy import quantile as quantile_query
+from tensorflow_federated.python.aggregators.privacy import query as dp_query
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.templates import estimation_process
 
@@ -32,7 +33,7 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('private', True), ('non_private', False))
   def test_process_type_signature(self, private):
     if private:
-      quantile_estimator_query = tfp.QuantileEstimatorQuery(
+      quantile_estimator_query = quantile_query.QuantileEstimatorQuery(
           initial_estimate=1.0,
           target_quantile=0.5,
           learning_rate=1.0,
@@ -50,7 +51,7 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
           ('denominator', np.float32),
       ])
     else:
-      quantile_estimator_query = tfp.NoPrivacyQuantileEstimatorQuery(
+      quantile_estimator_query = quantile_query.NoPrivacyQuantileEstimatorQuery(
           initial_estimate=1.0,
           target_quantile=0.5,
           learning_rate=1.0,
@@ -109,7 +110,7 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   def test_bad_query(self):
-    non_quantile_estimator_query = tfp.GaussianSumQuery(
+    non_quantile_estimator_query = dp_query.GaussianSumQuery(
         l2_norm_clip=1.0, stddev=1.0
     )
 
@@ -117,7 +118,7 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
       QEProcess(non_quantile_estimator_query)
 
   def test_bad_aggregation_factory(self):
-    quantile_estimator_query = tfp.NoPrivacyQuantileEstimatorQuery(
+    quantile_estimator_query = quantile_query.NoPrivacyQuantileEstimatorQuery(
         initial_estimate=1.0,
         target_quantile=0.5,
         learning_rate=1.0,
@@ -139,7 +140,7 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
     target_quantile = 0.61803
     learning_rate = 2.71828
 
-    quantile_estimator_query = tfp.NoPrivacyQuantileEstimatorQuery(
+    quantile_estimator_query = quantile_query.NoPrivacyQuantileEstimatorQuery(
         initial_estimate=initial_estimate,
         target_quantile=target_quantile,
         learning_rate=learning_rate,

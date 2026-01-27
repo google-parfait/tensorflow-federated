@@ -214,6 +214,7 @@ py_test(
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:robust",
         "//tensorflow_federated/python/aggregators:sum_factory",
+        "//tensorflow_federated/python/aggregators/privacy:query",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:aggregation_process",

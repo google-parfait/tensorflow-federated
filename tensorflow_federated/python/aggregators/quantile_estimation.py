@@ -17,11 +17,11 @@ from typing import Optional
 
 import federated_language
 import numpy as np
-import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.aggregators import sum_factory
+from tensorflow_federated.python.aggregators.privacy import quantile as quantile_query
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.templates import estimation_process
@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.templates import estimation_process
 class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
   """A `tff.templates.EstimationProcess` for estimating private quantiles.
 
-  This iterative process uses a `tensorflow_privacy.QuantileEstimatorQuery` to
+  This iterative process uses a `quantile_query.QuantileEstimatorQuery` to
   maintain an estimate of the target quantile that is updated after each round.
   The `next` function has the following type signature:
 
@@ -89,7 +89,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
       record_aggregation_factory = sum_factory.SumFactory()
 
     quantile = cls(
-        tfp.NoPrivacyQuantileEstimatorQuery(
+        quantile_query.NoPrivacyQuantileEstimatorQuery(
             initial_estimate=initial_estimate,
             target_quantile=target_quantile,
             learning_rate=learning_rate,
@@ -104,7 +104,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
 
   def __init__(
       self,
-      quantile_estimator_query: tfp.QuantileEstimatorQuery,
+      quantile_estimator_query: quantile_query.QuantileEstimatorQuery,
       record_aggregation_factory: Optional[
           factory.UnweightedAggregationFactory
       ] = None,
@@ -112,15 +112,15 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
     """Initializes `PrivateQuantileEstimationProcess`.
 
     Args:
-      quantile_estimator_query: A `tfp.QuantileEstimatorQuery` for estimating
-        quantiles with differential privacy.
+      quantile_estimator_query: A `quantile_query.QuantileEstimatorQuery` for
+        estimating quantiles with differential privacy.
       record_aggregation_factory: An optional
         `tff.aggregators.UnweightedAggregationFactory` to aggregate counts of
         values below the current estimate. If `None`, defaults to
         `tff.aggregators.SumFactory`.
     """
     py_typecheck.check_type(
-        quantile_estimator_query, tfp.QuantileEstimatorQuery
+        quantile_estimator_query, quantile_query.QuantileEstimatorQuery
     )
     if record_aggregation_factory is None:
       record_aggregation_factory = sum_factory.SumFactory()

@@ -32,6 +32,8 @@ py_library(
         "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/aggregators:sum_factory",
+        "//tensorflow_federated/python/aggregators/privacy:query",
+        "//tensorflow_federated/python/aggregators/privacy:tree",
     ],
 )
 

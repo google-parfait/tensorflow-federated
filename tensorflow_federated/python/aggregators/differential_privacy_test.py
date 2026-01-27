@@ -18,17 +18,18 @@ from absl.testing import parameterized
 import federated_language
 import numpy as np
 import tensorflow as tf
-import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import aggregator_test_utils
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators.privacy import quantile as quantile_query
+from tensorflow_federated.python.aggregators.privacy import query as dp_query
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-_test_dp_query = tfp.GaussianSumQuery(l2_norm_clip=1.0, stddev=0.0)
+_test_dp_query = dp_query.GaussianSumQuery(l2_norm_clip=1.0, stddev=0.0)
 
 _test_struct_type = [(np.float32, (2,)), np.float32]
 _test_inner_agg_factory = aggregator_test_utils.SumPlusOneFactory()
@@ -101,10 +102,6 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-
-  def test_init_non_dp_query_raises(self):
-    with self.assertRaises(TypeError):
-      differential_privacy.DifferentiallyPrivateFactory('not a dp_query')
 
   def test_init_non_agg_factory_raises(self):
     with self.assertRaises(TypeError):
@@ -233,7 +230,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertInnerSumPlusOnePerformed(output, l2_clip, client_data)
 
   def test_adaptive_query(self):
-    query = tfp.QuantileAdaptiveClipSumQuery(
+    query = quantile_query.QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip=1.0,
         noise_multiplier=0.0,
         target_unclipped_quantile=1.0,

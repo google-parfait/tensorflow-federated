@@ -20,13 +20,13 @@ from absl.testing import parameterized
 import federated_language
 import numpy as np
 import tensorflow as tf
-import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
+from tensorflow_federated.python.aggregators.privacy import query as dp_query
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.templates import aggregation_process as aggregation_process_lib
@@ -830,7 +830,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     # No values should be changed, but working with inf directly zeroes out all
     # updates. Preferring very large value, but one that can be handled in
     # multiplication/division
-    gaussian_sum_query = tfp.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
+    gaussian_sum_query = dp_query.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
     dp_sum_factory = differential_privacy.DifferentiallyPrivateFactory(
         query=gaussian_sum_query,
         record_aggregation_factory=sum_factory.SumFactory(),
@@ -868,7 +868,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     # No values should be changed, but working with inf directly zeroes out all
     # updates. Preferring very large value, but one that can be handled in
     # multiplication/division
-    gaussian_sum_query = tfp.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
+    gaussian_sum_query = dp_query.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
     dp_sum_factory = differential_privacy.DifferentiallyPrivateFactory(
         query=gaussian_sum_query,
         record_aggregation_factory=sum_factory.SumFactory(),
@@ -905,7 +905,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     # No values should be changed, but working with inf directly zeroes out all
     # updates. Preferring very large value, but one that can be handled in
     # multiplication/division
-    gaussian_sum_query = tfp.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
+    gaussian_sum_query = dp_query.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
     dp_sum_factory = differential_privacy.DifferentiallyPrivateFactory(
         query=gaussian_sum_query,
         record_aggregation_factory=sum_factory.SumFactory(),

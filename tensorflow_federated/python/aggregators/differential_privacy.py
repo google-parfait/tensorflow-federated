@@ -23,10 +23,12 @@ from absl import logging
 import dp_accounting
 import federated_language
 import tensorflow as tf
-import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
+from tensorflow_federated.python.aggregators.privacy import quantile as quantile_query
+from tensorflow_federated.python.aggregators.privacy import query as dp_query
+from tensorflow_federated.python.aggregators.privacy import tree as tree_query
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
@@ -201,7 +203,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         clipped_count_stddev,
     )
 
-    query = tfp.QuantileAdaptiveClipSumQuery(
+    query = quantile_query.QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip=initial_l2_norm_clip,
         noise_multiplier=value_noise_multiplier,
         target_unclipped_quantile=target_unclipped_quantile,
@@ -210,7 +212,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         expected_num_records=clients_per_round,
         geometric_update=True,
     )
-    query = tfp.NormalizedQuery(query, denominator=clients_per_round)
+    query = dp_query.NormalizedQuery(query, denominator=clients_per_round)
 
     return cls(query)
 
@@ -244,8 +246,10 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     _check_float_positive(clients_per_round, 'clients_per_round')
     _check_float_positive(clip, 'clip')
 
-    query = tfp.NormalizedQuery(
-        tfp.GaussianSumQuery(l2_norm_clip=clip, stddev=clip * noise_multiplier),
+    query = dp_query.NormalizedQuery(
+        dp_query.GaussianSumQuery(
+            l2_norm_clip=clip, stddev=clip * noise_multiplier
+        ),
         denominator=clients_per_round,
     )
 
@@ -306,14 +310,16 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     _check_float_positive(clients_per_round, 'clients_per_round')
     _check_float_positive(l2_norm_clip, 'l2_norm_clip')
 
-    sum_query = tfp.TreeResidualSumQuery.build_l2_gaussian_query(
+    sum_query = tree_query.TreeResidualSumQuery.build_l2_gaussian_query(
         l2_norm_clip,
         noise_multiplier,
         record_specs,
         noise_seed=noise_seed,
         use_efficient=use_efficient,
     )
-    mean_query = tfp.NormalizedQuery(sum_query, denominator=clients_per_round)
+    mean_query = dp_query.NormalizedQuery(
+        sum_query, denominator=clients_per_round
+    )
     return cls(
         mean_query, record_aggregation_factory=record_aggregation_factory
     )
@@ -407,7 +413,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         clipped_count_stddev,
     )
 
-    sum_query = tfp.QAdaClipTreeResSumQuery(
+    sum_query = quantile_query.QAdaClipTreeResSumQuery(
         initial_l2_norm_clip,
         value_noise_multiplier,
         record_specs,
@@ -418,16 +424,18 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         geometric_update=True,
         noise_seed=noise_seed,
     )
-    restart_indicator = tfp.restart_query.PeriodicRoundRestartIndicator(
+    restart_indicator = tree_query.PeriodicRoundRestartIndicator(
         period=restart_frequency, warmup=restart_warmup
     )
-    sum_query = tfp.RestartQuery(sum_query, restart_indicator)
-    mean_query = tfp.NormalizedQuery(sum_query, denominator=clients_per_round)
+    sum_query = tree_query.RestartQuery(sum_query, restart_indicator)
+    mean_query = dp_query.NormalizedQuery(
+        sum_query, denominator=clients_per_round
+    )
     return cls(mean_query)
 
   def __init__(
       self,
-      query: tfp.DPQuery,
+      query: dp_query.DPQuery,
       record_aggregation_factory: Optional[
           factory.UnweightedAggregationFactory
       ] = None,
@@ -435,7 +443,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     """Initializes `DifferentiallyPrivateFactory`.
 
     Args:
-      query: A `tfp.SumAggregationDPQuery` to perform private estimation.
+      query: A `dp_query.SumAggregationDPQuery` to perform private estimation.
       record_aggregation_factory: A
         `tff.aggregators.UnweightedAggregationFactory` to aggregate values after
         preprocessing by the `query`. If `None`, defaults to
@@ -445,11 +453,11 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         increase the l2 norm of the records when aggregating.
 
     Raises:
-      TypeError: If `query` is not an instance of `tfp.SumAggregationDPQuery` or
+      TypeError: If `query` is not an instance of
+      `dp_query.SumAggregationDPQuery` or
         `record_aggregation_factory` is not an instance of
         `tff.aggregators.UnweightedAggregationFactory`.
     """
-    py_typecheck.check_type(query, tfp.SumAggregationDPQuery)
     self._query = query
 
     if record_aggregation_factory is None:

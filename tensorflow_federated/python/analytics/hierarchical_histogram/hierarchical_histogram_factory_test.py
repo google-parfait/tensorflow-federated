@@ -229,95 +229,6 @@ class TreeAggregationFactoryComputationTest(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
 
-  @parameterized.named_parameters(
-      ('test_1_2_sub_sampling', 1, 2, 'sub-sampling'),
-      ('test_5_3_sub_sampling', 5, 3, 'sub-sampling'),
-      ('test_3_2_distinct', 3, 2, 'distinct'),
-      ('test_2_3_distinct', 2, 3, 'distinct'),
-  )
-  def test_distributed_discrete_gaussian_tree_aggregation(
-      self, value_shape, arity, clip_mechanism
-  ):
-    agg_factory = (
-        hihi_factory.create_hierarchical_histogram_aggregation_factory(
-            num_bins=value_shape,
-            arity=arity,
-            clip_mechanism=clip_mechanism,
-            dp_mechanism='distributed-discrete-gaussian',
-            enable_secure_sum=True,
-        )
-    )
-    self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
-    value_type = federated_language.to_type((np.int32, (value_shape,)))
-    process = agg_factory.create(value_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-
-    query_state_type = federated_language.StructType([
-        ('arity', federated_language.TensorType(np.int32)),
-        (
-            'inner_query_state',
-            federated_language.StructType([
-                ('l2_norm_bound', federated_language.TensorType(np.float32)),
-                ('local_stddev', federated_language.TensorType(np.float32)),
-            ]),
-        ),
-    ])
-    query_metrics_type = federated_language.StructType([])
-
-    dp_event_type = federated_language.StructType([
-        ('module_name', federated_language.TensorType(np.str_)),
-        ('class_name', federated_language.TensorType(np.str_)),
-    ])
-    server_state_type = federated_language.FederatedType(
-        differential_privacy.DPAggregatorState(
-            query_state_type, (), dp_event_type, np.bool_
-        ),
-        federated_language.SERVER,
-    )
-    expected_initialize_type = federated_language.FunctionType(
-        parameter=None, result=server_state_type
-    )
-    self.assertTrue(
-        process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type
-        )
-    )
-    expected_measurements_type = federated_language.FederatedType(
-        collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=()),
-        federated_language.SERVER,
-    )
-
-    tree_depth = hihi_factory._tree_depth(value_shape, arity)
-    flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
-    result_value_type = federated_language.to_type(
-        collections.OrderedDict([
-            (
-                'flat_values',
-                federated_language.to_type((np.int32, (flat_tree_shape,))),
-            ),
-            ('nested_row_splits', [(np.int64, (tree_depth + 1,))]),
-        ])
-    )
-    value_type = federated_language.to_type((np.int32, (value_shape,)))
-    expected_next_type = federated_language.FunctionType(
-        parameter=collections.OrderedDict(
-            state=server_state_type,
-            value=federated_language.FederatedType(
-                value_type, federated_language.CLIENTS
-            ),
-        ),
-        result=measured_process.MeasuredProcessOutput(
-            state=server_state_type,
-            result=federated_language.FederatedType(
-                result_value_type, federated_language.SERVER
-            ),
-            measurements=expected_measurements_type,
-        ),
-    )
-    self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type)
-    )
-
 
 class TreeAggregationFactoryExecutionTest(
     tf.test.TestCase, parameterized.TestCase
@@ -332,8 +243,6 @@ class TreeAggregationFactoryExecutionTest(
           1,
           'central-gaussian',
           1.0,
-          1,
-          1,
           False,
       ),
       (
@@ -344,8 +253,6 @@ class TreeAggregationFactoryExecutionTest(
           1,
           'central-gaussian',
           1.0,
-          1,
-          1,
           False,
       ),
       (
@@ -356,8 +263,6 @@ class TreeAggregationFactoryExecutionTest(
           1,
           'central-gaussian',
           1.0,
-          1,
-          1,
           False,
       ),
       (
@@ -368,8 +273,6 @@ class TreeAggregationFactoryExecutionTest(
           0,
           'central-gaussian',
           1.0,
-          1,
-          1,
           False,
       ),
       (
@@ -380,8 +283,6 @@ class TreeAggregationFactoryExecutionTest(
           1,
           'invalid',
           1.0,
-          1,
-          1,
           False,
       ),
       (
@@ -392,68 +293,6 @@ class TreeAggregationFactoryExecutionTest(
           1,
           'central-gaussian',
           -1.0,
-          1,
-          1,
-          False,
-      ),
-      (
-          'non_positive_expected_clients_per_round',
-          1,
-          2,
-          'sub-sampling',
-          1,
-          'central-gaussian',
-          1.0,
-          0,
-          1,
-          False,
-      ),
-      (
-          'bits_less_than_1',
-          1,
-          2,
-          'sub-sampling',
-          1,
-          'central-gaussian',
-          1.0,
-          1,
-          0,
-          False,
-      ),
-      (
-          'bits_greater_than_22',
-          1,
-          2,
-          'sub-sampling',
-          1,
-          'central-gaussian',
-          1.0,
-          1,
-          23,
-          False,
-      ),
-      (
-          'bits_less_than_lower_bound',
-          1,
-          2,
-          'sub-sampling',
-          1,
-          'distributed-discrete-gaussian',
-          4.0,
-          8,
-          4,
-          True,
-      ),
-      (
-          'ddp_without_secure_sum',
-          1,
-          2,
-          'sub-sampling',
-          1,
-          'distributed-discrete-gaussian',
-          4.0,
-          8,
-          4,
           False,
       ),
   )
@@ -465,8 +304,6 @@ class TreeAggregationFactoryExecutionTest(
       max_records_per_user,
       dp_mechanism,
       noise_multiplier,
-      expected_clients_per_round,
-      bits,
       enable_secure_sum,
   ):
     with self.assertRaises(ValueError):
@@ -477,8 +314,6 @@ class TreeAggregationFactoryExecutionTest(
           max_records_per_user,
           dp_mechanism,
           noise_multiplier,
-          expected_clients_per_round,
-          bits,
           enable_secure_sum,
       )
 
@@ -571,19 +406,15 @@ class TreeAggregationFactoryExecutionTest(
     )
 
     if clip_mechanism == 'sub-sampling':
-      expected_l1_norm = np.sum(
-          [
-              min(np.linalg.norm(x, ord=1), max_records_per_user)
-              for x in client_records
-          ]
-      )
+      expected_l1_norm = np.sum([
+          min(np.linalg.norm(x, ord=1), max_records_per_user)
+          for x in client_records
+      ])
     elif clip_mechanism == 'distinct':
-      expected_l1_norm = np.sum(
-          [
-              min(np.linalg.norm(x, ord=0), max_records_per_user)
-              for x in client_records
-          ]
-      )
+      expected_l1_norm = np.sum([
+          min(np.linalg.norm(x, ord=0), max_records_per_user)
+          for x in client_records
+      ])
     else:
       self.fail(f'Unexpected `clip_mechanism` found: {clip_mechanism}.')
 
@@ -694,19 +525,15 @@ class TreeAggregationFactoryExecutionTest(
     )
 
     if clip_mechanism == 'sub-sampling':
-      expected_l1_norm = np.sum(
-          [
-              min(np.linalg.norm(x, ord=1), max_records_per_user)
-              for x in client_records
-          ]
-      )
+      expected_l1_norm = np.sum([
+          min(np.linalg.norm(x, ord=1), max_records_per_user)
+          for x in client_records
+      ])
     elif clip_mechanism == 'distinct':
-      expected_l1_norm = np.sum(
-          [
-              min(np.linalg.norm(x, ord=0), max_records_per_user)
-              for x in client_records
-          ]
-      )
+      expected_l1_norm = np.sum([
+          min(np.linalg.norm(x, ord=0), max_records_per_user)
+          for x in client_records
+      ])
     else:
       self.fail(f'Unexpected `clip_mechanism` found: {clip_mechanism}.')
 
@@ -718,169 +545,6 @@ class TreeAggregationFactoryExecutionTest(
           expected_l1_norm,
           atol=300.0 * np.sqrt(arity**layer) * noise_multiplier,
       )
-
-  @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 0.1),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 1.0),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 5.0),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 10.0),
-  )
-  def test_distributed_discrete_gaussian_tree_aggregation_wo_clip(
-      self, value_shape, num_clients, arity, clip_mechanism, noise_multiplier
-  ):
-    client_records = []
-    for _ in range(num_clients):
-      client_records.append(np.arange(value_shape, dtype=int).tolist())
-
-    agg_factory = (
-        hihi_factory.create_hierarchical_histogram_aggregation_factory(
-            num_bins=value_shape,
-            arity=arity,
-            clip_mechanism=clip_mechanism,
-            max_records_per_user=5,
-            dp_mechanism='distributed-discrete-gaussian',
-            noise_multiplier=noise_multiplier,
-            enable_secure_sum=True,
-        )
-    )
-    value_type = federated_language.to_type((np.int32, (value_shape,)))
-    process = agg_factory.create(value_type)
-
-    state = process.initialize()
-    output = process.next(state, client_records).result
-    output = tf.RaggedTensor.from_nested_row_splits(
-        flat_values=output['flat_values'],
-        nested_row_splits=output['nested_row_splits'],
-    )
-
-    if clip_mechanism == 'sub-sampling':
-      reference_aggregated_record = (
-          build_tree_from_leaf.create_hierarchical_histogram(
-              np.sum(client_records, axis=0).astype(int).tolist(), arity
-          )
-      )
-    else:
-      reference_aggregated_record = (
-          build_tree_from_leaf.create_hierarchical_histogram(
-              np.sum(np.minimum(client_records, 1), axis=0)
-              .astype(int)
-              .tolist(),
-              arity,
-          )
-      )
-
-    # 300 is a rough estimation of six-sigma considering the effect of the L2
-    # norm bound and the privacy composition.
-    self.assertAllClose(
-        output, reference_aggregated_record, atol=300.0 * noise_multiplier
-    )
-
-  @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 1, 0.1),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 2, 1.0),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 3, 5.0),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 2, 10.0),
-  )
-  def test_distributed_discrete_gaussian_tree_aggregation_w_clip(
-      self,
-      value_shape,
-      num_clients,
-      arity,
-      clip_mechanism,
-      max_records_per_user,
-      noise_multiplier,
-  ):
-    client_records = []
-    for _ in range(num_clients):
-      client_records.append(np.arange(value_shape, dtype=int).tolist())
-
-    agg_factory = (
-        hihi_factory.create_hierarchical_histogram_aggregation_factory(
-            num_bins=value_shape,
-            arity=arity,
-            clip_mechanism=clip_mechanism,
-            max_records_per_user=max_records_per_user,
-            dp_mechanism='distributed-discrete-gaussian',
-            noise_multiplier=noise_multiplier,
-            enable_secure_sum=True,
-        )
-    )
-    value_type = federated_language.to_type((np.int32, (value_shape,)))
-    process = agg_factory.create(value_type)
-
-    state = process.initialize()
-    output = process.next(state, client_records).result
-    output = tf.RaggedTensor.from_nested_row_splits(
-        flat_values=output['flat_values'],
-        nested_row_splits=output['nested_row_splits'],
-    )
-
-    if clip_mechanism == 'sub-sampling':
-      expected_l1_norm = np.sum(
-          [
-              min(np.linalg.norm(x, ord=1), max_records_per_user)
-              for x in client_records
-          ]
-      )
-    elif clip_mechanism == 'distinct':
-      expected_l1_norm = np.sum(
-          [
-              min(np.linalg.norm(x, ord=0), max_records_per_user)
-              for x in client_records
-          ]
-      )
-    else:
-      self.fail(f'Unexpected `clip_mechanism` found: {clip_mechanism}.')
-
-    # 300 is a rough estimation of six-sigma considering the effect of the L2
-    # norm bound and the privacy composition.
-    for layer in range(hihi_factory._tree_depth(value_shape, arity)):
-      self.assertAllClose(
-          tf.math.reduce_sum(output[layer]),
-          expected_l1_norm,
-          atol=300.0 * np.sqrt(arity**layer) * noise_multiplier,
-      )
-
-  @parameterized.named_parameters(
-      ('test_1_3_2', 1, 3, 2),
-      ('test_2_4_3', 2, 4, 3),
-  )
-  def test_distributed_discrete_gaussian_tree_aggregation_no_overflow(
-      self, value_shape, num_clients, arity
-  ):
-    self.skipTest('b/275102812')
-    client_records = []
-    for _ in range(num_clients):
-      client_records.append(np.zeros(value_shape, dtype=int).tolist())
-
-    agg_factory = (
-        hihi_factory.create_hierarchical_histogram_aggregation_factory(
-            num_bins=value_shape,
-            arity=arity,
-            clip_mechanism='sub-sampling',
-            max_records_per_user=1,
-            dp_mechanism='distributed-discrete-gaussian',
-            noise_multiplier=0,
-            enable_secure_sum=True,
-        )
-    )
-    value_type = federated_language.to_type((np.int32, (value_shape,)))
-    process = agg_factory.create(value_type)
-
-    state = process.initialize()
-    output = process.next(state, client_records).result
-    output = tf.RaggedTensor.from_nested_row_splits(
-        flat_values=output['flat_values'],
-        nested_row_splits=output['nested_row_splits'],
-    )
-
-    reference_aggregated_record = (
-        build_tree_from_leaf.create_hierarchical_histogram(
-            np.zeros_like(client_records[0], dtype=int).tolist(), arity
-        )
-    )
-
-    self.assertAllClose(output, reference_aggregated_record)
 
 
 if __name__ == '__main__':
