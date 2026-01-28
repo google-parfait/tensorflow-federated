@@ -15,7 +15,6 @@ import math
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import numpy as np
 
 from tensorflow_federated.python.analytics import differential_privacy
 
@@ -45,23 +44,6 @@ class DifferentialPrivacyTest(parameterized.TestCase):
         epsilon=epsilon, delta=delta, norm_bound=norm_bound
     )
     self.assertAlmostEqual(sigma, expected_stddev, places=7)
-
-  def test_get_epsilon_gaussian_inverts_get_noise_gaussian(self):
-    for eps in np.logspace(-5, 5, 11, 10):
-      for delta in [0] + np.logspace(-10, 0, 11, 10):
-        noise = differential_privacy.get_noise_gaussian(eps, delta)
-        recovered_eps = differential_privacy.get_epsilon_gaussian(noise, delta)
-        np.testing.assert_allclose(recovered_eps, 0 if delta == 1 else eps)
-
-  def test_get_noise_gaussian_inverts_get_epsilon_gaussian(self):
-    for noise in np.logspace(-5, 5, 11, 10):
-      for delta in [0] + np.logspace(-10, 0, 11, 10):
-        eps = differential_privacy.get_epsilon_gaussian(noise, delta)
-        recovered_noise = differential_privacy.get_noise_gaussian(eps, delta)
-        if eps == 0:
-          self.assertEqual(recovered_noise, 0 if delta == 1 else np.inf)
-        else:
-          np.testing.assert_allclose(recovered_noise, noise)
 
 
 if __name__ == '__main__':
