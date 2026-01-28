@@ -60,6 +60,11 @@ def local_cpp_executor_factory(
     RuntimeError: If an internal C++ worker binary can not be found.
   """
 
+  print(
+      "dalyk in executor_factory local_cpp_executor_factory, meaning we're"
+      ' using grpc'
+  )
+
   # This path is specified relative to this file because the relative location
   # of the worker binary will remain the same when this function is executed
   # from the Python package and from a Bazel test.
