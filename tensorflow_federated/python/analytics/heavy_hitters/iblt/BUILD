@@ -171,19 +171,3 @@ py_test(
         "@federated_language//federated_language",
     ],
 )
-
-py_library(
-    name = "subsample_process",
-    srcs = ["subsample_process.py"],
-    deps = [":iblt_factory"],
-)
-
-py_test(
-    name = "subsample_process_test",
-    srcs = ["subsample_process_test.py"],
-    deps = [
-        ":iblt_factory",
-        ":iblt_lib",
-        ":subsample_process",
-    ],
-)
