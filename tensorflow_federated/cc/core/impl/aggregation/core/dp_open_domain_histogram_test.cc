@@ -964,58 +964,68 @@ TEST(DPOpenDomainHistogramTest, AccumulateWhileKThresholding) {
 
 TEST_P(DPOpenDomainHistogramTest,
        SingleKeyAndMinContributorsAggregatesWithValueZeroCanSurvive) {
-  Intrinsic intrinsic = CreateIntrinsic2Agg<int32_t, int64_t>(
-      /*epsilon=*/1.0, /*delta=*/1e-8, /*l0_bound=*/2, /*linfinity_bound1=*/1,
-      /*l1_bound1=*/-1, /*l2_bound1=*/-1, /*linfinity_bound2=*/1,
-      /*l1_bound2=*/-1, /*l2_bound2=*/-1);
-  intrinsic.parameters.push_back(
-      Tensor::Create(internal::TypeTraits<int64_t>::kDataType, {},
-                     CreateTestData<int64_t>({5}), "min_contributors_to_group")
-          .value());
-  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> dp_aggregator,
-                           CreateTensorAggregator(intrinsic));
-  // Simulate many clients where they contribute
-  // aggregation 1: zeroes to key0 and ones to key1
-  // aggregation 2: zeroes to both
-  // The number of clients contributing is such that no key is removed by
-  // k-thresholding.
-  std::string key0 = "keep me";
-  std::string key1 = "keep me also";
-  constexpr int num_inputs = 400;
-  for (int i = 0; i < num_inputs; i++) {
-    Tensor keys = Tensor::Create(DT_STRING, {2},
-                                 CreateTestData<string_view>({key0, key1}))
-                      .value();
+  // Test that object can be created with only linf or only l1.
+  int linf = 1;
+  int l1 = -1;
+  for (int mult : {-1, 1}) {
+    Intrinsic intrinsic = CreateIntrinsic2Agg<int32_t, int64_t>(
+        /*epsilon=*/1.0, /*delta=*/1e-8, /*l0_bound=*/2,
+        /*linfinity_bound1=*/linf * mult, /*l1_bound1=*/l1 * mult,
+        /*l2_bound1=*/-1,
+        /*linfinity_bound2=*/linf * mult, /*l1_bound2=*/l1 * mult,
+        /*l2_bound2=*/-1);
+    intrinsic.parameters.push_back(
+        Tensor::Create(internal::TypeTraits<int64_t>::kDataType, {},
+                       CreateTestData<int64_t>({5}),
+                       "min_contributors_to_group")
+            .value());
+    TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> dp_aggregator,
+                             CreateTensorAggregator(intrinsic));
+    // Simulate many clients where they contribute
+    // aggregation 1: zeroes to key0 and ones to key1
+    // aggregation 2: zeroes to both
+    // The number of clients contributing is such that no key is removed by
+    // k-thresholding.
+    std::string key0 = "keep me";
+    std::string key1 = "keep me also";
+    constexpr int num_inputs = 400;
+    for (int i = 0; i < num_inputs; i++) {
+      Tensor keys = Tensor::Create(DT_STRING, {2},
+                                   CreateTestData<string_view>({key0, key1}))
+                        .value();
 
-    Tensor value_tensor1 =
-        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 1})).value();
-    Tensor value_tensor2 =
-        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 0})).value();
+      TFF_ASSERT_OK_AND_ASSIGN(
+          Tensor value_tensor1,
+          Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 1})));
+      TFF_ASSERT_OK_AND_ASSIGN(
+          Tensor value_tensor2,
+          Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 0})));
 
-    EXPECT_THAT(
-        dp_aggregator->Accumulate({&keys, &value_tensor1, &value_tensor2}),
-        IsOk());
+      EXPECT_THAT(
+          dp_aggregator->Accumulate({&keys, &value_tensor1, &value_tensor2}),
+          IsOk());
+    }
+
+    EXPECT_THAT(dp_aggregator->GetNumInputs(), Eq(num_inputs));
+    EXPECT_THAT(dp_aggregator->CanReport(), IsTrue());
+
+    if (GetParam()) {
+      TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_state,
+                               std::move(*dp_aggregator).Serialize());
+      TFF_ASSERT_OK_AND_ASSIGN(
+          std::unique_ptr<TensorAggregator> dp_aggregator,
+          DeserializeTensorAggregator(intrinsic, serialized_state));
+    }
+
+    TFF_ASSERT_OK_AND_ASSIGN(OutputTensorList report,
+                             std::move(*dp_aggregator).Report());
+    ASSERT_THAT(report.size(), Eq(3));
+
+    // The report should include both keys because we don't drop aggregates with
+    // value zero when k-thresholding.
+    EXPECT_THAT(report[0].AsSpan<string_view>(),
+                UnorderedElementsAre(key0, key1));
   }
-
-  EXPECT_THAT(dp_aggregator->GetNumInputs(), Eq(num_inputs));
-  EXPECT_THAT(dp_aggregator->CanReport(), IsTrue());
-
-  if (GetParam()) {
-    TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_state,
-                             std::move(*dp_aggregator).Serialize());
-    TFF_ASSERT_OK_AND_ASSIGN(
-        std::unique_ptr<TensorAggregator> dp_aggregator,
-        DeserializeTensorAggregator(intrinsic, serialized_state));
-  }
-
-  TFF_ASSERT_OK_AND_ASSIGN(OutputTensorList report,
-                           std::move(*dp_aggregator).Report());
-  ASSERT_THAT(report.size(), Eq(3));
-
-  // The report should include both keys because we don't drop aggregates with
-  // value zero when k-thresholding.
-  EXPECT_THAT(report[0].AsSpan<string_view>(),
-              UnorderedElementsAre(key0, key1));
 }
 
 TEST_P(DPOpenDomainHistogramTest, ReportAppliesKThresholdingEvenWithoutDP) {

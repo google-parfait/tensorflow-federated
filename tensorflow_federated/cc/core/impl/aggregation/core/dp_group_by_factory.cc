@@ -56,8 +56,15 @@ struct DPParameters {
   int64_t max_groups_contributed;
 };
 
+enum class SupportedDPAlgorithms {
+  kExhaustiveReport,
+  kThresholdByAggregate,
+  kThresholdByContributors,
+  kThresholdByContributorsAndFilter
+};
+
 Status ValidateDPParameters(double epsilon, double delta,
-                            int64_t max_groups_contributed, bool open_domain) {
+                            int64_t max_groups_contributed) {
   if (epsilon <= 0) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "DPGroupByFactory: Epsilon must be positive.";
@@ -205,7 +212,8 @@ StatusOr<TensorSpan> FindAndValidateKeys(
   return TensorSpan(ptr, num_keys);
 }
 
-Status ValidateNestedIntrinsics(const Intrinsic& intrinsic, bool open_domain,
+Status ValidateNestedIntrinsics(const Intrinsic& intrinsic,
+                                SupportedDPAlgorithms which_algorithm,
                                 DPParameters dp_parameters) {
   // Currently, we only support nested sums.
   // The following check will be updated when this changes.
@@ -235,21 +243,22 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic, bool open_domain,
     const double l1 = intrinsic.parameters[kL1Index].CastToScalar<double>();
     const double l2 = intrinsic.parameters[kL2Index].CastToScalar<double>();
 
-    // Check if nested intrinsic provides a positive Linfinity bound
+    // A positive Linfinity bound is required when the survival of a group
+    // is decided by comparing its noisy aggregate against a threshold.
     bool has_linfinity_bound = false;
     DataType linfinity_dtype = linfinity_tensor.dtype();
     NUMERICAL_ONLY_DTYPE_CASES(
         linfinity_dtype, InputType,
         has_linfinity_bound = linfinity_tensor.CastToScalar<InputType>() > 0);
-    if (open_domain) {
+    if (which_algorithm == SupportedDPAlgorithms::kThresholdByAggregate) {
       if (!has_linfinity_bound) {
         return TFF_STATUS(INVALID_ARGUMENT)
-               << "DPGroupByFactory: For open-domain DP histograms, each "
-                  "nested "
-                  "intrinsic must provide a positive Linfinity bound.";
+               << "DPGroupByFactory: Each nested intrinsic must provide a "
+                  "positive Linfinity bound if boh min_contributors_to_group "
+                  "and domain keys are absent.";
       }
     } else {
-      // Closed-domain histogram requires any of L1, L2, or Linfinity bounds.
+      // All other algorithms require any of L1, L2, or Linfinity bounds.
       bool has_l1_bound =
           l1 > 0 && l1 != std::numeric_limits<double>::infinity();
       bool has_l2_bound =
@@ -324,8 +333,24 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
       std::optional<int64_t> min_contributors_to_group,
       FindMinContributorsToGroup(intrinsic, parameter_name_to_index));
 
-  bool open_domain = min_contributors_to_group.has_value() ||
-                     !parameter_name_to_index.contains("key_names");
+  bool has_key_names = parameter_name_to_index.contains("key_names");
+  bool has_min_contributors_to_group = min_contributors_to_group.has_value();
+  auto which_algorithm =
+      SupportedDPAlgorithms::kThresholdByContributorsAndFilter;
+  if (!has_min_contributors_to_group && !has_key_names) {
+    which_algorithm = SupportedDPAlgorithms::kThresholdByAggregate;
+  } else if (!has_min_contributors_to_group && has_key_names) {
+    which_algorithm = SupportedDPAlgorithms::kExhaustiveReport;
+  } else if (has_min_contributors_to_group && !has_key_names) {
+    which_algorithm = SupportedDPAlgorithms::kThresholdByContributors;
+  } else {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPGroupByFactory: We currently do not have an algorithm that "
+              "uses both min_contributors_to_group and key_names.";
+  }
+
+  bool open_domain =
+      (which_algorithm != SupportedDPAlgorithms::kExhaustiveReport);
   int64_t num_keys = intrinsic.inputs.size();
 
   // For any DP histogram, ensure that we have required DP parameters.
@@ -334,13 +359,13 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   double epsilon = dp_parameters.epsilon;
   double delta = dp_parameters.delta;
   int64_t max_groups_contributed = dp_parameters.max_groups_contributed;
-  TFF_RETURN_IF_ERROR(ValidateDPParameters(
-      epsilon, delta, max_groups_contributed, open_domain));
+  TFF_RETURN_IF_ERROR(
+      ValidateDPParameters(epsilon, delta, max_groups_contributed));
 
   // For the closed-domain case we must find the key tensors to pass on. This is
   // guaranteed to be present by the definition of the open_domain variable.
   TensorSpan key_tensors;
-  if (!open_domain) {
+  if (which_algorithm == SupportedDPAlgorithms::kExhaustiveReport) {
     TFF_ASSIGN_OR_RETURN(
         std::vector<std::string> key_names,
         FindAndValidateKeyNames(intrinsic, parameter_name_to_index));
@@ -354,7 +379,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   // For any DP histogram, ensure that each inner aggregation is
   // well-specified.
   TFF_RETURN_IF_ERROR(
-      ValidateNestedIntrinsics(intrinsic, open_domain, dp_parameters));
+      ValidateNestedIntrinsics(intrinsic, which_algorithm, dp_parameters));
 
   // Create nested aggregators.
   std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> nested_aggregators;
