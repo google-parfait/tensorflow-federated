@@ -907,7 +907,7 @@ TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
 TEST(DPOpenDomainHistogramTest,
      CreateWithMinContributorsSetsSelectorAndMaxContributors) {
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
-      /*min_contributors=*/5, /*key_types=*/{}, /*epsilon=*/1.0);
+      /*min_contributors=*/5, /*epsilon=*/1.0);
   auto aggregator_or_status = CreateTensorAggregator(intrinsic);
   ASSERT_OK(aggregator_or_status);
   auto aggregator = *std::move(aggregator_or_status);
@@ -1023,7 +1023,7 @@ TEST_P(DPOpenDomainHistogramTest, ReportAppliesKThresholdingEvenWithoutDP) {
   // output is empty.
   const int64_t min_contributors_to_group = 5;
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
-      min_contributors_to_group, /*key_types=*/{DT_STRING});
+      min_contributors_to_group);
   TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator,
                            CreateTensorAggregator(intrinsic));
   std::string key0 = "drop me";
@@ -1075,8 +1075,7 @@ TEST(DPOpenDomainHistogramTest, ReportAppliesDPDuringSelection) {
   // delta) values that have only k contributors.
   const int64_t min_contributors_to_group = 5;
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int32_t, int32_t>(
-      min_contributors_to_group, /*key_types=*/{DT_INT32}, /*epsilon=*/1.0);
-  int key = 1;
+      min_contributors_to_group, /*epsilon=*/1.0);
   constexpr int kNumInputs = 5;
   constexpr int kNumRepeats = 100;
   int times_kept = 0;
@@ -1085,7 +1084,8 @@ TEST(DPOpenDomainHistogramTest, ReportAppliesDPDuringSelection) {
                              CreateTensorAggregator(intrinsic));
     for (int i = 0; i < kNumInputs; i++) {
       Tensor keys =
-          Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({key})).value();
+          Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"1"}))
+              .value();
 
       Tensor value_tensor =
           Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})).value();
@@ -1112,7 +1112,7 @@ TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilonsWithKThresholding) {
   // noise. Testing four keys and only requiring one of them to have changed
   // makes this easier without kNumInputs being too large.
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int32_t, int64_t>(
-      min_contributors_to_group, /*key_types=*/{DT_STRING}, /*epsilon=*/0.05,
+      min_contributors_to_group, /*epsilon=*/0.05,
       /*delta=*/0.001, /*l0_bound=*/4);
   TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> dp_aggregator,
                            CreateTensorAggregator(intrinsic));
