@@ -37,9 +37,6 @@ ContributorsToGroups::ContributorsToGroups(int max_contributors_to_group,
 
 absl::Status ContributorsToGroups::AddToGroup(size_t group_index,
                                               std::optional<PrivID> priv_id) {
-  if (priv_id.has_value()) {
-    return absl::UnimplementedError("priv_id is not supported yet.");
-  }
   if (!max_contributors_to_group_.has_value()) {
     return absl::InvalidArgumentError(
         "AddToGroup should not be called if "
@@ -48,9 +45,19 @@ absl::Status ContributorsToGroups::AddToGroup(size_t group_index,
   if (group_index >= counts_.size()) {
     counts_.resize(group_index + 1, 0);
   }
-  if (counts_[group_index] < *max_contributors_to_group_) {
-    ++counts_[group_index];
+  if (priv_id.has_value() && contributors_.size() <= group_index) {
+    contributors_.resize(counts_.size());
   }
+
+  if (counts_[group_index] < *max_contributors_to_group_) {
+    // The count is incremented for anonymous contributors or for previously
+    // unseen priv_ids.
+    if (!priv_id.has_value() ||
+        contributors_[group_index].insert(*priv_id).second) {
+      ++counts_[group_index];
+    }
+  }
+
   return absl::OkStatus();
 }
 
