@@ -16,6 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_tensor_aggregator_bundle.h"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -282,15 +283,59 @@ TEST(DPTensorAggregatorBundleTest, AggregateWrongNumberOfInputs) {
   // Too few inputs.
   auto accumulate_status = aggregator->Accumulate(InputTensorList{&t1});
   EXPECT_THAT(accumulate_status, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(accumulate_status.message(),
-              HasSubstr("Expected 2 tensors, got 1"));
+  EXPECT_THAT(
+      accumulate_status.message(),
+      HasSubstr("Expected 2 tensors excluding optional privacy_id, got 1"));
 
   // Too many inputs.
   auto accumulate_status2 =
       aggregator->Accumulate(InputTensorList{&t1, &t2, &t3});
   EXPECT_THAT(accumulate_status2, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(accumulate_status2.message(),
-              HasSubstr("Expected 2 tensors, got 3"));
+  EXPECT_THAT(
+      accumulate_status2.message(),
+      HasSubstr("Expected 2 tensors excluding optional privacy_id, got 3"));
+}
+
+// If privacy_id is provided as the last tensor, ValidateInputs should succeed
+// if the other inputs are correct.
+TEST(DPTensorAggregatorBundleTest, AggregateWithPrivacyIdSucceeds) {
+  Intrinsic intrinsic = CreateBundleOfTwo();
+  auto status = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(status);
+  auto aggregator = std::move(status.value());
+
+  Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+  Tensor t2 = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1})).value();
+  Tensor t3 =
+      Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({1}), "privacy_id")
+          .value();
+
+  auto accumulate_status =
+      aggregator->Accumulate(InputTensorList{&t1, &t2, &t3});
+  TFF_EXPECT_OK(accumulate_status);
+  EXPECT_EQ(aggregator->GetNumInputs(), 1);
+}
+
+// If privacy_id is provided as last tensor but there are too many other
+// tensors, ValidateInputs should fail.
+TEST(DPTensorAggregatorBundleTest,
+     AggregateWrongNumberOfInputsWithPrivacyIdFails) {
+  Intrinsic intrinsic = CreateBundleOfTwo();
+  auto status = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(status);
+  auto aggregator = std::move(status.value());
+  Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+  Tensor t2 = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1})).value();
+  Tensor t3 = Tensor::Create(DT_INT32, {}, CreateTestData<int>({1})).value();
+  Tensor t4 =
+      Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({1}), "privacy_id")
+          .value();
+  auto accumulate_status =
+      aggregator->Accumulate(InputTensorList{&t1, &t2, &t3, &t4});
+  EXPECT_THAT(accumulate_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(
+      accumulate_status.message(),
+      HasSubstr("Expected 2 tensors excluding optional privacy_id, got 3"));
 }
 
 // If a bundle has two inner aggregators and receives inputs such that those
