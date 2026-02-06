@@ -104,7 +104,7 @@ class SumAggregator final : public AggVectorAggregator<T> {
 template <typename EpsilonType, typename DeltaType, typename L0_BoundType>
 std::vector<Tensor> CreateTopLevelParameters(
     EpsilonType epsilon, DeltaType delta, L0_BoundType l0_bound,
-    absl::Span<const DataType> key_types) {
+    absl::Span<const DataType> key_types, bool add_spec = false) {
   std::vector<Tensor> parameters;
 
   std::unique_ptr<MutableVectorData<EpsilonType>> epsilon_tensor =
@@ -128,7 +128,7 @@ std::vector<Tensor> CreateTopLevelParameters(
                      std::move(l0_bound_tensor), "max_groups_contributed")
           .value());
 
-  if (key_types.empty()) {
+  if (key_types.empty() || !add_spec) {
     return parameters;
   }
 
@@ -233,7 +233,7 @@ Intrinsic CreateIntrinsicWithKeyTypes(
     double epsilon = kEpsilonThreshold, double delta = 0.001,
     int64_t l0_bound = 100, InputType linfinity_bound = 100,
     double l1_bound = -1, double l2_bound = -1,
-    std::vector<DataType> key_types = {DT_STRING}) {
+    std::vector<DataType> key_types = {DT_STRING}, bool add_spec = false) {
   std::vector<TensorSpec> input_key_specs;
   for (int i = 0; i < key_types.size(); i++) {
     input_key_specs.push_back(
@@ -248,12 +248,23 @@ Intrinsic CreateIntrinsicWithKeyTypes(
                          .inputs = input_key_specs,
                          .outputs = output_key_specs,
                          .parameters = {CreateTopLevelParameters(
-                             epsilon, delta, l0_bound, key_types)},
+                             epsilon, delta, l0_bound, key_types, add_spec)},
                          .nested_intrinsics = {}};
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<InputType, OutputType>(linfinity_bound, l1_bound,
                                                   l2_bound));
   return intrinsic;
+}
+
+template <typename InputType, typename OutputType>
+Intrinsic CreateIntrinsicWithKeyTypes_ClosedDomain(
+    double epsilon = kEpsilonThreshold, double delta = 0.001,
+    int64_t l0_bound = 100, InputType linfinity_bound = 100,
+    double l1_bound = -1, double l2_bound = -1,
+    std::vector<DataType> key_types = {DT_STRING}) {
+  return CreateIntrinsicWithKeyTypes<InputType, OutputType>(
+      epsilon, delta, l0_bound, linfinity_bound, l1_bound, l2_bound, key_types,
+      /*add_spec=*/true);
 }
 
 // Creates an intrinsic for use in creating DPHistogram objects with a
@@ -262,10 +273,10 @@ Intrinsic CreateIntrinsicWithKeyTypes(
 // be used for most purposes.
 template <typename InputType, typename OutputType>
 Intrinsic CreateIntrinsicWithMinContributors(
-    int64_t min_contributors, std::vector<DataType> key_types = {},
-    double epsilon = kEpsilonThreshold, double delta = 0.001,
-    int64_t l0_bound = 100, InputType linfinity_bound = 100,
-    double l1_bound = -1, double l2_bound = -1) {
+    int64_t min_contributors, double epsilon = kEpsilonThreshold,
+    double delta = 0.001, int64_t l0_bound = 100,
+    InputType linfinity_bound = 100, double l1_bound = -1, double l2_bound = -1,
+    std::vector<DataType> key_types = {DT_STRING}) {
   Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<InputType, OutputType>(
       epsilon, delta, l0_bound, linfinity_bound, l1_bound, l2_bound, key_types);
   std::unique_ptr<MutableVectorData<int64_t>> min_contributors_tensor =

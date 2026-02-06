@@ -51,7 +51,7 @@ using ::testing::Not;
 using ::testing::TestWithParam;
 
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
-    CreateIntrinsicWithKeyTypes;
+    CreateIntrinsicWithKeyTypes_ClosedDomain;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateTensorSpec;
 
@@ -61,7 +61,8 @@ using DPClosedDomainHistogramTest = TestWithParam<bool>;
 
 // Make sure we can successfully create a DPClosedDomainHistogram object.
 TEST(DPClosedDomainHistogramTest, CreateAggregator_Success) {
-  Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<int64_t, int64_t>();
+  Intrinsic intrinsic =
+      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>();
   auto status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(status);
 
@@ -84,8 +85,9 @@ TEST(DPClosedDomainHistogramTest, CreateAggregator_Success) {
 // One key taking values in the set {"a", "b", "c"}
 TEST(DPClosedDomainHistogramTest, NoiselessReport_OneKey) {
   // Create intrinsic with one string key ({"a", "b", "c"} is default domain)
-  Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
-      kEpsilonThreshold, 0.001, 10, 10, -1, -1, {DT_STRING});
+  Intrinsic intrinsic =
+      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>(
+          kEpsilonThreshold, 0.001, 10, 10, -1, -1, {DT_STRING});
   // Create a DPClosedDomainHistogram object
   auto status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(status);
@@ -120,8 +122,9 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_OneKey) {
 // Two keys taking values in the sets {"a", "b", "c"} and {0, 1, 2}
 // Number of possible composite keys is 9 = 3 * 3.
 TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
-  Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
-      kEpsilonThreshold, 0.001, 10, 10, -1, -1, {DT_STRING, DT_INT64});
+  Intrinsic intrinsic =
+      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>(
+          kEpsilonThreshold, 0.001, 10, 10, -1, -1, {DT_STRING, DT_INT64});
   // Create a DPClosedDomainHistogram object
   auto status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(status);
@@ -168,10 +171,11 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
 
 // Same as above except we do not output the key that takes numerical values.
 TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
-  Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
-      /*epsilon=*/kEpsilonThreshold, /*delta=*/0.001, /*l0_bound=*/10,
-      /*linfinity_bound=*/10, /*l1_bound=*/-1, /*l2_bound=*/-1,
-      /*key_types=*/{DT_STRING, DT_INT64});
+  Intrinsic intrinsic =
+      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>(
+          /*epsilon=*/kEpsilonThreshold, /*delta=*/0.001, /*l0_bound=*/10,
+          /*linfinity_bound=*/10, /*l1_bound=*/-1, /*l2_bound=*/-1,
+          /*key_types=*/{DT_STRING, DT_INT64});
   intrinsic.outputs[1] = CreateTensorSpec("", DT_INT64);
 
   // Create a DPClosedDomainHistogram object
@@ -220,10 +224,11 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
 // increase.
 TEST(DPClosedDomainHistogramTest, NoiseAddedForSmallEpsilons) {
   Intrinsic intrinsic =
-      CreateIntrinsicWithKeyTypes<int32_t, int64_t>(/*epsilon=*/0.01,
-                                                    /*delta=*/1e-8,
-                                                    /*l0_bound=*/2,
-                                                    /*linfinity_bound=*/1);
+      CreateIntrinsicWithKeyTypes_ClosedDomain<int32_t, int64_t>(
+          /*epsilon=*/0.01,
+          /*delta=*/1e-8,
+          /*l0_bound=*/2,
+          /*linfinity_bound=*/1);
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   int num_inputs = 4000;
   for (int i = 0; i < num_inputs; i++) {
@@ -260,11 +265,11 @@ TEST(DPClosedDomainHistogramTest, NoiseAddedForSmallEpsilons) {
 
 // Ensure that we have floating point output when we request it.
 TEST(DPClosedDomainHistogramTest, FloatTest) {
-  Intrinsic intrinsic =
-      CreateIntrinsicWithKeyTypes<float, float>(/*epsilon=*/0.01,
-                                                /*delta=*/1e-8,
-                                                /*l0_bound=*/2,
-                                                /*linfinity_bound=*/1);
+  Intrinsic intrinsic = CreateIntrinsicWithKeyTypes_ClosedDomain<float, float>(
+      /*epsilon=*/0.01,
+      /*delta=*/1e-8,
+      /*l0_bound=*/2,
+      /*linfinity_bound=*/1);
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   int num_inputs = 4000;
   for (int i = 0; i < num_inputs; i++) {
