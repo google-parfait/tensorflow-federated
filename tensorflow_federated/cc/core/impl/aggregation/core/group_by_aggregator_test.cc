@@ -1465,7 +1465,7 @@ TEST(GroupByAggregatorTest, Accumulate_FewerTensorsThanExpected) {
                                    "should operate on 3 input tensors"));
 }
 
-TEST(GroupByAggregatorTest, Accumulate_MoreTensorsThanExpected) {
+TEST(GroupByAggregatorTest, ValidateInputs_MoreTensorsThanExpected) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
   Tensor key1 = Tensor::Create(DT_STRING, {},
@@ -1475,28 +1475,28 @@ TEST(GroupByAggregatorTest, Accumulate_MoreTensorsThanExpected) {
                                CreateTestData<string_view>({"key_string_2"}))
                     .value();
   Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
-  Status s = group_by_aggregator->Accumulate({&key1, &key2, &t});
+  Status s = group_by_aggregator->ValidateInputs({&key1, &key2, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
               ::testing::HasSubstr("GroupByAggregator::ValidateInputs: "
                                    "should operate on 2 input tensors"));
 }
 
-TEST(GroupByAggregatorTest, Accumulate_KeyTensorSmallerThanValueTensor) {
+TEST(GroupByAggregatorTest, ValidateInputs_KeyTensorSmallerThanValueTensor) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
   Tensor key = Tensor::Create(DT_STRING, {},
                               CreateTestData<string_view>({"key_string_1"}))
                    .value();
   Tensor t = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 2})).value();
-  Status s = group_by_aggregator->Accumulate({&key, &t});
+  Status s = group_by_aggregator->ValidateInputs({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
               ::testing::HasSubstr("Shape of value tensor at index 1 does not "
-                                   "match the shape of the first key tensor."));
+                                   "match the shape of the first tensor."));
 }
 
-TEST(GroupByAggregatorTest, Accumulate_KeyTensorLargerThanValueTensor) {
+TEST(GroupByAggregatorTest, ValidateInputs_KeyTensorLargerThanValueTensor) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
   Tensor key =
@@ -1505,14 +1505,15 @@ TEST(GroupByAggregatorTest, Accumulate_KeyTensorLargerThanValueTensor) {
                          {"key_string_1", "key_string_2", "key_string_3"}))
           .value();
   Tensor t = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 2})).value();
-  Status s = group_by_aggregator->Accumulate({&key, &t});
+  Status s = group_by_aggregator->ValidateInputs({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
               ::testing::HasSubstr("Shape of value tensor at index 1 does not "
-                                   "match the shape of the first key tensor."));
+                                   "match the shape of the first tensor."));
 }
 
-TEST(GroupByAggregatorTest, Accumulate_MultidimensionalTensorsNotSupported) {
+TEST(GroupByAggregatorTest,
+     ValidateInputs_MultidimensionalTensorsNotSupported) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
   Tensor key = Tensor::Create(DT_STRING, {2, 2},
@@ -1520,11 +1521,23 @@ TEST(GroupByAggregatorTest, Accumulate_MultidimensionalTensorsNotSupported) {
                    .value();
   Tensor t =
       Tensor::Create(DT_INT32, {2, 2}, CreateTestData({1, 2, 3, 4})).value();
-  Status s = group_by_aggregator->Accumulate({&key, &t});
+  Status s = group_by_aggregator->ValidateInputs({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
               ::testing::HasSubstr(
                   "Only scalar or one-dimensional tensors are supported."));
+}
+
+TEST(GroupByAggregatorTest, ValidateInputs_WrongKeyType) {
+  Intrinsic intrinsic = CreateDefaultIntrinsic();
+  auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
+  Tensor key =
+      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({42})).value();
+  Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
+  Status s = group_by_aggregator->ValidateInputs({&key, &t});
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), ::testing::HasSubstr("Tensor at position 0 did not"
+                                                " have expected dtype"));
 }
 
 TEST(GroupByAggregatorTest, Merge_IncompatibleKeyType) {

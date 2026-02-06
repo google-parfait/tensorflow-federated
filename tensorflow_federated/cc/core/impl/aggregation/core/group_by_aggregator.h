@@ -320,7 +320,7 @@ class GroupByAggregator : public TensorAggregator {
   // and shape.
   Status ValidateIndexedTensor(const Tensor& tensor, size_t input_index,
                                DataType expected_dtype,
-                               const TensorShape& key_shape) const;
+                               const TensorShape& expected_shape) const;
 
   // Internal implementation to accumulate the input tensors into the state of
   // this GroupByAggregator.

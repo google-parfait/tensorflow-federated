@@ -288,7 +288,7 @@ OutputTensorList CompositeKeyCombiner::GetOutputKeys() const {
 }
 
 StatusOr<TensorShape> CompositeKeyCombiner::CheckValidAndGetShape(
-    const InputTensorList& tensors) {
+    const InputTensorList& tensors) const {
   if (tensors.size() == 0) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "InputTensorList must contain at least one tensor.";

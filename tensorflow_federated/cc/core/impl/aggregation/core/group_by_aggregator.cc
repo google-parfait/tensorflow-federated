@@ -469,7 +469,7 @@ StatusOr<OutputTensorList> GroupByAggregator::ShrinkHistogramToSurvivors(
 
 Status GroupByAggregator::ValidateIndexedTensor(
     const Tensor& tensor, size_t input_index, DataType expected_dtype,
-    const TensorShape& key_shape) const {
+    const TensorShape& expected_shape) const {
   // Ensure the tensor at input_index has the expected dtype and shape.
   if (tensor.dtype() != expected_dtype) {
     return TFF_STATUS(INVALID_ARGUMENT)
@@ -477,11 +477,11 @@ Status GroupByAggregator::ValidateIndexedTensor(
            << input_index << " did not have expected dtype " << expected_dtype
            << " and instead had dtype " << tensor.dtype();
   }
-  if (tensor.shape() != key_shape) {
+  if (tensor.shape() != expected_shape) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "GroupByAggregator::ValidateIndexedTensor: Shape of value tensor "
            << "at index " << input_index
-           << " does not match the shape of the first key tensor.";
+           << " does not match the shape of the first tensor.";
   }
   if (!tensor.is_dense()) {
     return TFF_STATUS(INVALID_ARGUMENT)
@@ -497,12 +497,19 @@ Status GroupByAggregator::ValidateInputs(const InputTensorList& tensors) const {
            << "GroupByAggregator::ValidateInputs: should operate on "
            << num_tensors_per_input_ << " input tensors";
   }
-  // Get the shape of the first key tensor in order to ensure that all the
-  // value tensors have the same shape. CompositeKeyCombiner::Accumulate will
-  // ensure that all keys have the same shape before making any changes to its
-  // own internal state.
-  TensorShape key_shape = tensors[0]->shape();
-  if (key_shape.dim_sizes().size() > 1) {
+
+  TensorShape first_shape = tensors[0]->shape();
+  if (key_combiner_ != nullptr) {
+    // Validate the key tensors if they are present.
+    InputTensorList keys(num_keys_per_input_);
+    for (int i = 0; i < num_keys_per_input_; ++i) {
+      keys[i] = tensors[i];
+    }
+    TFF_ASSIGN_OR_RETURN(first_shape,
+                         key_combiner_->CheckValidAndGetShape(keys));
+  }
+
+  if (first_shape.dim_sizes().size() > 1) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "GroupByAggregator::ValidateInputs: Only scalar or "
            << "one-dimensional tensors are "
@@ -514,8 +521,9 @@ Status GroupByAggregator::ValidateInputs(const InputTensorList& tensors) const {
   size_t input_index = num_keys_per_input_;
   for (const Intrinsic& intrinsic : intrinsics_) {
     for (const TensorSpec& tensor_spec : intrinsic.inputs) {
-      TFF_RETURN_IF_ERROR(ValidateIndexedTensor(
-          *tensors[input_index], input_index, tensor_spec.dtype(), key_shape));
+      TFF_RETURN_IF_ERROR(
+          ValidateIndexedTensor(*tensors[input_index], input_index,
+                                tensor_spec.dtype(), first_shape));
       ++input_index;
     }
   }

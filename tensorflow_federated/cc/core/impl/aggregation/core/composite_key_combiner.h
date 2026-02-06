@@ -111,6 +111,11 @@ class CompositeKeyCombiner {
   // Gets a reference to the expected types for this CompositeKeyCombiner.
   const std::vector<DataType>& dtypes() const { return dtypes_; }
 
+  // Checks that the provided InputTensorList can be accumulated into this
+  // CompositeKeyCombiner.
+  StatusOr<TensorShape> CheckValidAndGetShape(
+      const InputTensorList& tensors) const;
+
  protected:
   // Creates ordinals for composite keys spread across input tensors.
   // Specifically, the i-th entry of the output is the ordinal for the composite
@@ -131,9 +136,6 @@ class CompositeKeyCombiner {
       absl::flat_hash_map<CompositeKey, int64_t>& composite_key_map,
       int64_t& current_ordinal);
 
-  // Checks that the provided InputTensorList can be accumulated into this
-  // CompositeKeyCombiner.
-  StatusOr<TensorShape> CheckValidAndGetShape(const InputTensorList& tensors);
 
   // Functions to grant access to members
   inline absl::flat_hash_map<CompositeKey, int64_t>& GetCompositeKeys() {
