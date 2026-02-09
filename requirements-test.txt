@@ -7,7 +7,7 @@ charset-normalizer==3.4.2
 cloudpickle==3.1.1
 decorator==5.2.1
 dm-tree==0.1.8
-dp-accounting==0.4.3
+dp-accounting==0.6.0
 flatbuffers==25.2.10
 gast==0.6.0
 google-auth==2.40.3
