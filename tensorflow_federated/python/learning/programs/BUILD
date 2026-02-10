@@ -19,7 +19,6 @@ py_library(
     deps = [
         ":evaluation_program_logic",
         ":training_program_logic",
-        ":vizier_program_logic",
     ],
 )
 
@@ -81,30 +80,6 @@ py_test(
         ":program_logic",
         ":training_program_logic",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/learning/templates:composers",
-        "//tensorflow_federated/python/learning/templates:learning_process",
-        "@federated_language//federated_language",
-    ],
-)
-
-py_library(
-    name = "vizier_program_logic",
-    srcs = ["vizier_program_logic.py"],
-    deps = [
-        ":evaluation_program_logic",
-        ":program_logic",
-        "//tensorflow_federated/python/learning/templates:learning_process",
-        "//tensorflow_federated/python/program:structure_utils",
-        "@federated_language//federated_language",
-    ],
-)
-
-py_test(
-    name = "vizier_program_logic_test",
-    srcs = ["vizier_program_logic_test.py"],
-    deps = [
-        ":evaluation_program_logic",
-        ":vizier_program_logic",
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",

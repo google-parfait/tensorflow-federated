@@ -17,4 +17,3 @@ from tensorflow_federated.python.learning.programs.evaluation_program_logic impo
 from tensorflow_federated.python.learning.programs.evaluation_program_logic import extract_and_rewrap_metrics
 from tensorflow_federated.python.learning.programs.training_program_logic import ProgramState
 from tensorflow_federated.python.learning.programs.training_program_logic import train_model
-from tensorflow_federated.python.learning.programs.vizier_program_logic import train_model_with_vizier
