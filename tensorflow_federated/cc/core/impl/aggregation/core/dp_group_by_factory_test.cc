@@ -346,6 +346,18 @@ TEST(DPClosedDomainHistogramTest, CatchDuplicateParameterNames) {
                        HasSubstr("Duplicate parameter name: epsilon")));
 }
 
+TEST(DPClosedDomainHistogramTest, CatchKeyNamesAndMinContributorsToGroup) {
+  Intrinsic intrinsic =
+      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>();
+  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {1},
+                                                CreateTestData({10}),
+                                                "min_contributors_to_group")
+                                     .value());
+  EXPECT_THAT(CreateTensorAggregator(intrinsic),
+              StatusIs(INVALID_ARGUMENT,
+                       HasSubstr("do not have an algorithm that uses both")));
+}
+
 // Phase 2: Test that the factory catches problems in Intrinsics that are set up
 // for the open-domain case.
 std::vector<Tensor> CreateTopLevelParameters_OpenDomain() {
@@ -429,7 +441,7 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidLinfinityBound) {
   auto aggregator_status = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(aggregator_status,
               StatusIs(INVALID_ARGUMENT,
-                       HasSubstr("must provide a positive Linfinity bound.")));
+                       HasSubstr("must provide a positive Linfinity bound")));
 }
 
 TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
@@ -513,6 +525,7 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsNoKeys) {
 }
 
 TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsWithKeys) {
+  // L_inf given (default)
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
       /*min_contributors=*/10);
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
@@ -520,6 +533,17 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsWithKeys) {
   auto* dp_open_domain_histogram =
       dynamic_cast<DPOpenDomainHistogram*>(aggregator.get());
   ASSERT_NE(dp_open_domain_histogram, nullptr);
+
+  // L_1 given
+  Intrinsic intrinsic_l1 = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      /*min_contributors=*/10, /*epsilon=*/1.0, /*delta=*/1e-4,
+      /*l0_bound=*/10, /*linfinity_bound=*/-1, /*l1_bound=*/10);
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator_l1,
+                           CreateTensorAggregator(intrinsic_l1));
+  // Check that the returned aggregator is a DPOpenDomainHistogram.
+  auto* dp_open_domain_histogram_l1 =
+      dynamic_cast<DPOpenDomainHistogram*>(aggregator_l1.get());
+  ASSERT_NE(dp_open_domain_histogram_l1, nullptr);
 }
 
 TEST(DPGroupByFactoryTest, CreateAggregatorWithZeroMinContributors_Fails) {
