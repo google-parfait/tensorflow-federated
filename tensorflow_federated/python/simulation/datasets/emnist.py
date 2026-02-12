@@ -15,6 +15,7 @@
 
 import collections
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import download
@@ -151,13 +152,11 @@ def _get_synthetic_digits_data():
   data = _SYNTHETIC_DIGITS_DATA
   img_list = []
   for img_array in data:
-    img_array = tf.constant(img_array, dtype=tf.float32) / 9.0
+    img_array = np.array(img_array, dtype=np.float32) / 9.0
     img_list.append(img_array)
-  pixels = tf.stack(img_list, axis=0)
-  labels = tf.constant(range(10), dtype=tf.int32)
-
-  data = collections.OrderedDict(label=labels, pixels=pixels)
-  return tf.nest.map_structure(lambda x: x.numpy(), data)
+  pixels = np.stack(img_list, axis=0)
+  labels = np.array(list(range(10)), dtype=np.int32)
+  return collections.OrderedDict(label=labels, pixels=pixels)
 
 
 # pyformat: disable
