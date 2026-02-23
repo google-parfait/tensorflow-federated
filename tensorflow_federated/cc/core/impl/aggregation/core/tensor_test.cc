@@ -555,6 +555,21 @@ TEST(TensorTest, RoundTripDataString) {
   EXPECT_THAT(*result, IsTensor({2, 3}, values));
 }
 
+TEST(TensorTest, RoundTripDataStringNonUtf8) {
+  std::string v1("\xC0\x00\xC1\xF5", 4), v2("\xFF\x80\x00\xFE", 4);
+  std::initializer_list<string_view> values{v1, v2};
+
+  auto t = Tensor::Create(DT_STRING, {2}, CreateTestData(values));
+
+  auto p = t->ToProto();
+  EXPECT_THAT(p.shape().dim_sizes_size(), 1);
+  EXPECT_THAT(p.shape().dim_sizes(0), 2);
+
+  auto result = Tensor::FromProto(p);
+  EXPECT_THAT(result, IsOk());
+  EXPECT_THAT(*result, IsTensor({2}, values));
+}
+
 TEST(TensorTest, RoundTripNoDataInt) {
   std::initializer_list<int32_t> values{};
   auto t = Tensor::Create(DT_INT32, {0}, CreateTestData(values));
