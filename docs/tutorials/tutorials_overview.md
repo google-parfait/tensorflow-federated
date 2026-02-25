@@ -23,11 +23,6 @@ will need to use a
     shows how the basic FL computations in `tff.learning` can be combined with
     specialized aggregation routines offering robustness, differential privacy,
     compression, and more.
-*   [Federated Reconstruction for Matrix Factorization](federated_reconstruction_for_matrix_factorization.ipynb)
-    introduces partially local federated learning, where some client parameters
-    are never aggregated on the server. The tutorial demonstrates how to use the
-    Federated Learning API to train a partially local matrix factorization
-    model.
 
 **Getting started with federated analytics**
 

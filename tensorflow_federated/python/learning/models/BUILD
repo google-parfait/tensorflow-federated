@@ -38,7 +38,6 @@ py_library(
         ":functional",
         ":keras_utils",
         ":model_weights",
-        ":reconstruction_model",
         ":serialization",
         ":variable",
     ],
@@ -142,27 +141,6 @@ py_test(
         ":model_weights",
         ":variable",
         "//tensorflow_federated/python/common_libs:structure",
-        "@federated_language//federated_language",
-    ],
-)
-
-py_library(
-    name = "reconstruction_model",
-    srcs = ["reconstruction_model.py"],
-    deps = [
-        ":model_weights",
-        ":variable",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
-        "@federated_language//federated_language",
-    ],
-)
-
-py_test(
-    name = "reconstruction_model_test",
-    srcs = ["reconstruction_model_test.py"],
-    deps = [
-        ":model_weights",
-        ":reconstruction_model",
         "@federated_language//federated_language",
     ],
 )

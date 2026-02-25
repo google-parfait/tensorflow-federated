@@ -18,11 +18,6 @@ meet the following criteria:
     providing functionality independent of the model architecture (such as
     optimizers).
 
-See
-[Federated Reconstruction](https://www.tensorflow.org/federated/api_docs/python/tff/learning/reconstruction)
-for an example of a production-ready algorithm that differs from Federated
-Averaging.
-
 ## How do I get my algorithm into `tff.learning`?
 
 We welcome contributions. Generally, we require algorithms to be 1) well-tested,
