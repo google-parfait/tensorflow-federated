@@ -694,6 +694,19 @@ TEST(DPGroupingFederatedSumTest, CreateUnsupportedEmptyIntrinsic) {
 }
 
 TEST(DPGroupingFederatedSumTest, CreateUnsupportedNumberOfOutputs) {
+  Intrinsic intrinsic{
+      kDPSumUri,
+      {TensorSpec{"foo", DT_INT32, {}}},
+      {TensorSpec{"foo_out", DT_INT32, {}}, TensorSpec{"bar_out", DT_INT32, {}},
+       TensorSpec{"baz_out", DT_INT32, {}}},
+      {CreateDPGFSParameters<int64_t>(1000, -1, -1)},
+      {}};
+  Status s = CreateTensorAggregator(intrinsic).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), HasSubstr("Only one or two output tensors"));
+}
+
+TEST(DPGroupingFederatedSumTest, CreateUnsupportedOutputName) {
   Intrinsic intrinsic{kDPSumUri,
                       {TensorSpec{"foo", DT_INT32, {}}},
                       {TensorSpec{"foo_out", DT_INT32, {}},
@@ -702,7 +715,32 @@ TEST(DPGroupingFederatedSumTest, CreateUnsupportedNumberOfOutputs) {
                       {}};
   Status s = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(s.message(), HasSubstr("Exactly one output tensor is expected"));
+  EXPECT_THAT(s.message(), HasSubstr("Expected second output tensor's name"));
+}
+
+TEST(DPGroupingFederatedSumTest, CreateUnsupportedOutputDataType) {
+  Intrinsic intrinsic{
+      kDPSumUri,
+      {TensorSpec{"foo", DT_INT32, {}}},
+      {TensorSpec{"foo_out", DT_INT32, {}},
+       TensorSpec{absl::StrCat(kDPNoiseDescription, "foo"), DT_INT32, {}}},
+      {CreateDPGFSParameters<int64_t>(1000, -1, -1)},
+      {}};
+  Status s = CreateTensorAggregator(intrinsic).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), HasSubstr("Expected second output tensor to have"
+                                     " dtype DT_STRING"));
+}
+
+TEST(DPGroupingFederatedSumTest, CreateWithTwoOutputs) {
+  Intrinsic intrinsic{
+      kDPSumUri,
+      {TensorSpec{"foo", DT_INT32, {}}},
+      {TensorSpec{"foo_out", DT_INT32, {}},
+       TensorSpec{absl::StrCat(kDPNoiseDescription, "foo"), DT_STRING, {}}},
+      {CreateDPGFSParameters<int64_t>(1000, -1, -1)},
+      {}};
+  EXPECT_OK(CreateTensorAggregator(intrinsic).status());
 }
 
 TEST(DPGroupingFederatedSumTest,

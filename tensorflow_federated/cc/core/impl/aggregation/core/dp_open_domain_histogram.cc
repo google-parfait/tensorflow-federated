@@ -72,10 +72,10 @@ namespace internal {
 // proof for the case where inputs are positive; our use of sign() generalizes
 // the analysis to the non-positive case.
 template <typename OutputType>
-Status NoiseAndThreshold(double epsilon, double delta, int64_t l0_bound,
-                         OutputType linfinity_bound, double l1_bound,
-                         double l2_bound, TensorSliceData& column,
-                         absl::flat_hash_set<size_t>& survivor_indices) {
+StatusOr<DPHistogramBundle> NoiseAndThreshold(
+    double epsilon, double delta, int64_t l0_bound, OutputType linfinity_bound,
+    double l1_bound, double l2_bound, TensorSliceData& column,
+    absl::flat_hash_set<size_t>& survivor_indices) {
   TFF_ASSIGN_OR_RETURN(
       auto bundle,
       CreateDPHistogramBundle(epsilon, delta, l0_bound, linfinity_bound,
@@ -101,16 +101,16 @@ Status NoiseAndThreshold(double epsilon, double delta, int64_t l0_bound,
       survivor_indices.erase(i);
     }
   }
-  return absl::OkStatus();
+  return bundle;
 }
 
 // Noise is added to each value of a column. This is used in
 // DPOpenDomainHistogram::Report when k-thresholding is enabled and so we don't
 // need to threshold based on the noisy value.
 template <typename OutputType>
-Status NoiseWithoutThresholding(double epsilon, double delta, int64_t l0_bound,
-                                OutputType linfinity_bound, double l1_bound,
-                                double l2_bound, TensorSliceData& column) {
+StatusOr<DPHistogramBundle> NoiseWithoutThresholding(
+    double epsilon, double delta, int64_t l0_bound, OutputType linfinity_bound,
+    double l1_bound, double l2_bound, TensorSliceData& column) {
   TFF_ASSIGN_OR_RETURN(
       DPHistogramBundle bundle,
       CreateDPHistogramBundle(epsilon, delta, l0_bound, linfinity_bound,
@@ -123,7 +123,7 @@ Status NoiseWithoutThresholding(double epsilon, double delta, int64_t l0_bound,
   for (OutputType& column : column_span) {
     column = (bundle.mechanism)->AddNoise(column);
   }
-  return absl::OkStatus();
+  return bundle;
 }
 
 }  // namespace internal
@@ -270,11 +270,15 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::NoisyReport() {
     num_output_keys++;
   }
 
-  // Create a set of indices.
+  // Keep track of which groups survive thresholding.
   absl::flat_hash_set<size_t> survivor_indices;
+
+  // Keep track of the noise mechanisms for each aggregation.
+  std::vector<DPHistogramBundle> bundles;
+
   if (!min_contributors_to_group().has_value()) {
-    // If there is no k-thresholding, one for each composite key in the
-    // histogram.
+    // If we will not threshold by contribution, initially assume all groups
+    // survive.
     for (size_t i = 0; i < num_rows; i++) {
       survivor_indices.insert(i);
     }
@@ -295,11 +299,13 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::NoisyReport() {
       StatusOr<Tensor> tensor;
       NUMERICAL_ONLY_DTYPE_CASES(
           column_dtypes[column], OutputType,
-          TFF_RETURN_IF_ERROR(internal::NoiseAndThreshold<OutputType>(
-              epsilon_per_agg(), delta_per_agg(),
-              /*l0_bound=*/max_groups_contributed(),
-              linfinity_tensor.CastToScalar<OutputType>(), l1_bound, l2_bound,
-              *column_data[column], survivor_indices)));
+          TFF_ASSIGN_OR_RETURN(
+              bundles.emplace_back(),
+              internal::NoiseAndThreshold<OutputType>(
+                  epsilon_per_agg(), delta_per_agg(),
+                  /*l0_bound=*/max_groups_contributed(),
+                  linfinity_tensor.CastToScalar<OutputType>(), l1_bound,
+                  l2_bound, *column_data[column], survivor_indices)));
     }
 
     // When there are no grouping keys, aggregation will be scalar. Hence, the
@@ -311,8 +317,32 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::NoisyReport() {
 
     // Produce a new list of tensors containing only the survivors of
     // thresholding, in uniformly random order.
-    return ShrinkHistogramToSurvivors(std::move(histogram_as_slice_data),
-                                      survivor_indices);
+    TFF_ASSIGN_OR_RETURN(
+        OutputTensorList shrunk_histogram,
+        ShrinkHistogramToSurvivors(std::move(histogram_as_slice_data),
+                                   survivor_indices));
+    if (!report_algorithm_characteristics()) {
+      return shrunk_histogram;
+    }
+    OutputTensorList output_histogram(0);
+    int64_t num_elements = survivor_indices.size();
+    for (int i = 0; i < shrunk_histogram.size(); ++i) {
+      output_histogram.push_back(std::move(shrunk_histogram[i]));
+      if (i < num_keys_per_input()) {
+        continue;
+      }
+      // Add a string Tensor that describes the noise.
+      int which_aggregation = i - num_keys_per_input();
+
+      TFF_ASSIGN_OR_RETURN(
+          auto string_data,
+          CreateNoiseDescription(num_elements, bundles[which_aggregation]));
+      TFF_ASSIGN_OR_RETURN(
+          output_histogram.emplace_back(),
+          Tensor::Create(DT_STRING, {num_elements}, std::move(string_data),
+                         intrinsics()[which_aggregation].outputs[1].name()));
+    }
+    return output_histogram;
   }
 
   // We now perform k-thresholding as min_contributors_to_group_ is set.
@@ -349,21 +379,34 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::NoisyReport() {
     StatusOr<Tensor> tensor;
     NUMERICAL_ONLY_DTYPE_CASES(
         column_dtypes[column], OutputType,
-        TFF_RETURN_IF_ERROR(internal::NoiseWithoutThresholding<OutputType>(
-            epsilon_per_agg(), delta_per_agg(),
-            /*l0_bound=*/max_groups_contributed(),
-            linfinity_tensor.CastToScalar<OutputType>(), l1_bound, l2_bound,
-            *column_data[column])));
+        TFF_ASSIGN_OR_RETURN(bundles.emplace_back(),
+                             internal::NoiseWithoutThresholding<OutputType>(
+                                 epsilon_per_agg(), delta_per_agg(),
+                                 /*l0_bound=*/max_groups_contributed(),
+                                 linfinity_tensor.CastToScalar<OutputType>(),
+                                 l1_bound, l2_bound, *column_data[column])););
   }
 
   // Convert the sliced data back to a histogram i.e. OutputTensorList.
   OutputTensorList output_histogram(0);
+  int64_t num_elements = survivor_indices.size();
   for (int i = 0; i < column_data.size(); ++i) {
+    TFF_ASSIGN_OR_RETURN(output_histogram.emplace_back(),
+                         Tensor::Create(column_dtypes[i], {num_elements},
+                                        std::move(column_data[i])));
+    if (!report_algorithm_characteristics() || i < num_keys_per_input()) {
+      continue;
+    }
+    // Add a string Tensor that describes the noise.
+    int which_aggregation = i - num_keys_per_input();
+
+    TFF_ASSIGN_OR_RETURN(
+        auto string_data,
+        CreateNoiseDescription(num_elements, bundles[which_aggregation]));
     TFF_ASSIGN_OR_RETURN(
         output_histogram.emplace_back(),
-        Tensor::Create(column_dtypes[i],
-                       {static_cast<int64_t>(survivor_indices.size())},
-                       std::move(column_data[i])));
+        Tensor::Create(DT_STRING, {num_elements}, std::move(string_data),
+                       intrinsics()[which_aggregation].outputs[1].name()));
   }
 
   return output_histogram;

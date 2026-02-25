@@ -26,9 +26,11 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
@@ -104,6 +106,17 @@ class DPGroupByAggregator : public GroupByAggregator {
   // output of Serialize().
   StatusOr<int64_t> CalculateSerializeSensitivity();
 
+  // Check if we should report the characteristics of the DP algorithm.
+  bool report_algorithm_characteristics() const {
+    return report_algorithm_characteristics_;
+  }
+
+  // Generate a list of `num_elements` strings where the first string contains
+  // a confidence interval for the noise added by `mechanism` (and `threshold`,
+  // if provided). The other strings are empty.
+  StatusOr<std::unique_ptr<MutableStringData>> CreateNoiseDescription(
+      int num_elements, DPHistogramBundle& bundle);
+
  private:
   double epsilon_;
   double delta_;
@@ -111,6 +124,7 @@ class DPGroupByAggregator : public GroupByAggregator {
   int max_string_length_;
   double epsilon_per_agg_;
   double delta_per_agg_;
+  bool report_algorithm_characteristics_;
 };
 
 }  // namespace aggregation
