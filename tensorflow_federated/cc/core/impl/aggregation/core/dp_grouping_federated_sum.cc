@@ -22,6 +22,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -229,11 +230,28 @@ class DPGroupingFederatedSumFactory final
              << intrinsic.inputs.size();
     }
 
-    if (intrinsic.outputs.size() != 1) {
+    if (intrinsic.outputs.size() != 1 && intrinsic.outputs.size() != 2) {
       return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupingFederatedSumFactory: Exactly one output tensor is "
-                "expected but got "
+             << "DPGroupingFederatedSumFactory: Only one or two output tensors "
+                "are expected but got "
              << intrinsic.outputs.size();
+    }
+    if (intrinsic.outputs.size() == 2) {
+      if (intrinsic.outputs[1].name() !=
+          absl::StrCat(kDPNoiseDescription, intrinsic.inputs[0].name())) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "DPGroupingFederatedSumFactory: Expected second output "
+                  "tensor's name to begin with "
+               << kDPNoiseDescription << " and end with "
+               << intrinsic.inputs[0].name() << " but got "
+               << intrinsic.outputs[1].name();
+      }
+      if (intrinsic.outputs[1].dtype() != DT_STRING) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "DPGroupingFederatedSumFactory: Expected second output tensor"
+                  " to have dtype DT_STRING but got "
+               << DataType_Name(intrinsic.outputs[1].dtype());
+      }
     }
 
     if (!intrinsic.nested_intrinsics.empty()) {
