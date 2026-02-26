@@ -219,22 +219,22 @@ StatusOr<TensorSpan> FindAndValidateKeys(
 Status ValidateNestedIntrinsics(const Intrinsic& intrinsic,
                                 SupportedDPAlgorithms which_algorithm,
                                 DPParameters dp_parameters) {
-  // Currently, we only support nested sums.
-  // The following check will be updated when this changes.
-  for (const auto& intrinsic : intrinsic.nested_intrinsics) {
-    if (intrinsic.uri != kDPSumUri) {
+  for (const auto& inner_intrinsic : intrinsic.nested_intrinsics) {
+    // Currently, we only support nested sums.
+    // The following check will be updated when this changes.
+    if (inner_intrinsic.uri != kDPSumUri) {
       return TFF_STATUS(UNIMPLEMENTED) << "DPGroupByFactory: Currently, only "
                                           "nested DP sums are supported.";
     }
 
     // Verify presence of all norm bounds
-    if (intrinsic.parameters.size() != kNumDPSumParameters) {
+    if (inner_intrinsic.parameters.size() != kNumDPSumParameters) {
       return TFF_STATUS(INVALID_ARGUMENT)
              << "DPGroupByFactory: Linfinity, L1, and L2 bounds are expected.";
     }
 
     // Verify that the norm bounds are in numerical Tensors
-    for (const auto& parameter_tensor : intrinsic.parameters) {
+    for (const auto& parameter_tensor : inner_intrinsic.parameters) {
       if (internal::GetTypeKind(parameter_tensor.dtype()) !=
           internal::TypeKind::kNumeric) {
         return TFF_STATUS(INVALID_ARGUMENT)
@@ -243,9 +243,11 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic,
       }
     }
 
-    const auto& linfinity_tensor = intrinsic.parameters[kLinfinityIndex];
-    const double l1 = intrinsic.parameters[kL1Index].CastToScalar<double>();
-    const double l2 = intrinsic.parameters[kL2Index].CastToScalar<double>();
+    const auto& linfinity_tensor = inner_intrinsic.parameters[kLinfinityIndex];
+    const double l1 =
+        inner_intrinsic.parameters[kL1Index].CastToScalar<double>();
+    const double l2 =
+        inner_intrinsic.parameters[kL2Index].CastToScalar<double>();
 
     // A positive Linfinity bound is required when the survival of a group
     // is decided by comparing its noisy aggregate against a threshold.
@@ -272,6 +274,14 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic,
                << "DPGroupByFactory: Closed-domain DP histograms require "
                   "either an L1 bound, an L2 bound, or an Linfinity bound.";
       }
+    }
+
+    // Verify that the number of outputs remain consistent (all 1 or all 2).
+    if (inner_intrinsic.outputs.size() !=
+        intrinsic.nested_intrinsics[0].outputs.size()) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "DPGroupByFactory: The number of outputs must be consistent "
+                "across nested intrinsics.";
     }
   }
   return TFF_STATUS(OK);

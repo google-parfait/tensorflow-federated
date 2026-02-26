@@ -64,8 +64,8 @@ using ::testing::TestWithParam;
 using DPClosedDomainHistogramTest = TestWithParam<bool>;
 using DPOpenDomainHistogramTest = TestWithParam<bool>;
 
-// Phase 1:Test that the factory catches problems in Intrinsics that are set up
-// for the closed-domain case.
+// Phase 1:Test that the factory catches problems in Intrinsics specific to
+// the closed-domain case.
 std::vector<Tensor> CreateTopLevelParameters_ClosedDomain() {
   return CreateTopLevelParameters<double, double, int64_t>(1000.0, 0.001, 100,
                                                            {DT_STRING});
@@ -364,7 +364,17 @@ std::vector<Tensor> CreateTopLevelParameters_OpenDomain() {
   return CreateTopLevelParameters(1000.0, 0.001, 100);
 }
 
-TEST(DPOpenDomainHistogramTest, CatchTooFewParameters) {
+TEST(DPOpenDomainHistogramTest, CatchInvalidLinfinityBound) {
+  Intrinsic intrinsic =
+      CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, 10, -1, 2, 3);
+  auto aggregator_status = CreateTensorAggregator(intrinsic).status();
+  EXPECT_THAT(aggregator_status,
+              StatusIs(INVALID_ARGUMENT,
+                       HasSubstr("must provide a positive Linfinity bound")));
+}
+
+// Phase 3 : Test that the factory catches general problems in Intrinsics
+TEST(DPGroupByFactoryTest, CatchTooFewParameters) {
   std::vector<Tensor> parameters;
   auto epsilon_tensor = CreateTestData({1.0});
   parameters.push_back(
@@ -382,7 +392,7 @@ TEST(DPOpenDomainHistogramTest, CatchTooFewParameters) {
                                  "max_groups_contributed must be provided")));
 }
 
-TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
+TEST(DPGroupByFactoryTest, CatchInvalidParameterTypes) {
   Intrinsic intrinsic0{
       .uri = kDPGroupByUri,
       .inputs = {CreateTensorSpec("key", DT_STRING)},
@@ -417,7 +427,7 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
   EXPECT_THAT(bad_l0_bound.message(), HasSubstr("must be numerical"));
 }
 
-TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
+TEST(DPGroupByFactoryTest, CatchInvalidParameterValues) {
   Intrinsic intrinsic0 = CreateIntrinsic<int64_t, int64_t>(-1, 0.001, 10);
   auto bad_epsilon = CreateTensorAggregator(intrinsic0).status();
   EXPECT_THAT(bad_epsilon, StatusIs(INVALID_ARGUMENT,
@@ -435,16 +445,7 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
                        HasSubstr("max_groups_contributed must be positive")));
 }
 
-TEST(DPOpenDomainHistogramTest, CatchInvalidLinfinityBound) {
-  Intrinsic intrinsic =
-      CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, 10, -1, 2, 3);
-  auto aggregator_status = CreateTensorAggregator(intrinsic).status();
-  EXPECT_THAT(aggregator_status,
-              StatusIs(INVALID_ARGUMENT,
-                       HasSubstr("must provide a positive Linfinity bound")));
-}
-
-TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
+TEST(DPGroupByFactoryTest, CatchUnsupportedNestedIntrinsic) {
   Intrinsic intrinsic = {.uri = kDPGroupByUri,
                          .inputs = {CreateTensorSpec("key", DT_STRING)},
                          .outputs = {CreateTensorSpec("key_out", DT_STRING)},
@@ -462,7 +463,32 @@ TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
                                                      "DP sums are supported"));
 }
 
-// Phase 3: Test that the factory can create DPClosedDomainHistogram objects.
+TEST(DPGroupByFactoryTest, CatchInconsistentNumberOfOutputs) {
+  Intrinsic intrinsic = {.uri = kDPGroupByUri,
+                         .inputs = {CreateTensorSpec("key", DT_STRING)},
+                         .outputs = {CreateTensorSpec("key_out", DT_STRING)},
+                         .parameters = {CreateTopLevelParameters_OpenDomain()},
+                         .nested_intrinsics = {}};
+  intrinsic.nested_intrinsics.push_back(Intrinsic{
+      kDPSumUri,
+      {CreateTensorSpec("value", DT_INT32)},  // input
+      {CreateTensorSpec("value", DT_INT32),   // outputs
+       CreateTensorSpec(absl::StrCat(kDPNoiseDescription, "value"), DT_STRING)},
+      {CreateNestedParameters<int32_t>(1000, -1, -1)},
+      {}});
+  intrinsic.nested_intrinsics.push_back(
+      Intrinsic{kDPSumUri,
+                {CreateTensorSpec("value2", DT_INT32)},  // input
+                {CreateTensorSpec("value2", DT_INT32)},  // outputs
+                {CreateNestedParameters<int32_t>(1000, -1, -1)},
+                {}});
+  auto aggregator_status = CreateTensorAggregator(intrinsic).status();
+  EXPECT_THAT(aggregator_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status.message(), HasSubstr("The number of outputs "
+                                                     "must be consistent"));
+}
+
+// Phase 4: Test that the factory can create DPClosedDomainHistogram objects.
 TEST(DPClosedDomainHistogramTest, CreateWithPositiveDelta) {
   // L0 and L2 bound
   std::vector<DataType> key_types = {DT_STRING, DT_STRING};
@@ -480,7 +506,7 @@ TEST(DPClosedDomainHistogramTest, CreateWithPositiveDelta) {
   TFF_EXPECT_OK(CreateTensorAggregator(intrinsic2).status());
 }
 
-// Phase 4: Test that the factory can create DPOpenDomainHistogram objects.
+// Phase 5: Test that the factory can create DPOpenDomainHistogram objects.
 TEST(DPOpenDomainHistogramTest, CreateWithGroupingKeys) {
   Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(
       /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/1,
@@ -511,7 +537,7 @@ TEST(DPOpenDomainHistogramTest, CreateWithNoGroupingKeys) {
   EXPECT_EQ(peer.GetMaxGroupsContributed(), 1);
 }
 
-// Phase 5: Test that the factory handles min_contributors_to_group correctly.
+// Phase 6: Test that the factory handles min_contributors_to_group correctly.
 TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsNoKeys) {
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
       /*min_contributors=*/10, /*epsilon=*/1.0, /*delta=*/1e-4, /*l0_bound=*/10,
@@ -564,7 +590,7 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithNegativeMinContributors_Fails) {
                HasSubstr("min_contributors_to_group must be positive")));
 }
 
-// Phase 6: Make sure we can successfully create a DPOpenDomainHistogram object
+// Phase 7: Make sure we can successfully create a DPOpenDomainHistogram object
 // with no keys.
 TEST(DPGroupByFactoryTest, CreateAggregatorNoKeys_Success) {
   // Create intrinsic with default parameters except no key_types.
@@ -593,7 +619,7 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithKeysNoMinContributors_Success) {
   ASSERT_NE(dp_closed_domain_histogram, nullptr);
 }
 
-// Phase 7: Validate that the factory can catch bad serialized states.
+// Phase 8: Validate that the factory can catch bad serialized states.
 TEST(DPOpenDomainHistogramTest, Deserialize_FailToParseProto) {
   // Suffix of state does not correspond to a valid length.
   auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
