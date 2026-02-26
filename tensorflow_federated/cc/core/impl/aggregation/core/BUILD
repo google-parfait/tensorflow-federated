@@ -291,6 +291,7 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/strings",
     ],
     alwayslink = 1,
 )
@@ -304,14 +305,16 @@ cc_library(
     deps = [
         ":composite_key_combiner",
         ":dp_fedsql_constants",
+        ":dp_noise_mechanisms",
         ":group_by_aggregator",
         ":intrinsic",
+        ":mutable_string_data",
         ":one_dim_grouping_aggregator",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
-        "//tensorflow_federated/cc/core/impl/aggregation/core:dp_noise_mechanisms",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 
@@ -361,6 +364,7 @@ cc_library(
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:fixed_array",
+        "@com_google_absl//absl/strings",
         "@com_google_cc_differential_privacy//algorithms:numerical-mechanisms",
     ],
 )
@@ -737,6 +741,8 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+        "//third_party/re2",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -760,6 +766,8 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+        "//third_party/re2",
+        "@com_google_absl//absl/strings",
     ],
 )
 

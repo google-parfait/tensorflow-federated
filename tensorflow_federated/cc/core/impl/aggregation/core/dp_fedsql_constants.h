@@ -43,6 +43,18 @@ constexpr char kMaxGroupsContributedName[] = "max_groups_contributed";
 constexpr char kLinfName[] = "L_inf";
 constexpr char kL1Name[] = "L_1";
 constexpr char kL2Name[] = "L_2";
+// Prefix of a column that describes the noise added to sums.
+constexpr char kDPNoiseDescription[] = "DP Noise for ";
+
+// Template for description.
+constexpr char kDPNoiseDescriptionTemplate[] =
+    R"(90 percent of noise has magnitude <= %f.
+Drawn from %s with variance %f.
+Thresholding was %s.)";
+constexpr char kDPNoiseDescriptionMatcher[] =
+    R"(90 percent of noise has magnitude <= (\d+\.?\d*).
+Drawn from (Laplace|Gaussian) with variance (\d+\.?\d*).
+Thresholding was (not done|done at (\d+\.?\d*)).)";
 
 // The default maximum length of any string datum.
 constexpr int kDefaultMaxStringLength = 256;

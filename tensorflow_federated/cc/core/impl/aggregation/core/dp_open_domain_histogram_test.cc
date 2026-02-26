@@ -27,7 +27,10 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "third_party/re2/re2.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -1147,6 +1150,139 @@ TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilonsWithKThresholding) {
   EXPECT_THAT(values, Contains(Ne(kNumInputs)));
 }
 
+// Twelfth test batch: ensure that we output the noise description when
+// it is requested in the nested intrinsic(s).
+// Without min_contributors_to_group, test is virtually the same as
+// DPClosedDomainHistogramTest.OutputNoiseDescription.
+TEST(DPOpenDomainHistogramTest, OutputNoiseDescription_MinContributorsNotSet) {
+  Intrinsic intrinsic =
+      CreateIntrinsic<int32_t, int64_t>(/*epsilon=*/8.0,
+                                        /*delta=*/0.001, /*l0_bound=*/4);
+  std::string third_column_name = absl::StrCat(kDPNoiseDescription, "value");
+
+  intrinsic.nested_intrinsics[0].outputs.push_back(
+      CreateTensorSpec(third_column_name, DT_STRING));
+
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  int num_inputs = 4000;
+  for (int i = 0; i < num_inputs; i++) {
+    Tensor keys =
+        Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
+            .value();
+    Tensor values =
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 0})).value();
+    auto acc_status = aggregator->Accumulate({&keys, &values});
+    EXPECT_THAT(acc_status, IsOk());
+  }
+  EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
+  EXPECT_TRUE(aggregator->CanReport());
+
+  auto report = std::move(*aggregator).Report();
+  EXPECT_THAT(report, IsOk());
+
+  // There must be 3 columns, one for keys, one for aggregated values, one for
+  // the noise description.
+  ASSERT_EQ(report->size(), 3);
+
+  // The last column should be a string tensor with the right name.
+  EXPECT_EQ(report.value()[2].dtype(), DT_STRING);
+  EXPECT_EQ(report.value()[2].name(), third_column_name);
+
+  // The first entry should have the noise description.
+  absl::string_view content = report.value()[2].AsSpan<string_view>()[0];
+  // std::cout << "content: " << content << "\n";
+  EXPECT_TRUE(RE2::FullMatch(content, kDPNoiseDescriptionMatcher));
+}
+
+TEST(DPOpenDomainHistogramTest, OutputNoiseDescription_MinContributorsSet) {
+  const int64_t min_contributors_to_group = 5;
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int32_t, int64_t>(
+      min_contributors_to_group, /*epsilon=*/1.0,
+      /*delta=*/0.001, /*l0_bound=*/4);
+  std::string third_column_name = absl::StrCat(kDPNoiseDescription, "value");
+  intrinsic.nested_intrinsics[0].outputs.push_back(
+      CreateTensorSpec(third_column_name, DT_STRING));
+
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> dp_aggregator,
+                           CreateTensorAggregator(intrinsic));
+  constexpr int kNumInputs = 400;
+  for (int i = 0; i < kNumInputs; i++) {
+    Tensor keys =
+        Tensor::Create(
+            DT_STRING, {4},
+            CreateTestData<string_view>({"key0", "key1", "key2", "key3"}))
+            .value();
+    Tensor values =
+        Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({1, 1, 1, 1}))
+            .value();
+    TFF_EXPECT_OK(dp_aggregator->Accumulate({&keys, &values}));
+  }
+  EXPECT_EQ(dp_aggregator->GetNumInputs(), kNumInputs);
+  EXPECT_TRUE(dp_aggregator->CanReport());
+  TFF_ASSERT_OK_AND_ASSIGN(OutputTensorList report,
+                           std::move(*dp_aggregator).Report());
+  // There must be 3 columns, one for keys, one for aggregated values, one for
+  // the noise description.
+  ASSERT_EQ(report.size(), 3);
+  // The last column should be a string tensor with the right name.
+  EXPECT_EQ(report[2].dtype(), DT_STRING);
+  EXPECT_EQ(report[2].name(), third_column_name);
+  // The first entry should have the confidence interval.
+  absl::string_view content = report[2].AsSpan<string_view>()[0];
+  EXPECT_TRUE(RE2::FullMatch(content, kDPNoiseDescriptionMatcher));
+}
+
+TEST(DPOpenDomainHistogramTest, OutputNoiseDescription_MultipleAggregations) {
+  const int64_t min_contributors_to_group = 5;
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int32_t, int64_t>(
+      min_contributors_to_group, /*epsilon=*/1.0,
+      /*delta=*/0.001, /*l0_bound=*/4);
+  std::string dp_noise_name1 = absl::StrCat(kDPNoiseDescription, "value");
+  intrinsic.nested_intrinsics[0].outputs.push_back(
+      CreateTensorSpec(dp_noise_name1, DT_STRING));
+  std::string dp_noise_name2 = absl::StrCat(kDPNoiseDescription, "value2");
+  intrinsic.nested_intrinsics.push_back(Intrinsic{
+      .uri = kDPSumUri,
+      .inputs = {CreateTensorSpec("value2", DT_INT32)},
+      .outputs = {CreateTensorSpec("value2", DT_INT64),
+                  CreateTensorSpec(dp_noise_name2, DT_STRING)},
+      .parameters = {dp_histogram_testing::CreateNestedParameters<int32_t>(
+          /*linfinity_bound=*/7, /*l1_bound=*/-1,
+          /*l2_bound=*/-1)},
+      .nested_intrinsics = {}});
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> dp_aggregator,
+                           CreateTensorAggregator(intrinsic));
+  constexpr int kNumInputs = 400;
+  for (int i = 0; i < kNumInputs; i++) {
+    Tensor keys =
+        Tensor::Create(
+            DT_STRING, {4},
+            CreateTestData<string_view>({"key0", "key1", "key2", "key3"}))
+            .value();
+    Tensor values1 =
+        Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({1, 1, 1, 1}))
+            .value();
+    Tensor values2 =
+        Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({1, 1, 1, 1}))
+            .value();
+    TFF_EXPECT_OK(dp_aggregator->Accumulate({&keys, &values1, &values2}));
+  }
+  EXPECT_EQ(dp_aggregator->GetNumInputs(), kNumInputs);
+  EXPECT_TRUE(dp_aggregator->CanReport());
+  TFF_ASSERT_OK_AND_ASSIGN(OutputTensorList report,
+                           std::move(*dp_aggregator).Report());
+  // There must be 5 columns, one for keys, two for value1, two for value2.
+  ASSERT_EQ(report.size(), 5);
+  // The columns at index 2 and 4 should be string tensors with the right names.
+  EXPECT_EQ(report[2].dtype(), DT_STRING);
+  EXPECT_EQ(report[2].name(), dp_noise_name1);
+  EXPECT_EQ(report[4].dtype(), DT_STRING);
+  EXPECT_EQ(report[4].name(), dp_noise_name2);
+  EXPECT_TRUE(RE2::FullMatch(report[2].AsSpan<string_view>()[0],
+                             kDPNoiseDescriptionMatcher));
+  EXPECT_TRUE(RE2::FullMatch(report[4].AsSpan<string_view>()[0],
+                             kDPNoiseDescriptionMatcher));
+}
 INSTANTIATE_TEST_SUITE_P(
     DPOpenDomainHistogramTestInstantiation, DPOpenDomainHistogramTest,
     ValuesIn<bool>({false, true}),

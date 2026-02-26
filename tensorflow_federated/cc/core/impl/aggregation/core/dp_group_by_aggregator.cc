@@ -27,6 +27,7 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -36,6 +37,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
@@ -63,7 +65,9 @@ DPGroupByAggregator::DPGroupByAggregator(
       epsilon_per_agg_((epsilon < kEpsilonThreshold
                             ? epsilon / intrinsics->size()
                             : kEpsilonThreshold)),
-      delta_per_agg_(delta / intrinsics->size()) {}
+      delta_per_agg_(delta / intrinsics->size()),
+      report_algorithm_characteristics_(epsilon < kEpsilonThreshold &&
+                                        (*intrinsics)[0].outputs.size() == 2) {}
 
 StatusOr<OutputTensorList> DPGroupByAggregator::Report() && {
   if (!CanReport()) {
@@ -244,6 +248,30 @@ StatusOr<int64_t> DPGroupByAggregator::GetContentSize(
               " Failed to parse padding length.";
   }
   return total_size - characters_to_remove;
+}
+
+StatusOr<std::unique_ptr<MutableStringData>>
+DPGroupByAggregator::CreateNoiseDescription(int num_elements,
+                                            DPHistogramBundle& bundle) {
+  std::string noise_description = "No noise";
+  if (bundle.mechanism != nullptr) {
+    TFF_ASSIGN_OR_RETURN(auto confidence_interval,
+                         bundle.mechanism->NoiseConfidenceInterval(0.9));
+    std::string threshold_str = "not done";
+    if (bundle.threshold.has_value()) {
+      threshold_str = absl::StrCat("done at ", bundle.threshold.value());
+    }
+    noise_description = absl::StrFormat(
+        kDPNoiseDescriptionTemplate, confidence_interval.upper_bound(),
+        bundle.use_laplace ? "Laplace" : "Gaussian",
+        bundle.mechanism->GetVariance(), threshold_str);
+  }
+  std::unique_ptr<MutableStringData> string_data =
+      std::make_unique<MutableStringData>(num_elements);
+  for (int j = 0; j < num_elements; ++j) {
+    string_data->Add(j == 0 ? noise_description : "");
+  }
+  return string_data;
 }
 
 }  // namespace aggregation

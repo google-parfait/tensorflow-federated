@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -55,10 +56,11 @@ namespace {
 template <typename T>
 void CopyAggregateFromColumn(const Tensor& column_of_aggregates,
                              int64_t ordinal, MutableVectorData<T>& container,
-                             NumericalMechanism* mechanism) {
+                             DPHistogramBundle& bundle) {
   T zero = static_cast<T>(0);
-  T noise_to_add =
-      (mechanism == nullptr) ? zero : mechanism->AddNoise(/*result=*/zero);
+  T noise_to_add = (bundle.mechanism == nullptr)
+                       ? zero
+                       : bundle.mechanism->AddNoise(/*result=*/zero);
 
   T value_to_push_back =
       (ordinal == kNoOrdinal)
@@ -142,12 +144,12 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::NoisyReport() {
   }
 
   // Make a noise mechanism for each aggregation.
-  std::vector<std::unique_ptr<NumericalMechanism>> mechanisms;
+  std::vector<DPHistogramBundle> bundles;
   for (int i = 0; i < intrinsics().size(); ++i) {
     const Intrinsic& intrinsic = intrinsics()[i];
     // Do not bother making mechanism if epsilon is too large.
     if (epsilon_per_agg() >= kEpsilonThreshold) {
-      mechanisms.push_back(nullptr);
+      bundles.push_back(DPHistogramBundle());
       continue;
     }
 
@@ -159,12 +161,11 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::NoisyReport() {
 
     // Create a noise mechanism out of those norm bounds and privacy params.
     TFF_ASSIGN_OR_RETURN(
-        DPHistogramBundle noise_mechanism,
+        bundles.emplace_back(),
         CreateDPHistogramBundle(epsilon_per_agg(), delta_per_agg(),
                                 /*l0_bound=*/max_groups_contributed(),
                                 linfinity_bound, l1_bound, l2_bound,
                                 /*open_domain=*/false));
-    mechanisms.push_back(std::move(noise_mechanism.mechanism));
   }
 
   // Create MutableVectorData containers, one for each output tensor, that are
@@ -237,7 +238,7 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::NoisyReport() {
             CopyAggregateFromColumn<T>(
                 column_of_aggregates, ordinal,
                 dynamic_cast<MutableVectorData<T>&>(container),
-                mechanisms[mech_to_use].get()));
+                bundles[mech_to_use]));
 
         // Move on to the next mechanism.
         mech_to_use++;
@@ -248,11 +249,23 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::NoisyReport() {
   // Turn the TensorData objects into Tensors.
   for (int64_t i = 0; i < noisy_aggregate_data.size(); ++i) {
     DataType dtype = noiseless_aggregates[i].dtype();
-    TensorShape shape({domain_size});
+    TFF_ASSIGN_OR_RETURN(noisy_aggregates.emplace_back(),
+                         Tensor::Create(dtype, {domain_size},
+                                        std::move(noisy_aggregate_data[i])));
+
+    if (!report_algorithm_characteristics() || i < num_keys_per_input()) {
+      continue;
+    }
+    // Add a string Tensor that describes the noise.
+    int which_aggregation = i - num_keys_per_input();
+
     TFF_ASSIGN_OR_RETURN(
-        auto new_tensor,
-        Tensor::Create(dtype, shape, std::move(noisy_aggregate_data[i])));
-    noisy_aggregates.push_back(std::move(new_tensor));
+        auto string_data,
+        CreateNoiseDescription(domain_size, bundles[which_aggregation]));
+    TFF_ASSIGN_OR_RETURN(
+        noisy_aggregates.emplace_back(),
+        Tensor::Create(DT_STRING, {domain_size}, std::move(string_data),
+                       intrinsics()[which_aggregation].outputs[1].name()));
   }
 
   return noisy_aggregates;

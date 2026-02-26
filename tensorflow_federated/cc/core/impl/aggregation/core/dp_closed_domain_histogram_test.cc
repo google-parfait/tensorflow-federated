@@ -25,6 +25,9 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "third_party/re2/re2.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -301,6 +304,48 @@ TEST(DPClosedDomainHistogramTest, FloatTest) {
     noisy_value = std::abs(noisy_value);
     EXPECT_THAT(noisy_value - std::floor(noisy_value), Ne(0.0));
   }
+}
+
+// Third batch of tests: ensure that we output the noise description when
+// it is requested in the nested intrinsic(s).
+TEST(DPClosedDomainHistogramTest, OutputNoiseDescription) {
+  Intrinsic intrinsic = CreateIntrinsicWithKeyTypes_ClosedDomain<float, float>(
+      /*epsilon=*/1.0,
+      /*delta=*/1e-6,
+      /*l0_bound=*/2,
+      /*linfinity_bound=*/1);
+  std::string third_column_name = absl::StrCat(kDPNoiseDescription, "value");
+  intrinsic.nested_intrinsics[0].outputs.push_back(
+      CreateTensorSpec(third_column_name, DT_STRING));
+
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  int num_inputs = 40;
+  for (int i = 0; i < num_inputs; i++) {
+    Tensor keys =
+        Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
+            .value();
+    Tensor values =
+        Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({1, 0})).value();
+    auto acc_status = aggregator->Accumulate({&keys, &values});
+    EXPECT_THAT(acc_status, IsOk());
+  }
+  EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
+  EXPECT_TRUE(aggregator->CanReport());
+
+  auto report = std::move(*aggregator).Report();
+  EXPECT_THAT(report, IsOk());
+
+  // There must be 3 columns, one for keys, one for aggregated values, one for
+  // the noise description.
+  ASSERT_EQ(report->size(), 3);
+
+  // The last column should be a string tensor with the right name.
+  EXPECT_EQ(report.value()[2].dtype(), DT_STRING);
+  EXPECT_EQ(report.value()[2].name(), third_column_name);
+
+  // The first entry should be the noise description.
+  absl::string_view content = report.value()[2].AsSpan<string_view>()[0];
+  EXPECT_TRUE(RE2::FullMatch(content, kDPNoiseDescriptionMatcher));
 }
 
 }  // namespace
