@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_closed_domain_histogram.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_exhaustive_report_histogram.h"
 
 #include <cstdint>
 #include <memory>
@@ -71,7 +71,7 @@ void CopyAggregateFromColumn(const Tensor& column_of_aggregates,
 
 }  // namespace
 
-DPClosedDomainHistogram::DPClosedDomainHistogram(
+DPExhaustiveReportHistogram::DPExhaustiveReportHistogram(
     const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>* output_key_specs,
     const std::vector<Intrinsic>* intrinsics,
@@ -87,7 +87,8 @@ DPClosedDomainHistogram::DPClosedDomainHistogram(
                           /*contributor_counts=*/{}, max_string_length),
       domain_tensors_(domain_tensors) {}
 
-StatusOr<Tensor> DPClosedDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
+StatusOr<Tensor>
+DPExhaustiveReportHistogram::CreateOrdinalsByGroupingKeysForMerge(
     const InputTensorList& inputs) {
   if (num_keys_per_input() > 0) {
     InputTensorList keys(num_keys_per_input());
@@ -108,7 +109,7 @@ StatusOr<Tensor> DPClosedDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
 
 // Advance the indices that specify a composite key. Boolean output indicates if
 // we can continue advancing the indices.
-bool DPClosedDomainHistogram::IncrementDomainIndices(
+bool DPExhaustiveReportHistogram::IncrementDomainIndices(
     absl::FixedArray<int64_t>& domain_indices, int64_t which_key) {
   ++domain_indices[which_key];
   // If we've reached the end of a key's domain...
@@ -129,7 +130,7 @@ bool DPClosedDomainHistogram::IncrementDomainIndices(
   return true;
 }
 
-StatusOr<OutputTensorList> DPClosedDomainHistogram::NoisyReport() {
+StatusOr<OutputTensorList> DPExhaustiveReportHistogram::NoisyReport() {
   // Compute the noiseless aggregates.
   OutputTensorList noiseless_aggregates = std::move(*this).TakeOutputs();
 

@@ -26,10 +26,10 @@
 #include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_closed_domain_histogram.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_exhaustive_report_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_histogram_test_utils.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_thresholding_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
@@ -49,7 +49,7 @@ using ::tensorflow_federated::aggregation::dp_histogram_testing::
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateIntrinsicWithKeyTypes;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
-    CreateIntrinsicWithKeyTypes_ClosedDomain;
+    CreateIntrinsicWithKeyTypes_ExhaustiveReport;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateIntrinsicWithMinContributors;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
@@ -61,17 +61,17 @@ using ::tensorflow_federated::aggregation::dp_histogram_testing::
 using ::testing::HasSubstr;
 using ::testing::TestWithParam;
 
-using DPClosedDomainHistogramTest = TestWithParam<bool>;
-using DPOpenDomainHistogramTest = TestWithParam<bool>;
+using DPExhaustiveReportHistogramTest = TestWithParam<bool>;
+using DPThresholdingHistogramTest = TestWithParam<bool>;
 
 // Phase 1:Test that the factory catches problems in Intrinsics that are set up
 // for the closed-domain case.
-std::vector<Tensor> CreateTopLevelParameters_ClosedDomain() {
+std::vector<Tensor> CreateTopLevelParameters_ExhaustiveReport() {
   return CreateTopLevelParameters<double, double, int64_t>(1000.0, 0.001, 100,
                                                            {DT_STRING});
 }
 
-TEST(DPClosedDomainHistogramTest, CatchWrongNumberOfKeyNames) {
+TEST(DPExhaustiveReportHistogramTest, CatchWrongNumberOfKeyNames) {
   // Provide domain spec for one key but there are two keys
   std::vector<DataType> key_types = {DT_STRING};
   Intrinsic too_few = {.uri = kDPGroupByUri,
@@ -105,19 +105,19 @@ TEST(DPClosedDomainHistogramTest, CatchWrongNumberOfKeyNames) {
                          "the number of input tensors provided (2)")));
 }
 
-TEST(DPClosedDomainHistogramTest, CatchWrongKeyNamesType) {
+TEST(DPExhaustiveReportHistogramTest, CatchWrongKeyNamesType) {
   Intrinsic wrong_key_names_type =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>();
-  wrong_key_names_type.parameters[3] =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1}), "key_names")
-          .value();
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>();
+  TFF_ASSERT_OK_AND_ASSIGN(
+      wrong_key_names_type.parameters[3],
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1}), "key_names"));
 
   EXPECT_THAT(CreateTensorAggregator(wrong_key_names_type).status(),
               StatusIs(INVALID_ARGUMENT,
                        HasSubstr("Key names should be of type string")));
 }
 
-TEST(DPClosedDomainHistogramTest, CatchWrongKeyTypes) {
+TEST(DPExhaustiveReportHistogramTest, CatchWrongKeyTypes) {
   std::vector<DataType> key_types = {DT_DOUBLE};
   Intrinsic wrong_key_types = {
       .uri = kDPGroupByUri,
@@ -144,7 +144,7 @@ std::vector<Tensor> CreateNParameters(int n) {
   return parameters;
 }
 
-TEST(DPClosedDomainHistogramTest, CatchMisnamedParameters) {
+TEST(DPExhaustiveReportHistogramTest, CatchMisnamedParameters) {
   std::vector<DataType> key_types = {DT_STRING, DT_STRING};
   std::vector<Tensor> parameters =
       CreateTopLevelParameters(1.0, 0.01, 10, key_types, /*add_spec=*/true);
@@ -168,7 +168,7 @@ TEST(DPClosedDomainHistogramTest, CatchMisnamedParameters) {
                    "All keys must be listed in order amongst the parameters")));
 }
 
-TEST(DPClosedDomainHistogramTest, CatchUnnamedParameter) {
+TEST(DPExhaustiveReportHistogramTest, CatchUnnamedParameter) {
   std::vector<DataType> key_types = {DT_STRING, DT_STRING};
   std::vector<Tensor> parameters =
       CreateTopLevelParameters(1.0, 0.01, 10, key_types, /*add_spec=*/true);
@@ -190,13 +190,13 @@ TEST(DPClosedDomainHistogramTest, CatchUnnamedParameter) {
                                  "max_groups_contributed must be provided")));
 }
 
-TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongNumber) {
+TEST(DPExhaustiveReportHistogramTest, CatchInnerParameters_WrongNumber) {
   // Too few parameters (only linfinity bound)
   Intrinsic too_few_parameters = {
       .uri = kDPGroupByUri,
       .inputs = {CreateTensorSpec("key", DT_STRING)},
       .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-      .parameters = {CreateTopLevelParameters_ClosedDomain()},
+      .parameters = {CreateTopLevelParameters_ExhaustiveReport()},
       .nested_intrinsics = {}};
   too_few_parameters.nested_intrinsics.push_back(
       Intrinsic{.uri = kDPSumUri,
@@ -209,7 +209,7 @@ TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongNumber) {
       .uri = kDPGroupByUri,
       .inputs = {CreateTensorSpec("key", DT_STRING)},
       .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-      .parameters = {CreateTopLevelParameters_ClosedDomain()},
+      .parameters = {CreateTopLevelParameters_ExhaustiveReport()},
       .nested_intrinsics = {}};
   too_many_parameters.nested_intrinsics.push_back(
       Intrinsic{.uri = kDPSumUri,
@@ -247,12 +247,12 @@ std::vector<Tensor> CreateGenericDPGFSParameters(LinfType linfinity_bound,
 
   return parameters;
 }
-TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongTypes) {
+TEST(DPExhaustiveReportHistogramTest, CatchInnerParameters_WrongTypes) {
   Intrinsic first_inner_parameter_wrong_type = {
       .uri = kDPGroupByUri,
       .inputs = {CreateTensorSpec("key", DT_STRING)},
       .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-      .parameters = {CreateTopLevelParameters_ClosedDomain()},
+      .parameters = {CreateTopLevelParameters_ExhaustiveReport()},
       .nested_intrinsics = {}};
   first_inner_parameter_wrong_type.nested_intrinsics.push_back(Intrinsic{
       .uri = kDPSumUri,
@@ -267,7 +267,7 @@ TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongTypes) {
       .uri = kDPGroupByUri,
       .inputs = {CreateTensorSpec("key", DT_STRING)},
       .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-      .parameters = {CreateTopLevelParameters_ClosedDomain()},
+      .parameters = {CreateTopLevelParameters_ExhaustiveReport()},
       .nested_intrinsics = {}};
   second_inner_parameter_wrong_type.nested_intrinsics.push_back(Intrinsic{
       .uri = kDPSumUri,
@@ -280,7 +280,7 @@ TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongTypes) {
       .uri = kDPGroupByUri,
       .inputs = {CreateTensorSpec("key", DT_STRING)},
       .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-      .parameters = {CreateTopLevelParameters_ClosedDomain()},
+      .parameters = {CreateTopLevelParameters_ExhaustiveReport()},
       .nested_intrinsics = {}};
   third_inner_parameter_wrong_type.nested_intrinsics.push_back(Intrinsic{
       .uri = kDPSumUri,
@@ -298,7 +298,7 @@ TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongTypes) {
               StatusIs(INVALID_ARGUMENT, HasSubstr("numerical Tensors")));
 }
 
-TEST(DPClosedDomainHistogramTest, CatchInvalidParameterValues) {
+TEST(DPExhaustiveReportHistogramTest, CatchInvalidParameterValues) {
   Intrinsic negative_epsilon =
       CreateIntrinsicWithKeyTypes<int64_t, int64_t>(/*epsilon=*/-1,
                                                     /*delta=*/0.001,
@@ -308,12 +308,12 @@ TEST(DPClosedDomainHistogramTest, CatchInvalidParameterValues) {
   Intrinsic delta_too_large = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
       1, /*delta=*/2, 10, 10, -1, -1);
   Intrinsic missing_norm_bounds =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>(
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
           1, 0.001, 3, /*linfinity_bound=*/-1,
           /*l1_bound=*/-1,
           /*l2_bound=*/-1);
   Intrinsic no_delta_only_l2_bound =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>(
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
           1, /*delta=*/-1, -1, -1, -1,
           /*l2_bound=*/3);
 
@@ -335,9 +335,9 @@ TEST(DPClosedDomainHistogramTest, CatchInvalidParameterValues) {
       StatusIs(INVALID_ARGUMENT, HasSubstr("must lie between 0 and 1")));
 }
 
-TEST(DPClosedDomainHistogramTest, CatchDuplicateParameterNames) {
+TEST(DPExhaustiveReportHistogramTest, CatchDuplicateParameterNames) {
   Intrinsic duplicate_parameter_names =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>();
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>();
   duplicate_parameter_names.parameters.push_back(
       Tensor::Create(DT_INT32, {}, CreateTestData({1}), "epsilon").value());
 
@@ -346,9 +346,9 @@ TEST(DPClosedDomainHistogramTest, CatchDuplicateParameterNames) {
                        HasSubstr("Duplicate parameter name: epsilon")));
 }
 
-TEST(DPClosedDomainHistogramTest, CatchKeyNamesAndMinContributorsToGroup) {
+TEST(DPExhaustiveReportHistogramTest, CatchKeyNamesAndMinContributorsToGroup) {
   Intrinsic intrinsic =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>();
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>();
   intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {1},
                                                 CreateTestData({10}),
                                                 "min_contributors_to_group")
@@ -360,11 +360,11 @@ TEST(DPClosedDomainHistogramTest, CatchKeyNamesAndMinContributorsToGroup) {
 
 // Phase 2: Test that the factory catches problems in Intrinsics that are set up
 // for the open-domain case.
-std::vector<Tensor> CreateTopLevelParameters_OpenDomain() {
+std::vector<Tensor> CreateTopLevelParameters_ThresholdingHistogram() {
   return CreateTopLevelParameters(1000.0, 0.001, 100);
 }
 
-TEST(DPOpenDomainHistogramTest, CatchTooFewParameters) {
+TEST(DPThresholdingHistogramTest, CatchTooFewParameters) {
   std::vector<Tensor> parameters;
   auto epsilon_tensor = CreateTestData({1.0});
   parameters.push_back(
@@ -382,7 +382,7 @@ TEST(DPOpenDomainHistogramTest, CatchTooFewParameters) {
                                  "max_groups_contributed must be provided")));
 }
 
-TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
+TEST(DPThresholdingHistogramTest, CatchInvalidParameterTypes) {
   Intrinsic intrinsic0{
       .uri = kDPGroupByUri,
       .inputs = {CreateTensorSpec("key", DT_STRING)},
@@ -417,7 +417,7 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
   EXPECT_THAT(bad_l0_bound.message(), HasSubstr("must be numerical"));
 }
 
-TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
+TEST(DPThresholdingHistogramTest, CatchInvalidParameterValues) {
   Intrinsic intrinsic0 = CreateIntrinsic<int64_t, int64_t>(-1, 0.001, 10);
   auto bad_epsilon = CreateTensorAggregator(intrinsic0).status();
   EXPECT_THAT(bad_epsilon, StatusIs(INVALID_ARGUMENT,
@@ -435,7 +435,7 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
                        HasSubstr("max_groups_contributed must be positive")));
 }
 
-TEST(DPOpenDomainHistogramTest, CatchInvalidLinfinityBound) {
+TEST(DPThresholdingHistogramTest, CatchInvalidLinfinityBound) {
   Intrinsic intrinsic =
       CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, 10, -1, 2, 3);
   auto aggregator_status = CreateTensorAggregator(intrinsic).status();
@@ -444,12 +444,13 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidLinfinityBound) {
                        HasSubstr("must provide a positive Linfinity bound")));
 }
 
-TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
-  Intrinsic intrinsic = {.uri = kDPGroupByUri,
-                         .inputs = {CreateTensorSpec("key", DT_STRING)},
-                         .outputs = {CreateTensorSpec("key_out", DT_STRING)},
-                         .parameters = {CreateTopLevelParameters_OpenDomain()},
-                         .nested_intrinsics = {}};
+TEST(DPThresholdingHistogramTest, CatchUnsupportedNestedIntrinsic) {
+  Intrinsic intrinsic = {
+      .uri = kDPGroupByUri,
+      .inputs = {CreateTensorSpec("key", DT_STRING)},
+      .outputs = {CreateTensorSpec("key_out", DT_STRING)},
+      .parameters = {CreateTopLevelParameters_ThresholdingHistogram()},
+      .nested_intrinsics = {}};
   intrinsic.nested_intrinsics.push_back(Intrinsic{
       "GoogleSQL:$not_differential_privacy_sum",
       {CreateTensorSpec("value", internal::TypeTraits<int32_t>::kDataType)},
@@ -462,32 +463,33 @@ TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
                                                      "DP sums are supported"));
 }
 
-// Phase 3: Test that the factory can create DPClosedDomainHistogram objects.
-TEST(DPClosedDomainHistogramTest, CreateWithPositiveDelta) {
+// Phase 3: Test that the factory can create DPExhaustiveReportHistogram
+// objects.
+TEST(DPExhaustiveReportHistogramTest, CreateWithPositiveDelta) {
   // L0 and L2 bound
   std::vector<DataType> key_types = {DT_STRING, DT_STRING};
   Intrinsic intrinsic1 =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int32_t, int64_t>(
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int32_t, int64_t>(
           /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/5,
           /*linfinity_bound=*/-1, /*l1_bound=*/-1, /*l2_bound=*/10, key_types);
   TFF_EXPECT_OK(CreateTensorAggregator(intrinsic1).status());
 
   // L0 and Linf bounds
   Intrinsic intrinsic2 =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int32_t, int64_t>(
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int32_t, int64_t>(
           /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/1,
           /*linfinity_bound=*/5, /*l1_bound=*/-1, /*l2_bound=*/-1, key_types);
   TFF_EXPECT_OK(CreateTensorAggregator(intrinsic2).status());
 }
 
-// Phase 4: Test that the factory can create DPOpenDomainHistogram objects.
-TEST(DPOpenDomainHistogramTest, CreateWithGroupingKeys) {
+// Phase 4: Test that the factory can create DPThresholdingHistogram objects.
+TEST(DPThresholdingHistogramTest, CreateWithGroupingKeys) {
   Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(
       /*epsilon=*/1, /*delta=*/0.001, /*l0_bound=*/1,
       /*linfinity_bound=*/5);
   TFF_EXPECT_OK(CreateTensorAggregator(intrinsic).status());
 }
-TEST(DPOpenDomainHistogramTest, CreateWithNoGroupingKeys) {
+TEST(DPThresholdingHistogramTest, CreateWithNoGroupingKeys) {
   Intrinsic intrinsic = {
       .uri = kDPGroupByUri,
       .inputs = {},
@@ -502,12 +504,11 @@ TEST(DPOpenDomainHistogramTest, CreateWithNoGroupingKeys) {
                 {CreateTensorSpec("value", DT_INT64)},
                 {CreateNestedParameters<int32_t>(1000, -1, -1)},
                 {}});
-  StatusOr<std::unique_ptr<TensorAggregator>> aggregator =
-      CreateTensorAggregator(intrinsic);
-  TFF_EXPECT_OK(aggregator.status());
   // The max_groups_contributed parameter should be changed from -1 to 1 because
   // 1 simulated group will be made to aggregate all elements.
-  DPOpenDomainHistogramPeer peer(std::move(aggregator).value());
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator,
+                           CreateTensorAggregator(intrinsic));
+  DPThresholdingHistogramPeer peer(std::move(aggregator));
   EXPECT_EQ(peer.GetMaxGroupsContributed(), 1);
 }
 
@@ -518,9 +519,9 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsNoKeys) {
       /*linfinity_bound=*/5, /*l1_bound=*/-1, /*l2_bound=*/-1,
       /*key_types=*/{});
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
-  // Check that the returned aggregator is a DPOpenDomainHistogram.
+  // Check that the returned aggregator is a DPThresholdingHistogram.
   auto* dp_open_domain_histogram =
-      dynamic_cast<DPOpenDomainHistogram*>(aggregator.get());
+      dynamic_cast<DPThresholdingHistogram*>(aggregator.get());
   ASSERT_NE(dp_open_domain_histogram, nullptr);
 }
 
@@ -529,9 +530,9 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsWithKeys) {
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
       /*min_contributors=*/10);
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
-  // Check that the returned aggregator is a DPOpenDomainHistogram.
+  // Check that the returned aggregator is a DPThresholdingHistogram.
   auto* dp_open_domain_histogram =
-      dynamic_cast<DPOpenDomainHistogram*>(aggregator.get());
+      dynamic_cast<DPThresholdingHistogram*>(aggregator.get());
   ASSERT_NE(dp_open_domain_histogram, nullptr);
 
   // L_1 given
@@ -540,9 +541,9 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsWithKeys) {
       /*l0_bound=*/10, /*linfinity_bound=*/-1, /*l1_bound=*/10);
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator_l1,
                            CreateTensorAggregator(intrinsic_l1));
-  // Check that the returned aggregator is a DPOpenDomainHistogram.
+  // Check that the returned aggregator is a DPThresholdingHistogramHistogram.
   auto* dp_open_domain_histogram_l1 =
-      dynamic_cast<DPOpenDomainHistogram*>(aggregator_l1.get());
+      dynamic_cast<DPThresholdingHistogram*>(aggregator_l1.get());
   ASSERT_NE(dp_open_domain_histogram_l1, nullptr);
 }
 
@@ -564,8 +565,8 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithNegativeMinContributors_Fails) {
                HasSubstr("min_contributors_to_group must be positive")));
 }
 
-// Phase 6: Make sure we can successfully create a DPOpenDomainHistogram object
-// with no keys.
+// Phase 6: Make sure we can successfully create a DPThresholdingHistogram
+// object with no keys.
 TEST(DPGroupByFactoryTest, CreateAggregatorNoKeys_Success) {
   // Create intrinsic with default parameters except no key_types.
   Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
@@ -575,7 +576,7 @@ TEST(DPGroupByFactoryTest, CreateAggregatorNoKeys_Success) {
 
   // Validate that domain_tensors is a valid empty span.
   auto* dp_open_domain_histogram =
-      dynamic_cast<DPOpenDomainHistogram*>(aggregator.get());
+      dynamic_cast<DPThresholdingHistogram*>(aggregator.get());
   ASSERT_NE(dp_open_domain_histogram, nullptr);
 }
 
@@ -583,18 +584,18 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithKeysNoMinContributors_Success) {
   // Create intrinsic with default parameters and key_types, and no min
   // contributors.
   Intrinsic intrinsic =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>();
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>();
   TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator,
                            CreateTensorAggregator(intrinsic));
 
-  // Validate that the aggregator is a DPClosedDomainHistogram.
+  // Validate that the aggregator is a DPExhaustiveReportHistogram.
   auto* dp_closed_domain_histogram =
-      dynamic_cast<DPClosedDomainHistogram*>(aggregator.get());
+      dynamic_cast<DPExhaustiveReportHistogram*>(aggregator.get());
   ASSERT_NE(dp_closed_domain_histogram, nullptr);
 }
 
 // Phase 7: Validate that the factory can catch bad serialized states.
-TEST(DPOpenDomainHistogramTest, Deserialize_FailToParseProto) {
+TEST(DPThresholdingHistogramTest, Deserialize_FailToParseProto) {
   // Suffix of state does not correspond to a valid length.
   auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
   std::string invalid_state("invalid_state");

@@ -259,11 +259,11 @@ cc_library(
     deps = [
         ":agg_core_cc_proto",
         ":aggregator",
-        ":dp_closed_domain_histogram",
         ":dp_composite_key_combiner",
+        ":dp_exhaustive_report_histogram",
         ":dp_fedsql_constants",
         ":dp_group_by_aggregator",
-        ":dp_open_domain_histogram",
+        ":dp_thresholding_histogram",
         ":group_by_aggregator",
         ":intrinsic",
         ":tensor",
@@ -316,10 +316,10 @@ cc_library(
 )
 
 cc_library(
-    name = "dp_open_domain_histogram",
-    srcs = ["dp_open_domain_histogram.cc"],
+    name = "dp_thresholding_histogram",
+    srcs = ["dp_thresholding_histogram.cc"],
     hdrs = [
-        "dp_open_domain_histogram.h",
+        "dp_thresholding_histogram.h",
     ],
     deps = [
         ":agg_core_cc_proto",
@@ -343,10 +343,10 @@ cc_library(
 )
 
 cc_library(
-    name = "dp_closed_domain_histogram",
-    srcs = ["dp_closed_domain_histogram.cc"],
+    name = "dp_exhaustive_report_histogram",
+    srcs = ["dp_exhaustive_report_histogram.cc"],
     hdrs = [
-        "dp_closed_domain_histogram.h",
+        "dp_exhaustive_report_histogram.h",
     ],
     deps = [
         ":agg_core_cc_proto",
@@ -430,15 +430,15 @@ cc_library(
         ":agg_core_cc_proto",
         ":aggregator",
         ":composite_key_combiner",  # buildcleaner: keep
-        ":dp_closed_domain_histogram",  # buildcleaner: keep
         ":dp_composite_key_combiner",  # buildcleaner: keep
+        ":dp_exhaustive_report_histogram",  # buildcleaner: keep
         ":dp_fedsql_constants",  # buildcleaner: keep
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
         ":dp_noise_mechanisms",  # buildcleaner: keep
-        ":dp_open_domain_histogram",  # buildcleaner: keep
         ":dp_quantile_aggregator",  # buildcleaner: keep
         ":dp_tensor_aggregator_bundle",  # buildcleaner: keep
+        ":dp_thresholding_histogram",  # buildcleaner: keep
         ":fedsql_constants",  # buildcleaner: keep
         ":group_by_aggregator",
         ":grouping_federated_sum",
@@ -703,7 +703,7 @@ cc_library(
     deps = [
         ":aggregator",
         ":dp_fedsql_constants",
-        ":dp_open_domain_histogram",
+        ":dp_thresholding_histogram",
         ":group_by_aggregator",
         ":intrinsic",
         ":mutable_string_data",
@@ -718,15 +718,15 @@ cc_library(
 )
 
 cc_test(
-    name = "dp_open_domain_histogram_test",
-    srcs = ["dp_open_domain_histogram_test.cc"],
+    name = "dp_thresholding_histogram_test",
+    srcs = ["dp_thresholding_histogram_test.cc"],
     deps = [
         ":aggregator",
         ":dp_fedsql_constants",
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
         ":dp_histogram_test_utils",
-        ":dp_open_domain_histogram",
+        ":dp_thresholding_histogram",
         ":group_by_aggregator",
         ":intrinsic",
         ":tensor",
@@ -741,12 +741,12 @@ cc_test(
 )
 
 cc_test(
-    name = "dp_closed_domain_histogram_test",
-    srcs = ["dp_closed_domain_histogram_test.cc"],
+    name = "dp_exhaustive_report_histogram_test",
+    srcs = ["dp_exhaustive_report_histogram_test.cc"],
     deps = [
         ":aggregator",
-        ":dp_closed_domain_histogram",
         ":dp_composite_key_combiner",
+        ":dp_exhaustive_report_histogram",
         ":dp_fedsql_constants",
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
@@ -754,7 +754,6 @@ cc_test(
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
-        "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
@@ -767,12 +766,12 @@ cc_test(
     srcs = ["dp_group_by_factory_test.cc"],
     deps = [
         ":aggregator",
-        ":dp_closed_domain_histogram",
+        ":dp_exhaustive_report_histogram",
         ":dp_fedsql_constants",
         ":dp_group_by_factory",
         ":dp_grouping_federated_sum",
         ":dp_histogram_test_utils",
-        ":dp_open_domain_histogram",
+        ":dp_thresholding_histogram",
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",

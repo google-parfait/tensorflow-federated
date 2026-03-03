@@ -32,7 +32,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_thresholding_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
@@ -46,20 +46,20 @@
 namespace tensorflow_federated {
 namespace aggregation {
 
-// Peer class for testing private methods of DPOpenDomainHistogram.
+// Peer class for testing private methods of DPThresholdingHistogram.
 // This allows us to test the creation of the selector, which is not at time of
 // writing exposed in the public API and won't be exposed except through
 // complicated code that should be tested separately. We also have access to
 // some other internals that are useful to test.
-class DPOpenDomainHistogramPeer {
+class DPThresholdingHistogramPeer {
  public:
-  explicit DPOpenDomainHistogramPeer(
+  explicit DPThresholdingHistogramPeer(
       std::unique_ptr<TensorAggregator> aggregator) {
-    auto* raw_ptr = dynamic_cast<DPOpenDomainHistogram*>(aggregator.get());
+    auto* raw_ptr = dynamic_cast<DPThresholdingHistogram*>(aggregator.get());
     TFF_CHECK(raw_ptr != nullptr)
-        << "Aggregator must be a DPOpenDomainHistogram";
-    dp_histogram_ = std::unique_ptr<DPOpenDomainHistogram>(
-        dynamic_cast<DPOpenDomainHistogram*>(aggregator.release()));
+        << "Aggregator must be a DPThresholdingHistogram";
+    dp_histogram_ = std::unique_ptr<DPThresholdingHistogram>(
+        dynamic_cast<DPThresholdingHistogram*>(aggregator.release()));
   }
 
   bool HasSelector() const { return dp_histogram_->selector_ != nullptr; }
@@ -76,9 +76,21 @@ class DPOpenDomainHistogramPeer {
     return dp_histogram_->contributors_to_groups();
   }
 
+  double GetSelectorEpsilon() const {
+    return dp_histogram_->selector_->GetEpsilon();
+  }
+
+  double GetEpsilonPerAgg() const { return dp_histogram_->epsilon_per_agg(); }
+
+  double GetSelectorDelta() const {
+    return dp_histogram_->selector_->GetDelta();
+  }
+
+  double GetDeltaPerAgg() const { return dp_histogram_->delta_per_agg(); }
+
  private:
-  std::unique_ptr<DPOpenDomainHistogram> dp_histogram_;
-  friend class DPOpenDomainHistogram;
+  std::unique_ptr<DPThresholdingHistogram> dp_histogram_;
+  friend class DPThresholdingHistogram;
   friend class GroupByAggregator;
 };
 
@@ -257,7 +269,7 @@ Intrinsic CreateIntrinsicWithKeyTypes(
 }
 
 template <typename InputType, typename OutputType>
-Intrinsic CreateIntrinsicWithKeyTypes_ClosedDomain(
+Intrinsic CreateIntrinsicWithKeyTypes_ExhaustiveReport(
     double epsilon = kEpsilonThreshold, double delta = 0.001,
     int64_t l0_bound = 100, InputType linfinity_bound = 100,
     double l1_bound = -1, double l2_bound = -1,

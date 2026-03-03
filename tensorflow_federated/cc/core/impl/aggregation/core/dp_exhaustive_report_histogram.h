@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_EXHAUSTIVE_REPORT_HISTOGRAM_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_EXHAUSTIVE_REPORT_HISTOGRAM_H_
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <vector>
 
-#include "algorithms/partition-selection.h"
+#include "absl/container/fixed_array.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -40,70 +39,63 @@
 namespace tensorflow_federated {
 namespace aggregation {
 
-// DPOpenDomainHistogram is a child class of GroupByAggregator.
+// DPExhaustiveReportHistogram is a child class of GroupByAggregator.
 // ::AggregateTensorsInternal enforces a bound on the number of composite keys
 // (ordinals) that any one aggregation can contribute to.
-// ::Report adds noise to aggregates and removes composite keys that have value
-// below a threshold.
+// ::Report adds noise to aggregates
 // This class is not thread safe.
-class DPOpenDomainHistogram : public DPGroupByAggregator {
+class DPExhaustiveReportHistogram : public DPGroupByAggregator {
+ public:
+  // Accessor to the tensors that specify the domain of each key.
+  const TensorSpan& domain_tensors() const { return domain_tensors_; }
+
  protected:
   friend class DPGroupByFactory;
-  friend class DPOpenDomainHistogramPeer;
 
-  // Constructs a DPOpenDomainHistogram.
+  // Constructs a DPExhaustiveReportHistogram.
   // This constructor is meant for use by the DPGroupByFactory; most callers
-  // should instead create a DPOpenDomainHistogram from an intrinsic using the
-  // factory, i.e.
+  // should instead create a DPExhaustiveReportHistogram from an intrinsic using
+  // the factory, i.e.
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
-  static StatusOr<std::unique_ptr<DPOpenDomainHistogram>> Create(
+  //
+  // Takes the same inputs as DPGroupByAggregator, plus `domain_tensors`, a Span
+  // of Tensors where the i-th describes the domain of the i-th grouping key.
+  DPExhaustiveReportHistogram(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
       int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed,
-      std::optional<int> min_contributors_to_group = std::nullopt,
-      std::vector<int> contributor_counts = {},
+      int64_t max_groups_contributed, TensorSpan domain_tensors,
       int max_string_length = kDefaultMaxStringLength);
 
-  // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
-  // on the input specification
-  static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
-      const std::vector<TensorSpec>& input_key_specs,
-      const std::vector<TensorSpec>* output_key_specs, int64_t l0_bound);
-
-  // Applies NoiseAndThreshold to the noiseless aggregate.
+  // Checks magnitude of DP budget. If too large, simply releases noiseless
+  // aggregate. Otherwise, adds noise scaled to either L1 or L2 sensitivity.
   StatusOr<OutputTensorList> NoisyReport() override;
 
  private:
-  // Constructs a DPOpenDomainHistogram. Only called by the Create() method
-  // above.
-  DPOpenDomainHistogram(
-      const std::vector<TensorSpec>& input_key_specs,
-      const std::vector<TensorSpec>* output_key_specs,
-      const std::vector<Intrinsic>* intrinsics,
-      std::unique_ptr<CompositeKeyCombiner> key_combiner,
-      std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed,
-      std::optional<int> min_contributors_to_group,
-      std::vector<int> contributor_counts,
-      int max_string_length = kDefaultMaxStringLength);
-
-  // When merging two DPOpenDomainHistograms, norm bounding the aggregates will
+  // When merging two DPExhaustiveReportHistograms, bounding the aggregates will
   // destroy accuracy and is not needed for privacy. Hence, this function calls
   // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
   StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs) override;
 
-  std::unique_ptr<
-      differential_privacy::NearTruncatedGeometricPartitionSelection>
-      selector_;
+  // Given indices that specify a combination of keys, increment the index
+  // corresponding to a particular key. If the index is at the edge of the key's
+  // domain, wrap around and recurse to the next key.
+  // Return true if we can continue incrementing, false if we've reached the
+  // end of the entire domain of composite keys.
+  // Assumes that which_key is in the range [0, domain_tensors_.size()]
+  // and that the i-th entry of domain_indices is in the range
+  // [0, domain_tensors_[i].num_elements()]
+  bool IncrementDomainIndices(absl::FixedArray<int64_t>& domain_indices,
+                              int64_t which_key = 0);
+
+  TensorSpan domain_tensors_;
 };
 
 }  // namespace aggregation
 }  // namespace tensorflow_federated
 
-#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_EXHAUSTIVE_REPORT_HISTOGRAM_H_
