@@ -55,19 +55,27 @@ py_test(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "sampling_utils",
     srcs = ["sampling_utils.py"],
+    deps = ["@pypi//numpy"],
 )
 
 py_test(
     name = "sampling_utils_test",
     size = "small",
     srcs = ["sampling_utils_test.py"],
-    deps = [":sampling_utils"],
+    deps = [
+        ":sampling_utils",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_library(
@@ -77,6 +85,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
     ],
 )
 
@@ -88,5 +97,9 @@ py_test(
         ":training_loop",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//dm_tree",  # buildcleaner: keep
+        "@pypi//ml_dtypes",  # buildcleaner: keep
+        "@pypi//numpy",
     ],
 )

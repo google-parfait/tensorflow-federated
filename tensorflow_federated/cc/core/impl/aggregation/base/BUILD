@@ -130,7 +130,6 @@ cc_library(
 
 cc_library(
     name = "simulated_clock",
-    testonly = 1,
     srcs = ["simulated_clock.cc"],
     hdrs = ["simulated_clock.h"],
     deps = [

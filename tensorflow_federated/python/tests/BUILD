@@ -20,6 +20,8 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -29,6 +31,8 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
     ],
 )
 
@@ -41,6 +45,9 @@ py_test(
         ":test_contexts",
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -50,6 +57,9 @@ py_cpu_gpu_test(
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -60,6 +70,8 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -71,6 +83,8 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
     ],
 )
 
@@ -80,7 +94,11 @@ py_test(
     timeout = "long",
     srcs = ["simulation_test.py"],
     shard_count = 4,
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
@@ -92,6 +110,9 @@ py_test(
         ":test_contexts",
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -102,6 +123,9 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -111,17 +135,19 @@ py_library(
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "test_contexts",
-    testonly = True,
     srcs = ["test_contexts.py"],
     data = ["//tensorflow_federated/cc/simulation:worker_binary"],
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
     ],
 )
 
@@ -131,5 +157,6 @@ py_test(
     deps = [
         ":test_contexts",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
     ],
 )

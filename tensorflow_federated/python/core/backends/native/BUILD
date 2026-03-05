@@ -38,6 +38,8 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -47,6 +49,8 @@ py_test(
     deps = [
         ":compiler",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
     ],
 )
 
@@ -78,6 +82,9 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -104,6 +111,8 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -131,5 +140,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
     ],
 )

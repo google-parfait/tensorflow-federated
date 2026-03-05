@@ -57,6 +57,7 @@ def create_recurrent_model(
           input_length=sequence_length,
           output_dim=8,
           mask_zero=mask_zero,
+          input_shape=(sequence_length,),
       )
   )
   lstm_layer_builder = functools.partial(

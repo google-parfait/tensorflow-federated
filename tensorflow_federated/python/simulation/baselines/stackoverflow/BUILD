@@ -37,6 +37,7 @@ py_library(
     deps = [
         ":constants",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -48,6 +49,8 @@ py_test(
         ":tag_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -64,6 +67,7 @@ py_library(
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:stackoverflow",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -74,18 +78,25 @@ py_test(
         ":tag_prediction_tasks",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "word_prediction_models",
     srcs = ["word_prediction_models.py"],
+    deps = ["@pypi//tensorflow"],
 )
 
 py_test(
     name = "word_prediction_models_test",
     srcs = ["word_prediction_models_test.py"],
-    deps = [":word_prediction_models"],
+    deps = [
+        ":word_prediction_models",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_library(
@@ -94,6 +105,7 @@ py_library(
     deps = [
         ":constants",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -105,6 +117,8 @@ py_test(
         ":word_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -123,6 +137,7 @@ py_library(
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:stackoverflow",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -134,5 +149,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )

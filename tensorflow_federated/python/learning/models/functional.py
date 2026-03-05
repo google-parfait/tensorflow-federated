@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Module for creating functional implementations of a `tff.learning.models.VariableModel`.
+"""Module for creating functional implementations of a `VariableModel`.
 
 This version of the model parameterizes its `predict_on_batch` method by model
 weights, rather than storing them in the model. This allows for greater
@@ -30,6 +30,7 @@ from collections.abc import Callable, Mapping, Sequence
 import inspect
 from typing import Any, Optional, TypeVar, Union
 
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -233,7 +234,7 @@ class FunctionalModel:
 
 
 class _ModelFromFunctional(variable.VariableModel):
-  """A `tff.learning.models.VariableModel` wrapping a `tff.learning.model.FunctionalModel`."""
+  """A `VariableModel` wrapping a `FunctionalModel`."""
 
   def __init__(
       self,
@@ -297,9 +298,7 @@ class _ModelFromFunctional(variable.VariableModel):
     else:
       x, y = batch_input
     batch_output = self._functional_model.predict_on_batch(
-        model_weights=tf.nest.map_structure(
-            lambda v: v.read_value(), self._model_weights
-        ),
+        model_weights=tf.nest.map_structure(tf.identity, self._model_weights),
         x=x,
         training=training,
     )
@@ -322,9 +321,7 @@ class _ModelFromFunctional(variable.VariableModel):
   @tf.function
   def predict_on_batch(self, x, training=True):
     return self._functional_model.predict_on_batch(
-        model_weights=tf.nest.map_structure(
-            lambda v: v.read_value(), self._model_weights
-        ),
+        model_weights=tf.nest.map_structure(tf.identity, self._model_weights),
         x=x,
         training=training,
     )
@@ -337,7 +334,7 @@ class _ModelFromFunctional(variable.VariableModel):
         loss=[self._loss_sum, tf.cast(self._num_examples, tf.float32)]
     )
     for metric in self._metrics:
-      outputs[metric.name] = [v.read_value() for v in metric.variables]
+      outputs[metric.name] = [tf.identity(v) for v in metric.variables]
     return outputs
 
   def metric_finalizers(
@@ -386,7 +383,7 @@ def model_from_functional(
 
 
 class KerasFunctionalModelError(Exception):
-  """An error raised when a FunctionalModel backed by Keras is used outside TFF."""
+  """An error raised when a Keras FunctionalModel is used outside TFF."""
 
 
 def functional_model_from_keras(
@@ -491,6 +488,14 @@ def functional_model_from_keras(
         'supported in the current model serialization and deserialization.'
     )
 
+  def _unwrap(v):
+    """Unwraps a Keras 3 variable."""
+    match v:
+      case keras.Variable():
+        return v.value
+      case _:
+        return v
+
   # Clone the keras model inside a graph context so that we only get the
   # variables for the layers (otherwise keras adds other non-user variables). We
   # also setup ops to inject the current model weights, because the cloned model
@@ -522,20 +527,25 @@ def functional_model_from_keras(
       # We'll feed in the current model waits into the palceholders for
       # assignmnet in a session below.
       def assign_placeholder(v):
-        p = tf.compat.v1.placeholder(dtype=v.dtype)
+        p = tf.compat.v1.placeholder(dtype=v.dtype, shape=v.shape)
         return v.assign(p), p
 
       assign_ops, placeholders = zip(
-          *(assign_placeholder(v) for v in cloned_model.variables)
+          *(assign_placeholder(_unwrap(v)) for v in cloned_model.variables)
       )
 
+    captured_variables = tuple(_unwrap(v) for v in captured_variables)
+    trainable_refs = tuple(
+        _unwrap(v).ref() for v in cloned_model.trainable_variables
+    )
+    non_trainable_refs = tuple(
+        _unwrap(v).ref() for v in cloned_model.non_trainable_variables
+    )
     trainable_variables = tuple(
-        v for v in captured_variables if v in cloned_model.trainable_variables
+        v for v in captured_variables if v.ref() in trainable_refs
     )
     non_trainable_variables = tuple(
-        v
-        for v in captured_variables
-        if v in cloned_model.non_trainable_variables
+        v for v in captured_variables if v.ref() in non_trainable_refs
     )
 
   # Here we get the initial weights from the incoming keras model in the order
@@ -546,8 +556,9 @@ def functional_model_from_keras(
   else:
     model_for_variables = keras_model()
   current_model_weights = tf.nest.map_structure(
-      lambda v: v.read_value().numpy(), model_for_variables.variables
+      lambda v: tf.identity(v).numpy(), model_for_variables.variables
   )
+
   with tf.compat.v1.Session(graph=g) as sess:
     sess.run(tf.compat.v1.initializers.variables(captured_variables))
     sess.run(
@@ -612,7 +623,7 @@ def functional_model_from_keras(
         variableless_model = tf.keras.models.clone_model(keras_model)
       else:
         variableless_model = keras_model()
-    return variableless_model(x, training)
+    return variableless_model(x, training=training)
 
   def loss(
       output: Any, label: Any, sample_weight: Optional[Any] = None

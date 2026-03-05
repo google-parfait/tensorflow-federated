@@ -83,14 +83,14 @@ class KerasOptimizer(optimizer.Optimizer):
   def initialize(self, specs):
     del specs  # Unused.
     if self._disjoint_init_and_next:
-      return self._optimizer.variables()
+      return self._optimizer.variables
     else:
       return ()
 
   def next(self, state, weights, gradients):
     if self._disjoint_init_and_next:
       tf.nest.map_structure(
-          lambda v, s: v.assign(s), self._optimizer.variables(), state
+          lambda v, s: v.assign(s), self._optimizer.variables, state
       )
 
     self._optimizer.apply_gradients(
@@ -98,7 +98,7 @@ class KerasOptimizer(optimizer.Optimizer):
     )
 
     if self._disjoint_init_and_next:
-      return self._optimizer.variables(), weights
+      return self._optimizer.variables, weights
     else:
       return (), weights
 

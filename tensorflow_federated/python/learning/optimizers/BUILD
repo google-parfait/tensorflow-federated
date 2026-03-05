@@ -23,6 +23,7 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -33,6 +34,8 @@ py_test(
         ":adafactor",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -43,6 +46,7 @@ py_library(
         ":nest_utils",
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -53,6 +57,8 @@ py_test(
         ":adagrad",
         ":optimizer",
         ":optimizer_test_utils",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -63,6 +69,7 @@ py_library(
         ":nest_utils",
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -73,6 +80,8 @@ py_test(
         ":adam",
         ":optimizer",
         ":optimizer_test_utils",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -96,7 +105,10 @@ py_library(
 py_library(
     name = "keras_optimizer",
     srcs = ["keras_optimizer.py"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
@@ -109,6 +121,8 @@ py_test(
         ":sgdm",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -126,31 +140,47 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "optimizer",
     srcs = ["optimizer.py"],
+    deps = [
+        "@pypi//numpy",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
     name = "optimizer_test",
     srcs = ["optimizer_test.py"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_library(
     name = "optimizer_test_utils",
-    testonly = True,
     srcs = ["optimizer_test_utils.py"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
     name = "optimizer_test_utils_test",
     srcs = ["optimizer_test_utils_test.py"],
-    deps = [":optimizer_test_utils"],
+    deps = [
+        ":optimizer_test_utils",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_library(
@@ -160,6 +190,7 @@ py_library(
         ":nest_utils",
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -170,13 +201,18 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":rmsprop",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "scheduling",
     srcs = ["scheduling.py"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
@@ -190,6 +226,8 @@ py_test(
         ":scheduling",
         ":sgdm",
         ":yogi",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -200,6 +238,7 @@ py_library(
         ":nest_utils",
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -210,6 +249,8 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -220,6 +261,7 @@ py_library(
         ":nest_utils",
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -230,12 +272,14 @@ py_library(
         ":nest_utils",
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "nest_utils",
     srcs = ["nest_utils.py"],
+    deps = ["@pypi//tensorflow"],
 )
 
 py_test(
@@ -245,6 +289,8 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":yogi",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -255,11 +301,18 @@ py_test(
         ":adamw",
         ":optimizer",
         ":optimizer_test_utils",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
 py_test(
     name = "nest_utils_test",
     srcs = ["nest_utils_test.py"],
-    deps = [":nest_utils"],
+    deps = [
+        ":nest_utils",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
+    ],
 )

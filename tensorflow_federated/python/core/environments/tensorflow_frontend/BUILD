@@ -31,6 +31,8 @@ py_library(
         ":tensorflow_types",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "@federated_language//federated_language",
+        "@pypi//dm_tree",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -41,6 +43,10 @@ py_test(
     deps = [
         ":tensorflow_computation",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//ml_dtypes",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -53,6 +59,8 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "@federated_language//federated_language",
+        "@pypi//dm_tree",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -65,6 +73,9 @@ py_test(
         ":tensorflow_computation_context",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -79,6 +90,7 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_utils",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -91,18 +103,30 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:serialization_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "variable_utils",
     srcs = ["variable_utils.py"],
+    deps = [
+        "@pypi//numpy",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_library(
     name = "tensorflow_types",
     srcs = ["tensorflow_types.py"],
-    deps = ["@federated_language//federated_language"],
+    deps = [
+        "@federated_language//federated_language",
+        "@pypi//dm_tree",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
@@ -110,7 +134,11 @@ py_test(
     size = "small",
     timeout = "moderate",
     srcs = ["variable_utils_test.py"],
-    deps = [":variable_utils"],
+    deps = [
+        ":variable_utils",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
@@ -119,5 +147,8 @@ py_test(
     deps = [
         ":tensorflow_types",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
