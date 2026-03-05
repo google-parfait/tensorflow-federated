@@ -25,6 +25,7 @@ licenses(["notice"])
 
 cc_library(
     name = "array_shape_test_utils",
+    testonly = True,
     hdrs = ["array_shape_test_utils.h"],
     visibility = ["//visibility:public"],
     deps = ["@federated_language//federated_language/proto:array_cc_proto"],
@@ -38,6 +39,7 @@ cc_library(
 
 cc_library(
     name = "array_test_utils",
+    testonly = True,
     hdrs = ["array_test_utils.h"],
     visibility = ["//visibility:public"],
     deps = [
@@ -329,7 +331,7 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/utility",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@local_tsl//tsl/profiler/lib:traceme",
+        "@org_tensorflow//tensorflow/tsl/profiler/lib:traceme",
     ],
 )
 
@@ -412,6 +414,7 @@ cc_test(
 
 cc_library(
     name = "executor_test_base",
+    testonly = True,
     srcs = [],
     hdrs = ["executor_test_base.h"],
     visibility = ["//visibility:public"],
@@ -426,6 +429,7 @@ cc_library(
 
 pybind_extension(
     name = "executor_test_utils_bindings",
+    testonly = True,
     srcs = ["executor_test_utils_bindings.cc"],
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
@@ -498,6 +502,7 @@ cc_test(
 
 genrule(
     name = "reduce_lambda_test_graph",
+    testonly = True,
     srcs = [],
     outs = ["reduce_lambda_test.pbtxt"],
     cmd = "$(location :make_reduce_lambda_test_graph) --output \"$@\"",
@@ -508,15 +513,13 @@ genrule(
 # in `tensorflow_executor_test`.
 py_binary(
     name = "make_reduce_lambda_test_graph",
+    testonly = True,
     srcs = ["make_reduce_lambda_test_graph.py"],
-    deps = [
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
 )
 
 genrule(
     name = "structural_reduce_test_graph",
+    testonly = True,
     srcs = [],
     outs = ["structural_reduce_test.pbtxt"],
     cmd = "$(location :make_structural_reduce_test_graph) --output \"$@\"",
@@ -527,15 +530,13 @@ genrule(
 # `reduce` in `dataset_from_tensor_structures_test`.
 py_binary(
     name = "make_structural_reduce_test_graph",
+    testonly = True,
     srcs = ["make_structural_reduce_test_graph.py"],
-    deps = [
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
 )
 
 cc_library(
     name = "mock_data_backend",
+    testonly = True,
     hdrs = ["mock_data_backend.h"],
     deps = [
         ":data_backend",
@@ -549,6 +550,7 @@ cc_library(
 
 cc_library(
     name = "mock_executor",
+    testonly = True,
     srcs = ["mock_executor.cc"],
     hdrs = ["mock_executor.h"],
     visibility = ["//visibility:public"],
@@ -565,6 +567,7 @@ cc_library(
 
 cc_library(
     name = "mock_grpc",
+    testonly = True,
     hdrs = ["mock_grpc.h"],
     deps = [
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
@@ -1000,6 +1003,7 @@ tff_cc_cpu_gpu_test(
 
 cc_library(
     name = "tensorflow_test_utils",
+    testonly = True,
     hdrs = ["tensorflow_test_utils.h"],
     visibility = ["//visibility:public"],
     deps = [
@@ -1103,6 +1107,7 @@ cc_test(
 
 cc_library(
     name = "type_test_utils",
+    testonly = True,
     hdrs = ["type_test_utils.h"],
     visibility = ["//visibility:public"],
     deps = [
@@ -1131,6 +1136,7 @@ cc_library(
 
 cc_library(
     name = "value_test_utils",
+    testonly = True,
     hdrs = ["value_test_utils.h"],
     visibility = ["//visibility:public"],
     deps = [

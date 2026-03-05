@@ -27,8 +27,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -55,9 +53,6 @@ py_library(
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
         "//tensorflow_federated/python/learning/metrics:keras_utils",
         "//tensorflow_federated/python/learning/metrics:types",
-        "@pypi//keras",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -72,9 +67,6 @@ py_test(
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
         "@federated_language//federated_language",
-        "@pypi//keras",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -89,8 +81,6 @@ py_library(
         "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -109,19 +99,13 @@ py_test(
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:counters",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "model_examples",
     srcs = ["model_examples.py"],
-    deps = [
-        ":variable",
-        "@pypi//tensorflow",
-    ],
+    deps = [":variable"],
 )
 
 py_test(
@@ -132,8 +116,6 @@ py_test(
         ":model_examples",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -149,7 +131,6 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -161,9 +142,6 @@ py_test(
         ":variable",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -181,29 +159,22 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/learning/metrics:counters",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "test_models",
+    testonly = True,
     srcs = ["test_models.py"],
     deps = [
         ":functional",
         ":variable",
         "//tensorflow_federated/python/learning/metrics:types",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "variable",
     srcs = ["variable.py"],
-    deps = [
-        "//tensorflow_federated/python/learning/metrics:types",
-        "@pypi//tensorflow",
-    ],
+    deps = ["//tensorflow_federated/python/learning/metrics:types"],
 )

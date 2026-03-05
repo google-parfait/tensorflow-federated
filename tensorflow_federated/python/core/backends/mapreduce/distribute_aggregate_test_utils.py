@@ -353,12 +353,7 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
       )
       init_model = tf.compat.v1.global_variables_initializer()
 
-      try:
-        optimizer = tf.keras.optimizers.SGD(context_at_client.learning_rate)
-      except ValueError:
-        # Keras 3 API differs from Keras 2 API.
-        optimizer = tf.keras.optimizers.SGD()
-        optimizer.learning_rate = context_at_client.learning_rate
+      optimizer = tf.keras.optimizers.SGD(context_at_client.learning_rate)
 
       @tf.function
       def reduce_fn(loop_state, batch):

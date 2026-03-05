@@ -41,10 +41,6 @@ py_test(
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//typing_extensions",  # buildcleaner: keep
     ],
 )
 
@@ -74,8 +70,6 @@ py_test(
         ":executor_bindings",
         ":value_serialization",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )
 
@@ -91,10 +85,6 @@ py_test(
     deps = [
         ":data_conversions",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//typing_extensions",  # buildcleaner: keep
     ],
 )
 
@@ -122,13 +112,12 @@ py_test(
         ":executor_bindings",
         ":executor_test_utils_bindings",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//portpicker",
     ],
 )
 
 py_library(
     name = "executor_test_utils_bindings",
+    testonly = True,
     srcs = ["executor_test_utils_bindings.py"],
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
@@ -148,22 +137,13 @@ py_test(
     deps = [
         ":executor_utils",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//numpy",
-        "@pypi//typing_extensions",  # buildcleaner: keep
     ],
 )
 
 py_library(
     name = "executors_errors",
     srcs = ["executors_errors.py"],
-    deps = [
-        "@federated_language//federated_language",
-        "@pypi//grpcio",
-        "@pypi//typing_extensions",
-    ],
+    deps = ["@federated_language//federated_language"],
 )
 
 py_library(
@@ -177,8 +157,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//grpcio",
     ],
 )
 
@@ -192,11 +170,6 @@ py_test(
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//grpcio",
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//numpy",
     ],
 )
 
@@ -215,8 +188,6 @@ py_library(
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//grpcio",
     ],
 )
 
@@ -229,11 +200,6 @@ py_test(
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//grpcio",
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//portpicker",
     ],
 )
 
@@ -247,9 +213,6 @@ py_library(
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:array_py_pb2",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//numpy",
     ],
 )
 
@@ -265,10 +228,5 @@ py_test(
         "@federated_language//federated_language/proto:array_py_pb2",
         "@federated_language//federated_language/proto:computation_py_pb2",
         "@federated_language//federated_language/proto:data_type_py_pb2",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//numpy",
-        "@pypi//typing_extensions",  # buildcleaner: keep
     ],
 )

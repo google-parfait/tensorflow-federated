@@ -26,42 +26,27 @@ py_library(
 py_library(
     name = "mnist",
     srcs = ["mnist.py"],
-    deps = [
-        "//tensorflow_federated/python/learning/metrics:counters",
-        "@pypi//tensorflow",
-    ],
+    deps = ["//tensorflow_federated/python/learning/metrics:counters"],
 )
 
 py_library(
     name = "mobilenet_v2",
     srcs = ["mobilenet_v2.py"],
-    deps = [
-        "@pypi//tensorflow",
-    ],
 )
 
 py_test(
     name = "mobilenet_v2_test",
     srcs = ["mobilenet_v2_test.py"],
-    deps = [
-        ":mobilenet_v2",
-        "@pypi//tensorflow",
-    ],
+    deps = [":mobilenet_v2"],
 )
 
 py_library(
     name = "resnet_models",
     srcs = ["resnet_models.py"],
-    deps = [
-        "@pypi//tensorflow",
-    ],
 )
 
 py_test(
     name = "resnet_models_test",
     srcs = ["resnet_models_test.py"],
-    deps = [
-        ":resnet_models",
-        "@pypi//tensorflow",
-    ],
+    deps = [":resnet_models"],
 )

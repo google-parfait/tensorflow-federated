@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-from collections.abc import Callable
 import functools
 import os
 
@@ -244,12 +243,10 @@ class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(actual_output, expected_python_container)
 
 
-def _test_model_fn(
-    keras_model_fn, loss_fn, test_input_spec
-) -> Callable[[], variable.VariableModel]:
+def _test_model_fn(keras_model_fn, loss_fn, test_input_spec):
   """Builds a `model_fn` for testing."""
 
-  def model_fn() -> variable.VariableModel:
+  def model_fn():
     return keras_utils.from_keras_model(
         keras_model_fn(), input_spec=test_input_spec, loss=loss_fn()
     )
@@ -258,7 +255,7 @@ def _test_model_fn(
 
 
 class _TestModel(variable.VariableModel):
-  """Test model that returns different signatures based on `training`."""
+  """Test model that returns different signatures when `training` value changes."""
 
   def __init__(self, has_reset_metrics_implemented=False):
     input_tensor = tf.keras.layers.Input(shape=(3,))
@@ -359,6 +356,17 @@ _TEST_MODEL_FNS = [
         ),
     ),
     (
+        'keras_with_embedding',
+        _test_model_fn(
+            model_examples.build_embedding_keras_model,
+            tf.keras.losses.SparseCategoricalCrossentropy,
+            collections.OrderedDict(
+                x=tf.TensorSpec(shape=[None], dtype=tf.float32),
+                y=tf.TensorSpec(shape=[None], dtype=tf.float32),
+            ),
+        ),
+    ),
+    (
         'keras_multiple_input',
         _test_model_fn(
             model_examples.build_multiple_inputs_keras_model,
@@ -369,6 +377,24 @@ _TEST_MODEL_FNS = [
                     b=tf.TensorSpec(shape=[1, 1], dtype=tf.float32),
                 ),
                 y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            ),
+        ),
+    ),
+    (
+        'keras_multiple_output',
+        _test_model_fn(
+            model_examples.build_multiple_outputs_keras_model,
+            tf.keras.losses.MeanSquaredError,
+            collections.OrderedDict(
+                x=(
+                    tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+                    tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+                ),
+                y=(
+                    tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+                    tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+                    tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+                ),
             ),
         ),
     ),
@@ -481,9 +507,7 @@ class SerializationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotEmpty(tflite_flatbuffer)
 
   @parameterized.named_parameters(_TEST_MODEL_FNS)
-  def test_saved_model_to_tflite_with_input_type(
-      self, model_fn: Callable[[], variable.VariableModel]
-  ):
+  def test_saved_model_to_tflite_with_input_type(self, model_fn):
     model = model_fn()
     test_dir = os.path.join(self.get_temp_dir(), 'tflite_test')
     try:

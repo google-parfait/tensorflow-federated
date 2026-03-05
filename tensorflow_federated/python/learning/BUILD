@@ -44,24 +44,17 @@ py_library(
 py_library(
     name = "client_weight_lib",
     srcs = ["client_weight_lib.py"],
-    deps = ["@pypi//tensorflow"],
 )
 
 py_library(
     name = "loop_builder",
     srcs = ["loop_builder.py"],
-    deps = ["@pypi//tensorflow"],
 )
 
 py_cpu_gpu_test(
     name = "loop_builder_test",
     srcs = ["loop_builder_test.py"],
-    deps = [
-        ":loop_builder",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
-    ],
+    deps = [":loop_builder"],
 )
 
 py_library(
@@ -89,8 +82,6 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )
 
@@ -102,7 +93,6 @@ py_library(
         "//tensorflow_federated/python/aggregators:measurements",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "@federated_language//federated_language",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -114,28 +104,18 @@ py_test(
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@pypi//tensorflow",
-    ],
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_test(
     name = "tensor_utils_test",
     size = "small",
     srcs = ["tensor_utils_test.py"],
-    deps = [
-        ":tensor_utils",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
-    ],
+    deps = [":tensor_utils"],
 )

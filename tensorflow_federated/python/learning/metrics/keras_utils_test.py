@@ -16,7 +16,6 @@ import collections
 import itertools
 
 from absl.testing import parameterized
-import keras
 import numpy as np
 import tensorflow as tf
 
@@ -24,7 +23,7 @@ from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import keras_utils
 
 # Names of Keras metrics to test.
-BINARY_METRIC_NAMES = (
+BINARY_METRIC_NAMES = [
     'Accuracy',
     'BinaryAccuracy',
     'BinaryCrossentropy',
@@ -38,18 +37,7 @@ BINARY_METRIC_NAMES = (
     'MeanAbsoluteError',
     'MeanSquaredError',
     'AUC',
-)
-
-
-def _unwrap(v):
-  """Wraps a Keras 3 metric."""
-
-  match v:
-    case keras.Variable():
-      return v.value
-    case _:
-      return v
-
+]
 
 # keras_utils assumes that the input to a metric's `update` method has a
 # `prediction` attribute.
@@ -130,26 +118,10 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
       (name, getattr(tf.keras.metrics, name)) for name in BINARY_METRIC_NAMES
   )
   def test_binary_metrics_graph(self, metric_constructor):
-
-    # Required for ACD to get the variables to update in graph contexts.
-    def tf_update_state(metric):
-      """Returns a TF function that updates the metric state."""
-
-      @tf.function
-      def _update_state(y_pred, y_true):
-        metric.update_state(y_pred=y_pred, y_true=y_true)
-        return metric.variables
-
-      return _update_state
-
     with tf.Graph().as_default():
       with tf.compat.v1.Session() as sess:
         metric = metric_constructor()
-        sess.run(
-            tf.compat.v1.initializers.variables(
-                [_unwrap(v) for v in metric.variables]
-            )
-        )
+        sess.run(tf.compat.v1.initializers.variables(metric.variables))
         initialize, update, finalize = keras_utils.create_functional_metric_fns(
             metric_constructor
         )
@@ -157,30 +129,25 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
             initialize, update, finalize
         )
         state = initialize()
-        metric_variables = [_unwrap(v) for v in metric.variables]
-        self.assertAllEqual(
-            self.evaluate(metric_variables), self.evaluate(state)
-        )
+        self.assertAllEqual(self.evaluate(metric.variables), state)
         predictions = [0.0, 1.0]
         labels = [1.0, 1.0]
-        self.evaluate(tf_update_state(metric)(predictions, labels))
-        # self.evaluate(metric.update_state(y_pred=predictions, y_true=labels))
+        self.evaluate(metric.update_state(y_pred=predictions, y_true=labels))
         batch_output = _BatchOutput(predictions=predictions)
         state = update(state, batch_output=batch_output, labels=labels)
         self.assertAllEqual(
-            self.evaluate(metric_variables), self.evaluate(state)
+            self.evaluate(metric.variables), self.evaluate(state)
         )
         self.assertAllEqual(
             self.evaluate(metric.result()), self.evaluate(finalize(state))
         )
         predictions = [0.0, 1.0, 0.0]
         labels = [1.0, 1.0, 0.0]
-        self.evaluate(tf_update_state(metric)(predictions, labels))
-        # self.evaluate(metric.update_state(y_pred=predictions, y_true=labels))
+        self.evaluate(metric.update_state(y_pred=predictions, y_true=labels))
         batch_output = _BatchOutput(predictions=predictions)
         state = update(state, batch_output=batch_output, labels=labels)
         self.assertAllEqual(
-            self.evaluate(metric_variables), self.evaluate(state)
+            self.evaluate(metric.variables), self.evaluate(state)
         )
         self.assertAllEqual(
             self.evaluate(metric.result()), self.evaluate(finalize(state))

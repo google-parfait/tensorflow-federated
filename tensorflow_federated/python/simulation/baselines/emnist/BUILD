@@ -38,7 +38,6 @@ py_library(
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:emnist",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -50,8 +49,6 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -68,7 +65,6 @@ py_library(
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:emnist",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -81,33 +77,24 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "emnist_models",
     srcs = ["emnist_models.py"],
-    deps = ["@pypi//tensorflow"],
 )
 
 py_test(
     name = "emnist_models_test",
     srcs = ["emnist_models_test.py"],
-    deps = [
-        ":emnist_models",
-        "@pypi//tensorflow",
-    ],
+    deps = [":emnist_models"],
 )
 
 py_library(
     name = "emnist_preprocessing",
     srcs = ["emnist_preprocessing.py"],
-    deps = [
-        "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@pypi//tensorflow",
-    ],
+    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
 )
 
 py_test(
@@ -118,7 +105,5 @@ py_test(
         ":emnist_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )

@@ -45,7 +45,6 @@ py_library(
     deps = [
         ":download",
         ":sql_client_data",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -53,11 +52,7 @@ py_test(
     name = "celeba_test",
     size = "small",
     srcs = ["celeba_test.py"],
-    deps = [
-        ":celeba",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
+    deps = [":celeba"],
 )
 
 py_library(
@@ -67,7 +62,6 @@ py_library(
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -75,17 +69,12 @@ py_test(
     name = "cifar100_test",
     size = "small",
     srcs = ["cifar100_test.py"],
-    deps = [
-        ":cifar100",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
+    deps = [":cifar100"],
 )
 
 py_library(
     name = "dataset_utils",
     srcs = ["dataset_utils.py"],
-    deps = ["@pypi//tensorflow"],
 )
 
 py_test(
@@ -95,28 +84,19 @@ py_test(
     deps = [
         ":dataset_utils",
         ":from_tensor_slices_client_data",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "download",
     srcs = ["download.py"],
-    deps = [
-        "@pypi//tensorflow",
-        "@pypi//tqdm",
-    ],
 )
 
 py_test(
     name = "download_test",
     size = "small",
     srcs = ["download_test.py"],
-    deps = [
-        ":download",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
+    deps = [":download"],
 )
 
 py_library(
@@ -126,8 +106,6 @@ py_library(
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -135,11 +113,7 @@ py_test(
     name = "emnist_test",
     timeout = "long",
     srcs = ["emnist_test.py"],
-    deps = [
-        ":emnist",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
+    deps = [":emnist"],
 )
 
 py_library(
@@ -148,18 +122,13 @@ py_library(
     deps = [
         ":client_data",
         ":file_per_user_client_data",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
 py_test(
     name = "flair_test",
     srcs = ["flair_test.py"],
-    deps = [
-        ":flair",
-        "@pypi//tensorflow",
-    ],
+    deps = [":flair"],
 )
 
 py_library(
@@ -170,7 +139,6 @@ py_library(
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -178,11 +146,7 @@ py_test(
     name = "shakespeare_test",
     size = "small",
     srcs = ["shakespeare_test.py"],
-    deps = [
-        ":shakespeare",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
+    deps = [":shakespeare"],
 )
 
 py_library(
@@ -192,7 +156,6 @@ py_library(
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -200,11 +163,7 @@ py_test(
     name = "stackoverflow_test",
     size = "medium",
     srcs = ["stackoverflow_test.py"],
-    deps = [
-        ":stackoverflow",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
+    deps = [":stackoverflow"],
 )
 
 py_library(
@@ -214,7 +173,6 @@ py_library(
         ":client_data",
         ":from_tensor_slices_client_data",
         ":vision_datasets_utils",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -225,7 +183,6 @@ py_test(
     deps = [
         ":gldv2",
         ":vision_datasets_utils",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -236,7 +193,6 @@ py_library(
         ":client_data",
         ":from_tensor_slices_client_data",
         ":vision_datasets_utils",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -248,7 +204,6 @@ py_test(
     deps = [
         ":inaturalist",
         ":vision_datasets_utils",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -258,17 +213,13 @@ py_library(
     deps = [
         ":client_data",
         ":file_per_user_client_data",
-        "@pypi//tensorflow",
     ],
 )
 
 py_test(
     name = "vision_datasets_utils_test",
     srcs = ["vision_datasets_utils_test.py"],
-    deps = [
-        ":vision_datasets_utils",
-        "@pypi//tensorflow",
-    ],
+    deps = [":vision_datasets_utils"],
 )
 
 py_library(
@@ -278,9 +229,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -292,8 +240,6 @@ py_test(
         ":client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -304,7 +250,6 @@ py_library(
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning:tensor_utils",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -316,7 +261,6 @@ py_test(
         ":file_per_user_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@federated_language//federated_language",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -326,7 +270,6 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -339,9 +282,6 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -351,8 +291,6 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -363,8 +301,6 @@ py_test(
     deps = [
         ":sql_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -374,7 +310,6 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -385,7 +320,6 @@ py_test(
         ":from_tensor_slices_client_data",
         ":transforming_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -395,18 +329,11 @@ py_library(
     deps = [
         ":client_data",
         ":sql_client_data",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
 py_test(
     name = "sql_client_data_utils_test",
     srcs = ["sql_client_data_utils_test.py"],
-    deps = [
-        ":sql_client_data_utils",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
-    ],
+    deps = [":sql_client_data_utils"],
 )

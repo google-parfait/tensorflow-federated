@@ -34,6 +34,7 @@ class NumExamplesCounterTest(parameterized.TestCase, tf.test.TestCase):
   def test_construct(self):
     m = counters.NumExamplesCounter()
     self.assertEqual(m.name, 'num_examples')
+    self.assertTrue(m.stateful)
     self.assertEqual(m.dtype, tf.int64)
     self.assertLen(m.variables, 1)
     self.assertEqual(m.total, 0)
@@ -45,14 +46,14 @@ class NumExamplesCounterTest(parameterized.TestCase, tf.test.TestCase):
     m = counters.NumExamplesCounter()
     self.assertEqual(m(batch1, batch1), 10)
     self.assertEqual(m.total, 10)
-    m.update_state(batch2, batch2)
+    self.assertEqual(m.update_state(batch2, batch2), 15)
     self.assertEqual(m.total, 15)
 
   def test_update_computes_shape_of_first_input_arg(self):
     m = counters.NumExamplesCounter()
     self.assertEqual(m(tf.zeros([10, 1]), tf.zeros([15])), 10)
     self.assertEqual(m.total, 10)
-    m.update_state(tf.zeros([5, 1]), tf.zeros([700]))
+    self.assertEqual(m.update_state(tf.zeros([5, 1]), tf.zeros([700])), 15)
     self.assertEqual(m.total, 15)
 
   @parameterized.named_parameters(NAMED_LABEL_TESTS)
@@ -60,7 +61,7 @@ class NumExamplesCounterTest(parameterized.TestCase, tf.test.TestCase):
     m = counters.NumExamplesCounter()
     self.assertEqual(m(batch1, batch1), 10)
     self.assertEqual(m.total, 10)
-    m.update_state(batch2, batch2)
+    self.assertEqual(m.update_state(batch2, batch2), 15)
     self.assertEqual(m.total, 15)
 
   def test_reset_to_zero(self):
@@ -76,6 +77,7 @@ class NumBatchesCounterTest(parameterized.TestCase, tf.test.TestCase):
   def test_construct(self):
     m = counters.NumBatchesCounter()
     self.assertEqual(m.name, 'num_batches')
+    self.assertTrue(m.stateful)
     self.assertEqual(m.dtype, tf.int64)
     self.assertLen(m.variables, 1)
     self.assertEqual(m.total, 0)
@@ -87,7 +89,7 @@ class NumBatchesCounterTest(parameterized.TestCase, tf.test.TestCase):
     m = counters.NumBatchesCounter()
     self.assertEqual(m(batch1, batch1), 1)
     self.assertEqual(m.total, 1)
-    m.update_state(batch2, batch2)
+    self.assertEqual(m.update_state(batch2, batch2), 2)
     self.assertEqual(m.total, 2)
 
   @parameterized.named_parameters(NAMED_LABEL_TESTS)
@@ -95,7 +97,7 @@ class NumBatchesCounterTest(parameterized.TestCase, tf.test.TestCase):
     m = counters.NumBatchesCounter()
     self.assertEqual(m(batch1, batch1), 1)
     self.assertEqual(m.total, 1)
-    m.update_state(batch2, batch2)
+    self.assertEqual(m.update_state(batch2, batch2), 2)
     self.assertEqual(m.total, 2)
 
   def test_reset_to_zero(self):

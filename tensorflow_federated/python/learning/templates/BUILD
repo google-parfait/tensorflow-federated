@@ -44,7 +44,6 @@ py_library(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "@federated_language//federated_language",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -60,9 +59,6 @@ py_test(
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -91,8 +87,6 @@ py_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/models:model_weights",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )
 
@@ -143,9 +137,6 @@ py_test(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -172,9 +163,6 @@ py_test(
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -202,8 +190,6 @@ py_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/models:model_weights",
         "@federated_language//federated_language",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -224,8 +210,6 @@ py_test(
         ":hparams_base",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )
 
@@ -250,9 +234,6 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:errors",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -275,7 +256,6 @@ py_library(
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "@federated_language//federated_language",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -300,9 +280,6 @@ py_test(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -325,8 +302,6 @@ py_library(
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -350,9 +325,6 @@ py_test(
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -371,7 +343,5 @@ py_test(
     deps = [
         ":type_checks",
         "@federated_language//federated_language",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )

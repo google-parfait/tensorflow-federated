@@ -41,9 +41,5 @@ py_test(
         ":mergeable_comp_execution_context",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//numpy",
     ],
 )

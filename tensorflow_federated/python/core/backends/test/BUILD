@@ -39,8 +39,6 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "@federated_language//federated_language",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -52,8 +50,6 @@ py_test(
         "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )
 
@@ -71,8 +67,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//portpicker",
     ],
 )
 
@@ -87,9 +81,6 @@ py_test(
         ":execution_contexts",
         "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",
-        "@pypi//numpy",
     ],
 )
 
@@ -112,8 +103,5 @@ py_test(
         ":execution_contexts",
         "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//grpcio",
-        "@pypi//numpy",
     ],
 )

@@ -48,10 +48,6 @@ py_test(
         ":errors",
         ":measured_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//numpy",
     ],
 )
 
@@ -79,10 +75,6 @@ py_test(
         ":errors",
         ":estimation_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//numpy",
     ],
 )
 
@@ -104,10 +96,6 @@ py_test(
         ":errors",
         ":iterative_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//numpy",
     ],
 )
 
@@ -118,7 +106,6 @@ py_library(
         ":errors",
         ":iterative_process",
         "@federated_language//federated_language",
-        "@pypi//dm_tree",
     ],
 )
 
@@ -150,7 +137,5 @@ py_test(
         ":measured_process",
         "//tensorflow_federated/python/core/impl/compiler:compiler_test_utils",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )

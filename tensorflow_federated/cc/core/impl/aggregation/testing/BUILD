@@ -21,6 +21,7 @@ package(
 
 cc_library(
     name = "testing",
+    testonly = True,
     srcs = ["testing.cc"],
     hdrs = ["testing.h"],
     deps = [
@@ -52,6 +53,7 @@ cc_library(
 
 cc_library(
     name = "mocks",
+    testonly = True,
     hdrs = ["mocks.h"],
     deps = [
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
@@ -67,6 +69,7 @@ cc_library(
 
 cc_library(
     name = "parse_text_proto",
+    testonly = True,
     hdrs = ["parse_text_proto.h"],
     deps = [
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -76,6 +79,7 @@ cc_library(
 
 cc_library(
     name = "test_data",
+    testonly = True,
     hdrs = ["test_data.h"],
     visibility = ["//visibility:public"],
     deps = ["//tensorflow_federated/cc/core/impl/aggregation/core:tensor"],

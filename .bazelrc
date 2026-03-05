@@ -3,9 +3,6 @@
 # See https://docs.bazel.build/versions/master/user-manual.html#config for
 # details on the various configuration options.
 
-# Disable Bzlmod for now, as TFF is not yet migrated to Bzlmod.
-common --noenable_bzlmod
-
 # Enable verbose failures for testing only.
 build --verbose_failures
 
@@ -43,9 +40,7 @@ build --copt=-O3
 
 # Suppress C++ compiler warnings.
 build:linux --copt=-w
-build:linux --copt=-Wno-private-header
 build:linux --host_copt=-w
-build:linux --host_copt=-Wno-private-header
 
 #
 # Remote execution capabilities
@@ -59,7 +54,7 @@ build:remote --remote_cache=grpcs://remotebuildexecution.googleapis.com
 
 # Project configuration.
 build:remote --remote_instance_name=projects/tensorflow-federated/instances/default_instance
-build:remote --bes_instance_name=tensorflow-federated
+build:remote --project_id=tensorflow-federated
 
 #
 # Required to build TensorFlow
@@ -108,20 +103,9 @@ build:cuda --@local_config_cuda//:enable_cuda
 
 # Default paths for TF_SYSTEM_LIBS
 build:linux --define=PREFIX=/usr
-build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
 build:linux --define=LIBDIR=$(PREFIX)/lib
 build:linux --define=INCLUDEDIR=$(PREFIX)/include
-
-common:linux --define=with_cross_compiler_support=true
-common:linux --linkopt=-Wl,--undefined-version
-common:linux --copt=-Wno-gnu-offsetof-extensions
-common:linux --copt=-Wno-error=array-parameter
-common:linux --copt=-Wno-error=unused-command-line-argument
-common:linux --linkopt="-fuse-ld=lld"
-common:linux --linkopt="-lm"
-
-common --incompatible_enable_cc_toolchain_resolution
-common --repo_env USE_HERMETIC_CC_TOOLCHAIN=1
+build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
 
 # By default, build TF in C++ 17 mode.
 build:linux --cxxopt=-std=c++17
@@ -157,15 +141,9 @@ build:cuda --action_env=TF_CUDNN_VERSION="8"
 build:cuda --repo_env=TF_CUDA_COMPUTE_CAPABILITIES="sm_60,sm_70,sm_75,compute_80"
 build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt9/usr/bin/gcc"
 
-# build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1
-
-common --copt=-DGRPC_BAZEL_BUILD
-common --host_copt=-DGRPC_BAZEL_BUILD
-common --action_env=GRPC_BAZEL_RUNTIME=1
-common --repo_env=PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb
-common --action_env=PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb
+build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1
 
 # Default startup
 startup --host_jvm_args=-Dbazel.DigestFunction=SHA256
 
-build --copt=-DDENABLE_ONEDNN_V3
+build --define=build_with_onednn_v2=true

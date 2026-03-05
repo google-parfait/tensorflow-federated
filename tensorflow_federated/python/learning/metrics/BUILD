@@ -50,9 +50,6 @@ py_library(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
-        "@pypi//dm_tree",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -70,9 +67,6 @@ py_test(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -95,9 +89,6 @@ py_test(
         ":keras_finalizer",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -125,39 +116,24 @@ py_test(
         ":sum_aggregation_factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "counters",
     srcs = ["counters.py"],
-    deps = [
-        "@pypi//numpy",
-        "@pypi//tensorflow",
-    ],
 )
 
 py_test(
     name = "counters_test",
     srcs = ["counters_test.py"],
-    deps = [
-        ":counters",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
-    ],
+    deps = [":counters"],
 )
 
 py_library(
     name = "keras_finalizer",
     srcs = ["keras_finalizer.py"],
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@pypi//tensorflow",
-    ],
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_test(
@@ -168,20 +144,13 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "keras_utils",
     srcs = ["keras_utils.py"],
-    deps = [
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:variable_utils",
-        "@pypi//keras",
-        "@pypi//tensorflow",
-    ],
+    deps = ["//tensorflow_federated/python/core/environments/tensorflow_frontend:variable_utils"],
 )
 
 py_test(
@@ -190,10 +159,6 @@ py_test(
     deps = [
         ":counters",
         ":keras_utils",
-        "@pypi//absl_py",
-        "@pypi//keras",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -205,9 +170,6 @@ py_test(
         ":types",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 

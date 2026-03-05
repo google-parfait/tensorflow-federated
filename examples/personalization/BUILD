@@ -10,10 +10,7 @@ licenses(["notice"])
 py_library(
     name = "p13n_utils",
     srcs = ["p13n_utils.py"],
-    deps = [
-        "//tensorflow_federated",
-        "@pypi//tensorflow",
-    ],
+    deps = ["//tensorflow_federated"],
 )
 
 py_test(
@@ -22,8 +19,6 @@ py_test(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -33,8 +28,5 @@ py_binary(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )

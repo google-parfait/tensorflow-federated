@@ -29,7 +29,7 @@ from tensorflow_federated.python.learning.models import variable
 
 
 class _LoadedSavedModel(variable.VariableModel):
-  """Private class for instantiating `VariableModel` from a SavedModel."""
+  """Private class for instantiating `tff.learning.models.VariableModel` from a SavedModel."""
 
   def __init__(self, loaded_module):
     self._loaded_module = loaded_module
@@ -187,8 +187,7 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
 
 
 def _deserialize_type_spec(serialize_type_variable, python_container=None):
-  """Deserialize a `Type` protocol buffer into a python class instance."""
-
+  """Deserialize a `federated_language.Type` protocol buffer into a python class instance."""
   type_spec = federated_language.Type.from_proto(
       computation_pb2.Type.FromString(
           serialize_type_variable.read_value().numpy()
@@ -240,11 +239,11 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
   NOTE: The model returned by `tff.learning.models.load` will _not_ be the same
   Python type as the saved model. If the model serialized using this method is
   a subclass of `tff.learning.models.VariableModel`, that subclass is _not_
-  returned. All method behavior is retained, but the Python type does not cross
-  serialization boundaries. The return type of `metric_finalizers` will be an
-  OrderedDict of str to `tff.tensorflow.computation` (annotated TFF
-  computations) which could be different from that of the model before
-  serialization.
+  returned. All
+  method behavior is retained, but the Python type does not cross serialization
+  boundaries. The return type of `metric_finalizers` will be an OrderedDict of
+  str to `tff.tensorflow.computation` (annotated TFF computations) which could
+  be different from that of the model before serialization.
 
   Args:
     model: The `tff.learning.models.VariableModel` to save.
@@ -256,7 +255,6 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
       `model.input_spec['x']` if the input_spec is a mapping, otherwise default
       to `model.input_spec[0]`.
   """
-
   py_typecheck.check_type(model, variable.VariableModel)
   py_typecheck.check_type(path, str)
   if not path:
@@ -379,7 +377,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
 
 
 def load(path: str) -> variable.VariableModel:
-  """Deserializes a TensorFlow SavedModel at `path` to a `VariableModel`.
+  """Deserializes a TensorFlow SavedModel at `path` to a `tff.learning.models.VariableModel`.
 
   Args:
     path: The `str` path pointing to a SavedModel.

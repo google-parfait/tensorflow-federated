@@ -37,7 +37,6 @@ py_library(
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:gldv2",
         "//tensorflow_federated/python/simulation/models:mobilenet_v2",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -49,18 +48,13 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "landmark_preprocessing",
     srcs = ["landmark_preprocessing.py"],
-    deps = [
-        "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@pypi//tensorflow",
-    ],
+    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
 )
 
 py_test(
@@ -70,7 +64,5 @@ py_test(
         ":landmark_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )

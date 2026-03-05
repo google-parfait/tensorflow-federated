@@ -10,8 +10,5 @@ licenses(["notice"])
 py_binary(
     name = "load_flair",
     srcs = ["load_flair.py"],
-    deps = [
-        "//tensorflow_federated",
-        "@pypi//absl_py",
-    ],
+    deps = ["//tensorflow_federated"],
 )

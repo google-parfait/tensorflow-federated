@@ -1,0 +1,13 @@
+diff --git tensorflow/compiler/tf2xla/BUILD tensorflow/compiler/tf2xla/BUILD
+index 22d9877bed9..3f6b421465d 100644
+--- tensorflow/compiler/tf2xla/BUILD
++++ tensorflow/compiler/tf2xla/BUILD
+@@ -46,7 +46,7 @@ package_group(
+     packages = [
+         "//platforms/performance/automl/...",
+         "//tensorflow/...",
+-        "//tensorflow_federated/cc/core/impl/executors/...",
++        "public",
+         "//tensorflow_models/...",
+         "//third_party/deepmind/deepmind_research/density_functional_approximation_dm21/...",
+         "//third_party/mlir_edge/model_curriculum/iree/...",

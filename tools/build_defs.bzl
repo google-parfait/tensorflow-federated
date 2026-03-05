@@ -43,11 +43,17 @@ def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
         tags = tags,
         **kwargs
     )
-
+    py_test(
+        name = name + "_gpu",
+        main = main,
+        tags = tags + ["requires-gpu-nvidia"],
+        **kwargs
+    )
     native.test_suite(
         name = name,
         tests = [
             name + "_cpu",
+            name + "_gpu",
         ],
     )
 

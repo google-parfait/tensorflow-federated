@@ -137,37 +137,33 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_disjoint_init_and_next_false_keras_state_updated(self):
     """Tests optimizer state is updated inside of KerasOptimizer."""
-    learning_rate = 0.1
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate)
+    optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(0.1)
 
     @tf.function
     def training_loop(optimizer, variables):
       state = optimizer.initialize(
-          [tf.TensorSpec(v.shape, v.dtype) for v in variables]
+          tf.TensorSpec(variables.shape, variables.dtype)
       )
       for _ in range(3):
         gradients = tf.constant(1.0)
         state, variables = optimizer.next(state, variables, gradients)
       # Return also the private variables of the optimizer.
-      return state, variables, optimizer._optimizer.variables
+      return state, variables, optimizer._optimizer.variables()
 
     @tensorflow_computation.tf_computation()
     def test_computation(initial_weights):
-      variables = [tf.Variable(initial_weights)]
+      variables = tf.Variable(initial_weights)
       optimizer = keras_optimizer.KerasOptimizer(
           optimizer_fn, variables, disjoint_init_and_next=False
       )
       return training_loop(optimizer, variables)
 
     state, weights, optimizer_variables = test_computation(1.0)
-    self.assertAllClose([0.7], weights)  # 3 steps with learning rate 0.1
+    self.assertAllClose(0.7, weights)  # 3 steps with learning rate 0.1
+    # The optimizer variables are handled internally in the KerasOptimizer.
     self.assertEmpty(state)
-    # Verify the optimizer state was updated.
-    optimizer = optimizer_fn()
-    optimizer.build([tf.Variable(1.0)])
-    optimizer.set_weights([tf.Variable(v) for v in optimizer_variables])
-    self.assertAllClose(optimizer.learning_rate, learning_rate)
-    self.assertAllEqual(optimizer.iterations, 3)
+    # The optimizer has a single variable counring number of steps.
+    self.assertAllEqual([3], optimizer_variables)
 
   @parameterized.named_parameters(
       ('scalar_server', _SCALAR_SPEC, True),

@@ -23,9 +23,6 @@ package(
 pybind_extension(
     name = "aggregation_protocols",
     srcs = ["aggregation_protocols.cc"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:aggregation_protocol",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:configuration_cc_proto",
@@ -56,7 +53,5 @@ py_test(
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor_py_pb2",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:aggregation_protocol_messages_py_pb2",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:configuration_py_pb2",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )

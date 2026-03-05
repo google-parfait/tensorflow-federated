@@ -51,9 +51,6 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -66,8 +63,6 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "@federated_language//federated_language",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -79,20 +74,13 @@ py_test(
         ":hierarchical_histogram_lib",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "hierarchical_histogram_decoder",
     srcs = ["hierarchical_histogram_decoder.py"],
-    deps = [
-        ":build_tree_from_leaf",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
-    ],
+    deps = [":build_tree_from_leaf"],
 )
 
 py_test(
@@ -101,26 +89,18 @@ py_test(
     deps = [
         ":build_tree_from_leaf",
         ":hierarchical_histogram_decoder",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "build_tree_from_leaf",
     srcs = ["build_tree_from_leaf.py"],
-    deps = ["@pypi//numpy"],
 )
 
 py_test(
     name = "build_tree_from_leaf_test",
     srcs = ["build_tree_from_leaf_test.py"],
-    deps = [
-        ":build_tree_from_leaf",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
+    deps = [":build_tree_from_leaf"],
 )
 
 py_library(
@@ -132,8 +112,6 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "@federated_language//federated_language",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -147,8 +125,5 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )

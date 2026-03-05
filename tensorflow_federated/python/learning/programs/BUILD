@@ -30,8 +30,6 @@ py_library(
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/program:file_program_state_manager",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )
 
@@ -48,9 +46,6 @@ py_test(
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/program:file_program_state_manager",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -73,7 +68,6 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
     ],
 )
 
@@ -89,7 +83,5 @@ py_test(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )

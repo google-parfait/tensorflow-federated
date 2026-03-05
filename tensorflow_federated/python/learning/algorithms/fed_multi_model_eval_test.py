@@ -577,7 +577,7 @@ class FunctionalFedMultiModelEvalProcessTest(tf.test.TestCase):
       )
 
     functional_model = functional.functional_model_from_keras(
-        keras_model=keras_model_fn(),
+        keras_model=keras_model_fn,
         loss_fn=loss_fn(),
         input_spec=batch_type,
         metrics_constructor=build_metrics_fn,

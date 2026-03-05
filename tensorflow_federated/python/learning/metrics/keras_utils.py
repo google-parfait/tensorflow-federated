@@ -18,7 +18,6 @@ from collections.abc import Callable
 import functools
 from typing import Any, TypeVar, Union
 
-import keras
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
@@ -153,20 +152,12 @@ def create_functional_metric_fns(
   @tf.function
   def initialize():
     with tf.variable_creator_scope(IndexedTensorVariableCreator()):
-
-      def _unwrap(v):
-        """Wraps a Keras 3 metric."""
-        match v:
-          case keras.Variable():
-            return v.value
-        return v
-
       tensor_variable_structure = tf.nest.map_structure(
           lambda m: tuple(m.variables), metrics_constructor()
       )
     nonlocal variable_creation_indices
     variable_creation_indices = [
-        _unwrap(tensor_variable).index
+        tensor_variable.index
         for tensor_variable in tf.nest.flatten(tensor_variable_structure)
     ]
     return tensor_variable_structure
@@ -221,6 +212,7 @@ def create_functional_metric_fns(
 
   @tf.function
   def update(state, labels, batch_output: Any, sample_weight=None):
+    del sample_weight  # Unused.
     # Keras metrics operate on the model predictions, but TFF algorithms
     # pass the entire `BatchOutput` structure in case some custom metrics
     # want to operate on other values, such as the logits/loss.
@@ -242,9 +234,7 @@ def create_functional_metric_fns(
       # for us, so we simply unwrap the function and call the Python method
       # directly.
       update_state_fn = _get_unwrapped_py_func(metric.update_state)
-      update_state_fn(
-          y_true=labels, y_pred=predictions, sample_weight=sample_weight
-      )
+      update_state_fn(y_true=labels, y_pred=predictions)
       return tuple(metric.variables)
 
     with tf.variable_creator_scope(

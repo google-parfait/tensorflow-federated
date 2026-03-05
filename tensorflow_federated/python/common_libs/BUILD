@@ -38,16 +38,13 @@ py_library(
 py_test(
     name = "deprecation_test",
     srcs = ["deprecation_test.py"],
-    deps = [
-        ":deprecation",
-        "@pypi//absl_py",
-    ],
+    deps = [":deprecation"],
 )
 
 py_library(
     name = "golden",
+    testonly = True,
     srcs = ["golden.py"],
-    deps = ["@pypi//absl_py"],
 )
 
 py_test(
@@ -67,29 +64,19 @@ py_test(
         "golden_test_goldens/test_check_string_succeeds.expected",
         "golden_test_goldens/test_check_string_updates.expected",
     ],
-    deps = [
-        ":golden",
-        "@pypi//absl_py",
-    ],
+    deps = [":golden"],
 )
 
 py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
-    deps = [
-        "@pypi//attrs",
-        "@pypi//typing_extensions",
-    ],
 )
 
 py_test(
     name = "py_typecheck_test",
     size = "small",
     srcs = ["py_typecheck_test.py"],
-    deps = [
-        ":py_typecheck",
-        "@pypi//absl_py",
-    ],
+    deps = [":py_typecheck"],
 )
 
 py_library(
@@ -98,7 +85,5 @@ py_library(
     deps = [
         ":deprecation",
         "@federated_language//federated_language/common_libs:structure",
-        "@pypi//attrs",  # buildcleaner: keep
-        "@pypi//dm_tree",  # buildcleaner: keep
     ],
 )

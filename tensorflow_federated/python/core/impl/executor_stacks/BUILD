@@ -34,8 +34,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//cachetools",
     ],
 )
 
@@ -50,7 +48,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_test_utils_bindings",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
     ],
 )
 
@@ -64,9 +61,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:remote_executor",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//grpcio",
-        "@pypi//portpicker",
     ],
 )
 
@@ -94,8 +88,6 @@ py_test(
         ":executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )
 
@@ -105,7 +97,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@federated_language//federated_language",
-        "@pypi//cachetools",
     ],
 )
 
@@ -117,8 +108,5 @@ py_test(
     deps = [
         ":python_executor_stacks",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//dm_tree",  # buildcleaner: keep
-        "@pypi//ml_dtypes",  # buildcleaner: keep
     ],
 )

@@ -49,19 +49,13 @@ py_test(
         ":tensorflow_computation_test_utils",
         ":tensorflow_computation_transformations",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "graph_optimizations",
     srcs = ["graph_optimizations.py"],
-    deps = [
-        ":graph_spec",
-        "@pypi//absl_py",
-    ],
+    deps = [":graph_spec"],
 )
 
 py_test(
@@ -70,42 +64,29 @@ py_test(
     deps = [
         ":graph_optimizations",
         ":graph_spec",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "graph_spec",
     srcs = ["graph_spec.py"],
-    deps = [
-        "@pypi//attrs",
-        "@pypi//tensorflow",
-    ],
 )
 
 py_test(
     name = "graph_spec_test",
     srcs = ["graph_spec_test.py"],
-    deps = [
-        ":graph_spec",
-        "@pypi//tensorflow",
-    ],
+    deps = [":graph_spec"],
 )
 
 py_library(
     name = "graph_utils",
     srcs = ["graph_utils.py"],
-    deps = ["@pypi//tensorflow"],
 )
 
 py_test(
     name = "graph_utils_test",
     srcs = ["graph_utils_test.py"],
-    deps = [
-        ":graph_utils",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
-    ],
+    deps = [":graph_utils"],
 )
 
 py_library(
@@ -114,7 +95,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@com_google_protobuf//:protobuf_python",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -125,8 +105,6 @@ py_test(
     deps = [
         ":serialization_utils",
         "@com_google_protobuf//:protobuf_python",
-        "@pypi//absl_py",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -148,8 +126,6 @@ py_test(
         ":tensorflow_building_block_factory",
         ":tensorflow_computation_test_utils",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )
 
@@ -165,9 +141,6 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//dm_tree",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -180,22 +153,18 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "tensorflow_computation_test_utils",
+    testonly = True,
     srcs = ["tensorflow_computation_test_utils.py"],
     deps = [
         ":tensorflow_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -206,7 +175,6 @@ py_library(
         ":serialization_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -221,9 +189,6 @@ py_test(
         ":tensorflow_utils",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -233,10 +198,7 @@ py_library(
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
-    deps = [
-        "//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings",
-        "@pypi//tensorflow",
-    ],
+    deps = ["//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings"],
 )
 
 py_test(
@@ -253,16 +215,13 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:value_serialization",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "tensorflow_test_utils",
+    testonly = True,
     srcs = ["tensorflow_test_utils.py"],
-    deps = ["@pypi//tensorflow"],
 )
 
 py_library(
@@ -274,8 +233,6 @@ py_library(
         ":type_conversions",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@federated_language//federated_language",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -285,8 +242,6 @@ py_test(
     deps = [
         ":tensorflow_tree_transformations",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
     ],
 )
 
@@ -302,9 +257,6 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//attrs",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -320,10 +272,6 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
-        "@pypi//absl_py",
-        "@pypi//attrs",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -336,9 +284,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
-        "@pypi//attrs",
-        "@pypi//dm_tree",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -349,8 +294,5 @@ py_test(
     deps = [
         ":type_conversions",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )

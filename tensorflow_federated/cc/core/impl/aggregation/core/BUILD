@@ -698,6 +698,7 @@ cc_test(
 
 cc_library(
     name = "dp_histogram_test_utils",
+    testonly = True,
     srcs = ["dp_histogram_test_utils.cc"],
     hdrs = ["dp_histogram_test_utils.h"],
     deps = [
@@ -898,6 +899,7 @@ cc_test(
 
 cc_binary(
     name = "federated_sum_bench",
+    testonly = 1,
     srcs = ["federated_sum_bench.cc"],
     linkstatic = 1,
     deps = [
@@ -911,6 +913,7 @@ cc_binary(
 
 cc_binary(
     name = "group_by_bench",
+    testonly = 1,
     srcs = ["group_by_bench.cc"],
     linkstatic = 1,
     deps = [
@@ -927,6 +930,7 @@ cc_binary(
 
 cc_binary(
     name = "composite_key_combiner_bench",
+    testonly = 1,
     srcs = ["composite_key_combiner_bench.cc"],
     linkstatic = 1,
     deps = [

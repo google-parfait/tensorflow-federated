@@ -10,10 +10,6 @@ licenses(["notice"])
 py_library(
     name = "query",
     srcs = ["query.py"],
-    deps = [
-        "@pypi//dp_accounting",
-        "@pypi//tensorflow",
-    ],
 )
 
 py_test(
@@ -22,20 +18,13 @@ py_test(
     deps = [
         ":query",
         ":test_utils",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "tree",
     srcs = ["tree.py"],
-    deps = [
-        ":query",
-        "@pypi//dp_accounting",
-        "@pypi//tensorflow",
-    ],
+    deps = [":query"],
 )
 
 py_test(
@@ -44,9 +33,6 @@ py_test(
     deps = [
         ":test_utils",
         ":tree",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -56,8 +42,6 @@ py_library(
     deps = [
         ":query",
         ":tree",
-        "@pypi//dp_accounting",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -67,9 +51,6 @@ py_test(
     deps = [
         ":quantile",
         ":test_utils",
-        "@pypi//absl_py",
-        "@pypi//numpy",
-        "@pypi//tensorflow",
     ],
 )
 

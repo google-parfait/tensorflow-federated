@@ -20,6 +20,7 @@ licenses(["notice"])
 
 cc_library(
     name = "oss_test_main",
+    testonly = 1,
     srcs = ["oss_test_main.cc"],
     visibility = ["//visibility:public"],
     deps = [
@@ -30,6 +31,7 @@ cc_library(
 
 cc_library(
     name = "protobuf_matchers",
+    testonly = True,
     hdrs = ["protobuf_matchers.h"],
     visibility = ["//visibility:public"],
     deps = [
@@ -43,6 +45,7 @@ cc_library(
 
 cc_library(
     name = "status_matchers",
+    testonly = True,
     srcs = ["status_matchers.cc"],
     hdrs = ["status_matchers.h"],
     visibility = ["//visibility:public"],
