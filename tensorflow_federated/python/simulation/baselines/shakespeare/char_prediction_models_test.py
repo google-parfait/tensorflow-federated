@@ -50,7 +50,7 @@ class ModelsTest(tf.test.TestCase):
         vocab_size=3, sequence_length=3, mask_zero=True
     )
     data = tf.constant([[0, 1, 1]])
-    output_mask = mask_model.compute_mask(data, mask=None)
+    output_mask = getattr(mask_model(data), '_keras_mask', None)
     self.assertAllEqual(output_mask, [[False, True, True]])
 
   def test_no_mask_zero_results_in_correct_mask(self):
@@ -58,7 +58,7 @@ class ModelsTest(tf.test.TestCase):
         vocab_size=3, sequence_length=3, mask_zero=False
     )
     data = tf.constant([[0, 1, 1]])
-    output_mask = mask_model.compute_mask(data, mask=None)
+    output_mask = getattr(mask_model(data), '_keras_mask', None)
     self.assertIsNone(output_mask)
 
 

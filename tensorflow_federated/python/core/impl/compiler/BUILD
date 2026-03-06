@@ -25,11 +25,11 @@ py_library(
 
 py_library(
     name = "building_block_test_utils",
-    testonly = True,
     srcs = ["building_block_test_utils.py"],
     deps = [
         "@com_google_protobuf//:protobuf_python",
         "@federated_language//federated_language",
+        "@pypi//numpy",
     ],
 )
 
@@ -40,6 +40,7 @@ py_library(
         ":tree_transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@federated_language//federated_language",
+        "@pypi//attrs",
     ],
 )
 
@@ -52,6 +53,10 @@ py_test(
         ":tree_transformations",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
+        "@pypi//absl_py",
+        "@pypi//dm_tree",  # buildcleaner: keep
+        "@pypi//ml_dtypes",  # buildcleaner: keep
+        "@pypi//numpy",
     ],
 )
 
@@ -81,17 +86,22 @@ py_test(
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//dm_tree",  # buildcleaner: keep
+        "@pypi//ml_dtypes",  # buildcleaner: keep
+        "@pypi//numpy",
     ],
 )
 
 py_library(
     name = "compiler_test_utils",
-    testonly = True,
     srcs = ["compiler_test_utils.py"],
     deps = [
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@federated_language//federated_language",
+        "@pypi//dm_tree",  # buildcleaner: keep
+        "@pypi//ml_dtypes",  # buildcleaner: keep
     ],
 )
 
@@ -109,5 +119,6 @@ py_test(
     deps = [
         ":building_block_test_utils",
         ":compiler_test_utils",
+        "@pypi//absl_py",
     ],
 )

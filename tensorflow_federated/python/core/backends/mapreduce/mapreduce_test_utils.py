@@ -405,7 +405,12 @@ def get_mnist_training_example():
     )
     init_model = tf.compat.v1.global_variables_initializer()
 
-    optimizer = tf.keras.optimizers.SGD(state.learning_rate)
+    try:
+      optimizer = tf.keras.optimizers.SGD(state.learning_rate)
+    except ValueError:
+      # Keras 3 API differs from Keras 2 API.
+      optimizer = tf.keras.optimizers.SGD()
+      optimizer.learning_rate = state.learning_rate
 
     @tf.function
     def reduce_fn(loop_state, batch):

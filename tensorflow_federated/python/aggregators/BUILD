@@ -42,7 +42,6 @@ py_library(
 
 py_library(
     name = "aggregator_test_utils",
-    testonly = True,
     srcs = ["aggregator_test_utils.py"],
     deps = [
         ":factory",
@@ -51,6 +50,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -65,6 +65,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -79,6 +82,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -93,6 +97,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -107,6 +114,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -123,6 +132,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -141,6 +153,9 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//dp_accounting",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -159,6 +174,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -172,6 +190,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -185,6 +205,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -218,18 +241,26 @@ py_test(
         ":sum_factory",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "hadamard",
     srcs = ["hadamard.py"],
+    deps = ["@pypi//tensorflow"],
 )
 
 py_test(
     name = "hadamard_test",
     srcs = ["hadamard_test.py"],
-    deps = [":hadamard"],
+    deps = [
+        ":hadamard",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_library(
@@ -243,6 +274,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -258,6 +291,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -284,6 +320,8 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -298,6 +336,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -311,6 +350,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -323,6 +365,8 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -334,6 +378,9 @@ py_test(
         ":primitives",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -349,6 +396,7 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
     ],
 )
 
@@ -362,6 +410,9 @@ py_test(
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -377,6 +428,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -394,6 +447,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -410,6 +466,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -425,6 +483,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -439,6 +500,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -449,6 +512,9 @@ py_test(
         ":sampling",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -466,6 +532,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -482,6 +550,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -496,6 +567,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -512,6 +585,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -538,5 +614,8 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )

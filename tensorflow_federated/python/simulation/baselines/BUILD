@@ -37,6 +37,8 @@ py_library(
     deps = [
         ":task_data",
         "//tensorflow_federated/python/learning/models:variable",
+        "@pypi//attrs",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -48,23 +50,30 @@ py_test(
         ":task_data",
         "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/simulation/datasets:client_data",
+        "@pypi//attrs",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "client_spec",
     srcs = ["client_spec.py"],
+    deps = ["@pypi//attrs"],
 )
 
 py_library(
     name = "keras_metrics",
     srcs = ["keras_metrics.py"],
+    deps = ["@pypi//tensorflow"],
 )
 
 py_test(
     name = "keras_metrics_test",
     srcs = ["keras_metrics_test.py"],
-    deps = [":keras_metrics"],
+    deps = [
+        ":keras_metrics",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_library(
@@ -73,6 +82,8 @@ py_library(
     deps = [
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -82,5 +93,7 @@ py_test(
     deps = [
         ":task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )

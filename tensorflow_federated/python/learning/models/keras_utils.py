@@ -48,9 +48,10 @@ def from_keras_model(
 ) -> variable.VariableModel:
   """Builds a `tff.learning.models.VariableModel` from a `tf.keras.Model`.
 
-  The `tff.learning.models.VariableModel` returned by this function uses `keras_model` for
-  its forward pass and autodifferentiation steps. The returned model will have
-  three additional metrics including: loss, num_examples, and num_batches.
+  The `tff.learning.models.VariableModel` returned by this function uses
+  `keras_model` for its forward pass and autodifferentiation steps. The returned
+  model will have three additional metrics including: loss, num_examples, and
+  num_batches.
 
   Notice that since TFF couples the `tf.keras.Model` and `loss`,
   TFF needs a slightly different notion of "fully specified type" than
@@ -58,8 +59,8 @@ def from_keras_model(
   produces predictions of type `p`; the loss function `L` takes inputs of type
   `<p, y>` (where `y` is the ground truth label type) and produces a scalar.
   Therefore in order to fully specify the type signatures for computations in
-  which the generated `tff.learning.models.VariableModel` will appear, TFF needs the type `y`
-  in addition to the type `x`.
+  which the generated `tff.learning.models.VariableModel` will appear, TFF needs
+  the type `y` in addition to the type `x`.
 
   Note: This function does not currently accept subclassed `tf.keras.Models`,
   as it makes assumptions about presence of certain attributes which are
@@ -72,7 +73,7 @@ def from_keras_model(
   b/186845846 for more information). Consider using Group Normalization instead.
 
   Args:
-    keras_model: A `tf.keras.Model` object that is not compiled.
+    keras_model: A `tf.keras.Model` object.
     loss: A single `tf.keras.losses.Loss` or a list of losses-per-output. If a
       single loss is provided, then all model output (as well as all prediction
       information) is passed to the loss; this includes situations of multiple
@@ -80,14 +81,14 @@ def from_keras_model(
       list, then each loss is expected to correspond to a model output; the
       model will attempt to minimize the sum of all individual losses
       (optionally weighted using the `loss_weights` argument).
-    input_spec: A structure of `tf.TensorSpec`s or `federated_language.Type` specifying the
-      type of arguments the model expects. If `input_spec` is a `federated_language.Type`, its
-      leaf nodes must be `TensorType`s. Note that `input_spec` must be a
-      compound structure of two elements, specifying both the data fed into the
-      model (x) to generate predictions as well as the expected type of the
-      ground truth (y). If provided as a list, it must be in the order [x, y].
-      If provided as a dictionary, the keys must explicitly be named `'{}'` and
-      `'{}'`.
+    input_spec: A structure of `tf.TensorSpec`s or `federated_language.Type`
+      specifying the type of arguments the model expects. If `input_spec` is a
+      `federated_language.Type`, its leaf nodes must be `TensorType`s. Note that
+      `input_spec` must be a compound structure of two elements, specifying both
+      the data fed into the model (x) to generate predictions as well as the
+      expected type of the ground truth (y). If provided as a list, it must be
+      in the order [x, y].  If provided as a dictionary, the keys must
+      explicitly be named `'{}'` and `'{}'`.
     loss_weights: (Optional) A list of Python floats used to weight the loss
       contribution of each model output (when providing a list of losses for the
       `loss` argument).
@@ -104,20 +105,18 @@ def from_keras_model(
   Raises:
     TypeError: If `keras_model` is not an instance of `tf.keras.Model`, if
       `loss` is not an instance of `tf.keras.losses.Loss` nor a list of
-      instances of `tf.keras.losses.Loss`, if `input_spec` is a `federated_language.Type` but
-      the leaf nodes are not `federated_language.TensorType`s, if `loss_weight` is provided but
-      is not a list of floats, or if `metrics` is provided but is not a list of
+      instances of `tf.keras.losses.Loss`, if `input_spec` is a
+      `federated_language.Type` but the leaf nodes are not
+      `federated_language.TensorType`s, if `loss_weight` is provided but is not
+      a list of floats, or if `metrics` is provided but is not a list of
       instances of `tf.keras.metrics.Metric`.
-    ValueError: If `keras_model` was compiled, if `loss` is a list of unequal
-      length to the number of outputs of `keras_model`, if `loss_weights` is
-      specified but `loss` is not a list, if `input_spec` does not contain
-      exactly two elements, or if `input_spec` is a dictionary and does not
-      contain keys `'x'` and `'y'`.
+    ValueError: If `loss` is a list of unequal length to the number of outputs
+      of `keras_model`, if `loss_weights` is specified but `loss` is not a list,
+      if `input_spec` does not contain exactly two elements, or if `input_spec`
+      is a dictionary and does not contain keys `'x'` and `'y'`.
   """.format(variable.MODEL_ARG_NAME, variable.MODEL_LABEL_NAME)
   # Validate `keras_model`
   py_typecheck.check_type(keras_model, tf.keras.Model)
-  if keras_model._is_compiled:  # pylint: disable=protected-access
-    raise ValueError('`keras_model` must not be compiled')
 
   # Validate and normalize `loss` and `loss_weights`
   if not isinstance(loss, list):
@@ -424,7 +423,12 @@ class _KerasModel(variable.VariableModel):
   @tf.function
   def reset_metrics(self):
     for metric in self.get_metrics():
-      metric.reset_state()
+      if hasattr(metric, 'reset_state'):
+        # Keras 3 API.
+        metric.reset_state()
+      elif hasattr(metric, 'reset_states'):
+        # Keras 2 API.
+        metric.reset_states()
 
   @property
   def input_spec(self):
@@ -437,8 +441,9 @@ class _KerasModel(variable.VariableModel):
   def _forward_pass(self, batch_input, training=True):
     if isinstance(batch_input, Mapping):
       inputs = batch_input.get('x')
+      y_true = batch_input.get('y')
     else:
-      inputs = batch_input[0]
+      inputs, y_true = batch_input
     if inputs is None:
       raise KeyError(
           'Received a batch_input that is missing required key `x`. '
@@ -446,10 +451,6 @@ class _KerasModel(variable.VariableModel):
       )
     predictions = self.predict_on_batch(inputs, training)
 
-    if isinstance(batch_input, Mapping):
-      y_true = batch_input.get('y')
-    else:
-      y_true = batch_input[1]
     if y_true is not None:
       if len(self._loss_fns) == 1:
         loss_fn = self._loss_fns[0]
@@ -469,13 +470,14 @@ class _KerasModel(variable.VariableModel):
         # user-provided loss functions. Keras does the same in the
         # `tf.keras.Model` training step. This is expected to have no effect if
         # no per-layer losses are added to the model.
-        batch_loss = tf.add_n([tf.zeros(())] + self._keras_model.losses)
-        for i in range(len(self._loss_fns)):
-          loss_fn = self._loss_fns[i]
-          loss_wt = self._loss_weights[i]
-          batch_loss += loss_wt * loss_fn(
-              y_true=y_true[i], y_pred=predictions[i]
-          )
+        batch_loss = tf.add_n(
+            [
+                self._loss_weights[i]
+                * loss_fn(y_true=y_true[i], y_pred=predictions[i])
+                for i, loss_fn in enumerate(self._loss_fns)
+            ]
+            + self._keras_model.losses
+        )
     else:
       batch_loss = None
 
@@ -501,7 +503,7 @@ class _KerasModel(variable.VariableModel):
   def report_local_unfinalized_metrics(
       self,
   ) -> collections.OrderedDict[str, list[tf.Tensor]]:
-    """Creates an `collections.OrderedDict` of metric names to unfinalized values.
+    """Creates an `OrderedDict` of metric names to unfinalized values.
 
     Returns:
       An `collections.OrderedDict` of metric names to lists of unfinalized
@@ -516,9 +518,10 @@ class _KerasModel(variable.VariableModel):
       method can be used to construct a cross-client metrics aggregator when
       defining the federated training processes or evaluation computations.
     """
+
     outputs = collections.OrderedDict()
     for metric in self.get_metrics():
-      outputs[metric.name] = [v.read_value() for v in metric.variables]
+      outputs[metric.name] = [tf.identity(v) for v in metric.variables]
     return outputs
 
   def metric_finalizers(

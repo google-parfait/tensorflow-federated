@@ -57,6 +57,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/learning/templates:model_delta_client_work",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -75,6 +77,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
     ],
 )
 
@@ -104,6 +107,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/learning/templates:model_delta_client_work",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -121,6 +126,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -148,6 +155,9 @@ py_library(
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/learning/templates:proximal_client_work",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -169,6 +179,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "//tensorflow_federated/python/learning/templates:distributors",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
     ],
 )
 
@@ -197,6 +208,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -216,6 +229,9 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:test_models",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -234,6 +250,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -244,6 +262,9 @@ py_test(
         ":kmeans_clustering",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -275,6 +296,8 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -315,6 +338,9 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/templates:client_works",
         "//tensorflow_federated/python/learning/templates:distributors",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -339,6 +365,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -366,6 +393,9 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -381,6 +411,7 @@ py_library(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -396,6 +427,9 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -420,6 +454,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -448,5 +483,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )

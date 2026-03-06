@@ -17,6 +17,7 @@ from collections.abc import Callable
 from typing import Any, NamedTuple, Union
 
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -40,8 +41,29 @@ class ModelWeights(NamedTuple):
 
   @classmethod
   def from_model(cls, model):
+    """Creates a `ModelWeights` instance from a model."""
+
     py_typecheck.check_type(model, (variable.VariableModel, tf.keras.Model))
-    return cls(model.trainable_variables, model.non_trainable_variables)
+    if (
+        isinstance(model, tf.keras.Model)
+        and tf.executing_eagerly()
+        and not tf.inside_function()
+    ):
+
+      def _unwrap_variable(v):
+        # Unwrap Keras 3 variables.
+        match v:
+          case keras.Variable():
+            return v.value
+          case _:
+            return v
+
+      return cls(
+          [_unwrap_variable(v) for v in model.trainable_variables],
+          [_unwrap_variable(v) for v in model.non_trainable_variables],
+      )
+    else:
+      return cls(model.trainable_variables, model.non_trainable_variables)
 
   @classmethod
   def from_tff_result(cls, struct):
@@ -108,7 +130,7 @@ class ModelWeights(NamedTuple):
 def weights_type_from_model(
     model: Union[variable.VariableModel, Callable[[], variable.VariableModel]],
 ) -> federated_language.StructType:
-  """Creates a `federated_language.Type` from a `tff.learning.models.VariableModel` or callable that constructs a model.
+  """Creates a `Type` from a `VariableModel` or callable.
 
   Args:
     model: A `tff.learning.models.VariableModel` instance, or a no-arg callable
@@ -119,6 +141,7 @@ def weights_type_from_model(
     `ModelWeights`
     structure for `model`.
   """
+
   if callable(model):
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
@@ -128,7 +151,7 @@ def weights_type_from_model(
   model_weights = ModelWeights.from_model(model)
 
   def _variable_to_type(x: tf.Variable) -> federated_language.Type:
-    return tensorflow_types.to_type((x.dtype, x.shape))
+    return tensorflow_types.to_type(tf.TensorSpec(dtype=x.dtype, shape=x.shape))
 
   model_weights_type = tf.nest.map_structure(_variable_to_type, model_weights)
   # StructWithPythonType operates recursively, and will preserve the python type

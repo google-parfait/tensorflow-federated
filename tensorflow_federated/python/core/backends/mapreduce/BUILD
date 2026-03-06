@@ -46,6 +46,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -61,6 +63,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
         "@federated_language//federated_language",
         "@federated_language//federated_language/proto:computation_py_pb2",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -83,6 +88,9 @@ py_test(
         ":mapreduce_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -99,6 +107,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -118,18 +127,24 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//dm_tree",  # buildcleaner: keep
+        "@pypi//ml_dtypes",  # buildcleaner: keep
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "distribute_aggregate_test_utils",
-    testonly = True,
     srcs = ["distribute_aggregate_test_utils.py"],
     deps = [
         ":forms",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -141,6 +156,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_computation_factory",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -158,12 +174,13 @@ py_test(
         ":intrinsics",
         "//tensorflow_federated/python/common_libs:golden",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
     ],
 )
 
 py_library(
     name = "mapreduce_test_utils",
-    testonly = True,
     srcs = ["mapreduce_test_utils.py"],
     deps = [
         ":forms",
@@ -171,5 +188,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )

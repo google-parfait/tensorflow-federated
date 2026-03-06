@@ -37,7 +37,7 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
     super().__init__(name, dtype)
 
   def update_state(self, y_true, y_pred=None, sample_weight=None):
-    del y_pred  # Unused
+    del y_pred, sample_weight  # Unused
     # In case we have multiple labels, we use the first dimension of the first
     # label to compute the batch size.
     labels = tf.nest.flatten(y_true)
@@ -61,6 +61,5 @@ class NumBatchesCounter(tf.keras.metrics.Sum):
     super().__init__(name, dtype)
 
   def update_state(self, y_true, y_pred=None, sample_weight=None):
-    del y_true  # Unused.
-    del y_pred  # Unused.
+    del y_true, y_pred, sample_weight  # Unused.
     return super().update_state(1, sample_weight=None)

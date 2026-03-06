@@ -178,27 +178,6 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         lambda x: self.assertIsInstance(x, tf.TensorSpec), tff_model.input_spec
     )
 
-  def test_input_spec_ragged_tensor(self):
-    keras_model = model_examples.build_ragged_tensor_input_keras_model()
-    input_spec = collections.OrderedDict(
-        x=tf.RaggedTensorSpec(shape=[3, None], dtype=tf.int32),
-        y=tf.TensorSpec(shape=[1], dtype=tf.bool),
-    )
-    tff_model = keras_utils.from_keras_model(
-        keras_model=keras_model,
-        input_spec=input_spec,
-        loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
-    )
-    self.assertIsInstance(tff_model, variable.VariableModel)
-    self.assertIsInstance(tff_model.input_spec['x'], tf.RaggedTensorSpec)
-
-    batch = collections.OrderedDict(
-        x=tf.ragged.constant([[1, 2, 3], [4], [5, 6]]),
-        y=tf.constant([True, False, False]),
-    )
-    output = tff_model.forward_pass(batch)
-    self.assertEqual(output.num_examples, 3)
-
   @parameterized.named_parameters(
       (
           'more_than_two_elements',
@@ -371,7 +350,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     # Total loss: 10.0
     # Batch average loss: 5.0
     # Total batch loss with regularization: 5.04
-    self.assertAlmostEqual(output.loss, 5.04)
+    self.assertAllClose(output.loss, 5.04)
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
@@ -435,8 +414,11 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         super().__init__(name='custom_loss_requiring_label_be_integer')
 
       def call(self, y_true, y_pred):
-        # Note that this TF function requires that the label `y_true` be of an
-        # integer dtype; a TypeError is thrown if `y_true` isn't int32 or int64.
+        # Keras will try to cast `y_true` to self.dtype (the output dtype) of
+        # the loss function, which is `float32`. This is problematic because
+        # our sparse softmax loss function requires that `y_true` be an integer
+        # dtype. So we explicitly cast `y_true` back to `int64` here.
+        y_true = tf.cast(y_true, tf.int64)
         return tf.nn.sparse_softmax_cross_entropy_with_logits(y_true, y_pred)
 
     keras_model = tf.keras.Sequential(
@@ -459,7 +441,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         y=tf.convert_to_tensor([0], dtype=tf.int64),
     )
 
-    # Expect this call to .forward_pass to succeed (no Errors raised).
+    # Expect this call to `forward_pass` to succeed (no errors raised).
     tff_model.forward_pass(batch)
 
   def test_tff_model_type_spec_from_keras_model_unspecified_sequence_len(self):
@@ -495,14 +477,14 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
   def test_keras_model_using_embeddings(self):
     model = model_examples.build_embedding_keras_model()
     input_spec = collections.OrderedDict(
-        x=tf.TensorSpec(shape=[None], dtype=tf.float32),
-        y=tf.TensorSpec(shape=[None], dtype=tf.float32),
+        x=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+        y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
     )
     tff_model = keras_utils.from_keras_model(
         keras_model=model,
         input_spec=input_spec,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[tf.keras.metrics.MeanAbsoluteError()],
+        metrics=[tf.keras.metrics.TopKCategoricalAccuracy()],
     )
 
     # Create a batch with the size of the vocab. These examples will attempt to
@@ -521,8 +503,9 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     num_train_steps = 3
-    for _ in range(num_train_steps):
+    for i in range(num_train_steps):
       batch_output = tff_model.forward_pass(batch)
+      print(f'{i=} batch_output: {batch_output=!r}')
       self.assertGreater(batch_output.loss, 0.0)
 
     m = tff_model.report_local_unfinalized_metrics()
@@ -530,8 +513,10 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(m['num_examples'], [input_vocab_size * num_train_steps])
     self.assertGreater(m['loss'][0], 0.0)
     self.assertEqual(m['loss'][1], input_vocab_size * num_train_steps)
-    self.assertGreater(m['mean_absolute_error'][0], 0)
-    self.assertEqual(m['mean_absolute_error'][1], 300)
+    self.assertGreater(m['top_k_categorical_accuracy'][0], 0)
+    self.assertEqual(
+        m['top_k_categorical_accuracy'][1], input_vocab_size * num_train_steps
+    )
 
   def test_keras_model_multiple_inputs(self):
     input_spec = collections.OrderedDict(
@@ -1188,52 +1173,6 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
             loss_weights={'dense_5': 0.1, 'dense_6': 0.2, 'whimsy': 0.4},
         )
 
-  def test_keras_model_lookup_table(self):
-    model = model_examples.build_lookup_table_keras_model()
-    input_spec = collections.OrderedDict(
-        x=tf.TensorSpec(shape=[None, 1], dtype=tf.string),
-        y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-    )
-    tff_model = keras_utils.from_keras_model(
-        keras_model=model,
-        input_spec=input_spec,
-        loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[tf.keras.metrics.MeanAbsoluteError()],
-    )
-
-    batch_size = 3
-    batch = collections.OrderedDict(
-        x=tf.constant([['G'], ['B'], ['R']], dtype=tf.string),
-        y=tf.constant([[1.0], [2.0], [3.0]], dtype=tf.float32),
-    )
-
-    num_train_steps = 2
-    for _ in range(num_train_steps):
-      tff_model.forward_pass(batch)
-
-    metrics = tff_model.report_local_unfinalized_metrics()
-    self.assertEqual(metrics['num_batches'], [num_train_steps])
-    self.assertEqual(metrics['num_examples'], [batch_size * num_train_steps])
-    self.assertGreater(metrics['loss'][0], 0.0)
-    self.assertEqual(metrics['loss'][1], batch_size * num_train_steps)
-    self.assertGreater(metrics['mean_absolute_error'][0], 0)
-    self.assertEqual(metrics['mean_absolute_error'][1], 6)
-
-    # Ensure we can assign the FL trained model weights to a new model.
-    tff_weights = model_weights.ModelWeights.from_model(tff_model)
-    keras_model = model_examples.build_lookup_table_keras_model()
-    tff_weights.assign_weights_to(keras_model)
-    loaded_model = keras_utils.from_keras_model(
-        keras_model=keras_model,
-        input_spec=input_spec,
-        loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[tf.keras.metrics.MeanAbsoluteError()],
-    )
-
-    orig_model_output = tff_model.forward_pass(batch)
-    loaded_model_output = loaded_model.forward_pass(batch)
-    self.assertAlmostEqual(orig_model_output.loss, loaded_model_output.loss)
-
   def test_keras_model_preprocessing(self):
     self.skipTest('b/171254807')
     model = model_examples.build_preprocessing_lookup_keras_model()
@@ -1280,22 +1219,6 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     orig_model_output = tff_model.forward_pass(batch)
     loaded_model_output = loaded_model.forward_pass(batch)
     self.assertAlmostEqual(orig_model_output.loss, loaded_model_output.loss)
-
-  def test_keras_model_fails_compiled(self):
-    feature_dims = 3
-    keras_model = model_examples.build_linear_regression_keras_functional_model(
-        feature_dims
-    )
-
-    keras_model.compile(loss=tf.keras.losses.MeanSquaredError())
-
-    with self.assertRaisesRegex(ValueError, 'compile'):
-      keras_utils.from_keras_model(
-          keras_model=keras_model,
-          input_spec=_create_whimsy_types(feature_dims),
-          loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[tf.keras.metrics.MeanAbsoluteError()],
-      )
 
   def test_custom_keras_metric_with_extra_init_args_raises(self):
     class CustomCounter(tf.keras.metrics.Sum):

@@ -42,6 +42,8 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -53,6 +55,9 @@ py_test(
         ":iblt_factory",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -62,18 +67,25 @@ py_library(
     deps = [
         ":chunkers",
         ":hyperedge_hashers",
+        "@pypi//tensorflow",
     ],
 )
 
 py_library(
     name = "chunkers",
     srcs = ["chunkers.py"],
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_library(
     name = "hyperedge_hashers",
     srcs = ["hyperedge_hashers.py"],
+    deps = ["@pypi//tensorflow"],
 )
 
 py_test(
@@ -82,20 +94,35 @@ py_test(
     timeout = "long",
     srcs = ["iblt_lib_test.py"],
     shard_count = 4,
-    deps = [":iblt_lib"],
+    deps = [
+        ":iblt_lib",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
     name = "chunkers_test",
     srcs = ["chunkers_test.py"],
-    deps = [":chunkers"],
+    deps = [
+        ":chunkers",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
     name = "hyperedge_hashers_test",
     size = "medium",
     srcs = ["hyperedge_hashers_test.py"],
-    deps = [":hyperedge_hashers"],
+    deps = [
+        ":hyperedge_hashers",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_library(
@@ -109,6 +136,8 @@ py_library(
         "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -121,6 +150,9 @@ py_test(
         ":iblt_tff",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -130,6 +162,8 @@ py_library(
     deps = [
         ":chunkers",
         ":iblt_lib",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -139,6 +173,8 @@ py_test(
     deps = [
         ":iblt_lib",
         ":iblt_tensor",
+        "@pypi//absl_py",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -155,6 +191,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -169,5 +207,8 @@ py_test(
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "@federated_language//federated_language",
+        "@pypi//absl_py",
+        "@pypi//numpy",
+        "@pypi//tensorflow",
     ],
 )
