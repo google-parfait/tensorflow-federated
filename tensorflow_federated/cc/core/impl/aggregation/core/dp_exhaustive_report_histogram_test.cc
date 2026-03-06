@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_closed_domain_histogram.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_exhaustive_report_histogram.h"
 
 #include <cmath>
 #include <cstdint>
@@ -25,7 +25,6 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
@@ -51,25 +50,23 @@ using ::testing::Not;
 using ::testing::TestWithParam;
 
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
-    CreateIntrinsicWithKeyTypes_ClosedDomain;
+    CreateIntrinsicWithKeyTypes_ExhaustiveReport;
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateTensorSpec;
 
-using DPClosedDomainHistogramTest = TestWithParam<bool>;
+using DPExhaustiveReportHistogramTest = TestWithParam<bool>;
 
 // First batch of tests validate the aggregator itself, without DP noise.
 
-// Make sure we can successfully create a DPClosedDomainHistogram object.
-TEST(DPClosedDomainHistogramTest, CreateAggregator_Success) {
+// Make sure we can successfully create a DPExhaustiveReportHistogram object.
+TEST(DPExhaustiveReportHistogramTest, CreateAggregator_Success) {
   Intrinsic intrinsic =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>();
-  auto status = CreateTensorAggregator(intrinsic);
-  TFF_EXPECT_OK(status);
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>();
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
 
   // Validate the domain tensor: default intrinsic has one key that takes values
   // in the set {"a", "b", "c"}
-  auto& agg = status.value();
-  auto& dpcdh = dynamic_cast<DPClosedDomainHistogram&>(*agg);
+  auto& dpcdh = dynamic_cast<DPExhaustiveReportHistogram&>(*agg);
   TensorSpan domain_tensors = dpcdh.domain_tensors();
 
   EXPECT_EQ(domain_tensors.size(), 1);
@@ -83,37 +80,35 @@ TEST(DPClosedDomainHistogramTest, CreateAggregator_Success) {
 // Make sure the Report without DP noise contains all composite keys and their
 // aggregations.
 // One key taking values in the set {"a", "b", "c"}
-TEST(DPClosedDomainHistogramTest, NoiselessReport_OneKey) {
+TEST(DPExhaustiveReportHistogramTest, NoiselessReport_OneKey) {
   // Create intrinsic with one string key ({"a", "b", "c"} is default domain)
   Intrinsic intrinsic =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>(
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
           kEpsilonThreshold, 0.001, 10, 10, -1, -1, {DT_STRING});
-  // Create a DPClosedDomainHistogram object
-  auto status = CreateTensorAggregator(intrinsic);
-  TFF_EXPECT_OK(status);
-  auto& agg = status.value();
+  // Create a DPExhaustiveReportHistogram object
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
 
   // Accumulate twice
-  Tensor key1 =
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"}))
-          .value();
-  Tensor value1 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key1,
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor value1,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
   auto acc_status = agg->Accumulate({&key1, &value1});
   TFF_EXPECT_OK(acc_status);
-  Tensor key2 =
-      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"a"}))
-          .value();
-  Tensor value2 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({3})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key2,
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"a"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor value2,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({3})));
   acc_status = agg->Accumulate({&key2, &value2});
   TFF_EXPECT_OK(acc_status);
 
   // Report should look like {a: 5, b: 0, c: 1}
   EXPECT_TRUE(agg->CanReport());
-  auto report_status = std::move(*agg).Report();
-  TFF_EXPECT_OK(report_status);
-  auto& report = report_status.value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*agg).Report());
   ASSERT_EQ(report.size(), 2);
   EXPECT_THAT(report[0], IsTensor<string_view>({3}, {"a", "b", "c"}));
   EXPECT_THAT(report[1], IsTensor<int64_t>({3}, {5, 0, 1}));
@@ -121,39 +116,39 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_OneKey) {
 
 // Two keys taking values in the sets {"a", "b", "c"} and {0, 1, 2}
 // Number of possible composite keys is 9 = 3 * 3.
-TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
+TEST(DPExhaustiveReportHistogramTest, NoiselessReport_TwoKeys) {
   Intrinsic intrinsic =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>(
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
           kEpsilonThreshold, 0.001, 10, 10, -1, -1, {DT_STRING, DT_INT64});
-  // Create a DPClosedDomainHistogram object
-  auto status = CreateTensorAggregator(intrinsic);
-  TFF_EXPECT_OK(status);
-  auto& agg = status.value();
+  // Create a DPExhaustiveReportHistogram object
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
 
   // Accumulate twice
-  Tensor key1a =
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"}))
-          .value();
-  Tensor key1b =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
-  Tensor value1 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key1a,
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key1b,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor value1,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
   auto acc_status = agg->Accumulate({&key1a, &key1b, &value1});
   TFF_EXPECT_OK(acc_status);
-  Tensor key2a =
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "a"}))
-          .value();
-  Tensor key2b =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
-  Tensor value2 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({3, 3})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key2a,
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "a"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key2b,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor value2,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({3, 3})));
   acc_status = agg->Accumulate({&key2a, &key2b, &value2});
   TFF_EXPECT_OK(acc_status);
 
   EXPECT_TRUE(agg->CanReport());
-  auto report_status = std::move(*agg).Report();
-  TFF_EXPECT_OK(report_status);
-  auto& report = report_status.value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*agg).Report());
   // three tensors (columns): first key, second key, aggregation
   ASSERT_EQ(report.size(), 3);
 
@@ -170,43 +165,43 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
 }
 
 // Same as above except we do not output the key that takes numerical values.
-TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
+TEST(DPExhaustiveReportHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
   Intrinsic intrinsic =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int64_t, int64_t>(
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
           /*epsilon=*/kEpsilonThreshold, /*delta=*/0.001, /*l0_bound=*/10,
           /*linfinity_bound=*/10, /*l1_bound=*/-1, /*l2_bound=*/-1,
           /*key_types=*/{DT_STRING, DT_INT64});
   intrinsic.outputs[1] = CreateTensorSpec("", DT_INT64);
 
-  // Create a DPClosedDomainHistogram object
-  auto status = CreateTensorAggregator(intrinsic);
-  TFF_EXPECT_OK(status);
-  auto& agg = status.value();
+  // Create a DPExhaustiveReportHistogram object
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
 
   // Accumulate twice
-  Tensor key1a =
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"}))
-          .value();
-  Tensor key1b =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
-  Tensor value1 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key1a,
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key1b,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor value1,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
   auto acc_status = agg->Accumulate({&key1a, &key1b, &value1});
   TFF_EXPECT_OK(acc_status);
-  Tensor key2a =
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "a"}))
-          .value();
-  Tensor key2b =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
-  Tensor value2 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({3, 3})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key2a,
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "a"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key2b,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor value2,
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({3, 3})));
   acc_status = agg->Accumulate({&key2a, &key2b, &value2});
   TFF_EXPECT_OK(acc_status);
 
   EXPECT_TRUE(agg->CanReport());
-  auto report_status = std::move(*agg).Report();
-  TFF_EXPECT_OK(report_status);
-  auto& report = report_status.value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*agg).Report());
   // two tensors (columns): first key of letters, then aggregation
   ASSERT_EQ(report.size(), 2);
 
@@ -222,37 +217,37 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
 // Second batch of tests: check that noise is added. A noised sum should not be
 // the same as the unnoised sum; as epsilon decreases, the scale of noise will
 // increase.
-TEST(DPClosedDomainHistogramTest, NoiseAddedForSmallEpsilons) {
+TEST(DPExhaustiveReportHistogramTest, NoiseAddedForSmallEpsilons) {
   Intrinsic intrinsic =
-      CreateIntrinsicWithKeyTypes_ClosedDomain<int32_t, int64_t>(
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int32_t, int64_t>(
           /*epsilon=*/0.01,
           /*delta=*/1e-8,
           /*l0_bound=*/2,
           /*linfinity_bound=*/1);
-  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
   int num_inputs = 4000;
   for (int i = 0; i < num_inputs; i++) {
-    Tensor keys =
-        Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
-            .value();
-    Tensor values =
-        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys, Tensor::Create(DT_STRING, {2},
+                                    CreateTestData<string_view>({"a", "b"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor values,
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})));
     auto acc_status = aggregator->Accumulate({&keys, &values});
     EXPECT_THAT(acc_status, IsOk());
   }
   EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
   EXPECT_TRUE(aggregator->CanReport());
 
-  auto report = std::move(*aggregator).Report();
-  EXPECT_THAT(report, IsOk());
+  TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*aggregator).Report());
 
   // The report should encode the following noisy histogram
   // {a: num_inputs + noise, b: num_inputs + noise, c: 0 + noise}
 
   // There must be 2 columns, one for keys and one for aggregated values.
-  ASSERT_EQ(report->size(), 2);
+  ASSERT_EQ(report.size(), 2);
 
-  const auto& values = report.value()[1].AsSpan<int64_t>();
+  const auto& values = report[1].AsSpan<int64_t>();
 
   // There must be 3 rows, one per key (a, b, c)
   ASSERT_EQ(values.size(), 3);
@@ -264,39 +259,40 @@ TEST(DPClosedDomainHistogramTest, NoiseAddedForSmallEpsilons) {
 }
 
 // Ensure that we have floating point output when we request it.
-TEST(DPClosedDomainHistogramTest, FloatTest) {
-  Intrinsic intrinsic = CreateIntrinsicWithKeyTypes_ClosedDomain<float, float>(
-      /*epsilon=*/0.01,
-      /*delta=*/1e-8,
-      /*l0_bound=*/2,
-      /*linfinity_bound=*/1);
-  auto aggregator = CreateTensorAggregator(intrinsic).value();
+TEST(DPExhaustiveReportHistogramTest, FloatTest) {
+  Intrinsic intrinsic =
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<float, float>(
+          /*epsilon=*/0.01,
+          /*delta=*/1e-8,
+          /*l0_bound=*/2,
+          /*linfinity_bound=*/1);
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
   int num_inputs = 4000;
   for (int i = 0; i < num_inputs; i++) {
-    Tensor keys =
-        Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
-            .value();
-    Tensor values =
-        Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({1, 0})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys, Tensor::Create(DT_STRING, {2},
+                                    CreateTestData<string_view>({"a", "b"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor values,
+        Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({1, 0})));
     auto acc_status = aggregator->Accumulate({&keys, &values});
     EXPECT_THAT(acc_status, IsOk());
   }
   EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
   EXPECT_TRUE(aggregator->CanReport());
 
-  auto report = std::move(*aggregator).Report();
-  EXPECT_THAT(report, IsOk());
+  TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*aggregator).Report());
 
   // There must be 2 columns, one for keys and one for aggregated values.
-  ASSERT_EQ(report->size(), 2);
+  ASSERT_EQ(report.size(), 2);
 
   // The type of the noisy values should be float.
-  ASSERT_EQ(report.value()[1].dtype(), DT_FLOAT);
+  ASSERT_EQ(report[1].dtype(), DT_FLOAT);
 
   // Because the output spec calls for floats and our noise-generating code
   // should sample according to the output spec, we expect that the fractional
   // part of each noisy value is non-zero.
-  auto noisy_values = report.value()[1].AsSpan<float>();
+  auto noisy_values = report[1].AsSpan<float>();
   for (float noisy_value : noisy_values) {
     noisy_value = std::abs(noisy_value);
     EXPECT_THAT(noisy_value - std::floor(noisy_value), Ne(0.0));
