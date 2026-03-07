@@ -42,6 +42,12 @@ class MutableStringData : public TensorData {
     strings_.emplace_back(absl::FixedArray<std::string>(growth_size_));
     string_views_.reserve(expected_size);
   }
+  explicit MutableStringData(std::vector<std::string> strings)
+      : MutableStringData(strings.size()) {
+    for (std::string& string : strings) {
+      Add(std::move(string));
+    }
+  }
   ~MutableStringData() override = default;
 
   // Implementation of TensorData methods.
