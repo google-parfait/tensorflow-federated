@@ -16,15 +16,21 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <string>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
@@ -244,6 +250,55 @@ TEST(CompositeKeyCombinerTest,
   EXPECT_THAT(output[1], IsTensor<string_view>({4}, {"abc", "de", "", "abc"}));
   EXPECT_THAT(output[2],
               IsTensor<string_view>({4}, {"fghi", "jklmn", "o", "pqrs"}));
+}
+
+TEST(CompositeKeyCombinerTest, LargeScale) {
+  CompositeKeyCombiner combiner(
+      std::vector<DataType>{DT_FLOAT, DT_INT32, DT_STRING});
+  constexpr size_t kNumElements = 10000;
+  std::vector<float> float_data;
+  std::vector<int32_t> int_data;
+  std::vector<std::string> string_data;
+  std::vector<string_view> string_view_data;
+
+  std::vector<int64_t> expected_ordinals;
+
+  for (int i = 0; i < kNumElements; ++i) {
+    expected_ordinals.push_back(i);
+    float_data.push_back(static_cast<float>(i));
+    int_data.push_back(i % 2);
+    string_data.push_back(absl::StrCat("abcdefghiklmnop", i % 100));
+  }
+
+  for (int i = 0; i < kNumElements; ++i) {
+    string_view_data.push_back(string_data[i]);
+  }
+
+  Tensor t1 = Tensor::Create(DT_FLOAT, {kNumElements},
+                             std::make_unique<MutableVectorData<float>>(
+                                 float_data.begin(), float_data.end()))
+                  .value();
+  Tensor t2 = Tensor::Create(DT_INT32, {kNumElements},
+                             std::make_unique<MutableVectorData<int32_t>>(
+                                 int_data.begin(), int_data.end()))
+                  .value();
+  Tensor t3 = Tensor::Create(DT_STRING, {kNumElements},
+                             std::make_unique<MutableStringData>(string_data))
+                  .value();
+  // Accumulate the same tensors twice.
+  StatusOr<Tensor> result =
+      combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
+  ASSERT_OK(result);
+  ASSERT_THAT(result.value(), IsTensor({kNumElements}, expected_ordinals));
+  result = combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
+  ASSERT_OK(result);
+  ASSERT_THAT(result.value(), IsTensor({kNumElements}, expected_ordinals));
+  OutputTensorList output = combiner.GetOutputKeys();
+  EXPECT_THAT(output.size(), Eq(3));
+  EXPECT_THAT(output[0], IsTensor<float>({kNumElements}, float_data));
+  EXPECT_THAT(output[1], IsTensor<int32_t>({kNumElements}, int_data));
+  EXPECT_THAT(output[2],
+              IsTensor<string_view>({kNumElements}, string_view_data));
 }
 
 }  // namespace
