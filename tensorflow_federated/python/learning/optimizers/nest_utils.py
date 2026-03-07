@@ -23,7 +23,7 @@ def _tuplify(x):
     return (x,)
 
 
-def map_at_leaves(f, *args, num_outputs: int = 0) -> ...:
+def map_at_leaves(f, *args, num_outputs: int = 0):
   """Applies a function leaf-wise to arguments of matching nested structure.
 
   For example, if `f(X, Y, Z) -> A, B` then for some nested structure

@@ -129,7 +129,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
 
       def wrong_debug_measurements_fn(
           aggregation_factory: factory.AggregationFactory,
-      ) -> ...:
+      ):
         del aggregation_factory
         return (
             debug_measurements._calculate_client_update_statistics_mixed_dtype(

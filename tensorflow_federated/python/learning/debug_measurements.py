@@ -200,7 +200,7 @@ def _build_aggregator_measurement_fns(
         ..., dict[str, Any]
     ] = _calculate_server_update_statistics,
     weighted_aggregator: bool = True,
-) -> ...:
+):
   """Create measurement functions suitable for debugging learning processes.
 
   These functions are intended for use with `tff.aggregators.add_measurements`.
