@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_CLOSED_DOMAIN_HISTOGRAM_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_CLOSED_DOMAIN_HISTOGRAM_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_EXHAUSTIVE_REPORT_HISTOGRAM_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_EXHAUSTIVE_REPORT_HISTOGRAM_H_
 
 #include <cstdint>
 #include <memory>
@@ -39,12 +39,16 @@
 namespace tensorflow_federated {
 namespace aggregation {
 
-// DPClosedDomainHistogram is a child class of GroupByAggregator.
-// ::AggregateTensorsInternal enforces a bound on the number of composite keys
-// (ordinals) that any one aggregation can contribute to.
-// ::Report adds noise to aggregates
+// DPExhaustiveReportHistogram is a child class of DPGroupByAggregator for
+// differentially private grouping aggregations.
+//
+// This class is named "ExhaustiveReport" because ::NoisyReport includes
+// aggregates for all possible key combinations derived from the key domains
+// specified at construction time, including combinations not present in
+// the input data.
+//
 // This class is not thread safe.
-class DPClosedDomainHistogram : public DPGroupByAggregator {
+class DPExhaustiveReportHistogram : public DPGroupByAggregator {
  public:
   // Accessor to the tensors that specify the domain of each key.
   const TensorSpan& domain_tensors() const { return domain_tensors_; }
@@ -52,15 +56,15 @@ class DPClosedDomainHistogram : public DPGroupByAggregator {
  protected:
   friend class DPGroupByFactory;
 
-  // Constructs a DPClosedDomainHistogram.
+  // Constructs a DPExhaustiveReportHistogram.
   // This constructor is meant for use by the DPGroupByFactory; most callers
-  // should instead create a DPClosedDomainHistogram from an intrinsic using the
-  // factory, i.e.
+  // should instead create a DPExhaustiveReportHistogram from an intrinsic using
+  // the factory, i.e.
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
   //
   // Takes the same inputs as DPGroupByAggregator, plus `domain_tensors`, a Span
   // of Tensors where the i-th describes the domain of the i-th grouping key.
-  DPClosedDomainHistogram(
+  DPExhaustiveReportHistogram(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
@@ -75,7 +79,7 @@ class DPClosedDomainHistogram : public DPGroupByAggregator {
   StatusOr<OutputTensorList> NoisyReport() override;
 
  private:
-  // When merging two DPClosedDomainHistograms, bounding the aggregates will
+  // When merging two DPExhaustiveReportHistograms, bounding the aggregates will
   // destroy accuracy and is not needed for privacy. Hence, this function calls
   // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
   StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
@@ -98,4 +102,4 @@ class DPClosedDomainHistogram : public DPGroupByAggregator {
 }  // namespace aggregation
 }  // namespace tensorflow_federated
 
-#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_CLOSED_DOMAIN_HISTOGRAM_H_
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_EXHAUSTIVE_REPORT_HISTOGRAM_H_

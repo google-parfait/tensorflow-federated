@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_thresholding_histogram.h"
 
 #include <cmath>
 #include <cstdint>
@@ -73,31 +73,31 @@ using ::tensorflow_federated::aggregation::dp_histogram_testing::
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateTopLevelParameters;
 
-using DPOpenDomainHistogramTest = TestWithParam<bool>;
+using DPThresholdingHistogramTest = TestWithParam<bool>;
 
-// Function to execute the DPOpenDomainHistogram on one input where there is
+// Function to execute the DPThresholdingHistogram on one input where there is
 // just one key per contribution and each contribution is to one aggregation
 template <typename InputType>
 StatusOr<OutputTensorList> SingleKeySingleAgg(
     const Intrinsic& intrinsic, const TensorShape shape,
     std::initializer_list<string_view> key_list,
     std::initializer_list<InputType> value_list, bool serialize_deserialize) {
-  auto aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor keys =
-      Tensor::Create(DT_STRING, shape, CreateTestData<string_view>(key_list))
-          .value();
+  TFF_ASSIGN_OR_RETURN(auto aggregator, CreateTensorAggregator(intrinsic));
+  TFF_ASSIGN_OR_RETURN(
+      Tensor keys,
+      Tensor::Create(DT_STRING, shape, CreateTestData<string_view>(key_list)));
 
-  Tensor value_tensor =
+  TFF_ASSIGN_OR_RETURN(
+      Tensor value_tensor,
       Tensor::Create(internal::TypeTraits<InputType>::kDataType, shape,
-                     CreateTestData<InputType>(value_list))
-          .value();
+                     CreateTestData<InputType>(value_list)));
   auto acc_status = aggregator->Accumulate({&keys, &value_tensor});
 
   if (serialize_deserialize) {
-    auto serialized_state = std::move(*aggregator).Serialize();
-    aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
-            .value();
+    TFF_ASSIGN_OR_RETURN(auto serialized_state,
+                         std::move(*aggregator).Serialize());
+    TFF_ASSIGN_OR_RETURN(
+        aggregator, DeserializeTensorAggregator(intrinsic, serialized_state));
   }
 
   EXPECT_THAT(acc_status, IsOk());
@@ -109,16 +109,16 @@ StatusOr<OutputTensorList> SingleKeySingleAgg(
 
 // The first batch of tests is dedicated to norm bounding when there is only one
 // inner aggregation (GROUP BY key, SUM(value))
-TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0Bound) {
+TEST_P(DPThresholdingHistogramTest, SingleKeySingleAggWithL0Bound) {
   // L0 bounding involves randomness so we should repeat things to catch errors.
   for (int i = 0; i < 9; i++) {
     auto intrinsic =
         CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01, 1);
-    auto result = SingleKeySingleAgg<int64_t>(intrinsic, {4},
-                                              {"zero", "one", "two", "zero"},
-                                              {1, 3, 15, 27}, GetParam());
-    EXPECT_THAT(result, IsOk());
-    EXPECT_THAT(result->size(), Eq(2));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        auto result, SingleKeySingleAgg<int64_t>(intrinsic, {4},
+                                                 {"zero", "one", "two", "zero"},
+                                                 {1, 3, 15, 27}, GetParam()));
+    EXPECT_THAT(result.size(), Eq(2));
 
     // output is either (zero:28) OR (one:3) OR (two:15)
     // OR their reversals
@@ -133,8 +133,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0Bound) {
       auto callable_value_matcher =
           ::testing::internal::MakePredicateFormatterFromMatcher(value_matcher);
 
-      if (callable_key_matcher("result.value()[0]", result.value()[0]) &&
-          callable_value_matcher("result.value()[1]", result.value()[1])) {
+      if (callable_key_matcher("result[0]", result[0]) &&
+          callable_value_matcher("result[1]", result[1])) {
         found_match = true;
         break;
       }
@@ -142,21 +142,21 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0Bound) {
     EXPECT_TRUE(found_match);
 
     // Check density
-    EXPECT_TRUE(result.value()[0].is_dense());
-    EXPECT_TRUE(result.value()[1].is_dense());
+    EXPECT_TRUE(result[0].is_dense());
+    EXPECT_TRUE(result[1].is_dense());
   }
 }
 
-TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0LinfinityBounds) {
+TEST_P(DPThresholdingHistogramTest, SingleKeySingleAggWithL0LinfinityBounds) {
   for (int i = 0; i < 9; i++) {
     // Use the same setup as before but now impose a maximum magnitude of 12
     auto intrinsic =
         CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01, 1, 12);
-    auto result = SingleKeySingleAgg<int64_t>(intrinsic, {4},
-                                              {"zero", "one", "two", "zero"},
-                                              {1, 3, 15, 27}, GetParam());
-    EXPECT_THAT(result, IsOk());
-    EXPECT_THAT(result->size(), Eq(2));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        auto result, SingleKeySingleAgg<int64_t>(intrinsic, {4},
+                                                 {"zero", "one", "two", "zero"},
+                                                 {1, 3, 15, 27}, GetParam()));
+    EXPECT_THAT(result.size(), Eq(2));
 
     // output is either (zero:12) OR (one:3) OR (two:12)
     // OR their reversals
@@ -171,8 +171,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0LinfinityBounds) {
       auto callable_value_matcher =
           ::testing::internal::MakePredicateFormatterFromMatcher(value_matcher);
 
-      if (callable_key_matcher("result.value()[0]", result.value()[0]) &&
-          callable_value_matcher("result.value()[1]", result.value()[1])) {
+      if (callable_key_matcher("result[0]", result[0]) &&
+          callable_value_matcher("result[1]", result[1])) {
         found_match = true;
         break;
       }
@@ -180,50 +180,52 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0LinfinityBounds) {
     EXPECT_TRUE(found_match);
 
     // Check density
-    EXPECT_TRUE(result.value()[0].is_dense());
-    EXPECT_TRUE(result.value()[1].is_dense());
+    EXPECT_TRUE(result[0].is_dense());
+    EXPECT_TRUE(result[1].is_dense());
   }
 }
 
-TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0LinfinityL1Bounds) {
+TEST_P(DPThresholdingHistogramTest, SingleKeySingleAggWithL0LinfinityL1Bounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4 (four keys), Linfinity bound is 50 (|value| <= 50),
     // and L1 bound is 100 (sum over |value| is <= 100)
     auto intrinsic =
         CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01, 4, 50, 100);
-    auto result = SingleKeySingleAgg<int64_t>(
-        intrinsic, {5}, {"zero", "one", "two", "three", "four"},
-        {60, 60, 60, 60, 60}, GetParam());
-    EXPECT_THAT(result, IsOk());
-    EXPECT_THAT(result->size(), Eq(2));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        auto result,
+        SingleKeySingleAgg<int64_t>(intrinsic, {5},
+                                    {"zero", "one", "two", "three", "four"},
+                                    {60, 60, 60, 60, 60}, GetParam()));
+    EXPECT_THAT(result.size(), Eq(2));
 
     // output should look like (25, 25, 25, 25)
-    EXPECT_THAT(result.value()[1], IsTensor<int64_t>({4}, {25, 25, 25, 25}));
+    EXPECT_THAT(result[1], IsTensor<int64_t>({4}, {25, 25, 25, 25}));
 
     // Check density
-    EXPECT_TRUE(result.value()[0].is_dense());
-    EXPECT_TRUE(result.value()[1].is_dense());
+    EXPECT_TRUE(result[0].is_dense());
+    EXPECT_TRUE(result[1].is_dense());
   }
 }
 
-TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithAllBounds) {
+TEST_P(DPThresholdingHistogramTest, SingleKeySingleAggWithAllBounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4 (four keys), Linfinity bound is 50 (|value| <= 50),
     // L1 bound is 100 (sum over |value| is <= 100), and L2 bound is 10
     auto intrinsic = CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01,
                                                        4, 50, 100, 10);
-    auto result = SingleKeySingleAgg<int64_t>(
-        intrinsic, {5}, {"zero", "one", "two", "three", "four"},
-        {60, 60, 60, 60, 60}, GetParam());
-    EXPECT_THAT(result, IsOk());
-    EXPECT_THAT(result->size(), Eq(2));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        auto result,
+        SingleKeySingleAgg<int64_t>(intrinsic, {5},
+                                    {"zero", "one", "two", "three", "four"},
+                                    {60, 60, 60, 60, 60}, GetParam()));
+    EXPECT_THAT(result.size(), Eq(2));
 
     // output should look like (5, 5, 5, 5)
-    EXPECT_THAT(result.value()[1], IsTensor<int64_t>({4}, {5, 5, 5, 5}));
+    EXPECT_THAT(result[1], IsTensor<int64_t>({4}, {5, 5, 5, 5}));
 
     // Check density
-    EXPECT_TRUE(result.value()[0].is_dense());
-    EXPECT_TRUE(result.value()[1].is_dense());
+    EXPECT_TRUE(result[0].is_dense());
+    EXPECT_TRUE(result[1].is_dense());
   }
 }
 
@@ -251,7 +253,7 @@ Intrinsic CreateIntrinsic2Agg(double epsilon = kEpsilonThreshold,
   return intrinsic;
 }
 
-// Function to execute the DPOpenDomainHistogram on one input where there is
+// Function to execute the DPThresholdingHistogram on one input where there is
 // just one key per contribution and each contribution is to two aggregations
 template <typename InputType>
 StatusOr<OutputTensorList> SingleKeyDoubleAgg(
@@ -259,27 +261,27 @@ StatusOr<OutputTensorList> SingleKeyDoubleAgg(
     std::initializer_list<string_view> key_list,
     std::initializer_list<InputType> value_list1,
     std::initializer_list<InputType> value_list2, bool serialize_deserialize) {
-  auto aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor keys =
-      Tensor::Create(DT_STRING, shape, CreateTestData<string_view>(key_list))
-          .value();
+  TFF_ASSIGN_OR_RETURN(auto aggregator, CreateTensorAggregator(intrinsic));
+  TFF_ASSIGN_OR_RETURN(
+      Tensor keys,
+      Tensor::Create(DT_STRING, shape, CreateTestData<string_view>(key_list)));
 
-  Tensor value_tensor1 =
+  TFF_ASSIGN_OR_RETURN(
+      Tensor value_tensor1,
       Tensor::Create(internal::TypeTraits<InputType>::kDataType, shape,
-                     CreateTestData<InputType>(value_list1))
-          .value();
-  Tensor value_tensor2 =
+                     CreateTestData<InputType>(value_list1)));
+  TFF_ASSIGN_OR_RETURN(
+      Tensor value_tensor2,
       Tensor::Create(internal::TypeTraits<InputType>::kDataType, shape,
-                     CreateTestData<InputType>(value_list2))
-          .value();
+                     CreateTestData<InputType>(value_list2)));
   auto acc_status =
       aggregator->Accumulate({&keys, &value_tensor1, &value_tensor2});
 
   if (serialize_deserialize) {
-    auto serialized_state = std::move(*aggregator).Serialize();
-    aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
-            .value();
+    TFF_ASSIGN_OR_RETURN(auto serialized_state,
+                         std::move(*aggregator).Serialize());
+    TFF_ASSIGN_OR_RETURN(
+        aggregator, DeserializeTensorAggregator(intrinsic, serialized_state));
   }
 
   EXPECT_THAT(acc_status, IsOk());
@@ -289,29 +291,30 @@ StatusOr<OutputTensorList> SingleKeyDoubleAgg(
   return std::move(*aggregator).Report();
 }
 
-TEST_P(DPOpenDomainHistogramTest, SingleKeyDoubleAggWithAllBounds) {
+TEST_P(DPThresholdingHistogramTest, SingleKeyDoubleAggWithAllBounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4.
     // For agg 1, Linfinity bound is 20 and no other bounds provided.
     // For agg 2, Linfinity bound is 50, L1 bound is 100, L2 bound is 10.
     auto intrinsic = CreateIntrinsic2Agg<int64_t, int64_t>(
         kEpsilonThreshold, 0.01, 4, 20, -1, -1, 50, 100, 10);
-    auto result = SingleKeyDoubleAgg<int64_t>(
-        intrinsic, {5}, {"zero", "one", "two", "three", "four"},
-        {60, 60, 60, 60, 60}, {60, 60, 60, 60, 60}, GetParam());
-    EXPECT_THAT(result, IsOk());
-    EXPECT_THAT(result->size(), Eq(3));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        auto result,
+        SingleKeyDoubleAgg<int64_t>(
+            intrinsic, {5}, {"zero", "one", "two", "three", "four"},
+            {60, 60, 60, 60, 60}, {60, 60, 60, 60, 60}, GetParam()));
+    EXPECT_THAT(result.size(), Eq(3));
 
     // first output should look like (20, 20, 20, 20)
-    EXPECT_THAT(result.value()[1], IsTensor<int64_t>({4}, {20, 20, 20, 20}));
+    EXPECT_THAT(result[1], IsTensor<int64_t>({4}, {20, 20, 20, 20}));
 
     // second output should look like (5, 5, 5, 5)
-    EXPECT_THAT(result.value()[2], IsTensor<int64_t>({4}, {5, 5, 5, 5}));
+    EXPECT_THAT(result[2], IsTensor<int64_t>({4}, {5, 5, 5, 5}));
 
     // Check density
-    EXPECT_TRUE(result.value()[0].is_dense());
-    EXPECT_TRUE(result.value()[1].is_dense());
-    EXPECT_TRUE(result.value()[2].is_dense());
+    EXPECT_TRUE(result[0].is_dense());
+    EXPECT_TRUE(result[1].is_dense());
+    EXPECT_TRUE(result[2].is_dense());
   }
 }
 
@@ -349,30 +352,30 @@ StatusOr<OutputTensorList> DoubleKeyDoubleAgg(
     std::initializer_list<string_view> key_list2,
     std::initializer_list<InputType> value_list1,
     std::initializer_list<InputType> value_list2, bool serialize_deserialize) {
-  auto aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor keys1 =
-      Tensor::Create(DT_STRING, shape, CreateTestData<string_view>(key_list1))
-          .value();
-  Tensor keys2 =
-      Tensor::Create(DT_STRING, shape, CreateTestData<string_view>(key_list2))
-          .value();
+  TFF_ASSIGN_OR_RETURN(auto aggregator, CreateTensorAggregator(intrinsic));
+  TFF_ASSIGN_OR_RETURN(
+      Tensor keys1,
+      Tensor::Create(DT_STRING, shape, CreateTestData<string_view>(key_list1)));
+  TFF_ASSIGN_OR_RETURN(
+      Tensor keys2,
+      Tensor::Create(DT_STRING, shape, CreateTestData<string_view>(key_list2)));
 
-  Tensor value_tensor1 =
+  TFF_ASSIGN_OR_RETURN(
+      Tensor value_tensor1,
       Tensor::Create(internal::TypeTraits<InputType>::kDataType, shape,
-                     CreateTestData<InputType>(value_list1))
-          .value();
-  Tensor value_tensor2 =
+                     CreateTestData<InputType>(value_list1)));
+  TFF_ASSIGN_OR_RETURN(
+      Tensor value_tensor2,
       Tensor::Create(internal::TypeTraits<InputType>::kDataType, shape,
-                     CreateTestData<InputType>(value_list2))
-          .value();
+                     CreateTestData<InputType>(value_list2)));
   auto acc_status =
       aggregator->Accumulate({&keys1, &keys2, &value_tensor1, &value_tensor2});
 
   if (serialize_deserialize) {
-    auto serialized_state = std::move(*aggregator).Serialize();
-    aggregator =
-        DeserializeTensorAggregator(intrinsic, serialized_state.value())
-            .value();
+    TFF_ASSIGN_OR_RETURN(auto serialized_state,
+                         std::move(*aggregator).Serialize());
+    TFF_ASSIGN_OR_RETURN(
+        aggregator, DeserializeTensorAggregator(intrinsic, serialized_state));
   }
 
   EXPECT_THAT(acc_status, IsOk());
@@ -382,31 +385,32 @@ StatusOr<OutputTensorList> DoubleKeyDoubleAgg(
   return std::move(*aggregator).Report();
 }
 
-TEST_P(DPOpenDomainHistogramTest, DoubleKeyDoubleAggWithAllBounds) {
+TEST_P(DPThresholdingHistogramTest, DoubleKeyDoubleAggWithAllBounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4.
     // For agg 1, Linfinity bound is 20 and no other bounds provided.
     // For agg 2, Linfinity bound is 50, L1 bound is 100, L2 bound is 10.
     auto intrinsic = CreateIntrinsic2Key2Agg<int64_t, int64_t>(
         kEpsilonThreshold, 0.01, 4, 20, -1, -1, 50, 100, 10);
-    auto result = DoubleKeyDoubleAgg<int64_t>(
-        intrinsic, {5}, {"red", "green", "green", "blue", "gray"},
-        {"zero", "one", "two", "three", "four"}, {60, 60, 60, 60, 60},
-        {60, 60, 60, 60, 60}, GetParam());
-    EXPECT_THAT(result, IsOk());
-    EXPECT_THAT(result->size(), Eq(4));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        auto result,
+        DoubleKeyDoubleAgg<int64_t>(
+            intrinsic, {5}, {"red", "green", "green", "blue", "gray"},
+            {"zero", "one", "two", "three", "four"}, {60, 60, 60, 60, 60},
+            {60, 60, 60, 60, 60}, GetParam()));
+    EXPECT_THAT(result.size(), Eq(4));
 
     // first output should look like (20, 20, 20, 20)
-    EXPECT_THAT(result.value()[2], IsTensor<int64_t>({4}, {20, 20, 20, 20}));
+    EXPECT_THAT(result[2], IsTensor<int64_t>({4}, {20, 20, 20, 20}));
 
     // second output should look like (5, 5, 5, 5)
-    EXPECT_THAT(result.value()[3], IsTensor<int64_t>({4}, {5, 5, 5, 5}));
+    EXPECT_THAT(result[3], IsTensor<int64_t>({4}, {5, 5, 5, 5}));
 
     // Check density
-    EXPECT_TRUE(result.value()[0].is_dense());
-    EXPECT_TRUE(result.value()[1].is_dense());
-    EXPECT_TRUE(result.value()[2].is_dense());
-    EXPECT_TRUE(result.value()[3].is_dense());
+    EXPECT_TRUE(result[0].is_dense());
+    EXPECT_TRUE(result[1].is_dense());
+    EXPECT_TRUE(result[2].is_dense());
+    EXPECT_TRUE(result[3].is_dense());
   }
 }
 
@@ -440,16 +444,19 @@ Intrinsic CreateIntrinsicNoKeys(double epsilon = kEpsilonThreshold,
   return intrinsic;
 }
 
-TEST_P(DPOpenDomainHistogramTest, NoKeyTripleAggWithAllBounds) {
+TEST_P(DPThresholdingHistogramTest, NoKeyTripleAggWithAllBounds) {
   Intrinsic intrinsic = CreateIntrinsicNoKeys<int32_t, int64_t>(
       kEpsilonThreshold, 0.01, 100, 10, 9, 8,  // limit to 8
       100, 9, -1,                              // limit to 9
       100, -1, -1);                            // 100
 
-  auto aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData({11})).value();
-  Tensor t2 = Tensor::Create(DT_INT32, {}, CreateTestData({11})).value();
-  Tensor t3 = Tensor::Create(DT_INT32, {}, CreateTestData({11})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor t1,
+                           Tensor::Create(DT_INT32, {}, CreateTestData({11})));
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor t2,
+                           Tensor::Create(DT_INT32, {}, CreateTestData({11})));
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor t3,
+                           Tensor::Create(DT_INT32, {}, CreateTestData({11})));
   EXPECT_THAT(aggregator->Accumulate({&t1, &t2, &t3}), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
 
@@ -460,27 +467,29 @@ TEST_P(DPOpenDomainHistogramTest, NoKeyTripleAggWithAllBounds) {
         aggregator, DeserializeTensorAggregator(intrinsic, serialized_state));
   }
 
-  auto result = std::move(*aggregator).Report();
-  EXPECT_THAT(result, IsOk());
-  EXPECT_THAT(result.value().size(), Eq(3));
-  EXPECT_THAT(result.value()[0], IsTensor<int64_t>({1}, {8}));
-  EXPECT_THAT(result.value()[1], IsTensor<int64_t>({1}, {9}));
-  EXPECT_THAT(result.value()[2], IsTensor<int64_t>({1}, {11}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result, std::move(*aggregator).Report());
+  EXPECT_THAT(result.size(), Eq(3));
+  EXPECT_THAT(result[0], IsTensor<int64_t>({1}, {8}));
+  EXPECT_THAT(result[1], IsTensor<int64_t>({1}, {9}));
+  EXPECT_THAT(result[2], IsTensor<int64_t>({1}, {11}));
 }
 
 // Fifth batch of tests: check that noise is added. The noised sum should not be
 // the same as the unnoised sum. The odds of a false negative shrinks with
 // epsilon.
-TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilons) {
+TEST_P(DPThresholdingHistogramTest, NoiseAddedForSmallEpsilons) {
   Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(0.05, 1e-8, 2, 1);
-  auto dp_aggregator = CreateTensorAggregator(intrinsic).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator,
+                           CreateTensorAggregator(intrinsic));
   int num_inputs = 4000;
   for (int i = 0; i < num_inputs; i++) {
-    Tensor keys = Tensor::Create(DT_STRING, {2},
-                                 CreateTestData<string_view>({"key0", "key1"}))
-                      .value();
-    Tensor values =
-        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys,
+        Tensor::Create(DT_STRING, {2},
+                       CreateTestData<string_view>({"key0", "key1"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor values,
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})));
     auto acc_status = dp_aggregator->Accumulate({&keys, &values});
     EXPECT_THAT(acc_status, IsOk());
   }
@@ -494,10 +503,9 @@ TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilons) {
                                                 intrinsic, serialized_state));
   }
 
-  auto report = std::move(*dp_aggregator).Report();
-  EXPECT_THAT(report, IsOk());
-  EXPECT_EQ(report->size(), 2);
-  const auto& values = report.value()[1].AsSpan<int64_t>();
+  TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*dp_aggregator).Report());
+  EXPECT_EQ(report.size(), 2);
+  const auto& values = report[1].AsSpan<int64_t>();
   ASSERT_THAT(values.size(), Eq(2));
   EXPECT_TRUE(values[0] != num_inputs || values[1] != num_inputs);
 }
@@ -509,11 +517,12 @@ TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilons) {
 // This test has a small probability of failing due to false positives: noise
 // could push the 0 past the threshold. It also has a small probability of
 // failing due to false negatives: noise could push the 100 below the threshold.
-TEST_P(DPOpenDomainHistogramTest, SingleKeyDropAggregatesWithValueZero) {
+TEST_P(DPThresholdingHistogramTest, SingleKeyDropAggregatesWithValueZero) {
   // epsilon = 1, delta= 1e-8, L0 bound = 2, Linfinity bound = 1
   Intrinsic intrinsic =
       CreateIntrinsic2Agg<int32_t, int64_t>(1.0, 1e-8, 2, 1, -1, -1, 1, -1, -1);
-  auto dp_aggregator = CreateTensorAggregator(intrinsic).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator,
+                           CreateTensorAggregator(intrinsic));
   // Simulate many clients where they contribute
   // aggregation 1: zeroes to key0 and ones to key1
   // aggregation 2: ones to both
@@ -521,14 +530,16 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeyDropAggregatesWithValueZero) {
   std::string key1 = "keep me";
   int num_inputs = 400;
   for (int i = 0; i < num_inputs; i++) {
-    Tensor keys = Tensor::Create(DT_STRING, {2},
-                                 CreateTestData<string_view>({key0, key1}))
-                      .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys, Tensor::Create(DT_STRING, {2},
+                                    CreateTestData<string_view>({key0, key1})));
 
-    Tensor value_tensor1 =
-        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 1})).value();
-    Tensor value_tensor2 =
-        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor value_tensor1,
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 1})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor value_tensor2,
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})));
 
     auto acc_status =
         dp_aggregator->Accumulate({&keys, &value_tensor1, &value_tensor2});
@@ -545,35 +556,37 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeyDropAggregatesWithValueZero) {
                                                 intrinsic, serialized_state));
   }
 
-  auto report = std::move(*dp_aggregator).Report();
-  EXPECT_THAT(report, IsOk());
-  EXPECT_THAT(report->size(), Eq(3));
+  TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*dp_aggregator).Report());
+  EXPECT_THAT(report.size(), Eq(3));
 
   // The report should not include key0 because it has an aggregate of 0
   // and a key survives only when *all* its values are above their thresholds
-  EXPECT_THAT(report.value()[0], IsTensor<string_view>({1}, {key1}));
+  EXPECT_THAT(report[0], IsTensor<string_view>({1}, {key1}));
 
   // The values associated with the surviving key (key1) must be large
   int64_t threshold = static_cast<int64_t>(ceil(1 + 2 * std::log(1e8)));
-  EXPECT_THAT(report.value()[1].AsScalar<int64_t>(), Gt(threshold));
-  EXPECT_THAT(report.value()[2].AsScalar<int64_t>(), Gt(threshold));
+  EXPECT_THAT(report[1].AsScalar<int64_t>(), Gt(threshold));
+  EXPECT_THAT(report[2].AsScalar<int64_t>(), Gt(threshold));
 }
 
 // When there are no grouping keys, aggregation will be scalar. Hence, the sole
 // "group" does not need to be dropped for DP (because it exists whether or not
 // a given client contributed data)
-// This test should never fail because DPOpenDomainHistogram & its factory check
-// for the no key case and force aggregates to survive.
-TEST_P(DPOpenDomainHistogramTest, NoKeyNoDrop) {
+// This test should never fail because DPThresholdingHistogram & its factory
+// check for the no key case and force aggregates to survive.
+TEST_P(DPThresholdingHistogramTest, NoKeyNoDrop) {
   Intrinsic intrinsic = CreateIntrinsicNoKeys<int32_t, int64_t>(
       1.0, 1e-8, 3, 10, 9, 8,  // limit to 8
       100, 9, -1,              // limit to 9
       10, -1, -1);             // limit to 10
-  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
   for (int i = 0; i < 100; i++) {
-    Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData({11})).value();
-    Tensor t2 = Tensor::Create(DT_INT32, {}, CreateTestData({11})).value();
-    Tensor t3 = Tensor::Create(DT_INT32, {}, CreateTestData({11})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor t1, Tensor::Create(DT_INT32, {}, CreateTestData({11})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor t2, Tensor::Create(DT_INT32, {}, CreateTestData({11})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor t3, Tensor::Create(DT_INT32, {}, CreateTestData({11})));
     EXPECT_THAT(aggregator->Accumulate({&t1, &t2, &t3}), IsOk());
   }
 
@@ -586,19 +599,18 @@ TEST_P(DPOpenDomainHistogramTest, NoKeyNoDrop) {
         aggregator, DeserializeTensorAggregator(intrinsic, serialized_state));
   }
 
-  auto result = std::move(*aggregator).Report();
-  EXPECT_THAT(result, IsOk());
-  EXPECT_THAT(result.value().size(), Eq(3));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result, std::move(*aggregator).Report());
+  EXPECT_THAT(result.size(), Eq(3));
 
   // report should have all the noisy data (one number per Tensor)
-  EXPECT_THAT(result.value()[0].num_elements(), 1);  // 800 + noise
-  EXPECT_THAT(result.value()[1].num_elements(), 1);  // 900 + noise
-  EXPECT_THAT(result.value()[2].num_elements(), 1);  // 1000 + noise
+  EXPECT_THAT(result[0].num_elements(), 1);  // 800 + noise
+  EXPECT_THAT(result[1].num_elements(), 1);  // 900 + noise
+  EXPECT_THAT(result[2].num_elements(), 1);  // 1000 + noise
 }
 
 // Test to verify that Report() still drops key columns that were given empty
 // labels.
-TEST_P(DPOpenDomainHistogramTest,
+TEST_P(DPThresholdingHistogramTest,
        Accumulate_MultipleKeyTensors_SomeKeysNotInOutput_Succeeds) {
   const TensorShape shape = {4};
   Intrinsic intrinsic = {.uri = kDPGroupByUri,
@@ -615,36 +627,36 @@ TEST_P(DPOpenDomainHistogramTest,
   // L0 = 3, Linf = 4, L1 = 8
   // These bounds should not affect any individual input data below
 
-  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
   constexpr int num_inputs = 200;
   for (int i = 0; i < num_inputs; i++) {
-    Tensor sizeKeys1 =
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor sizeKeys1,
         Tensor::Create(
             DT_STRING, shape,
-            CreateTestData<string_view>({"large", "large", "small", "large"}))
-            .value();
-    Tensor animalKeys1 =
-        Tensor::Create(
-            DT_STRING, shape,
-            CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-            .value();
-    Tensor t1 =
-        Tensor::Create(DT_INT32, shape, CreateTestData({1, 2, 1, 4})).value();
+            CreateTestData<string_view>({"large", "large", "small", "large"})));
+    TFF_ASSERT_OK_AND_ASSIGN(Tensor animalKeys1,
+                             Tensor::Create(DT_STRING, shape,
+                                            CreateTestData<string_view>(
+                                                {"cat", "cat", "cat", "dog"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor t1,
+        Tensor::Create(DT_INT32, shape, CreateTestData({1, 2, 1, 4})));
     EXPECT_THAT(aggregator->Accumulate({&sizeKeys1, &animalKeys1, &t1}),
                 IsOk());
     // Totals: [3, 1, 4]
-    Tensor sizeKeys2 =
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor sizeKeys2,
         Tensor::Create(
             DT_STRING, shape,
-            CreateTestData<string_view>({"small", "large", "small", "small"}))
-            .value();
-    Tensor animalKeys2 =
-        Tensor::Create(
-            DT_STRING, shape,
-            CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-            .value();
-    Tensor t2 =
-        Tensor::Create(DT_INT32, shape, CreateTestData({2, 0, 2, 4})).value();
+            CreateTestData<string_view>({"small", "large", "small", "small"})));
+    TFF_ASSERT_OK_AND_ASSIGN(Tensor animalKeys2,
+                             Tensor::Create(DT_STRING, shape,
+                                            CreateTestData<string_view>(
+                                                {"cat", "cat", "cat", "dog"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor t2,
+        Tensor::Create(DT_INT32, shape, CreateTestData({2, 0, 2, 4})));
     EXPECT_THAT(aggregator->Accumulate({&sizeKeys2, &animalKeys2, &t2}),
                 IsOk());
     // Totals: [3, 5, 4, 4]
@@ -660,15 +672,14 @@ TEST_P(DPOpenDomainHistogramTest,
 
   // Totals: [600, 1000, 800, 800]
   ASSERT_THAT(aggregator->CanReport(), IsTrue());
-  auto result = std::move(*aggregator).Report();
-  EXPECT_THAT(result, IsOk());
+  TFF_ASSERT_OK_AND_ASSIGN(auto result, std::move(*aggregator).Report());
   // Verify the resulting tensors.
   // Only the second key tensor should be included in the output.
-  EXPECT_EQ(result.value().size(), 2);
+  EXPECT_EQ(result.size(), 2);
 
   // That tensor should have all animal keys because the threshold is less than
   // the noised values.
-  ASSERT_EQ(result.value()[0].num_elements(), 4);
+  ASSERT_EQ(result[0].num_elements(), 4);
 
   // The order of the keys may differ from what is output by GroupByAggregator
   // ("cat", "cat", "dog", "dog"). This is because DPCompositeKeyCombiner's
@@ -677,7 +688,7 @@ TEST_P(DPOpenDomainHistogramTest,
   int num_cat = 0;
   int num_dog = 0;
   for (int i = 0; i < 4; i++) {
-    auto key = result.value()[0].AsSpan<string_view>()[i];
+    auto key = result[0].AsSpan<string_view>()[i];
     num_cat += (key == "cat") ? 1 : 0;
     num_dog += (key == "dog") ? 1 : 0;
   }
@@ -687,39 +698,43 @@ TEST_P(DPOpenDomainHistogramTest,
 
 // Seventh test batch: merge should not clip or noise intermediary aggregates.
 
-TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_SingleKey) {
+TEST_P(DPThresholdingHistogramTest, MergeDoesNotDistortData_SingleKey) {
   // For any single user's data we will give to the aggregators, the norm bounds
   // below do nothing: each Accumulate call has 1 distinct key and a value of 1,
   // which satisfies the L0 bound and Linfinity bound constraints.
   Intrinsic intrinsic =
       CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.001, 1, 1, -1, -1);
-  auto agg1 = CreateTensorAggregator(intrinsic).value();
-  auto agg2 = CreateTensorAggregator(intrinsic).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg1, CreateTensorAggregator(intrinsic));
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg2, CreateTensorAggregator(intrinsic));
 
   // agg1 gets one person's data, mapping "key" to 1
-  Tensor key1 =
-      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"key"}))
-          .value();
-  Tensor data1 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor key1,
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"key"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor data1,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})));
   EXPECT_THAT(agg1->Accumulate({&key1, &data1}), IsOk());
 
   // agg2 gets data from a lot more people. At the end, it will map "other key"
   // to 1000 and "yet another key" to 1000.
   for (int i = 0; i < 1000; i++) {
-    Tensor key_a = Tensor::Create(DT_STRING, {1},
-                                  CreateTestData<string_view>({"other key"}))
-                       .value();
-    Tensor data_a =
-        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor key_a,
+        Tensor::Create(DT_STRING, {1},
+                       CreateTestData<string_view>({"other key"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor data_a,
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})));
     EXPECT_THAT(agg2->Accumulate({&key_a, &data_a}), IsOk());
 
-    Tensor key_b =
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor key_b,
         Tensor::Create(DT_STRING, {1},
-                       CreateTestData<string_view>({"yet another key"}))
-            .value();
-    Tensor data_b =
-        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+                       CreateTestData<string_view>({"yet another key"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor data_b,
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})));
     EXPECT_THAT(agg2->Accumulate({&key_b, &data_b}), IsOk());
   }
 
@@ -744,29 +759,30 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_SingleKey) {
   // or both
   auto merge_status = agg1->MergeWith(std::move(*agg2));
   EXPECT_THAT(merge_status, IsOk());
-  auto result = std::move(*agg1).Report();
-  EXPECT_THAT(result, IsOk());
-  EXPECT_THAT(result.value()[0].num_elements(), Eq(3));
-  EXPECT_THAT(result.value()[1], IsTensor<int64_t>({3}, {1, 1000, 1000}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result, std::move(*agg1).Report());
+  EXPECT_THAT(result[0].num_elements(), Eq(3));
+  EXPECT_THAT(result[1], IsTensor<int64_t>({3}, {1, 1000, 1000}));
 }
 
-TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
+TEST_P(DPThresholdingHistogramTest, MergeDoesNotDistortData_MultiKey) {
   Intrinsic intrinsic = CreateIntrinsic2Key2Agg<int64_t, int64_t>(
       kEpsilonThreshold, 0.001, 1, 1, -1, -1);
-  auto agg1 = CreateTensorAggregator(intrinsic).value();
-  auto agg2 = CreateTensorAggregator(intrinsic).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg1, CreateTensorAggregator(intrinsic));
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg2, CreateTensorAggregator(intrinsic));
 
   // agg1 gets one person's data, mapping "red apple" to 1,1
-  Tensor red =
-      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"red"}))
-          .value();
-  Tensor apple =
-      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"apple"}))
-          .value();
-  Tensor data1 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
-  Tensor data2 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor red,
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"red"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor apple,
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"apple"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor data1,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor data2,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})));
   EXPECT_THAT(agg1->Accumulate({&red, &apple, &data1, &data2}), IsOk());
 
   // agg2 gets data from a lot more people. At the end, it will map "red apple"
@@ -774,12 +790,12 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
   for (int i = 0; i < 1000; i++) {
     EXPECT_THAT(agg2->Accumulate({&red, &apple, &data1, &data2}), IsOk());
 
-    Tensor white =
-        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"white"}))
-            .value();
-    Tensor grape =
-        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"grape"}))
-            .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor white,
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"white"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor grape,
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"grape"})));
     EXPECT_THAT(agg2->Accumulate({&white, &grape, &data1, &data2}), IsOk());
   }
 
@@ -801,16 +817,14 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
   // 1000, 1000.
   auto merge_status = agg1->MergeWith(std::move(*agg2));
   EXPECT_THAT(merge_status, IsOk());
-  auto result = std::move(*agg1).Report();
-  ASSERT_THAT(result, IsOk());
-  ASSERT_THAT(result.value()[0].num_elements(), Eq(2));
-  EXPECT_THAT(result.value()[0], IsTensor<string_view>({2}, {"red", "white"}));
-  EXPECT_THAT(result.value()[1],
-              IsTensor<string_view>({2}, {"apple", "grape"}));
-  EXPECT_THAT(result.value()[2], IsTensor<int64_t>({2}, {1001, 1000}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result, std::move(*agg1).Report());
+  ASSERT_THAT(result[0].num_elements(), Eq(2));
+  EXPECT_THAT(result[0], IsTensor<string_view>({2}, {"red", "white"}));
+  EXPECT_THAT(result[1], IsTensor<string_view>({2}, {"apple", "grape"}));
+  EXPECT_THAT(result[2], IsTensor<int64_t>({2}, {1001, 1000}));
 }
 
-TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
+TEST_P(DPThresholdingHistogramTest, MergeDoesNotDistortData_NoKeys) {
   Intrinsic intrinsic = {
       .uri = "fedsql_dp_group_by",
       .inputs = {},
@@ -821,20 +835,24 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
       CreateInnerIntrinsic<int64_t, int64_t>(10, 9, 8));
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<int64_t, int64_t>(100, 9, -1));
-  auto agg1 = CreateTensorAggregator(intrinsic).value();
-  auto agg2 = CreateTensorAggregator(intrinsic).value();
-  Tensor data1 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
-  Tensor data2 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg1, CreateTensorAggregator(intrinsic));
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg2, CreateTensorAggregator(intrinsic));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor data1,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor data2,
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})));
   TFF_EXPECT_OK(agg1->Accumulate({&data1, &data2}));
   // Aggregate should be 1, 1
 
   for (int i = 0; i < 1000; i++) {
-    Tensor data3 =
-        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({10})).value();
-    Tensor data4 =
-        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({10})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor data3,
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({10})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor data4,
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({10})));
     TFF_EXPECT_OK(agg2->Accumulate({&data3, &data4}));
   }
   // Aggregate should be 8000, 9000 due to contribution bounding.
@@ -854,16 +872,15 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
 
   auto merge_status = agg1->MergeWith(std::move(*agg2));
   TFF_ASSERT_OK(merge_status);
-  auto result = std::move(*agg1).Report();
-  TFF_ASSERT_OK(result.status());
-  ASSERT_EQ(result.value().size(), 2);
-  EXPECT_THAT(result.value()[0], IsTensor<int64_t>({1}, {8001}));
-  EXPECT_THAT(result.value()[1], IsTensor<int64_t>({1}, {9001}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result, std::move(*agg1).Report());
+  ASSERT_EQ(result.size(), 2);
+  EXPECT_THAT(result[0], IsTensor<int64_t>({1}, {8001}));
+  EXPECT_THAT(result[1], IsTensor<int64_t>({1}, {9001}));
 }
 
 // Eighth test batch: order of outputs doesn't leak which keys were added.
 
-TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
+TEST_P(DPThresholdingHistogramTest, RowsAreShuffled) {
   // We will simulate 26000 clients each contributing to the count of 1 letter.
   std::string alphabet[26] = {"a", "b", "c", "d", "e", "f", "g", "h", "i",
                               "j", "k", "l", "m", "n", "o", "p", "q", "r",
@@ -872,16 +889,17 @@ TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
   // We perform DP aggregation with a large epsilon, so that the standard
   // deviation of each random variable is small.
   Intrinsic intrinsic = CreateIntrinsic<int32_t, int32_t>(50.0, 0.01, 1, 1);
-  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
 
   for (int i = 0; i < 26000; i++) {
-    Tensor keys =
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys,
         Tensor::Create(DT_STRING, {},
-                       CreateTestData<string_view>({alphabet[i % 26]}))
-            .value();
+                       CreateTestData<string_view>({alphabet[i % 26]})));
 
-    Tensor value_tensor =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor value_tensor,
+        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})));
     TFF_EXPECT_OK(aggregator->Accumulate({&keys, &value_tensor}));
   }
   if (GetParam()) {
@@ -890,29 +908,26 @@ TEST_P(DPOpenDomainHistogramTest, RowsAreShuffled) {
     TFF_ASSERT_OK_AND_ASSIGN(
         aggregator, DeserializeTensorAggregator(intrinsic, serialized_state));
   }
-  auto report = std::move(*aggregator).Report();
-  TFF_ASSERT_OK(report.status());
-  ASSERT_EQ(report.value().size(), 2);
+  TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*aggregator).Report());
+  ASSERT_EQ(report.size(), 2);
 
   // Because each letter receives 1000 contributions and the stdev is small, it
   // is likely that all keys survive NoiseAndThreshold. The output is some
   // permutation of the alphabet; the chance of being identical is 1/(26!).
-  auto report_span = report.value()[0].AsSpan<string_view>();
+  auto report_span = report[0].AsSpan<string_view>();
   EXPECT_THAT(report_span, UnorderedElementsAreArray(alphabet));
   EXPECT_THAT(report_span, Not(ElementsAreArray(alphabet)));
 }
 
 // Ninth test batch: creation of aggregator with min_contributors_to_group set.
 
-TEST(DPOpenDomainHistogramTest,
+TEST(DPThresholdingHistogramTest,
      CreateWithMinContributorsSetsSelectorAndMaxContributors) {
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
       /*min_contributors=*/5, /*epsilon=*/1.0);
-  auto aggregator_or_status = CreateTensorAggregator(intrinsic);
-  ASSERT_OK(aggregator_or_status);
-  auto aggregator = *std::move(aggregator_or_status);
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
 
-  DPOpenDomainHistogramPeer peer(std::move(aggregator));
+  DPThresholdingHistogramPeer peer(std::move(aggregator));
   EXPECT_TRUE(peer.HasSelector());
   // max_contributors_to_group should be greater than the min_contributors
   // parameter in the intrinsic, but we don't want to test the exact value just
@@ -920,15 +935,28 @@ TEST(DPOpenDomainHistogramTest,
   EXPECT_THAT(peer.GetMaxContributorsToGroup(), Gt(5));
 }
 
-TEST(DPOpenDomainHistogramTest,
+TEST(DPThresholdingHistogramTest,
+     CreateWithMinContributorsSetsEpsilonsAndDeltasCorrectly) {
+  double epsilon = 1.0;
+  double delta = 0.01;
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      /*min_contributors=*/5, epsilon, delta);
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+
+  DPThresholdingHistogramPeer peer(std::move(aggregator));
+  EXPECT_TRUE(peer.HasSelector());
+  EXPECT_DOUBLE_EQ(peer.GetSelectorEpsilon() + peer.GetEpsilonPerAgg(),
+                   epsilon);
+  EXPECT_DOUBLE_EQ(peer.GetSelectorDelta() + peer.GetDeltaPerAgg(), delta);
+}
+
+TEST(DPThresholdingHistogramTest,
      CreateWithoutMinContributorsDoesNotSetSelectorAndMaxContributors) {
   Intrinsic intrinsic = CreateIntrinsic<int64_t, int64_t>();
 
-  auto aggregator_or_status = CreateTensorAggregator(intrinsic);
-  ASSERT_OK(aggregator_or_status);
-  auto aggregator = *std::move(aggregator_or_status);
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
 
-  DPOpenDomainHistogramPeer peer(std::move(aggregator));
+  DPThresholdingHistogramPeer peer(std::move(aggregator));
   EXPECT_THAT(peer.HasSelector(), IsFalse());
   EXPECT_THAT(peer.GetMaxContributorsToGroup(), Eq(std::nullopt));
 }
@@ -936,42 +964,48 @@ TEST(DPOpenDomainHistogramTest,
 // Tenth test batch: the k-thresholding feature does not break Accumulate - the
 // logic that updates the contribution counts should account for groups that
 // were dropped due to enforcing the L0 bound a.k.a. max_groups_contributed.
-TEST(DPOpenDomainHistogramTest, AccumulateWhileKThresholding) {
+TEST(DPThresholdingHistogramTest, AccumulateWhileKThresholding) {
   Intrinsic intrinsic = CreateIntrinsic2Agg<int64_t, int64_t>(
       /*epsilon=*/1.0, /*delta=*/1e-8, /*l0_bound=*/2, /*linfinity_bound1=*/1);
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT64, {},
-                                                CreateTestData<int64_t>({5}),
-                                                "min_contributors_to_group")
-                                     .value());
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor min_contributors_param,
+      Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({5}),
+                     "min_contributors_to_group"));
+  intrinsic.parameters.push_back(std::move(min_contributors_param));
   // A simulated client will offer contributions to 3 groups but our L0 value
   // is 2 so one of those groups will be dropped (an ordinal will be -1).
-  auto agg = CreateTensorAggregator(intrinsic).value();
-  Tensor keys = Tensor::Create(DT_STRING, {3},
-                               CreateTestData<string_view>({"a", "b", "c"}))
-                    .value();
-  Tensor value_tensor1 =
-      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({1, 1, 1})).value();
-  Tensor value_tensor2 =
-      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({1, 1, 1})).value();
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor keys,
+      Tensor::Create(DT_STRING, {3},
+                     CreateTestData<string_view>({"a", "b", "c"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor value_tensor1,
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({1, 1, 1})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor value_tensor2,
+      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({1, 1, 1})));
   auto acc_status = agg->Accumulate({&keys, &value_tensor1, &value_tensor2});
   TFF_ASSERT_OK(acc_status);
-  DPOpenDomainHistogramPeer peer(std::move(agg));
+  DPThresholdingHistogramPeer peer(std::move(agg));
   EXPECT_THAT(peer.GetContributorsToGroups(), ElementsAreArray({1, 1}));
 }
 
 // Eleventh test batch: Report applies k-thresholding and DP noise correctly
 // when min_contributors_to_group is set.
 
-TEST_P(DPOpenDomainHistogramTest,
+TEST_P(DPThresholdingHistogramTest,
        SingleKeyAndMinContributorsAggregatesWithValueZeroCanSurvive) {
   Intrinsic intrinsic = CreateIntrinsic2Agg<int32_t, int64_t>(
       /*epsilon=*/1.0, /*delta=*/1e-8, /*l0_bound=*/2, /*linfinity_bound1=*/1,
       /*l1_bound1=*/-1, /*l2_bound1=*/-1, /*linfinity_bound2=*/1,
       /*l1_bound2=*/-1, /*l2_bound2=*/-1);
-  intrinsic.parameters.push_back(
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor min_contributors_param,
       Tensor::Create(internal::TypeTraits<int64_t>::kDataType, {},
-                     CreateTestData<int64_t>({5}), "min_contributors_to_group")
-          .value());
+                     CreateTestData<int64_t>({5}),
+                     "min_contributors_to_group"));
+  intrinsic.parameters.push_back(std::move(min_contributors_param));
   TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> dp_aggregator,
                            CreateTensorAggregator(intrinsic));
   // Simulate many clients where they contribute
@@ -983,14 +1017,16 @@ TEST_P(DPOpenDomainHistogramTest,
   std::string key1 = "keep me also";
   constexpr int num_inputs = 400;
   for (int i = 0; i < num_inputs; i++) {
-    Tensor keys = Tensor::Create(DT_STRING, {2},
-                                 CreateTestData<string_view>({key0, key1}))
-                      .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys, Tensor::Create(DT_STRING, {2},
+                                    CreateTestData<string_view>({key0, key1})));
 
-    Tensor value_tensor1 =
-        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 1})).value();
-    Tensor value_tensor2 =
-        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 0})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor value_tensor1,
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 1})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor value_tensor2,
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({0, 0})));
 
     EXPECT_THAT(
         dp_aggregator->Accumulate({&keys, &value_tensor1, &value_tensor2}),
@@ -1018,7 +1054,7 @@ TEST_P(DPOpenDomainHistogramTest,
               UnorderedElementsAre(key0, key1));
 }
 
-TEST_P(DPOpenDomainHistogramTest, ReportAppliesKThresholdingEvenWithoutDP) {
+TEST_P(DPThresholdingHistogramTest, ReportAppliesKThresholdingEvenWithoutDP) {
   // Test that when k-thresholding is enabled and no group survives, the
   // output is empty.
   const int64_t min_contributors_to_group = 5;
@@ -1031,24 +1067,26 @@ TEST_P(DPOpenDomainHistogramTest, ReportAppliesKThresholdingEvenWithoutDP) {
   // Simulate too few clients for key0 to survive k-thresholding.
   constexpr int kNumInputsKey0 = 4;
   for (int i = 0; i < kNumInputsKey0; i++) {
-    Tensor keys =
-        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({key0}))
-            .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys,
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({key0})));
 
-    Tensor value_tensor =
-        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor value_tensor,
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})));
 
     TFF_ASSERT_OK(dp_aggregator->Accumulate({&keys, &value_tensor}));
   }
   // Simulate enough clients for key1 to survive k-thresholding.
   constexpr int kNumInputsKey1 = 100;
   for (int i = 0; i < kNumInputsKey1; i++) {
-    Tensor keys =
-        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({key1}))
-            .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys,
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({key1})));
 
-    Tensor value_tensor =
-        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor value_tensor,
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})));
 
     TFF_ASSERT_OK(dp_aggregator->Accumulate({&keys, &value_tensor}));
   }
@@ -1070,7 +1108,7 @@ TEST_P(DPOpenDomainHistogramTest, ReportAppliesKThresholdingEvenWithoutDP) {
   EXPECT_THAT(report[0].AsSpan<string_view>(), UnorderedElementsAre(key1));
 }
 
-TEST(DPOpenDomainHistogramTest, ReportAppliesDPDuringSelection) {
+TEST(DPThresholdingHistogramTest, ReportAppliesDPDuringSelection) {
   // Check that the protocol doesn't publish (with probability much more than
   // delta) values that have only k contributors.
   const int64_t min_contributors_to_group = 5;
@@ -1083,12 +1121,13 @@ TEST(DPOpenDomainHistogramTest, ReportAppliesDPDuringSelection) {
     TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator,
                              CreateTensorAggregator(intrinsic));
     for (int i = 0; i < kNumInputs; i++) {
-      Tensor keys =
-          Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"1"}))
-              .value();
+      TFF_ASSERT_OK_AND_ASSIGN(
+          Tensor keys,
+          Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"1"})));
 
-      Tensor value_tensor =
-          Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})).value();
+      TFF_ASSERT_OK_AND_ASSIGN(
+          Tensor value_tensor,
+          Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})));
 
       TFF_EXPECT_OK(dp_aggregator->Accumulate({&keys, &value_tensor}));
     }
@@ -1105,7 +1144,8 @@ TEST(DPOpenDomainHistogramTest, ReportAppliesDPDuringSelection) {
   EXPECT_THAT(times_kept, Lt(10));
 }
 
-TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilonsWithKThresholding) {
+TEST_P(DPThresholdingHistogramTest,
+       NoiseAddedForSmallEpsilonsWithKThresholding) {
   const int64_t min_contributors_to_group = 5;
   // We need to add not too much noise to avoid flakiness from the
   // thresholding, but not so little to get flakiness from happening to add zero
@@ -1118,14 +1158,13 @@ TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilonsWithKThresholding) {
                            CreateTensorAggregator(intrinsic));
   constexpr int kNumInputs = 4000;
   for (int i = 0; i < kNumInputs; i++) {
-    Tensor keys =
-        Tensor::Create(
-            DT_STRING, {4},
-            CreateTestData<string_view>({"key0", "key1", "key2", "key3"}))
-            .value();
-    Tensor values =
-        Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({1, 1, 1, 1}))
-            .value();
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys, Tensor::Create(DT_STRING, {4},
+                                    CreateTestData<string_view>(
+                                        {"key0", "key1", "key2", "key3"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor values,
+        Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({1, 1, 1, 1})));
     TFF_EXPECT_OK(dp_aggregator->Accumulate({&keys, &values}));
   }
   EXPECT_EQ(dp_aggregator->GetNumInputs(), kNumInputs);
@@ -1148,9 +1187,9 @@ TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilonsWithKThresholding) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    DPOpenDomainHistogramTestInstantiation, DPOpenDomainHistogramTest,
+    DPThresholdingHistogramTestInstantiation, DPThresholdingHistogramTest,
     ValuesIn<bool>({false, true}),
-    [](const TestParamInfo<DPOpenDomainHistogramTest::ParamType>& info) {
+    [](const TestParamInfo<DPThresholdingHistogramTest::ParamType>& info) {
       return info.param ? "SerializeDeserialize" : "None";
     });
 

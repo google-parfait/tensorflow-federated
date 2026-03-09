@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_THRESHOLDING_HISTOGRAM_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_THRESHOLDING_HISTOGRAM_H_
 
 #include <cstdint>
 #include <memory>
@@ -40,23 +40,31 @@
 namespace tensorflow_federated {
 namespace aggregation {
 
-// DPOpenDomainHistogram is a child class of GroupByAggregator.
-// ::AggregateTensorsInternal enforces a bound on the number of composite keys
-// (ordinals) that any one aggregation can contribute to.
-// ::Report adds noise to aggregates and removes composite keys that have value
-// below a threshold.
+// DPThresholdingHistogram is a child class of DPGroupByAggregator for
+// differentially private grouping aggregations.
+//
+// ::NoisyReport adds noise to aggregates, then performs thresholding to
+// decide which groups (keyed by composite key) are included in the output.
+//
+// Two types of thresholding are supported:
+//  - If `min_contributors_to_group` is specified during construction, groups
+//    with fewer than that many contributors are dropped before noise addition
+//    and DP thresholding.
+//  - Otherwise, we threshold on the basis of the noisy sum crossing a
+//  threshold.
+//
 // This class is not thread safe.
-class DPOpenDomainHistogram : public DPGroupByAggregator {
+class DPThresholdingHistogram : public DPGroupByAggregator {
  protected:
   friend class DPGroupByFactory;
-  friend class DPOpenDomainHistogramPeer;
+  friend class DPThresholdingHistogramPeer;
 
-  // Constructs a DPOpenDomainHistogram.
+  // Constructs a DPThresholdingHistogram.
   // This constructor is meant for use by the DPGroupByFactory; most callers
-  // should instead create a DPOpenDomainHistogram from an intrinsic using the
+  // should instead create a DPThresholdingHistogram from an intrinsic using the
   // factory, i.e.
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
-  static StatusOr<std::unique_ptr<DPOpenDomainHistogram>> Create(
+  static StatusOr<std::unique_ptr<DPThresholdingHistogram>> Create(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
@@ -78,9 +86,9 @@ class DPOpenDomainHistogram : public DPGroupByAggregator {
   StatusOr<OutputTensorList> NoisyReport() override;
 
  private:
-  // Constructs a DPOpenDomainHistogram. Only called by the Create() method
+  // Constructs a DPThresholdingHistogram. Only called by the Create() method
   // above.
-  DPOpenDomainHistogram(
+  DPThresholdingHistogram(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
@@ -92,9 +100,9 @@ class DPOpenDomainHistogram : public DPGroupByAggregator {
       std::vector<int> contributor_counts,
       int max_string_length = kDefaultMaxStringLength);
 
-  // When merging two DPOpenDomainHistograms, norm bounding the aggregates will
-  // destroy accuracy and is not needed for privacy. Hence, this function calls
-  // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
+  // When merging two DPThresholdingHistograms, norm bounding the aggregates
+  // will destroy accuracy and is not needed for privacy. Hence, this function
+  // calls CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
   StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs) override;
 
@@ -106,4 +114,4 @@ class DPOpenDomainHistogram : public DPGroupByAggregator {
 }  // namespace aggregation
 }  // namespace tensorflow_federated
 
-#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_THRESHOLDING_HISTOGRAM_H_

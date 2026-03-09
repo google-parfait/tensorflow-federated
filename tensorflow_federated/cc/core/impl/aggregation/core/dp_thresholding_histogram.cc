@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_thresholding_histogram.h"
 
 #include <cmath>
 #include <cstddef>
@@ -60,11 +60,11 @@ namespace internal {
 // Noise is added to each value of a column. If the noised value
 // falls below a given threshold, then the index of that value is removed from a
 // set of survivors.
-// NoiseAndThreshold will be called by DPOpenDomainHistogram::Report on multiple
-// columns. Upon completion, Report will copy a value at index i in an output
-// tensor of NoiseAndThreshold if i is in the set of survivors.
-// NB: It is possible to write NoiseAndThreshold to cull values that lie below
-// a threshold, but the i-th item of column 1 might not correspond to the i-th
+// NoiseAndThreshold will be called by DPThresholdingHistogram::Report on
+// multiple columns. Upon completion, Report will copy a value at index i in an
+// output tensor of NoiseAndThreshold if i is in the set of survivors. NB: It is
+// possible to write NoiseAndThreshold to cull values that lie below a
+// threshold, but the i-th item of column 1 might not correspond to the i-th
 // item of column 2. So we defer the culling step until we know all indices of
 // the survivors.
 // References: The document Delta_For_Thresholding.pdf found in
@@ -105,8 +105,8 @@ Status NoiseAndThreshold(double epsilon, double delta, int64_t l0_bound,
 }
 
 // Noise is added to each value of a column. This is used in
-// DPOpenDomainHistogram::Report when k-thresholding is enabled and so we don't
-// need to threshold based on the noisy value.
+// DPThresholdingHistogram::Report when k-thresholding is enabled and so we
+// don't need to threshold based on the noisy value.
 template <typename OutputType>
 Status NoiseWithoutThresholding(double epsilon, double delta, int64_t l0_bound,
                                 OutputType linfinity_bound, double l1_bound,
@@ -128,7 +128,7 @@ Status NoiseWithoutThresholding(double epsilon, double delta, int64_t l0_bound,
 
 }  // namespace internal
 
-DPOpenDomainHistogram::DPOpenDomainHistogram(
+DPThresholdingHistogram::DPThresholdingHistogram(
     const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>* output_key_specs,
     const std::vector<Intrinsic>* intrinsics,
@@ -144,8 +144,9 @@ DPOpenDomainHistogram::DPOpenDomainHistogram(
                           min_contributors_to_group,
                           std::move(contributor_counts), max_string_length) {}
 
-// Factory method to create DPOpenDomainHistogram
-StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
+// Factory method to create DPThresholdingHistogram
+StatusOr<std::unique_ptr<DPThresholdingHistogram>>
+DPThresholdingHistogram::Create(
     const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>* output_key_specs,
     const std::vector<Intrinsic>* intrinsics,
@@ -168,7 +169,7 @@ StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
     delta_for_aggs /= 2;
   }
 
-  auto dp_open_domain_histogram = absl::WrapUnique(new DPOpenDomainHistogram(
+  auto dp_thresholding_histogram = absl::WrapUnique(new DPThresholdingHistogram(
       input_key_specs, output_key_specs, intrinsics, std::move(key_combiner),
       std::move(aggregators), num_inputs, epsilon_for_aggs, delta_for_aggs,
       max_groups_contributed, min_contributors_to_group, contributor_counts,
@@ -200,15 +201,16 @@ StatusOr<std::unique_ptr<DPOpenDomainHistogram>> DPOpenDomainHistogram::Create(
 
     // The selector publishes every group with strictly greater than second
     // crossover elements.
-    TFF_RETURN_IF_ERROR(dp_open_domain_histogram->set_max_contributors_to_group(
-        ceil(selector->GetSecondCrossover())));
-    dp_open_domain_histogram->selector_ = std::move(selector);
+    TFF_RETURN_IF_ERROR(
+        dp_thresholding_histogram->set_max_contributors_to_group(
+            ceil(selector->GetSecondCrossover())));
+    dp_thresholding_histogram->selector_ = std::move(selector);
   }
-  return dp_open_domain_histogram;
+  return dp_thresholding_histogram;
 }
 
 std::unique_ptr<DPCompositeKeyCombiner>
-DPOpenDomainHistogram::CreateDPKeyCombiner(
+DPThresholdingHistogram::CreateDPKeyCombiner(
     const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>* output_key_specs, int64_t l0_bound) {
   // If there are no input keys, support a columnar aggregation that aggregates
@@ -226,7 +228,7 @@ DPOpenDomainHistogram::CreateDPKeyCombiner(
       l0_bound);
 }
 
-StatusOr<Tensor> DPOpenDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
+StatusOr<Tensor> DPThresholdingHistogram::CreateOrdinalsByGroupingKeysForMerge(
     const InputTensorList& inputs) {
   if (num_keys_per_input() > 0) {
     InputTensorList keys(num_keys_per_input());
@@ -245,7 +247,7 @@ StatusOr<Tensor> DPOpenDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
                         inputs[0]->shape(), std::move(ordinals));
 }
 
-StatusOr<OutputTensorList> DPOpenDomainHistogram::NoisyReport() {
+StatusOr<OutputTensorList> DPThresholdingHistogram::NoisyReport() {
   // If epsilon is too large to be meaningful, we perform the non-DP
   // aggregation.
   if (epsilon_per_agg() >= kEpsilonThreshold) {
@@ -318,7 +320,7 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::NoisyReport() {
   // We now perform k-thresholding as min_contributors_to_group_ is set.
   std::vector<int> contributor_counts = GetContributors();
   TFF_CHECK(contributor_counts.size() == num_rows)
-      << "DPOpenDomainHistogram::Report: contributor_counts.size() != "
+      << "DPThresholdingHistogram::Report: contributor_counts.size() != "
          "num_rows";
   for (size_t i = 0; i < num_rows; i++) {
     if (selector_->ShouldKeep(contributor_counts[i])) {

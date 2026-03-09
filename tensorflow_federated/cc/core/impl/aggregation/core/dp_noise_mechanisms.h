@@ -26,8 +26,8 @@
 #include "absl/status/statusor.h"
 #include "algorithms/numerical-mechanisms.h"
 
-// This file specifies DP noise mechanisms to be used in DPOpenDomainHistogram
-// and DPClosedDomainHistogram. The functions build upon the
+// This file specifies DP noise mechanisms to be used in DPThresholdingHistogram
+// and DPExhaustiveReportHistogram. The functions build upon the
 // differential_privacy::LaplaceMechanism and ::GaussianMechanism classes.
 // They calculate replacement DP sensitivity from contribution bounds, which are
 // expressed as l0, linfinity, l1, and l2 norm bounds.

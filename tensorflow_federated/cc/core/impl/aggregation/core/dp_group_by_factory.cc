@@ -32,11 +32,11 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_closed_domain_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_exhaustive_report_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_thresholding_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
@@ -58,7 +58,7 @@ struct DPParameters {
 
 enum class SupportedDPAlgorithms {
   // Each group in the given domain is in the output, even if not in the input.
-  kClosedDomain,
+  kExhaustiveReport,
   // Only report groups whose noisy aggregates are large.
   kPostAggregationThreshold,
   // Only report groups that have many contributors.
@@ -349,10 +349,11 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   } else if (!has_min_contributors_to_group && !has_key_names) {
     which_algorithm = SupportedDPAlgorithms::kPostAggregationThreshold;
   } else if (has_key_names) {
-    which_algorithm = SupportedDPAlgorithms::kClosedDomain;
+    which_algorithm = SupportedDPAlgorithms::kExhaustiveReport;
   }
 
-  bool open_domain = (which_algorithm != SupportedDPAlgorithms::kClosedDomain);
+  bool open_domain =
+      (which_algorithm != SupportedDPAlgorithms::kExhaustiveReport);
   int64_t num_keys = intrinsic.inputs.size();
 
   // For any DP histogram, ensure that we have required DP parameters.
@@ -367,7 +368,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   // For the closed-domain case we must find the key tensors to pass on. This is
   // guaranteed to be present by the definition of the open_domain variable.
   TensorSpan key_tensors;
-  if (which_algorithm == SupportedDPAlgorithms::kClosedDomain) {
+  if (which_algorithm == SupportedDPAlgorithms::kExhaustiveReport) {
     TFF_ASSIGN_OR_RETURN(
         std::vector<std::string> key_names,
         FindAndValidateKeyNames(intrinsic, parameter_name_to_index));
@@ -390,7 +391,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
 
   // Create the DP key combiner, and only populate the key combiner with state
   // if there are keys.
-  auto key_combiner = DPOpenDomainHistogram::CreateDPKeyCombiner(
+  auto key_combiner = DPThresholdingHistogram::CreateDPKeyCombiner(
       intrinsic.inputs, &intrinsic.outputs, max_groups_contributed);
   if (aggregator_state != nullptr && key_combiner != nullptr) {
     TFF_RETURN_IF_ERROR(GroupByFactory::PopulateKeyCombinerFromState(
@@ -405,17 +406,18 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
       absl::c_copy(aggregator_state->counter_of_contributors(),
                    std::back_inserter(contributor_counts));
     }
-    return DPOpenDomainHistogram::Create(
+    return DPThresholdingHistogram::Create(
         intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
         std::move(key_combiner), std::move(nested_aggregators), num_inputs,
         epsilon, delta, max_groups_contributed, min_contributors_to_group,
         contributor_counts);
   }
 
-  return std::unique_ptr<DPClosedDomainHistogram>(new DPClosedDomainHistogram(
-      intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-      std::move(key_combiner), std::move(nested_aggregators), num_inputs,
-      epsilon, delta, max_groups_contributed, key_tensors));
+  return std::unique_ptr<DPExhaustiveReportHistogram>(
+      new DPExhaustiveReportHistogram(
+          intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
+          std::move(key_combiner), std::move(nested_aggregators), num_inputs,
+          epsilon, delta, max_groups_contributed, key_tensors));
 }
 
 REGISTER_AGGREGATOR_FACTORY(std::string(kDPGroupByUri), DPGroupByFactory);
