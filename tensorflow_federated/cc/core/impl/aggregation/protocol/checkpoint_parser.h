@@ -20,6 +20,8 @@
 #include <memory>
 #include <string>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -33,7 +35,20 @@ class CheckpointParser {
   virtual ~CheckpointParser() = default;
 
   // Gets a tensor by name.
+  // Note that depending on the implementation, this method may be destructive,
+  // i.e. it may not be valid to call this method more than once for the same
+  // tensor.
   virtual absl::StatusOr<Tensor> GetTensor(const std::string& name) = 0;
+
+  // Loads all tensors from the checkpoint.
+  // Note that depending on the implementation, this method may be destructive,
+  // i.e. it may not be valid to call this method more than once.
+  // For backward compatibility, by default, this is a no-op that returns
+  // NotImplemented error.
+  virtual absl::StatusOr<absl::flat_hash_map<std::string, Tensor>>
+  LoadAllTensors() {
+    return absl::UnimplementedError("LoadAllTensors not implemented.");
+  }
 };
 
 // Describes an abstract factory for creating instances of CheckpointParser.

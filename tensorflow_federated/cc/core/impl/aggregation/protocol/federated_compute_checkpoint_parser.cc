@@ -59,6 +59,11 @@ class FederatedComputeCheckpointParser final : public CheckpointParser {
     return std::move(result->second);
   }
 
+  absl::StatusOr<absl::flat_hash_map<std::string, Tensor>> LoadAllTensors()
+      override {
+    return std::move(tensors_);
+  }
+
  private:
   absl::flat_hash_map<std::string, Tensor> tensors_;
 };
