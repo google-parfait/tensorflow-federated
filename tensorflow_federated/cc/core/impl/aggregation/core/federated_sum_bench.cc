@@ -27,6 +27,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
+#include "util/gtl/value_or_die.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -35,22 +36,22 @@ namespace {
 constexpr static int64_t kLength = 1000000;
 
 static void BM_FederatedSumAccumulate(benchmark::State& state) {
-  std::unique_ptr<TensorAggregator> aggregator =
+  std::unique_ptr<TensorAggregator> aggregator = gtl::ValueOrDie(
       CreateTensorAggregator(Intrinsic{"federated_sum",
                                        {TensorSpec{"foo", DT_INT64, {kLength}}},
                                        {TensorSpec{"foo", DT_INT64, {kLength}}},
                                        {},
-                                       {}})
-          .value();
+                                       {}}));
   auto test_data = std::make_unique<MutableVectorData<int64_t>>(kLength);
   std::vector<int64_t>& input = *test_data;
   for (int64_t i = 0; i < kLength; ++i) {
     input[i] = i % 123;
   }
-  auto tensor = Tensor::Create(DT_INT64, {kLength}, std::move(test_data));
+  auto tensor = gtl::ValueOrDie(
+      Tensor::Create(DT_INT64, {kLength}, std::move(test_data)));
   auto items_processed = 0;
   for (auto s : state) {
-    benchmark::DoNotOptimize(aggregator->Accumulate(*tensor));
+    benchmark::DoNotOptimize(aggregator->Accumulate(tensor));
     items_processed += kLength;
   }
   state.SetItemsProcessed(items_processed);
