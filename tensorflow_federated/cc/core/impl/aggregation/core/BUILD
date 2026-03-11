@@ -904,7 +904,6 @@ cc_binary(
         ":aggregator",
         ":intrinsic",
         ":tensor",
-        "//util/gtl:value_or_die",
         "@com_google_benchmark//:benchmark",
     ],
 )
