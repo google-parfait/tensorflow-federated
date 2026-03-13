@@ -15,7 +15,7 @@
 
 from collections.abc import Callable, Sequence
 import concurrent
-import math
+# import math
 from typing import Optional
 
 from absl import logging
@@ -122,58 +122,20 @@ def local_cpp_executor_factory(
     ] = None,
 ) -> federated_language.framework.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
-  _check_num_clients_is_valid(default_num_clients)
 
-  def _executor_fn(
-      cardinalities: federated_language.framework.CardinalitiesType,
-  ) -> executor_bindings.Executor:
-    if cardinalities.get(federated_language.CLIENTS) is None:
-      cardinalities[federated_language.CLIENTS] = default_num_clients
-    num_clients = cardinalities[federated_language.CLIENTS]
-    if (
-        max_concurrent_computation_calls > 0
-        and num_clients > max_concurrent_computation_calls
-    ):
-      expected_concurrency_factor = math.ceil(
-          num_clients / max_concurrent_computation_calls
-      )
-      _log_and_warn_on_sequential_execution(
-          max_concurrent_computation_calls,
-          num_clients,
-          expected_concurrency_factor,
-      )
+  del default_num_clients
+  del max_concurrent_computation_calls
+  del leaf_executor_fn
+  del client_leaf_executor_fn
 
-    server_leaf_executor = leaf_executor_fn(max_concurrent_computation_calls)
-    sub_federating_reference_resolving_server_executor = (
-        executor_bindings.create_reference_resolving_executor(
-            server_leaf_executor
-        )
-    )
-    if client_leaf_executor_fn is None:
-      sub_federating_reference_resolving_client_executor = (
-          sub_federating_reference_resolving_server_executor
-      )
-    else:
-      client_leaf_executor = client_leaf_executor_fn(
-          max_concurrent_computation_calls
-      )
+  print(
+      "dalyk in cpp_executor_factory local_cpp_executor_factory, meaning we're"
+      ' using pybind'
+  )
 
-      sub_federating_reference_resolving_client_executor = (
-          executor_bindings.create_reference_resolving_executor(
-              client_leaf_executor
-          )
-      )
-    federating_ex = executor_bindings.create_federating_executor(
-        sub_federating_reference_resolving_server_executor,
-        sub_federating_reference_resolving_client_executor,
-        cardinalities,
-    )
-    top_level_reference_resolving_ex = (
-        executor_bindings.create_reference_resolving_executor(federating_ex)
-    )
-    return top_level_reference_resolving_ex
-
-  return CPPExecutorFactory(_executor_fn)
+  raise ValueError(
+      'dalyk in cpp_executor_factory pybind local_cpp_executor_factory'
+  )
 
 
 def _handle_error(exception: Exception):
