@@ -120,12 +120,13 @@ class LocalToGlobalInserter
   // FixedArray<uint64_t> is a composite key and the int is its local ordinal
   LocalToGlobalInserter& operator=(std::pair<CompositeKey, int64_t>&& p) {
     // Map the local ordinal to the ordinal produced by
-    // SaveCompositeKeyAndGetOrdinal. Give that function access to the members
-    // of key_combiner_ so that novel composite keys will be assigned ordinals
-    // that have not yet been assigned.
-    (*(this->container))[p.second] = SaveCompositeKeyAndGetOrdinal(
-        std::move(p.first), key_combiner_->GetCompositeKeys(),
-        key_combiner_->GetCompositeKeyNext());
+    // InsertAndGetOrdinal called on the CompositeKeyMap from key_combiner_ so
+    // that novel composite keys will be assigned ordinals that have not yet
+    // been assigned.
+    (*(this->container))[p.second] =
+        key_combiner_->GetCompositeKeys()
+            .InsertAndGetOrdinal(std::move(p.first))
+            .first;
     return *this;
   }
 
@@ -155,17 +156,15 @@ StatusOr<Tensor> DPCompositeKeyCombiner::Accumulate(
 StatusOr<Tensor> DPCompositeKeyCombiner::AccumulateWithBound(
     const InputTensorList& tensors, TensorShape& shape, size_t num_elements) {
   // The following maps a view of a composite key to its local ordinal.
-  absl::flat_hash_map<CompositeKey, int64_t> composite_keys_to_local_ordinal;
+  CompositeKeyMap composite_keys_to_local_ordinal(GetCompositeKeySize());
   composite_keys_to_local_ordinal.reserve(num_elements);
-
-  int64_t local_ordinal = 0;
 
   // The i-th element of the following is the local ordinal associated with the
   // i-th composite key. Created the same way CompositeKeyCombiner::Accumulate
   // creates ordinals but datastructures for lookup & storage are local to this
   // function call, instead of being class members.
-  std::unique_ptr<MutableVectorData<int64_t>> local_ordinals = CreateOrdinals(
-      tensors, num_elements, composite_keys_to_local_ordinal, local_ordinal);
+  std::unique_ptr<MutableVectorData<int64_t>> local_ordinals =
+      CreateOrdinals(tensors, num_elements, composite_keys_to_local_ordinal);
 
   // Create a mapping from local ordinals to global ordinals.
   // Default to kNoOrdinal.

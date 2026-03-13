@@ -167,8 +167,11 @@ cc_library(
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:fixed_array",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
@@ -579,6 +582,7 @@ cc_test(
     srcs = ["composite_key_combiner_test.cc"],
     deps = [
         ":composite_key_combiner",
+        ":mutable_string_data",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -586,6 +590,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/strings",
     ],
 )
 

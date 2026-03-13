@@ -222,6 +222,15 @@ class TensorMatcher {
         expected_shape_(expected_shape),
         expected_values_(expected_values.begin(), expected_values.end()),
         tolerance_(tolerance) {}
+
+  explicit TensorMatcher(DataType expected_dtype, TensorShape expected_shape,
+                         std::vector<T> expected_values,
+                         std::optional<T> tolerance = std::nullopt)
+      : expected_dtype_(expected_dtype),
+        expected_shape_(expected_shape),
+        expected_values_(expected_values),
+        tolerance_(tolerance) {}
+
   // Intentionally allowed to be implicit.
   operator ::testing::Matcher<const Tensor&>() const {  // NOLINT
     return ::testing::MakeMatcher(new TensorMatcherImpl<T>(
@@ -238,6 +247,14 @@ class TensorMatcher {
 template <typename T>
 TensorMatcher<T> IsTensor(TensorShape expected_shape,
                           std::initializer_list<T> expected_values,
+                          std::optional<T> tolerance = std::nullopt) {
+  return TensorMatcher<T>(internal::TypeTraits<T>::kDataType, expected_shape,
+                          expected_values, tolerance);
+}
+
+template <typename T>
+TensorMatcher<T> IsTensor(TensorShape expected_shape,
+                          std::vector<T> expected_values,
                           std::optional<T> tolerance = std::nullopt) {
   return TensorMatcher<T>(internal::TypeTraits<T>::kDataType, expected_shape,
                           expected_values, tolerance);

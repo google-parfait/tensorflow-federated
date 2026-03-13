@@ -198,17 +198,22 @@ size_t GetKeySize<string_view>() {
   return sizeof(intptr_t);
 }
 
+size_t CalculateCompositeKeySize(std::vector<DataType> dtypes) {
+  size_t composite_key_size = 0;
+  for (DataType dtype : dtypes) {
+    DTYPE_CASES(dtype, T, composite_key_size += GetKeySize<T>());
+  }
+  return composite_key_size;
+}
+
 }  // namespace
 
 CompositeKeyCombiner::CompositeKeyCombiner(std::vector<DataType> dtypes)
     : dtypes_(dtypes),
-      composite_key_size_(0),
-      intern_pool_(std::make_shared<InternPool>()) {
-  // Calculate the size of a composite key for the given data types.
-  for (DataType dtype : dtypes) {
-    DTYPE_CASES(dtype, T, composite_key_size_ += GetKeySize<T>());
-  }
-}
+      composite_key_size_(CalculateCompositeKeySize(dtypes)),
+      intern_pool_(std::make_shared<InternPool>()),
+      composite_key_store_(composite_key_size_),
+      composite_keys_(composite_key_size_) {}
 
 // Returns a single tensor containing the ordinals of the composite keys
 // formed from the InputTensorList.
@@ -218,18 +223,15 @@ StatusOr<Tensor> CompositeKeyCombiner::Accumulate(
   TFF_ASSIGN_OR_RETURN(size_t num_elements, shape.NumElements());
 
   return Tensor::Create(internal::TypeTraits<int64_t>::kDataType, shape,
-                        CreateOrdinals(tensors, num_elements, composite_keys_,
-                                       composite_key_next_));
+                        CreateOrdinals(tensors, num_elements, composite_keys_));
 }
 
 // Creates ordinals for composite keys spread across input tensors: in a nested
-// for loop, transfer the bytes into a CompositeKey, then
-// call SaveCompositeKeyAndGetOrdinal on each.
+// for loop, transfer the bytes into a CompositeKey, then insert each.
 std::unique_ptr<MutableVectorData<int64_t>>
-CompositeKeyCombiner::CreateOrdinals(
-    const InputTensorList& tensors, size_t num_elements,
-    absl::flat_hash_map<CompositeKey, int64_t>& composite_key_map,
-    int64_t& current_ordinal) {
+CompositeKeyCombiner::CreateOrdinals(const InputTensorList& tensors,
+                                     size_t num_elements,
+                                     CompositeKeyMap& composite_key_map) {
   // Initialize the ordinals vector
   auto ordinals = std::make_unique<MutableVectorData<int64_t>>(num_elements);
 
@@ -257,8 +259,16 @@ CompositeKeyCombiner::CreateOrdinals(
     // Get the ordinal associated with the composite key
     // (or make new mapping if none exists) and insert the ordinal representing
     // the composite key into the correct position in the output tensor.
-    ordinal = SaveCompositeKeyAndGetOrdinal(std::move(composite_key),
-                                            composite_key_map, current_ordinal);
+    auto [assigned_ordinal, inserted] =
+        composite_key_map.InsertAndGetOrdinal(composite_key);
+    ordinal = assigned_ordinal;
+    if (inserted) {
+      // Verify that the key points to the "current" key.
+      TFF_CHECK(composite_key.data() ==
+                composite_key_store_.CurrentKey().data());
+      // Advance the key address.
+      composite_key_store_.AdvanceKey();
+    }
   }
   return ordinals;
 }
