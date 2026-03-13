@@ -33,7 +33,7 @@ packaging==22.0
 portpicker==1.6.0
 protobuf==4.25.8
 psutil==7.0.0
-pyasn1==0.6.1
+pyasn1==0.6.2
 pyasn1-modules==0.4.2
 requests==2.32.4
 requests-oauthlib==2.0.0
