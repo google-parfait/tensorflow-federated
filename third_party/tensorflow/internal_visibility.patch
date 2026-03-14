@@ -2,7 +2,7 @@ diff --git a/tensorflow/BUILD b/tensorflow/BUILD
 index b58696813e7..d840aa12a4c 100644
 --- a/tensorflow/BUILD
 +++ b/tensorflow/BUILD
-@@ -1008,6 +1008,7 @@ selects.config_setting_group(
+@@ -884,6 +884,7 @@ selects.config_setting_group(
  package_group(
      name = "internal",
      packages = [
@@ -10,7 +10,7 @@ index b58696813e7..d840aa12a4c 100644
          "//devtools/python/indexer/...",
          "//learning/brain/keras/...",
          "//learning/brain/mlir/...",
-@@ -1021,7 +1022,6 @@ package_group(
+@@ -897,7 +898,6 @@ package_group(
          "//smartass/brain/...",
          "//tensorflow/...",
          "//tensorflow_decision_forests/...",

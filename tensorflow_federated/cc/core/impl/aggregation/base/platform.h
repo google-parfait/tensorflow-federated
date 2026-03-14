@@ -23,8 +23,10 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "google/protobuf/message.h"
 
 // This file defines platform dependent utilities.
+// TODO: b/73998723 - switch to absl or C++17 utilities once available
 
 namespace tensorflow_federated {
 
@@ -48,6 +50,12 @@ absl::StatusOr<std::string> ReadFileToString(absl::string_view file_name);
  * Reads file content into absl::Cord.
  */
 absl::StatusOr<absl::Cord> ReadFileToCord(absl::string_view file_name);
+
+/**
+ * Reads file content into message.
+ */
+absl::Status ReadFileToMessage(absl::string_view file_name,
+                               google::protobuf::Message* message);
 
 /**
  * Writes string content into file.

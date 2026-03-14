@@ -28,6 +28,7 @@ limitations under the License
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "Eigen/Core"
+#include "google/protobuf/repeated_ptr_field.h"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/core/framework/attr_value.pb.h"

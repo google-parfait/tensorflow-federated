@@ -35,12 +35,12 @@ class CancelableWaiter : public Cancelable, public Clock::Waiter {
 
  private:
   void Cancel() override {
-    absl::MutexLock lock(&mu_);
+    absl::MutexLock lock(mu_);
     callback_ = nullptr;
   }
 
   void WakeUp() override {
-    absl::MutexLock lock(&mu_);
+    absl::MutexLock lock(mu_);
     if (callback_ != nullptr) {
       callback_();
       callback_ = nullptr;

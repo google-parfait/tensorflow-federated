@@ -39,6 +39,7 @@ limitations under the License
 #include "absl/time/time.h"
 #include "absl/types/span.h"
 #include "include/grpcpp/support/status.h"
+#include "google/protobuf/text_format.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"

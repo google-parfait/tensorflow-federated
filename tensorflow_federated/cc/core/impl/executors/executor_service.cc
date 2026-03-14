@@ -86,7 +86,7 @@ ExecutorService::ExecutorResolver::ExecutorIDForRequirements(
   // this caching essentially 'freezes' the remote machines available at the
   // time of executor construction as the only ones receiving work, if this
   // service represents an aggregation service.
-  absl::MutexLock lock(&executors_mutex_);
+  absl::MutexLock lock(executors_mutex_);
   std::string cardinalities_string =
       CardinalitiesToString(requirements.cardinalities);
   auto it = executors_.find(cardinalities_string);
@@ -123,7 +123,7 @@ ExecutorService::ExecutorResolver::ExecutorIDForRequirements(
 
 absl::StatusOr<ExecutorService::ExecutorEntry>
 ExecutorService::ExecutorResolver::ExecutorForId(const ExecutorId& ex_id) {
-  absl::MutexLock lock(&executors_mutex_);
+  absl::MutexLock lock(executors_mutex_);
   auto ex_cardinalities_it = keys_to_cardinalities_.find(ex_id);
   if (ex_cardinalities_it == keys_to_cardinalities_.end()) {
     // A lack of executor in the expected slot is retryable, but clients must
@@ -147,7 +147,7 @@ absl::Status ExecutorService::ExecutorResolver::DisposeExecutor(
     const ExecutorId& ex_id) {
   bool should_destroy;
   // We take a writer lock here because we must decrement the refcount.
-  absl::MutexLock lock(&executors_mutex_);
+  absl::MutexLock lock(executors_mutex_);
   auto ex_cardinalities_it = keys_to_cardinalities_.find(ex_id);
   if (ex_cardinalities_it == keys_to_cardinalities_.end()) {
     // DisposeExecutor can occur on a deleted executor in the case of a worker
@@ -173,7 +173,7 @@ absl::Status ExecutorService::ExecutorResolver::DisposeExecutor(
 }
 
 void ExecutorService::ExecutorResolver::DestroyExecutor(const ExecutorId& id) {
-  absl::MutexLock lock(&executors_mutex_);
+  absl::MutexLock lock(executors_mutex_);
   DestroyExecutorImpl(id);
 }
 

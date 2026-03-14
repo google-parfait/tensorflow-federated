@@ -20,9 +20,9 @@
 #include <string>
 #include <type_traits>
 
+#include "absl/strings/string_view.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
-#include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 
 namespace tensorflow_federated {

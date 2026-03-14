@@ -234,7 +234,7 @@ absl::Status SimpleAggregationProtocol::Start(int64_t num_clients) {
   }
   absl::Time now = clock_->Now();
   {
-    absl::MutexLock lock(&state_mu_);
+    absl::MutexLock lock(state_mu_);
     TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_CREATED));
     SetProtocolState(PROTOCOL_STARTED);
     TFF_CHECK(all_clients_.empty());
@@ -249,7 +249,7 @@ absl::StatusOr<int64_t> SimpleAggregationProtocol::AddClients(
   absl::Time now = clock_->Now();
   int64_t start_index;
   {
-    absl::MutexLock lock(&state_mu_);
+    absl::MutexLock lock(state_mu_);
     TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_STARTED));
     if (num_clients <= 0) {
       return absl::InvalidArgumentError("Non-zero number of clients required");
@@ -312,8 +312,7 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
   absl::Cord report;
   if (message.simple_aggregation().input().has_inline_bytes()) {
     // Parse the client input concurrently with other protocol calls.
-    report =
-        absl::Cord(message.simple_aggregation().input().inline_bytes());
+    report = message.simple_aggregation().input().inline_bytes();
   } else {
     absl::StatusOr<absl::Cord> report_or_status =
         resource_resolver_->RetrieveResource(
@@ -358,7 +357,7 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
   ServerMessage close_message =
       MakeCloseClientMessage(client_completion_status);
   {
-    absl::MutexLock lock(&state_mu_);
+    absl::MutexLock lock(state_mu_);
     latency_aggregator_.Add(client_latency);
     auto client_state = GetClientState(client_id);
     // Expect this to succeed because the client_id has already been validated.
@@ -379,7 +378,7 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
 
 absl::StatusOr<std::optional<ServerMessage>>
 SimpleAggregationProtocol::PollServerMessage(int64_t client_id) {
-  absl::MutexLock lock(&state_mu_);
+  absl::MutexLock lock(state_mu_);
   if (protocol_state_ == PROTOCOL_CREATED) {
     return absl::FailedPreconditionError("The protocol hasn't been started");
   }
@@ -396,7 +395,7 @@ absl::Status SimpleAggregationProtocol::CloseClient(
     int64_t client_id, absl::Status client_status) {
   bool closed_client = false;
   {
-    absl::MutexLock lock(&state_mu_);
+    absl::MutexLock lock(state_mu_);
     if (protocol_state_ == PROTOCOL_CREATED) {
       return absl::FailedPreconditionError("The protocol hasn't been started");
     }
@@ -472,14 +471,14 @@ void SimpleAggregationProtocol::AwaitAggregationQueueEmpty() {
 absl::Status SimpleAggregationProtocol::Complete() {
   StopOutlierDetection();
   {
-    absl::MutexLock lock(&state_mu_);
+    absl::MutexLock lock(state_mu_);
     TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_STARTED));
     SetProtocolState(PROTOCOL_COMPLETING);
   }
 
   auto report = CreateReport();
 
-  absl::MutexLock lock(&state_mu_);
+  absl::MutexLock lock(state_mu_);
   // Make sure the protocol wasn't aborted while creating the report.
   TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_COMPLETING));
   if (report.ok()) {
@@ -495,7 +494,7 @@ absl::Status SimpleAggregationProtocol::Complete() {
 
 absl::Status SimpleAggregationProtocol::Abort() {
   StopOutlierDetection();
-  absl::MutexLock lock(&state_mu_);
+  absl::MutexLock lock(state_mu_);
   if (protocol_state_ == PROTOCOL_ABORTED) {
     return absl::OkStatus();
   }
@@ -515,7 +514,7 @@ absl::Status SimpleAggregationProtocol::Abort() {
 }
 
 StatusMessage SimpleAggregationProtocol::GetStatus() {
-  absl::MutexLock lock(&state_mu_);
+  absl::MutexLock lock(state_mu_);
   int64_t num_clients_completed = num_clients_received_and_pending_ +
                                   num_clients_aggregated_ +
                                   num_clients_discarded_;
@@ -534,7 +533,7 @@ StatusMessage SimpleAggregationProtocol::GetStatus() {
 }
 
 absl::StatusOr<absl::Cord> SimpleAggregationProtocol::GetResult() {
-  absl::MutexLock lock(&state_mu_);
+  absl::MutexLock lock(state_mu_);
   TFF_RETURN_IF_ERROR(CheckProtocolState(PROTOCOL_COMPLETED));
   return result_;
 }

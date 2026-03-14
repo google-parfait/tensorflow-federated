@@ -38,6 +38,7 @@ limitations under the License
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "google/protobuf/repeated_ptr_field.h"
 #include "federated_language/proto/computation.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
@@ -83,7 +84,7 @@ class UnplacedInner {
   // Returns the underlying `Proto` value without attempting to create one via
   // a `Materialize` call.
   std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> GetProto() {
-    absl::ReaderMutexLock lock(&mutex_);
+    absl::ReaderMutexLock lock(mutex_);
     return proto_;
   }
 
@@ -92,7 +93,7 @@ class UnplacedInner {
   absl::StatusOr<std::shared_ptr<v0::Value>> Proto(Executor& server) {
     {
       // Try to grab the proto if it already exists.
-      absl::ReaderMutexLock lock(&mutex_);
+      absl::ReaderMutexLock lock(mutex_);
       if (proto_.has_value()) {
         return ExtractProto();
       }
@@ -100,7 +101,7 @@ class UnplacedInner {
     {
       // Try to grab the proto if it has been created since the last lock was
       // released.
-      absl::WriterMutexLock lock(&mutex_);
+      absl::WriterMutexLock lock(mutex_);
       if (proto_.has_value()) {
         return ExtractProto();
       }
@@ -122,7 +123,7 @@ class UnplacedInner {
   absl::StatusOr<std::shared_ptr<OwnedValueId>> Embedded(Executor& server) {
     {
       // Try to grab the embedded ID if it already exists.
-      absl::ReaderMutexLock lock(&mutex_);
+      absl::ReaderMutexLock lock(mutex_);
       if (embedded_.has_value()) {
         return ExtractEmbedded();
       }
@@ -130,7 +131,7 @@ class UnplacedInner {
     {
       // Try to grab the embedded ID if it has been created since the last lock
       // was released.
-      absl::WriterMutexLock lock(&mutex_);
+      absl::WriterMutexLock lock(mutex_);
       if (embedded_.has_value()) {
         return ExtractEmbedded();
       }
@@ -690,7 +691,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
             auto child_result_server_id = TFF_TRY(
                 server_->CreateValue(child_result.federated().value(0)));
 
-            absl::MutexLock lock(&mutex);
+            absl::MutexLock lock(mutex);
             if (current.has_value()) {
               auto merge_arg = TFF_TRY(server_->CreateStruct(
                   {current.value(), child_result_server_id}));
