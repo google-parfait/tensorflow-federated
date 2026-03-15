@@ -53,7 +53,7 @@ namespace tensorflow_federated {
 // each call.
 ABSL_CONST_INIT static absl::Mutex function_id_mutex(absl::kConstInit);
 int32_t GetNextFunctionId() {
-  absl::MutexLock function_id_lock(&function_id_mutex);
+  absl::MutexLock function_id_lock(function_id_mutex);
   static int32_t function_id = 0;
   return function_id++;
 }
@@ -288,7 +288,7 @@ absl::StatusOr<SessionProvider::SessionWithResourceContainer>
 SessionProvider::TakeSession() {
   int16_t session_id = 0;
   {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     if (!sessions_.empty()) {
       SessionProvider::SessionWithResourceContainer session(
           std::move(sessions_.back()));
@@ -308,7 +308,7 @@ SessionProvider::TakeSession() {
 void SessionProvider::ReturnSession(
     SessionProvider::SessionWithResourceContainer&& session) {
   session.ClearResourceContainers();
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
   sessions_.emplace_back(std::move(session));
 }
 

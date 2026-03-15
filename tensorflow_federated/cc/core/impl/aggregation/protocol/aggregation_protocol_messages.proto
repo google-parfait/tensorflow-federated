@@ -22,8 +22,7 @@ package tensorflow_federated.aggregation;
 // binary data or as a resource URI.
 message ClientResource {
   oneof resource_kind {
-    bytes inline_bytes = 1
-        ;
+    bytes inline_bytes = 1 [ctype = CORD];
     string uri = 2;
   }
 }

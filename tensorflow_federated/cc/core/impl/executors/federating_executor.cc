@@ -78,7 +78,7 @@ class UnplacedInner {
   // Returns the underlying `Proto` value without attempting to create one via
   // a `Materialize` call.
   std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> GetProto() {
-    absl::ReaderMutexLock lock(&mutex_);
+    absl::ReaderMutexLock lock(mutex_);
     return proto_;
   }
 
@@ -87,7 +87,7 @@ class UnplacedInner {
   absl::StatusOr<std::shared_ptr<v0::Value>> Proto(Executor& server) {
     {
       // Try to grab the proto if it already exists.
-      absl::ReaderMutexLock lock(&mutex_);
+      absl::ReaderMutexLock lock(mutex_);
       if (proto_.has_value()) {
         return ExtractProto();
       }
@@ -95,7 +95,7 @@ class UnplacedInner {
     {
       // Try to grab the proto if it has been created since the last lock was
       // released.
-      absl::WriterMutexLock lock(&mutex_);
+      absl::WriterMutexLock lock(mutex_);
       if (proto_.has_value()) {
         return ExtractProto();
       }
@@ -117,7 +117,7 @@ class UnplacedInner {
   absl::StatusOr<std::shared_ptr<OwnedValueId>> Embedded(Executor& server) {
     {
       // Try to grab the embedded ID if it already exists.
-      absl::ReaderMutexLock lock(&mutex_);
+      absl::ReaderMutexLock lock(mutex_);
       if (embedded_.has_value()) {
         return ExtractEmbedded();
       }
@@ -125,7 +125,7 @@ class UnplacedInner {
     {
       // Try to grab the embedded ID if it has been created since the last lock
       // was released.
-      absl::WriterMutexLock lock(&mutex_);
+      absl::WriterMutexLock lock(mutex_);
       if (embedded_.has_value()) {
         return ExtractEmbedded();
       }

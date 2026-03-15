@@ -98,7 +98,7 @@ TEST_F(ThreadPoolTest, MultipleThreads) {
     TFF_ASSERT_OK(
         pool.Schedule([&results, &results_mutex, &blocking_counter, i]() {
           {
-            absl::MutexLock lock(&results_mutex);
+            absl::MutexLock lock(results_mutex);
             results.push_back(i);
           }
           blocking_counter.DecrementCount();

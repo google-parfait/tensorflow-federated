@@ -858,7 +858,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         const uint64_t function_id = comp_pb.tensorflow().cache_key().id();
         // Try the fast path first, reader locks are much cheaper.
         {
-          absl::ReaderMutexLock reader_lock(&function_cache_mutex_);
+          absl::ReaderMutexLock reader_lock(function_cache_mutex_);
           auto cache_iter = function_cache_.find(function_id);
           if (cache_iter != function_cache_.end()) {
             VLOG(2) << "Cache hit for function id: " << function_id;
@@ -870,7 +870,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         std::shared_ptr<Computation> computation =
             TFF_TRY(Computation::FromProto(comp_pb.tensorflow()));
         {
-          absl::WriterMutexLock writer_lock(&function_cache_mutex_);
+          absl::WriterMutexLock writer_lock(function_cache_mutex_);
           auto result = function_cache_.try_emplace(function_id, computation);
           if (!result.second) {
             // Another thread beat us to creating the cache value. We end up

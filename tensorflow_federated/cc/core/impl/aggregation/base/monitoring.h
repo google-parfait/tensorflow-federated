@@ -65,7 +65,7 @@ namespace tensorflow_federated {
 #define _TFF_LOG_IF_WARNING(condition) ABSL_LOG_IF(WARNING, condition)
 #define _TFF_LOG_IF_ERROR(condition) ABSL_LOG_IF(ERROR, condition)
 #define _TFF_LOG_IF_FATAL(condition) ABSL_LOG_IF(FATAL, condition)
-#define TFF_VLOG(verbosity) ABSL_LOG(INFO).WithVerbosity(verbosity)
+#define TFF_VLOG(verbosity) ABSL_VLOG(verbosity)
 
 #endif  // !defined(__ANDROID__)
 

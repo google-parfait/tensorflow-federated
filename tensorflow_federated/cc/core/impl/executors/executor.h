@@ -245,7 +245,7 @@ class ExecutorBase : public Executor,
 
   // Tracks the provided value and returns the ID which refers to it.
   absl::StatusOr<OwnedValueId> TrackValue(ExecutorValue value) {
-    absl::WriterMutexLock lock(&mutex_);
+    absl::WriterMutexLock lock(mutex_);
     ValueId id = next_value_id_++;
     tracked_values_.emplace(id, std::move(value));
     return absl::StatusOr<OwnedValueId>(absl::in_place_t(), shared_from_this(),
@@ -254,7 +254,7 @@ class ExecutorBase : public Executor,
 
   // Returns a copy of the value previously stored with `TrackValue`.
   absl::StatusOr<ExecutorValue> GetTracked(ValueId value_id) {
-    absl::ReaderMutexLock lock(&mutex_);
+    absl::ReaderMutexLock lock(mutex_);
     auto value_iter = tracked_values_.find(value_id);
     if (value_iter == tracked_values_.end()) {
       return absl::NotFoundError(
@@ -283,7 +283,7 @@ class ExecutorBase : public Executor,
   // that the `ExecutorValue` references held by `tracked_values_` have been
   // destroyed.
   void ClearTracked() {
-    absl::WriterMutexLock lock(&mutex_);
+    absl::WriterMutexLock lock(mutex_);
     tracked_values_.clear();
   }
 
@@ -344,7 +344,7 @@ class ExecutorBase : public Executor,
 
   absl::Status Dispose(const ValueId value) final {
     auto trace = Trace("Dispose");
-    absl::WriterMutexLock lock(&mutex_);
+    absl::WriterMutexLock lock(mutex_);
     auto value_iter = tracked_values_.find(value);
     if (value_iter == tracked_values_.end()) {
       return absl::NotFoundError(absl::StrCat(

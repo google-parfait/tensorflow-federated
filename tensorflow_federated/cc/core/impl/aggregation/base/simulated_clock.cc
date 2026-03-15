@@ -27,7 +27,7 @@ absl::Time SimulatedClock::Now() {
 }
 
 absl::Time SimulatedClock::NowLocked() {
-  mutex()->AssertHeld();
+  mutex().AssertHeld();
   return now_;
 }
 

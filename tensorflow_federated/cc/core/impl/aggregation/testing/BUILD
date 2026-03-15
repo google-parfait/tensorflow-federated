@@ -71,6 +71,7 @@ cc_library(
     deps = [
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

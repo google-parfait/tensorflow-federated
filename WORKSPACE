@@ -40,9 +40,8 @@ register_toolchains("@rules_ml_toolchain//cc:linux_aarch64_linux_aarch64")
 
 http_archive(
     name = "bazel_skylib",
-    sha256 = "3b620033ca48fcd6f5ef2ac85e0f6ec5639605fa2f627968490e52fc91a9932f",
-    strip_prefix = "bazel-skylib-1.3.0",
-    url = "https://github.com/bazelbuild/bazel-skylib/archive/refs/tags/1.3.0.tar.gz",
+    sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
+    url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
 )
 
 http_archive(
@@ -58,9 +57,9 @@ http_archive(
     patches = [
         "@org_tensorflow//third_party/xla/third_party/grpc:grpc.patch",
     ],
-    sha256 = "afbc5d78d6ba6d509cc6e264de0d49dcd7304db435cbf2d630385bacf49e066c",
-    strip_prefix = "grpc-1.68.2",
-    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.68.2.tar.gz",
+    sha256 = "dd6a2fa311ba8441bbefd2764c55b99136ff10f7ea42954be96006a2723d33fc",
+    strip_prefix = "grpc-1.74.0",
+    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.74.0.tar.gz",
 )
 
 http_archive(
@@ -84,12 +83,8 @@ http_archive(
     url = "https://github.com/google/differential-privacy/archive/refs/tags/v3.0.0.tar.gz",
 )
 
-http_archive(
-    name = "com_google_protobuf",
-    sha256 = "7fce939b9b7181bd0bd157360e0cc88a8cabf01ac4efe4662494f56dd955d4c1",
-    strip_prefix = "protobuf-5.28.3",
-    url = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v5.28.3.tar.gz",
-)
+# com_google_protobuf is defined by python_init_rules() below,
+# using TF 2.21's version and patches.
 
 http_archive(
     name = "eigen",
@@ -124,11 +119,10 @@ http_archive(
     patch_args = ["-p1"],
     patches = [
         "//third_party/tensorflow:internal_visibility.patch",
-        "//third_party/tensorflow:tensor_testutil.patch",
     ],
-    sha256 = "a640d1f97be316a09301dfc9347e3d929ad4d9a2336e3ca23c32c93b0ff7e5d0",
-    strip_prefix = "tensorflow-2.20.0",
-    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.20.0.tar.gz",
+    sha256 = "ef3568bb4865d6c1b2564fb5689c19b6b9a5311572cd1f2ff9198636a8520921",
+    strip_prefix = "tensorflow-2.21.0",
+    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.21.0.tar.gz",
 )
 
 http_archive(
@@ -176,37 +170,45 @@ http_archive(
     url = "https://github.com/protocolbuffers/upb/archive/e4635f223e7d36dfbea3b722a4ca4807a7e882e2.tar.gz",
 )
 
-#http_archive(
-#    name = "rules_python",
-#    sha256 = "690e0141724abb568267e003c7b6d9a54925df40c275a870a4d934161dc9dd53",
-#    strip_prefix = "rules_python-0.40.0",
-#    url = "https://github.com/bazelbuild/rules_python/releases/download/0.40.0/rules_python-0.40.0.tar.gz",
-#)
+#
+# Transitive dependencies, grouped by direct dependency.
+#
 
-http_archive(
-    name = "rules_python",
-    patch_args = ["-p1"],
-    patches = [
-        "@org_tensorflow//third_party/py:rules_python1.patch",
-        "@org_tensorflow//third_party/py:rules_python2.patch",
-        "@org_tensorflow//third_party/py:rules_python3.patch",
+load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
+
+tf_workspace3()
+
+# Initialize hermetic Python (following TF 2.21's WORKSPACE pattern).
+# python_init_rules defines rules_python with correct patches from @xla.
+load("@org_tensorflow//third_party/py:python_init_rules.bzl", "python_init_rules")
+
+python_init_rules()
+
+load("@org_tensorflow//third_party/py:python_init_repositories.bzl", "python_init_repositories")
+
+python_init_repositories(
+    default_python_version = "3.12",
+    local_wheel_dist_folder = "dist",
+    local_wheel_inclusion_list = [
+        "tensorflow*",
+        "tf_nightly*",
     ],
-    sha256 = "62ddebb766b4d6ddf1712f753dac5740bea072646f630eb9982caa09ad8a7687",
-    strip_prefix = "rules_python-0.39.0",
-    url = "https://github.com/bazelbuild/rules_python/releases/download/0.39.0/rules_python-0.39.0.tar.gz",
+    local_wheel_workspaces = ["//:WORKSPACE"],
+    requirements = {
+        "3.12": "@org_tensorflow//:requirements_lock_3_12.txt",
+        "3.13": "@org_tensorflow//:requirements_lock_3_13.txt",
+    },
 )
 
-load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_toolchains")
+load("@org_tensorflow//third_party/py:python_init_toolchains.bzl", "python_init_toolchains")
 
-py_repositories()
+python_init_toolchains()
 
-python_register_toolchains(
-    name = "python",
-    ignore_root_user_error = True,
-    python_version = "3.12",
-)
+load("@xla//third_party/py:python_repo.bzl", "python_repository")
 
-load("@python//:defs.bzl", "interpreter")
+python_repository(name = "python_version_repo")
+
+# TFF's own pip dependencies (separate from TF's).
 load("@rules_python//python:pip.bzl", "package_annotation", "pip_parse")
 
 # Create Bazel cc_library targets for NumPy headers.
@@ -243,57 +245,13 @@ pip_parse(
         "--index-url",
         "https://pypi.org/simple",
     ],
-    python_interpreter_target = interpreter,
+    python_interpreter_target = "@python_3_12_host//:python",
     requirements_lock = "//:requirements_lock_3_12.txt",
 )
 
 load("@pypi//:requirements.bzl", "install_deps")
 
 install_deps()
-
-#
-# Transitive dependencies, grouped by direct dependency.
-#
-
-load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
-
-tf_workspace3()
-
-# Initialize hermetic Python
-load("@org_tensorflow//third_party/py:python_init_rules.bzl", "python_init_rules")
-
-python_init_rules()
-
-load("@org_tensorflow//third_party/py:python_init_repositories.bzl", "python_init_repositories")
-
-python_init_repositories(
-    default_python_version = "3.12",
-    local_wheel_dist_folder = "dist",
-    local_wheel_inclusion_list = [
-        "tensorflow*",
-        "tf_nightly*",
-    ],
-    local_wheel_workspaces = ["//:WORKSPACE"],
-    requirements = {
-        "3.12": "@org_tensorflow//:requirements_lock_3_12.txt",
-        "3.13": "@org_tensorflow//:requirements_lock_3_13.txt",
-    },
-)
-
-load("@local_xla//third_party/py:python_repo.bzl", "python_repository")
-
-python_repository(name = "python_version_repo")
-
-#load("@org_tensorflow//third_party/py:python_init_toolchains.bzl", "python_init_toolchains")
-#
-#python_init_toolchains()
-
-#load("@org_tensorflow//third_party/py:python_init_pip.bzl", "python_init_pip")
-# load("@org_tensorflow//third_party/py:python_init_pip.bzl", "python_init_pip")
-#
-# python_init_pip()
-#
-# install_deps()
 
 load("@org_tensorflow//tensorflow:workspace2.bzl", "tf_workspace2")
 
@@ -308,7 +266,7 @@ load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
 tf_workspace0()
 
 load(
-    "@local_xla//third_party/py:python_wheel.bzl",
+    "@xla//third_party/py:python_wheel.bzl",
     "python_wheel_version_suffix_repository",
 )
 

@@ -58,7 +58,7 @@ class WorkerImpl : public Worker, public LifetimeTracker {
   ~WorkerImpl() override = default;
 
   void Schedule(std::function<void()> task) override {
-    absl::MutexLock lock(&busy_);
+    absl::MutexLock lock(busy_);
     steps_.emplace_back(std::move(task));
     MaybeRunNext();
   }
@@ -83,7 +83,7 @@ class WorkerImpl : public Worker, public LifetimeTracker {
       TFF_CHECK(*marker) << "Worker destroyed before all tasks finished";
       {
         // Try run next task if any.
-        absl::MutexLock lock(&this->busy_);
+        absl::MutexLock lock(this->busy_);
         this->running_ = false;
         this->MaybeRunNext();
       }
@@ -112,7 +112,7 @@ class ThreadPoolScheduler : public Scheduler {
 
   ~ThreadPoolScheduler() override {
     {
-      absl::MutexLock lock(&busy_);
+      absl::MutexLock lock(busy_);
       TFF_CHECK(IdleCondition(this))
           << "Thread pool must be idle at destruction time";
 
@@ -128,7 +128,7 @@ class ThreadPoolScheduler : public Scheduler {
   }
 
   void Schedule(std::function<void()> task) override {
-    absl::MutexLock lock(&busy_);
+    absl::MutexLock lock(busy_);
     todo_.push(std::move(task));
     // Wake up a *single* thread to handle this task.
     work_available_cond_var_.Signal();
@@ -148,7 +148,7 @@ class ThreadPoolScheduler : public Scheduler {
     for (;;) {
       std::function<void()> task;
       {
-        absl::MutexLock lock(&busy_);
+        absl::MutexLock lock(busy_);
         --active_count_;
         while (todo_.empty()) {
           if (threads_should_join_) {

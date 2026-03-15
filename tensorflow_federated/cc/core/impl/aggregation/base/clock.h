@@ -67,7 +67,7 @@ class Clock {
 
  protected:
   // Accessors shared for derived classes.
-  absl::Mutex* mutex() { return &mu_; }
+  absl::Mutex& mutex() { return mu_; }
 
   // Internal version of now which is called under mutex.
   virtual absl::Time NowLocked()

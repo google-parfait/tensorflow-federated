@@ -62,7 +62,7 @@ namespace {
 // not override an existing function def.
 ABSL_CONST_INIT static absl::Mutex function_counter_mutex(absl::kConstInit);
 int32_t GetNextFunctionId() {
-  absl::MutexLock function_id_lock(&function_counter_mutex);
+  absl::MutexLock function_id_lock(function_counter_mutex);
   static int32_t function_id = 0;
   return function_id++;
 }

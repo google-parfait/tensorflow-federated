@@ -157,7 +157,7 @@ class ExecutorValue {
 };
 
 absl::Status RemoteExecutor::EnsureInitialized() {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
   if (executor_pb_set_) {
     return absl::OkStatus();
   }

@@ -33,6 +33,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"
+#include "google/protobuf/message.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 
 namespace tensorflow_federated {
@@ -63,6 +64,7 @@ absl::StatusOr<T> ReadFile(absl::string_view file_name) {
   auto file_name_str = std::string(file_name);
   std::ifstream is(file_name_str);
   if (!is) {
+    // TODO: b/74013147 - provide a mapping from C++ to canonical error space.
     return absl::InternalError(
         absl::StrCat("cannot read file ", file_name_str));
   }
@@ -115,6 +117,21 @@ absl::Status WriteCordToFile(absl::string_view file_name,
       return absl::InternalError(
           absl::StrCat("error writing to file ", file_name_str));
     }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status ReadFileToMessage(absl::string_view file_name,
+                               google::protobuf::Message* message) {
+  TFF_CHECK(message != nullptr);
+  auto file_name_str = std::string(file_name);
+  std::ifstream is(file_name_str);
+  if (!is) {
+    return absl::NotFoundError(
+        absl::StrCat("cannot read file ", file_name_str));
+  }
+  if (!message->ParseFromIstream(&is)) {
+    return absl::InvalidArgumentError("cannot parse message");
   }
   return absl::OkStatus();
 }
