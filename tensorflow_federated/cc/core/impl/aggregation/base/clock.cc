@@ -57,7 +57,7 @@ class RealTimeClock : public Clock {
 
   // The currently scheduled wake-up time. There is at most one wake-up
   // time per process.
-  absl::Time next_wakeup_ ABSL_GUARDED_BY(&wakeup_mu_) = absl::InfiniteFuture();
+  absl::Time next_wakeup_ ABSL_GUARDED_BY(wakeup_mu_) = absl::InfiniteFuture();
   // Mutex that protects next_wakeup and used with the wake-up CondVar.
   absl::Mutex wakeup_mu_;
   // CondVar used to sleep until the next wake-up deadline.
@@ -193,7 +193,7 @@ void RealTimeClock::WorkerLoop() {
     bool dispatch = false;
 
     {
-      absl::MutexLock lock(&wakeup_mu_);
+      absl::MutexLock lock(wakeup_mu_);
       wakeup_condvar_.WaitWithDeadline(&wakeup_mu_, next_wakeup_);
       if (Now() >= next_wakeup_) {
         dispatch = true;
@@ -209,7 +209,7 @@ void RealTimeClock::WorkerLoop() {
 
 // RealTimeClock implementation of ScheduleWakeup.
 void RealTimeClock::ScheduleWakeup(absl::Time wakeup_time) {
-  absl::MutexLock lock(&wakeup_mu_);
+  absl::MutexLock lock(wakeup_mu_);
 
   // Optimization: round wakeup_time up to whole milliseconds.
   wakeup_time = absl::FromUDate(ceil(absl::ToUDate(wakeup_time)));

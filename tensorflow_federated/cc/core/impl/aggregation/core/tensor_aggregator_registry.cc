@@ -36,7 +36,7 @@ class Registry final {
                                  const TensorAggregatorFactory* factory) {
     TFF_CHECK(factory != nullptr);
 
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     TFF_CHECK(map_.find(intrinsic_uri) == map_.end())
         << "A factory for intrinsic_uri '" << intrinsic_uri
         << "' is already registered.";
@@ -47,7 +47,7 @@ class Registry final {
 
   StatusOr<const TensorAggregatorFactory*> GetAggregatorFactory(
       const std::string& intrinsic_uri) {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     auto it = map_.find(intrinsic_uri);
     if (it == map_.end()) {
       return TFF_STATUS(NOT_FOUND)

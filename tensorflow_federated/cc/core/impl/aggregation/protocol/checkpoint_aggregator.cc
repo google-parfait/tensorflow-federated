@@ -30,6 +30,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/synchronization/mutex.h"
+#include "google/protobuf/repeated_ptr_field.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -176,7 +177,7 @@ absl::Status CheckpointAggregator::Accumulate(
     inputs.push_back(std::move(input_list));
   }
   {
-    absl::MutexLock lock(&aggregation_mu_);
+    absl::MutexLock lock(aggregation_mu_);
     if (aggregation_finished_) {
       return absl::AbortedError("Aggregation has already been finished.");
     }
@@ -196,7 +197,7 @@ absl::Status CheckpointAggregator::Accumulate(
 
 absl::Status CheckpointAggregator::MergeWith(CheckpointAggregator&& other) {
   TFF_RETURN_IF_ERROR(CheckCompatible(intrinsics_, other.intrinsics_));
-  absl::MutexLock lock(&aggregation_mu_);
+  absl::MutexLock lock(aggregation_mu_);
   if (!aggregation_finished_) {
     auto other_aggregators = std::move(other).TakeAggregators();
     for (int i = 0; i < intrinsics_.size(); ++i) {
@@ -208,7 +209,7 @@ absl::Status CheckpointAggregator::MergeWith(CheckpointAggregator&& other) {
 }
 
 absl::StatusOr<int> CheckpointAggregator::GetNumCheckpointsAggregated() const {
-  absl::MutexLock lock(&aggregation_mu_);
+  absl::MutexLock lock(aggregation_mu_);
   if (aggregation_finished_) {
     return absl::AbortedError("Aggregation has already been finished.");
   }
@@ -230,7 +231,7 @@ absl::StatusOr<int> CheckpointAggregator::GetNumCheckpointsAggregated() const {
 }
 
 bool CheckpointAggregator::CanReport() const {
-  absl::MutexLock lock(&aggregation_mu_);
+  absl::MutexLock lock(aggregation_mu_);
   if (aggregation_finished_) {
     return false;
   }
@@ -248,7 +249,7 @@ absl::Status CheckpointAggregator::Report(
     CheckpointBuilder& checkpoint_builder) {
   std::vector<OutputTensorInfo> collected_tensors;
   {
-    absl::MutexLock lock(&aggregation_mu_);
+    absl::MutexLock lock(aggregation_mu_);
     if (aggregation_finished_) {
       return absl::AbortedError("Aggregation has already been finished.");
     }
@@ -290,7 +291,7 @@ absl::Status CheckpointAggregator::Report(
 void CheckpointAggregator::Abort() { aggregation_finished_ = true; }
 
 absl::StatusOr<std::string> CheckpointAggregator::Serialize() && {
-  absl::MutexLock lock(&aggregation_mu_);
+  absl::MutexLock lock(aggregation_mu_);
   if (aggregation_finished_) {
     return absl::AbortedError("Aggregation has already been finished.");
   }
@@ -306,7 +307,7 @@ absl::StatusOr<std::string> CheckpointAggregator::Serialize() && {
 
 absl::StatusOr<std::vector<std::string>> CheckpointAggregator::Partition(
     int num_partitions) && {
-  absl::MutexLock lock(&aggregation_mu_);
+  absl::MutexLock lock(aggregation_mu_);
   if (aggregation_finished_) {
     return absl::AbortedError("Aggregation has already been finished.");
   }
@@ -344,7 +345,7 @@ CheckpointAggregator::CreateAggregator(
 
 std::vector<std::unique_ptr<TensorAggregator>>
 CheckpointAggregator::TakeAggregators() && {
-  absl::MutexLock lock(&aggregation_mu_);
+  absl::MutexLock lock(aggregation_mu_);
   return std::move(aggregators_);
 }
 

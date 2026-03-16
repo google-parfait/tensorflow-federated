@@ -30,8 +30,8 @@ attrs~=23.1
 cachetools~=5.3
 dm-tree==0.1.9
 dp-accounting==0.6.0
-grpcio~=1.68
-keras~=3.11.3
+grpcio~=1.74
+keras~=3.12.0
 ml_dtypes>=0.5.0
 numpy>=2.0.0,<2.2.0
 portpicker~=1.6
@@ -42,4 +42,4 @@ wrapt==1.14.1  # https://github.com/tensorflow/tensorflow/issues/59869
 
 # The version of this dependency should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.
-tensorflow>=2.20.0,==2.20.*
+tensorflow>=2.21.0,==2.21.*

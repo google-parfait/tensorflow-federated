@@ -29,6 +29,7 @@
 #include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
+#include "google/protobuf/repeated_ptr_field.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"

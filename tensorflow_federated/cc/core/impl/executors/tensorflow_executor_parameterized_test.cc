@@ -30,6 +30,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/text_format.h"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"

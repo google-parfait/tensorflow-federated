@@ -215,11 +215,11 @@ class Sequence {
     }
     bool embedded = false;
     {
-      absl::ReaderMutexLock reader_lock(&embedded_mutex_);
+      absl::ReaderMutexLock reader_lock(embedded_mutex_);
       embedded = embedded_sequence_.has_value();
     }
     if (!embedded) {
-      absl::WriterMutexLock writer_lock(&embedded_mutex_);
+      absl::WriterMutexLock writer_lock(embedded_mutex_);
       //  Once we've acquired the lock, check that no other thread has
       //  embedded the value in the meantime.
       if (!embedded_sequence_.has_value()) {
@@ -228,7 +228,7 @@ class Sequence {
       }
     }
 
-    absl::ReaderMutexLock reader_lock(&embedded_mutex_);
+    absl::ReaderMutexLock reader_lock(embedded_mutex_);
     return embedded_sequence_.value();
   }
 

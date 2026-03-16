@@ -144,7 +144,8 @@ SimpleAggregationProtocolTest::CreateProtocol(
 
 ClientMessage MakeClientMessage() {
   ClientMessage message;
-  message.mutable_simple_aggregation()->mutable_input()->set_inline_bytes("");
+  message.mutable_simple_aggregation()->mutable_input()->set_inline_bytes(
+      absl::Cord{});
   return message;
 }
 

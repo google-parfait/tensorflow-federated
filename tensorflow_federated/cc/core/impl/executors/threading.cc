@@ -33,7 +33,7 @@ ThreadPool::ThreadPool(int32_t num_threads, absl::string_view name)
   if (num_threads < 1) {
     LOG(QFATAL) << "num_threads must be positive";
   }
-  absl::MutexLock lock(&pool_mutex_);
+  absl::MutexLock lock(pool_mutex_);
   for (int32_t i = 0; i < num_threads; ++i) {
     threads_.emplace_back([this]() {
       while (true) {
@@ -60,7 +60,7 @@ ThreadPool::~ThreadPool() {
 }
 
 absl::Status ThreadPool::Schedule(std::function<void()> task) {
-  absl::MutexLock lock(&pool_mutex_);
+  absl::MutexLock lock(pool_mutex_);
   if (closed_) {
     return absl::FailedPreconditionError(
         "Called Schedule() on a ThreadPool that is closed.");
@@ -74,7 +74,7 @@ bool ThreadPool::has_work_or_closed() ABSL_SHARED_LOCKS_REQUIRED(pool_mutex_) {
 }
 
 void ThreadPool::Close() {
-  absl::MutexLock lock(&pool_mutex_);
+  absl::MutexLock lock(pool_mutex_);
   closed_ = true;
 }
 
@@ -84,12 +84,12 @@ bool ParallelTasksInner_::AllDone_() ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
 
 absl::Status ParallelTasks::add_task(std::function<absl::Status()> task) {
   {
-    absl::WriterMutexLock lock(&shared_inner_->mutex_);
+    absl::WriterMutexLock lock(shared_inner_->mutex_);
     shared_inner_->remaining_tasks_ += 1;
   }
   auto void_task = [inner = shared_inner_, task = std::move(task)]() {
     absl::Status result = task();
-    absl::WriterMutexLock lock(&inner->mutex_);
+    absl::WriterMutexLock lock(inner->mutex_);
     inner->status_.Update(std::move(result));
     inner->remaining_tasks_ -= 1;
   };
