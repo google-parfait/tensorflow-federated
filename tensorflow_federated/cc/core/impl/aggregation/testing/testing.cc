@@ -34,7 +34,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
-#include "tensorflow/c/checkpoint_reader.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_status_helper.h"
 #include "tensorflow/cc/framework/ops.h"
@@ -52,6 +51,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tf_checkpoint_reader.h"
 
 namespace tensorflow_federated::aggregation {
 
