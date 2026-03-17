@@ -22,9 +22,9 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
+#include "tensorflow/c/checkpoint_reader.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tf_checkpoint_reader.h"
 
 namespace tensorflow_federated::aggregation::tensorflow {
 
