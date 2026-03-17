@@ -18,7 +18,6 @@
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_TESTING_TESTING_H_
 
 #include <cstddef>
-#include <cstdint>
 #include <initializer_list>
 #include <optional>
 #include <ostream>
@@ -28,14 +27,7 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "tensorflow/cc/framework/ops.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -48,8 +40,6 @@
 
 namespace tensorflow_federated::aggregation {
 
-namespace tf = ::tensorflow;
-
 // Convenience macros for `EXPECT_THAT(s, IsOk())`, where `s` is either
 // a `Status` or a `StatusOr<T>`.
 // Old versions of the protobuf library define EXPECT_OK as well, so we only
@@ -61,31 +51,6 @@ namespace tf = ::tensorflow;
 
 // Creates a temporary file name with given suffix unique for the running test.
 std::string TemporaryTestFile(absl::string_view suffix);
-
-template <typename T>
-tf::Tensor CreateTfTensor(tf::DataType data_type,
-                          std::initializer_list<int64_t> dim_sizes,
-                          std::initializer_list<T> values) {
-  tf::TensorShape shape;
-  EXPECT_TRUE(tf::TensorShape::BuildTensorShape(dim_sizes, &shape).ok());
-  tf::Tensor tensor(data_type, shape);
-  T* tensor_data_ptr = reinterpret_cast<T*>(tensor.data());
-  for (auto value : values) {
-    *tensor_data_ptr++ = value;
-  }
-  return tensor;
-}
-
-tf::Tensor CreateStringTfTensor(std::initializer_list<int64_t> dim_sizes,
-                                std::initializer_list<string_view> values);
-
-// Wrapper around tf::ops::Save that sets up and runs the op.
-absl::Status CreateTfCheckpoint(tf::Input filename, tf::Input tensor_names,
-                                tf::InputList tensors);
-
-// Returns a summary of the checkpoint as a map of tensor names and values.
-absl::StatusOr<absl::flat_hash_map<std::string, std::string>>
-SummarizeCheckpoint(const absl::Cord& checkpoint);
 
 // Converts a potentially sparse tensor to a flat vector of tensor values.
 template <typename T>

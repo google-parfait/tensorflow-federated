@@ -20,22 +20,20 @@ package(
 )
 
 cc_library(
-    name = "testing",
-    srcs = ["testing.cc"],
-    hdrs = ["testing.h"],
+    name = "tensorflow_testing",
+    srcs = ["tensorflow_testing.cc"],
+    hdrs = ["tensorflow_testing.h"],
     deps = [
+        ":testing",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
-        "//tensorflow_federated/cc/core/impl/aggregation/core:intrinsic",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
-        "//tensorflow_federated/cc/testing:oss_test_main",
-        "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_googletest//:gtest",
         "@org_tensorflow//tensorflow/c:checkpoint_reader",
         "@org_tensorflow//tensorflow/c:tf_status_headers",
         "@org_tensorflow//tensorflow/c:tf_status_helper",
@@ -47,6 +45,21 @@ cc_library(
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
         "@org_tensorflow//tensorflow/core/platform:tstring",
+    ],
+)
+
+cc_library(
+    name = "testing",
+    srcs = ["testing.cc"],
+    hdrs = ["testing.h"],
+    deps = [
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/core:intrinsic",
+        "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
+        "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_googletest//:gtest",
     ],
 )
 

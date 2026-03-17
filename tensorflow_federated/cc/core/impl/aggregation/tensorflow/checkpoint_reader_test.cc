@@ -25,11 +25,14 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/platform.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/testing/tensorflow_testing.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated::aggregation::tensorflow {
 namespace {
+
+namespace tf = ::tensorflow;
 
 using ::testing::Key;
 using ::testing::UnorderedElementsAre;

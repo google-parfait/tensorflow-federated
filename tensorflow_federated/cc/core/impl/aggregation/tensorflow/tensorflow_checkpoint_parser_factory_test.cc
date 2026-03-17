@@ -25,6 +25,7 @@
 #include "absl/strings/cord.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/platform.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_parser.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/testing/tensorflow_testing.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 
 namespace tensorflow_federated::aggregation::tensorflow {
