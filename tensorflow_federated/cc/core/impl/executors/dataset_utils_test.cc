@@ -16,58 +16,85 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 
 #include <cstdint>
-#include <memory>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "absl/status/status.h"
-#include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
-#include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
 
 namespace {
 
-using ::tensorflow_federated::testing::EqualsProto;
 using ::tensorflow_federated::testing::SequenceV;
 
-TEST(DatasetConversionsTest, TestIterationOverCreatedDataset) {
+TEST(DatasetConversionsTest, TestGraphDefTensorFromSequenceRoundTrip) {
   v0::Value value_pb = SequenceV(0, 10, 1);
-  std::shared_ptr<tensorflow::data::standalone::Dataset> ds =
-      TFF_ASSERT_OK(DatasetFromGraphDefTensor(
-          TFF_ASSERT_OK(GraphDefTensorFromSequence(value_pb.sequence()))));
+  tensorflow::Tensor graph_def_tensor =
+      TFF_ASSERT_OK(GraphDefTensorFromSequence(value_pb.sequence()));
 
-  std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
-  // We avoid taking a dependency on TF testing internals.
-  auto status = ds->MakeIterator(&iterator);
-  ASSERT_TRUE(status.ok());
-  bool end_of_values = false;
-  std::vector<tensorflow::Tensor> values = {};
-  int64_t idx = 0;
-  while (true) {
-    std::vector<tensorflow::Tensor> output_tensors = {};
-    auto status = iterator->GetNext(&output_tensors, &end_of_values);
-    ASSERT_TRUE(status.ok());
-    if (end_of_values) {
-      break;
-    }
-    ASSERT_EQ(output_tensors.size(), 1);
-    tensorflow::TensorProto actual_tensor_proto;
-    tensorflow::Tensor output_tensor = output_tensors.at(0);
-    values.emplace_back(output_tensor);
-    output_tensor.AsProtoTensorContent(&actual_tensor_proto);
-    tensorflow::TensorProto expected_tensor_proto;
-    tensorflow::Tensor expected_tensor = tensorflow::Tensor(idx++);
-    expected_tensor.AsProtoTensorContent(&expected_tensor_proto);
-    EXPECT_THAT(expected_tensor_proto, EqualsProto(actual_tensor_proto));
+  // Verify the result is a scalar string tensor containing a serialized
+  // GraphDef.
+  EXPECT_EQ(graph_def_tensor.dtype(), tensorflow::DT_STRING);
+  EXPECT_EQ(graph_def_tensor.dims(), 0);
+}
+
+TEST(DatasetConversionsTest, TestExtractOutputTypesAndShapes) {
+  v0::Value value_pb = SequenceV(0, 5, 1);
+  tensorflow::Tensor graph_def_tensor =
+      TFF_ASSERT_OK(GraphDefTensorFromSequence(value_pb.sequence()));
+
+  auto types_and_shapes =
+      TFF_ASSERT_OK(ExtractOutputTypesAndShapesFromGraphDef(graph_def_tensor));
+
+  EXPECT_EQ(types_and_shapes.first.size(), 1);
+  EXPECT_EQ(types_and_shapes.first[0], tensorflow::DT_INT64);
+  EXPECT_EQ(types_and_shapes.second.size(), 1);
+}
+
+TEST(DatasetConversionsTest, TestIterateDatasetFromGraphDef) {
+  v0::Value value_pb = SequenceV(0, 10, 1);
+  tensorflow::Tensor graph_def_tensor =
+      TFF_ASSERT_OK(GraphDefTensorFromSequence(value_pb.sequence()));
+
+  auto types_and_shapes =
+      TFF_ASSERT_OK(ExtractOutputTypesAndShapesFromGraphDef(graph_def_tensor));
+
+  std::vector<std::vector<tensorflow::Tensor>> elements =
+      TFF_ASSERT_OK(IterateDatasetFromGraphDef(
+          graph_def_tensor, types_and_shapes.first, types_and_shapes.second));
+
+  EXPECT_EQ(elements.size(), 10);
+  for (int i = 0; i < 10; i++) {
+    ASSERT_EQ(elements[i].size(), 1);
+    EXPECT_EQ(elements[i][0].dtype(), tensorflow::DT_INT64);
+    EXPECT_EQ(elements[i][0].scalar<int64_t>()(), i);
   }
-  EXPECT_EQ(values.size(), 10);
+}
+
+TEST(DatasetConversionsTest, TestIterateMultiElementDataset) {
+  v0::Value value_pb = SequenceV({{1, 2}, {3, 4}, {5, 6}});
+  tensorflow::Tensor graph_def_tensor =
+      TFF_ASSERT_OK(GraphDefTensorFromSequence(value_pb.sequence()));
+
+  auto types_and_shapes =
+      TFF_ASSERT_OK(ExtractOutputTypesAndShapesFromGraphDef(graph_def_tensor));
+
+  std::vector<std::vector<tensorflow::Tensor>> elements =
+      TFF_ASSERT_OK(IterateDatasetFromGraphDef(
+          graph_def_tensor, types_and_shapes.first, types_and_shapes.second));
+
+  EXPECT_EQ(elements.size(), 3);
+  ASSERT_EQ(elements[0].size(), 2);
+  EXPECT_EQ(elements[0][0].scalar<int64_t>()(), 1);
+  EXPECT_EQ(elements[0][1].scalar<int64_t>()(), 2);
+  EXPECT_EQ(elements[1][0].scalar<int64_t>()(), 3);
+  EXPECT_EQ(elements[1][1].scalar<int64_t>()(), 4);
+  EXPECT_EQ(elements[2][0].scalar<int64_t>()(), 5);
+  EXPECT_EQ(elements[2][1].scalar<int64_t>()(), 6);
 }
 
 }  // namespace

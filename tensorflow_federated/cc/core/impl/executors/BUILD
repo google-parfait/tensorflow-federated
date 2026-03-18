@@ -222,6 +222,7 @@ cc_library(
     hdrs = ["dataset_utils.h"],
     deps = [
         ":dataset_from_tensor_structures",
+        ":session_provider",
         ":status_macros",
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -230,9 +231,11 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+        "@org_tensorflow//tensorflow/cc:scope",
         "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:graph",
         "@org_tensorflow//tensorflow/core:portable_gif_internal",
-        "@org_tensorflow//tensorflow/core/data:standalone",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
     ],
 )
 
@@ -243,14 +246,10 @@ cc_test(
         ":dataset_utils",
         ":value_test_utils",
         "//tensorflow_federated/cc/testing:oss_test_main",
-        "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
-        "@com_google_absl//absl/status",
-        "@org_tensorflow//tensorflow/cc:cc_ops",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
-        "@org_tensorflow//tensorflow/core/data:standalone",
     ],
 )
 
@@ -898,7 +897,6 @@ cc_library(
         "@org_tensorflow//tensorflow/core:tensorflow",
         "@org_tensorflow//tensorflow/core/common_runtime:core",
         "@org_tensorflow//tensorflow/core/common_runtime:session",
-        "@org_tensorflow//tensorflow/core/data:standalone",
     ],
 )
 
@@ -965,7 +963,6 @@ cc_library(
         "@federated_language//federated_language/proto:data_type_cc_proto",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/data:standalone",
     ],
 )
 

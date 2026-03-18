@@ -33,7 +33,6 @@ limitations under the License
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
-#include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
@@ -66,32 +65,13 @@ inline v0::Value TensorVFromIntList(absl::Span<const int32_t> elements) {
   return TensorV(tensor);
 }
 
+// Iterates a dataset from a GraphDef string tensor and returns all elements.
 inline absl::StatusOr<std::vector<std::vector<tensorflow::Tensor>>>
 SequenceValueToList(const tensorflow::Tensor& graph_def_tensor) {
-  std::unique_ptr<tensorflow::data::standalone::Dataset> dataset =
-      TFF_TRY(DatasetFromGraphDefTensor(graph_def_tensor));
-  std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
-  absl::Status status = dataset->MakeIterator(&iterator);
-  if (!status.ok()) {
-    return absl::InternalError(absl::StrCat(
-        "Unable to make iterator from sequence dataset: ", status.message()));
-  }
-  std::vector<std::vector<tensorflow::Tensor>> outputs;
-  while (true) {
-    bool end_of_input;
-    std::vector<tensorflow::Tensor> output;
-    status = iterator->GetNext(&output, &end_of_input);
-    if (!status.ok()) {
-      return absl::InternalError(
-          absl::StrCat("Failed to get the ", outputs.size(),
-                       "th element of the sequence: ", status.message()));
-    }
-    if (end_of_input) {
-      break;
-    }
-    outputs.push_back(std::move(output));
-  }
-  return outputs;
+  auto types_and_shapes =
+      TFF_TRY(ExtractOutputTypesAndShapesFromGraphDef(graph_def_tensor));
+  return IterateDatasetFromGraphDef(graph_def_tensor, types_and_shapes.first,
+                                    types_and_shapes.second);
 }
 
 MATCHER(TensorsProtoEqual,

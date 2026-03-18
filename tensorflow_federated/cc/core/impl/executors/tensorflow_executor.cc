@@ -38,7 +38,6 @@ limitations under the License
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
-#include "tensorflow/core/data/standalone.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
@@ -407,15 +406,35 @@ class Computation {
   std::vector<std::string> output_tensor_names_;
 };
 
-// A tensor that holds sequence data.
+// A tensor that holds sequence data along with associated type/shape metadata.
 class SequenceTensor {
  public:
+  // Construct with just a tensor (types/shapes unknown, will be extracted
+  // from the GraphDef at materialization time).
   explicit SequenceTensor(tensorflow::Tensor&& tensor)
       : tensor_(std::move(tensor)) {}
+
+  // Construct with a tensor and known types/shapes.
+  SequenceTensor(tensorflow::Tensor&& tensor,
+                 tensorflow::DataTypeVector output_types,
+                 std::vector<tensorflow::PartialTensorShape> output_shapes)
+      : tensor_(std::move(tensor)),
+        output_types_(std::move(output_types)),
+        output_shapes_(std::move(output_shapes)) {}
+
   const tensorflow::Tensor& as_tensor() const { return tensor_; }
+  const tensorflow::DataTypeVector& output_types() const {
+    return output_types_;
+  }
+  const std::vector<tensorflow::PartialTensorShape>& output_shapes() const {
+    return output_shapes_;
+  }
+  bool has_output_types_and_shapes() const { return !output_types_.empty(); }
 
  private:
   tensorflow::Tensor tensor_;
+  tensorflow::DataTypeVector output_types_;
+  std::vector<tensorflow::PartialTensorShape> output_shapes_;
 };
 
 enum class Intrinsic { kArgsIntoSequence };
@@ -513,6 +532,10 @@ class ExecutorValue {
 
   const tensorflow::Tensor& sequence() const {
     return std::get<SequenceTensor>(value_).as_tensor();
+  }
+
+  const SequenceTensor& sequence_tensor() const {
+    return std::get<SequenceTensor>(value_);
   }
 
   Intrinsic intrinsic() const { return std::get<Intrinsic>(value_); }
@@ -613,7 +636,13 @@ class ExecutorValue {
         tensorflow::Tensor& tensor = tensors->front();
         tensors->remove_prefix(1);
         if (is_sequence) {
-          return ExecutorValue(SequenceTensor(std::move(tensor)));
+          // Extract output types and shapes from the serialized GraphDef so
+          // that we can iterate the dataset later during materialization.
+          auto types_and_shapes =
+              TFF_TRY(ExtractOutputTypesAndShapesFromGraphDef(tensor));
+          return ExecutorValue(SequenceTensor(
+              std::move(tensor), std::move(types_and_shapes.first),
+              std::move(types_and_shapes.second)));
         } else {
           return ExecutorValue(std::move(tensor));
         }
@@ -744,9 +773,18 @@ absl::StatusOr<ExecutorValue> CallIntrinsic(Intrinsic intrinsic,
       for (const ExecutorValue& structure : arg->elements()) {
         tensor_structures.push_back(TFF_TRY(structure.Flatten()));
       }
+      // Extract output types and shapes from the first structure's tensors.
+      tensorflow::DataTypeVector output_types;
+      std::vector<tensorflow::PartialTensorShape> output_shapes;
+      for (const tensorflow::Tensor& t : tensor_structures[0]) {
+        output_types.push_back(t.dtype());
+        output_shapes.push_back(t.shape());
+      }
       tensorflow::Tensor dataset_tensor =
           TFF_TRY(DatasetFromTensorStructures(tensor_structures));
-      return ExecutorValue(SequenceTensor(std::move(dataset_tensor)));
+      return ExecutorValue(SequenceTensor(std::move(dataset_tensor),
+                                          std::move(output_types),
+                                          std::move(output_shapes)));
     }
     default: {
       return absl::UnimplementedError(absl::StrCat(
@@ -757,36 +795,6 @@ absl::StatusOr<ExecutorValue> CallIntrinsic(Intrinsic intrinsic,
 
 using ValueFuture = std::shared_future<absl::StatusOr<ExecutorValue>>;
 
-absl::Status MaterializeSequence(const tensorflow::Tensor& graph_def_tensor,
-                                 v0::Value::Sequence* sequence_value_pb) {
-  std::unique_ptr<tensorflow::data::standalone::Dataset> dataset =
-      TFF_TRY(DatasetFromGraphDefTensor(graph_def_tensor));
-  std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
-  absl::Status iter_status = dataset->MakeIterator(&iterator);
-  if (!iter_status.ok()) {
-    return absl::InternalError(absl::StrCat(
-        "Error creating iterator from dataset: ", iter_status.message()));
-  }
-
-  std::vector<tensorflow::Tensor> tensors;
-  bool end_of_input = false;
-  while (true) {
-    auto status = iterator->GetNext(&tensors, &end_of_input);
-    if (!status.ok()) {
-      return absl::InternalError(absl::StrCat(
-          "Error getting the next element from dataset: ", status.message()));
-    }
-    if (end_of_input) {
-      break;
-    }
-
-    v0::Value::Sequence::Element* element_pb = sequence_value_pb->add_element();
-    for (const tensorflow::Tensor& tensor : tensors) {
-      element_pb->mutable_flat_value()->Add(TFF_TRY(ArrayFromTensor(tensor)));
-    }
-  }
-  return absl::OkStatus();
-}
 
 class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
  public:
@@ -913,7 +921,14 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
       const v0::Value::Sequence& sequence_pb) const {
     tensorflow::Tensor tensor =
         TFF_TRY(GraphDefTensorFromSequence(sequence_pb));
-    return ExecutorValue(SequenceTensor(std::move(tensor)));
+    // Extract output types and shapes from the serialized GraphDef, which is
+    // authoritative. We do not use the proto's element_type because it may
+    // contain inaccurate shape information.
+    auto types_and_shapes =
+        TFF_TRY(ExtractOutputTypesAndShapesFromGraphDef(tensor));
+    return ExecutorValue(SequenceTensor(std::move(tensor),
+                                        std::move(types_and_shapes.first),
+                                        std::move(types_and_shapes.second)));
   }
 
   // NOTE: `value` reference must be valid until `tasks.WaitAll` is called.
@@ -928,8 +943,30 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
       }
       case ExecutorValue::ValueType::SEQUENCE: {
         return tasks.add_task([&value, value_pb]() {
-          return MaterializeSequence(value.sequence(),
-                                     value_pb->mutable_sequence());
+          const SequenceTensor& seq = value.sequence_tensor();
+          tensorflow::DataTypeVector output_types;
+          std::vector<tensorflow::PartialTensorShape> output_shapes;
+          if (seq.has_output_types_and_shapes()) {
+            output_types = seq.output_types();
+            output_shapes = seq.output_shapes();
+          } else {
+            auto types_and_shapes = TFF_TRY(
+                ExtractOutputTypesAndShapesFromGraphDef(seq.as_tensor()));
+            output_types = std::move(types_and_shapes.first);
+            output_shapes = std::move(types_and_shapes.second);
+          }
+          std::vector<std::vector<tensorflow::Tensor>> elements =
+              TFF_TRY(IterateDatasetFromGraphDef(seq.as_tensor(), output_types,
+                                                 output_shapes));
+          v0::Value::Sequence* sequence_pb = value_pb->mutable_sequence();
+          for (const auto& element_tensors : elements) {
+            v0::Value::Sequence::Element* element_pb =
+                sequence_pb->add_element();
+            for (const auto& t : element_tensors) {
+              *element_pb->add_flat_value() = TFF_TRY(ArrayFromTensor(t));
+            }
+          }
+          return absl::OkStatus();
         });
       }
       case ExecutorValue::ValueType::STRUCT: {
