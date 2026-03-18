@@ -23,7 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
-#include "tensorflow/c/checkpoint_reader.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tf_checkpoint_reader.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_status_helper.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -36,13 +36,14 @@
 namespace tensorflow_federated::aggregation::tensorflow {
 
 namespace tf = ::tensorflow;
+namespace tff_ckpt = ::tensorflow_federated::aggregation::checkpoint;
 
 absl::StatusOr<std::unique_ptr<CheckpointReader>> CheckpointReader::Create(
     const std::string& filename) {
   tf::TF_StatusPtr tf_status(TF_NewStatus());
   auto tf_checkpoint_reader =
-      std::make_unique<tf::checkpoint::CheckpointReader>(filename,
-                                                         tf_status.get());
+      std::make_unique<tff_ckpt::CheckpointReader>(filename,
+                                                   tf_status.get());
   if (TF_GetCode(tf_status.get()) != TF_OK) {
     return absl::InternalError(
         absl::StrFormat("Couldn't read checkpoint: %s : %s", filename,
@@ -70,7 +71,7 @@ absl::StatusOr<std::unique_ptr<CheckpointReader>> CheckpointReader::Create(
 }
 
 CheckpointReader::CheckpointReader(
-    std::unique_ptr<tf::checkpoint::CheckpointReader>
+    std::unique_ptr<tff_ckpt::CheckpointReader>
         tensorflow_checkpoint_reader,
     DataTypeMap data_type_map, TensorShapeMap shape_map)
     : tf_checkpoint_reader_(std::move(tensorflow_checkpoint_reader)),

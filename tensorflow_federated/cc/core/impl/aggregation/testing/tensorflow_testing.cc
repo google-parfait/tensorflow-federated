@@ -29,7 +29,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "tensorflow/c/checkpoint_reader.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tf_checkpoint_reader.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_status_helper.h"
 #include "tensorflow/cc/framework/ops.h"
@@ -51,7 +51,7 @@ namespace tf = ::tensorflow;
 
 using ::tensorflow::StatusFromTF_Status;
 using ::tensorflow::TF_StatusPtr;
-using ::tensorflow::checkpoint::CheckpointReader;
+using ::tensorflow_federated::aggregation::checkpoint::CheckpointReader;
 
 tf::Tensor CreateStringTfTensor(std::initializer_list<int64_t> dim_sizes,
                                 std::initializer_list<string_view> values) {

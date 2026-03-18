@@ -22,7 +22,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
-#include "tensorflow/c/checkpoint_reader.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tf_checkpoint_reader.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 
@@ -50,11 +50,14 @@ class CheckpointReader final {
   absl::StatusOr<Tensor> GetTensor(const std::string& name) const;
 
  private:
-  CheckpointReader(std::unique_ptr<::tensorflow::checkpoint::CheckpointReader>
-                       tensorflow_checkpoint_reader,
-                   DataTypeMap data_type_map, TensorShapeMap shape_map);
+  CheckpointReader(
+      std::unique_ptr<
+          ::tensorflow_federated::aggregation::checkpoint::CheckpointReader>
+          tensorflow_checkpoint_reader,
+      DataTypeMap data_type_map, TensorShapeMap shape_map);
 
-  std::unique_ptr<::tensorflow::checkpoint::CheckpointReader>
+  std::unique_ptr<
+      ::tensorflow_federated::aggregation::checkpoint::CheckpointReader>
       tf_checkpoint_reader_;
   DataTypeMap data_type_map_;
   TensorShapeMap shape_map_;

@@ -61,18 +61,35 @@ cc_test(
 )
 
 cc_library(
+    name = "tf_checkpoint_reader",
+    srcs = ["tf_checkpoint_reader.cc"],
+    hdrs = ["tf_checkpoint_reader.h"],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/log:check",
+        "@org_tensorflow//tensorflow/c:tf_status",
+        "@org_tensorflow//tensorflow/c:tf_status_helper",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:lib",
+        "@org_tensorflow//tensorflow/core/util/tensor_bundle",
+        "@org_tensorflow//tensorflow/core/util/tensor_bundle:naming",
+    ],
+)
+
+cc_library(
     name = "checkpoint_reader",
     srcs = ["checkpoint_reader.cc"],
     hdrs = ["checkpoint_reader.h"],
     deps = [
         ":converters",
+        ":tf_checkpoint_reader",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:str_format",
-        "@org_tensorflow//tensorflow/c:checkpoint_reader",
+        "@org_tensorflow//tensorflow/c:tf_status",  # buildcleaner: keep
         "@org_tensorflow//tensorflow/c:tf_status_headers",
         "@org_tensorflow//tensorflow/c:tf_status_helper",
         "@org_tensorflow//tensorflow/core:framework",
