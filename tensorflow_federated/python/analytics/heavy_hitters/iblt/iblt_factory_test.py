@@ -18,16 +18,16 @@ from typing import Optional, Union
 from absl import logging
 from absl.testing import parameterized
 import federated_language
-import grpc
 import numpy as np
 import tensorflow as tf
 
+from pybind11_abseil import status
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_factory
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 
 # Convenience Aliases
 _CharacterEncoding = chunkers.CharacterEncoding
@@ -91,7 +91,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_sync_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
   def test_capacity_validation(self):
     with self.assertRaisesRegex(ValueError, 'capacity'):
@@ -224,7 +224,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
         capacity=10, string_max_bytes=5, repetitions=3, seed=0
     )
     iblt_agg_process = iblt_agg_factory.create(value_type)
-    with self.assertRaises(grpc.RpcError):
+    with self.assertRaises(status.StatusNotOk):
       iblt_agg_process.next(iblt_agg_process.initialize(), client_data)
 
   @parameterized.named_parameters(

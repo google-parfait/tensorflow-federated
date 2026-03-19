@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_clipping
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_factory
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 
 
 class IbltClippingTest(parameterized.TestCase):
@@ -140,5 +140,5 @@ class IbltClippingTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_local_cpp_execution_context()
+  cpp_execution_contexts.set_sync_local_cpp_execution_context()
   tf.test.main()

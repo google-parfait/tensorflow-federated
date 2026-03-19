@@ -112,7 +112,7 @@ py_test(
     srcs = ["count_distinct_test.py"],
     deps = [
         ":count_distinct",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/backends/test:cpp_execution_contexts",
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//numpy",

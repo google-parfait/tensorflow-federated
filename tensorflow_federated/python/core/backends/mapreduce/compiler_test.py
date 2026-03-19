@@ -21,15 +21,36 @@ from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
-from tensorflow_federated.python.core.impl.executor_stacks import executor_factory  # pylint: enable=line-too-long
+from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 DEFAULT_GRAPPLER_CONFIG = tf.compat.v1.ConfigProto()
 
 
 def _create_test_context():
-  factory = executor_factory.local_cpp_executor_factory()
+  def _create_tensorflow_backend_execution_stack(
+      max_concurrent_computation_calls: int,
+  ) -> executor_bindings.Executor:
+    tensorflow_executor = (
+        tensorflow_executor_bindings.create_tensorflow_executor(
+            max_concurrent_computation_calls
+        )
+    )
+    reference_resolving_executor = (
+        executor_bindings.create_reference_resolving_executor(
+            tensorflow_executor
+        )
+    )
+    return executor_bindings.create_sequence_executor(
+        reference_resolving_executor
+    )
+
+  factory = cpp_executor_factory.local_cpp_executor_factory(
+      leaf_executor_fn=_create_tensorflow_backend_execution_stack
+  )
   return federated_language.framework.SyncExecutionContext(
       executor_fn=factory,
       transform_args=tensorflow_computation.transform_args,

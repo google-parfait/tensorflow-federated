@@ -1,0 +1,10 @@
+--- a/third_party/xla/third_party/py/numpy/BUILD.bazel
++++ b/third_party/xla/third_party/py/numpy/BUILD.bazel
+@@ -9,5 +9,5 @@
+ 
+ alias(
+     name = "headers",
+-    actual = "@pypi//numpy:numpy_headers",
++    actual = "@pypi_numpy//:numpy_headers",
+ )
+ 

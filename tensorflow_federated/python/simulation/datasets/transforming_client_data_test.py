@@ -17,7 +17,7 @@ import re
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
 from tensorflow_federated.python.simulation.datasets import transforming_client_data
 
@@ -173,5 +173,5 @@ class TransformingClientDataTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_local_cpp_execution_context()
+  cpp_execution_contexts.set_sync_local_cpp_execution_context()
   tf.test.main()

@@ -37,7 +37,7 @@ py_test(
     srcs = ["image_classification_preprocessing_test.py"],
     deps = [
         ":image_classification_preprocessing",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@pypi//absl_py",
         "@pypi//tensorflow",
@@ -66,7 +66,7 @@ py_test(
     srcs = ["image_classification_tasks_test.py"],
     deps = [
         ":image_classification_tasks",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/models:resnet_models",

@@ -20,7 +20,7 @@ import federated_language
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.learning.metrics import aggregation_utils
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 
@@ -201,5 +201,5 @@ class CheckBuildFinalizerComputationTest(
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_local_cpp_execution_context()
+  cpp_execution_contexts.set_sync_local_cpp_execution_context()
   tf.test.main()

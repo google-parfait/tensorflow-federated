@@ -21,7 +21,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import quantile_estimation
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
@@ -1154,5 +1154,5 @@ class FillMissingMetricValueRangesTest(
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_test_cpp_execution_context()
+  cpp_execution_contexts.set_sync_test_cpp_execution_context()
   tf.test.main()

@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_lib as hihi
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 
 MOCK_TIME_SECONDS = 314159.2653
 EXPECTED_ROUND_TIMESTAMP = 314159
@@ -764,5 +764,5 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_test_cpp_execution_context()
+  cpp_execution_contexts.set_sync_test_cpp_execution_context()
   tf.test.main()

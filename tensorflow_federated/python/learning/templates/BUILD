@@ -54,7 +54,7 @@ py_test(
     deps = [
         ":apply_optimizer_finalizer",
         ":finalizers",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
@@ -134,7 +134,7 @@ py_test(
         ":model_delta_client_work",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:sum_factory",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
@@ -167,7 +167,7 @@ py_test(
     srcs = ["distributors_test.py"],
     deps = [
         ":distributors",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
@@ -287,7 +287,7 @@ py_test(
     deps = [
         ":client_works",
         ":model_delta_client_work",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "//tensorflow_federated/python/core/templates:measured_process",
@@ -338,7 +338,7 @@ py_test(
     deps = [
         ":client_works",
         ":proximal_client_work",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "//tensorflow_federated/python/core/templates:measured_process",

@@ -51,9 +51,6 @@ py_test(
 py_library(
     name = "cpp_to_python_executor",
     srcs = ["cpp_to_python_executor.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":executor_bindings",
         ":executors_errors",
@@ -66,9 +63,6 @@ py_library(
 py_test(
     name = "cpp_to_python_executor_test",
     srcs = ["cpp_to_python_executor_test.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":cpp_to_python_executor",
         ":executor_bindings",
@@ -101,9 +95,6 @@ py_test(
 py_library(
     name = "executor_bindings",
     srcs = ["executor_bindings.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":data_conversions",
         "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
@@ -115,24 +106,22 @@ py_test(
     name = "executor_bindings_test",
     timeout = "moderate",
     srcs = ["executor_bindings_test.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":executor_bindings",
         ":executor_test_utils_bindings",
         "@federated_language//federated_language",
         "@pypi//absl_py",
+        "@pypi//attrs",
+        "@pypi//dm_tree",
+        "@pypi//ml_dtypes",
         "@pypi//portpicker",
+        "@pypi//typing_extensions",
     ],
 )
 
 py_library(
     name = "executor_test_utils_bindings",
     srcs = ["executor_test_utils_bindings.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = ["//tensorflow_federated/cc/core/impl/executors:executor_test_utils_bindings"],
 )
 
@@ -161,6 +150,7 @@ py_library(
     srcs = ["executors_errors.py"],
     deps = [
         "@federated_language//federated_language",
+        "@pybind11_abseil//pybind11_abseil:status",
         "@pypi//grpcio",
         "@pypi//typing_extensions",
     ],
@@ -223,6 +213,7 @@ py_library(
 py_test(
     name = "remote_executor_grpc_stub_test",
     srcs = ["remote_executor_grpc_stub_test.py"],
+    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     deps = [
         ":remote_executor_grpc_stub",
         ":value_serialization",

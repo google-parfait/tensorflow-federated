@@ -47,7 +47,7 @@ py_test(
     srcs = ["autoencoder_tasks_test.py"],
     deps = [
         ":autoencoder_tasks",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@pypi//absl_py",
@@ -78,7 +78,7 @@ py_test(
     deps = [
         ":char_recognition_tasks",
         ":emnist_models",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@pypi//absl_py",
@@ -116,7 +116,7 @@ py_test(
     srcs = ["emnist_preprocessing_test.py"],
     deps = [
         ":emnist_preprocessing",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@pypi//absl_py",
         "@pypi//tensorflow",

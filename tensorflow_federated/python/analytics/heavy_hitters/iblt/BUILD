@@ -53,7 +53,7 @@ py_test(
     deps = [
         ":iblt_clipping",
         ":iblt_factory",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//numpy",
@@ -148,7 +148,7 @@ py_test(
     shard_count = 10,
     deps = [
         ":iblt_tff",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/backends/test:cpp_execution_contexts",
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//numpy",
@@ -205,8 +205,9 @@ py_test(
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/aggregators:sum_factory",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/backends/test:cpp_execution_contexts",
         "@federated_language//federated_language",
+        "@pybind11_abseil//pybind11_abseil:status",
         "@pypi//absl_py",
         "@pypi//numpy",
         "@pypi//tensorflow",

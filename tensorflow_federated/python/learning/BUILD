@@ -112,7 +112,7 @@ py_test(
     deps = [
         ":debug_measurements",
         "//tensorflow_federated/python/aggregators:mean",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//numpy",

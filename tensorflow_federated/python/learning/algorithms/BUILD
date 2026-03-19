@@ -260,7 +260,7 @@ py_test(
     srcs = ["kmeans_clustering_test.py"],
     deps = [
         ":kmeans_clustering",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//numpy",
@@ -313,7 +313,7 @@ py_cpu_gpu_test(
         ":mime",
         "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/aggregators:mean",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
@@ -374,7 +374,7 @@ py_cpu_gpu_test(
     srcs = ["fed_eval_test.py"],
     deps = [
         ":fed_eval",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
@@ -421,7 +421,7 @@ py_cpu_gpu_test(
     tags = ["nokokoro"],
     deps = [
         ":personalization_eval",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/learning:loop_builder",
         "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/learning/models:model_examples",
@@ -464,7 +464,7 @@ py_cpu_gpu_test(
     deps = [
         ":fed_eval",
         ":fed_multi_model_eval",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:type_conversions",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",

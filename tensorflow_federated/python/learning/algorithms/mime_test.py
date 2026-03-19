@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
@@ -725,5 +725,5 @@ class FunctionalMimeLiteTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_local_cpp_execution_context()
+  cpp_execution_contexts.set_sync_local_cpp_execution_context()
   tf.test.main()

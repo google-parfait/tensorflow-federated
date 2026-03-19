@@ -230,9 +230,6 @@ py_test(
 py_library(
     name = "tensorflow_executor_bindings",
     srcs = ["tensorflow_executor_bindings.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings",
         "@pypi//tensorflow",
@@ -242,9 +239,6 @@ py_library(
 py_test(
     name = "tensorflow_executor_bindings_test",
     srcs = ["tensorflow_executor_bindings_test.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":tensorflow_computation_factory",
         ":tensorflow_executor_bindings",

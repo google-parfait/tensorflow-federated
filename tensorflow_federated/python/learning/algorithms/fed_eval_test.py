@@ -22,7 +22,7 @@ import federated_language
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
@@ -518,5 +518,5 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_local_cpp_execution_context()
+  cpp_execution_contexts.set_sync_local_cpp_execution_context()
   absltest.main()

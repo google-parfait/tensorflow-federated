@@ -57,9 +57,6 @@ py_test(
 py_library(
     name = "cpp_execution_contexts",
     srcs = ["cpp_execution_contexts.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
@@ -73,9 +70,6 @@ py_library(
 py_test(
     name = "cpp_execution_contexts_test",
     srcs = ["cpp_execution_contexts_test.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":cpp_execution_contexts",
         ":execution_contexts",
@@ -136,9 +130,11 @@ py_test(
     srcs = ["mergeable_comp_compiler_test.py"],
     deps = [
         ":mergeable_comp_compiler",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
-        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
+        "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//numpy",

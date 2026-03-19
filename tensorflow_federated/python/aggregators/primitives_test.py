@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import primitives
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 
 
 class FederatedSampleTest(tf.test.TestCase):
@@ -1305,5 +1305,5 @@ def _build_test_sum_fn_tff_bounds(
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_test_cpp_execution_context()
+  cpp_execution_contexts.set_sync_test_cpp_execution_context()
   tf.test.main()

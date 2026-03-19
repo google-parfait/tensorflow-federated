@@ -47,7 +47,7 @@ py_test(
         ":hierarchical_histogram_factory",
         "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/backends/test:cpp_execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
@@ -77,7 +77,7 @@ py_test(
     shard_count = 6,
     deps = [
         ":hierarchical_histogram_lib",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/backends/test:cpp_execution_contexts",
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//numpy",
@@ -143,7 +143,7 @@ py_test(
     deps = [
         ":clipping_factory",
         "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/backends/test:cpp_execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",

@@ -20,7 +20,7 @@ import federated_language
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
@@ -779,5 +779,5 @@ class FinalizeThenSampleTest(parameterized.TestCase, tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_test_cpp_execution_context()
+  cpp_execution_contexts.set_sync_test_cpp_execution_context()
   tf.test.main()

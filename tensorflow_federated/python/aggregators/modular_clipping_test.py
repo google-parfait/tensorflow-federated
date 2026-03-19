@@ -21,7 +21,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import modular_clipping
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -291,5 +291,5 @@ class StddevEstimationTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_test_cpp_execution_context()
+  cpp_execution_contexts.set_sync_test_cpp_execution_context()
   tf.test.main()

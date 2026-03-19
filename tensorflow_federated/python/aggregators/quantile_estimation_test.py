@@ -22,7 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.aggregators.privacy import quantile as quantile_query
 from tensorflow_federated.python.aggregators.privacy import query as dp_query
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 from tensorflow_federated.python.core.templates import estimation_process
 
 QEProcess = quantile_estimation.PrivateQuantileEstimationProcess
@@ -225,5 +225,5 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_test_cpp_execution_context()
+  cpp_execution_contexts.set_sync_test_cpp_execution_context()
   tf.test.main()

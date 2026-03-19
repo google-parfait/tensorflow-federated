@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.learning import debug_measurements
 
 FloatType = federated_language.TensorType(np.float32)
@@ -578,5 +578,5 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_local_cpp_execution_context()
+  cpp_execution_contexts.set_sync_local_cpp_execution_context()
   tf.test.main()

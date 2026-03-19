@@ -47,7 +47,7 @@ py_test(
     srcs = ["tag_prediction_preprocessing_test.py"],
     deps = [
         ":tag_prediction_preprocessing",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@pypi//absl_py",
         "@pypi//tensorflow",
@@ -115,7 +115,7 @@ py_test(
     srcs = ["word_prediction_preprocessing_test.py"],
     deps = [
         ":word_prediction_preprocessing",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@pypi//absl_py",
         "@pypi//tensorflow",
@@ -146,7 +146,7 @@ py_test(
     srcs = ["word_prediction_tasks_test.py"],
     deps = [
         ":word_prediction_tasks",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@pypi//absl_py",

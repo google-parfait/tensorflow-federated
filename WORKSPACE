@@ -119,6 +119,7 @@ http_archive(
     patch_args = ["-p1"],
     patches = [
         "//third_party/tensorflow:internal_visibility.patch",
+        "//third_party/tensorflow:numpy_headers.patch",
     ],
     sha256 = "ef3568bb4865d6c1b2564fb5689c19b6b9a5311572cd1f2ff9198636a8520921",
     strip_prefix = "tensorflow-2.21.0",
@@ -127,9 +128,9 @@ http_archive(
 
 http_archive(
     name = "pybind11_bazel",
-    sha256 = "e8355ee56c2ff772334b4bfa22be17c709e5573f6d1d561c7176312156c27bd4",
-    strip_prefix = "pybind11_bazel-2.11.1",
-    url = "https://github.com/pybind/pybind11_bazel/archive/refs/tags/v2.11.1.tar.gz",
+    sha256 = "cae680670bfa6e82703c03f2a3c995408cdcbf43616d7bdd198ef45d3c327731",
+    strip_prefix = "pybind11_bazel-2.13.6",
+    url = "https://github.com/pybind/pybind11_bazel/archive/refs/tags/v2.13.6.tar.gz",
 )
 
 http_archive(
@@ -155,10 +156,10 @@ http_archive(
 # Required by pybind11_abseil and pybind11_protobuf.
 http_archive(
     name = "pybind11",
-    build_file = "@pybind11_bazel//:pybind11.BUILD",
-    sha256 = "6bd528c4dbe2276635dc787b6b1f2e5316cf6b49ee3e150264e455a0d68d19c1",
-    strip_prefix = "pybind11-2.9.2",
-    url = "https://github.com/pybind/pybind11/archive/refs/tags/v2.9.2.tar.gz",
+    build_file = "@pybind11_bazel//:pybind11-BUILD.bazel",
+    sha256 = "efc901aa0aab439a3fea6efeaf930b5a349fb06394bf845c64ce15a9cf8f0240",
+    strip_prefix = "pybind11-2.13.4",
+    url = "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.4.tar.gz",
 )
 
 # Required by com_github_grpc_grpc. This commit is determined by

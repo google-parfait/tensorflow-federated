@@ -25,9 +25,6 @@ py_library(
 py_library(
     name = "cpp_executor_factory",
     srcs = ["cpp_executor_factory.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:cpp_to_python_executor",
@@ -42,9 +39,6 @@ py_library(
 py_test(
     name = "cpp_executor_factory_test",
     srcs = ["cpp_executor_factory_test.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
@@ -73,9 +67,6 @@ py_library(
 py_library(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:data_conversions",
@@ -87,15 +78,16 @@ py_library(
 py_test(
     name = "executor_stack_bindings_test",
     srcs = ["executor_stack_bindings_test.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
         "@pypi//absl_py",
+        "@pypi//attrs",
+        "@pypi//dm_tree",
+        "@pypi//ml_dtypes",
         "@pypi//numpy",
+        "@pypi//typing_extensions",
     ],
 )
 

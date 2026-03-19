@@ -23,7 +23,7 @@ import federated_language
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
@@ -237,7 +237,7 @@ class GetModelIdsForMultiModelEvalTest(tf.test.TestCase):
 
 def _create_test_context() -> federated_language.program.FederatedContext:
   return federated_language.program.NativeFederatedContext(
-      execution_contexts.create_async_local_cpp_execution_context()
+      cpp_execution_contexts.create_async_local_cpp_execution_context()
   )
 
 

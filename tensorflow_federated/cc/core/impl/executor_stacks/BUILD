@@ -23,9 +23,6 @@ licenses(["notice"])
 pybind_extension(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.cc"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":remote_stacks",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",

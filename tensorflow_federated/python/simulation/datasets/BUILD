@@ -290,7 +290,7 @@ py_test(
     srcs = ["client_data_test.py"],
     deps = [
         ":client_data",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "@pypi//absl_py",
         "@pypi//tensorflow",
@@ -314,7 +314,7 @@ py_test(
     srcs = ["file_per_user_client_data_test.py"],
     deps = [
         ":file_per_user_client_data",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "@federated_language//federated_language",
         "@pypi//tensorflow",
     ],
@@ -336,7 +336,7 @@ py_test(
     srcs = ["from_tensor_slices_client_data_test.py"],
     deps = [
         ":from_tensor_slices_client_data",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "@federated_language//federated_language",
         "@pypi//absl_py",
@@ -362,7 +362,7 @@ py_test(
     srcs = ["sql_client_data_test.py"],
     deps = [
         ":sql_client_data",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "@pypi//absl_py",
         "@pypi//tensorflow",
     ],
@@ -384,7 +384,7 @@ py_test(
     deps = [
         ":from_tensor_slices_client_data",
         ":transforming_client_data",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "@pypi//tensorflow",
     ],
 )

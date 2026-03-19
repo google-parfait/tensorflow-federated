@@ -60,9 +60,6 @@ py_test(
 py_library(
     name = "cpp_execution_contexts",
     srcs = ["cpp_execution_contexts.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/backends/native:compiler",
@@ -79,9 +76,6 @@ py_library(
 py_test(
     name = "cpp_execution_contexts_test",
     srcs = ["cpp_execution_contexts_test.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":cpp_execution_contexts",
         ":execution_contexts",

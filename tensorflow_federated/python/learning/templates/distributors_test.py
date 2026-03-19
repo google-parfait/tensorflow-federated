@@ -19,7 +19,7 @@ import federated_language
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
@@ -373,7 +373,7 @@ class BroadcastProcessExecutionTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_local_cpp_execution_context(
+  cpp_execution_contexts.set_sync_local_cpp_execution_context(
       default_num_clients=1
   )
   tf.test.main()

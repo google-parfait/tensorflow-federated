@@ -41,7 +41,7 @@ py_test(
     srcs = ["evaluation_program_logic_test.py"],
     deps = [
         ":evaluation_program_logic",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/templates:composers",
@@ -85,7 +85,7 @@ py_test(
         ":evaluation_program_logic",
         ":program_logic",
         ":training_program_logic",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@federated_language//federated_language",

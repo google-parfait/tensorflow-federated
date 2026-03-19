@@ -22,7 +22,7 @@ from absl.testing import absltest
 import federated_language
 import numpy as np
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.programs import program_logic
 from tensorflow_federated.python.learning.programs import training_program_logic
@@ -81,7 +81,7 @@ class TaskManagerTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
 
 def _create_test_context() -> federated_language.program.FederatedContext:
   return federated_language.program.NativeFederatedContext(
-      execution_contexts.create_async_local_cpp_execution_context()
+      cpp_execution_contexts.create_async_local_cpp_execution_context()
   )
 
 

@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics import count_distinct
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 
 
 def hll_sketch_python(values):
@@ -56,7 +56,7 @@ class CountDistinctComputationTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_sync_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
   def test_constants(self):
     self.assertIn(count_distinct.HLL_SKETCH_SIZE, [16, 32, 64])
@@ -84,7 +84,7 @@ class CountDistinctExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_sync_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
   @parameterized.named_parameters(('default', False), ('secure', True))
   def test_runs_end_to_end_without_error(self, secagg=False):

@@ -77,6 +77,10 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     with self.subTest('local'):
       identity(large_struct)
 
+    with self.subTest('federated'):
+      federated_identity = _make_federated(identity)
+      federated_identity([large_struct])
+
   @test_contexts.with_contexts(*_CONTEXTS)
   def test_large_named_struct_identity(self):
     self.skipTest('b/410811127')
@@ -126,6 +130,10 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
     with self.subTest('local'):
       identity(large_struct)
+
+    with self.subTest('federated'):
+      federated_identity = _make_federated(identity)
+      federated_identity([large_struct])
 
   @test_contexts.with_contexts(*_CONTEXTS)
   def test_small_struct_identity(self):
@@ -196,6 +204,10 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
     with self.subTest('local'):
       identity(small_struct)
+
+    with self.subTest('federated'):
+      federated_identity = _make_federated(identity)
+      federated_identity([small_struct])
 
 
 if __name__ == '__main__':

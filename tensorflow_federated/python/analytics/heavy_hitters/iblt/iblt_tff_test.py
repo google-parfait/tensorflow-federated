@@ -24,7 +24,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tff
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 
 DATA = [
     ['hello', 'hey', 'hi', 'hi', 'hi', '新年快乐'],
@@ -257,7 +257,7 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_sync_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
   @parameterized.named_parameters(
       ('lower_cap_seed_0_batch_1', 10, 20, 3, 0, 1, None, False),
@@ -436,7 +436,7 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_sync_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
   @parameterized.named_parameters(
       ('lower_cap_seed_0_batch_1', 10, 20, 3, 0, 1, None, False),

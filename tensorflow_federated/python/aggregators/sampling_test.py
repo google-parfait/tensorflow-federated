@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import sampling
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 
 # Convenience type aliases.
 FunctionType = federated_language.FunctionType
@@ -787,5 +787,5 @@ class UnweightedReservoirSamplingFactoryTest(
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_local_cpp_execution_context()
+  cpp_execution_contexts.set_sync_local_cpp_execution_context()
   tf.test.main()

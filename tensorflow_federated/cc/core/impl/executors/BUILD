@@ -280,9 +280,6 @@ cc_library(
 pybind_extension(
     name = "executor_bindings",
     srcs = ["executor_bindings.cc"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
@@ -371,9 +368,6 @@ cc_library(
 pybind_extension(
     name = "executor_test_utils_bindings",
     srcs = ["executor_test_utils_bindings.cc"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     visibility = ["//visibility:public"],
     deps = [":mock_executor"],
 )
@@ -846,9 +840,6 @@ cc_library(
 pybind_extension(
     name = "tensorflow_bindings",
     srcs = ["tensorflow_bindings.cc"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
     deps = [
         ":tensorflow_executor",
         "//tensorflow_federated/proto/v0:executor_cc_proto",

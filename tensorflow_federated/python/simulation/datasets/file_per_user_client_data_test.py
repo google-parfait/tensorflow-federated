@@ -27,7 +27,7 @@ import tempfile
 import federated_language
 import tensorflow as tf
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.simulation.datasets import file_per_user_client_data
 
 # A fake columnar dataset of (user id, value 1, value 2, value 3), roughly
@@ -354,5 +354,5 @@ class PreprocessFilePerUserClientDataTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_sync_local_cpp_execution_context()
+  cpp_execution_contexts.set_sync_local_cpp_execution_context()
   tf.test.main()
