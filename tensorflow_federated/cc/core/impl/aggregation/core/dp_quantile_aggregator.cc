@@ -16,7 +16,9 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_quantile_aggregator.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
@@ -81,24 +83,71 @@ Status DPQuantileAggregator<T>::MergeWith(TensorAggregator&& other) {
   TFF_CHECK(other_ptr != nullptr);
   TFF_RETURN_IF_ERROR(other_ptr->CheckValid());
 
-  // Then use std::vector<T>::insert to copy as much as possible to our buffer.
-  int remaining_capacity = kDPQuantileMaxInputs - buffer_.size();
-  int other_buffer_size = other_ptr->GetBufferSize();
-  int num_to_insert = remaining_capacity < other_buffer_size
-                          ? remaining_capacity
-                          : other_buffer_size;
-  buffer_.insert(buffer_.end(), other_ptr->buffer_.begin(),
-                 other_ptr->buffer_.begin() + num_to_insert);
+  int other_num_inputs = other_ptr->GetNumInputs();
 
-  // For any remaining elements, call InsertWithReservoirSampling.
-  auto itr = other_ptr->buffer_.begin() + num_to_insert;
-  while (itr != other_ptr->buffer_.end()) {
-    InsertWithReservoirSampling(*itr);
-    itr++;
+  // If combined population fits, just concatenate.
+  if (num_inputs_ + other_num_inputs <= kDPQuantileMaxInputs) {
+    buffer_.insert(buffer_.end(), other_ptr->buffer_.begin(),
+                   other_ptr->buffer_.end());
+    num_inputs_ = num_inputs_ + other_num_inputs;
+    return TFF_STATUS(OK);
   }
 
-  num_inputs_ += other_ptr->GetNumInputs();
-  reservoir_sampling_count_ += other_ptr->GetReservoirSamplingCount();
+  // Sample without replacement from all items, weighted by the number of items
+  // in each reservoir. Here we calculate the number from each reservoir.
+  int num_to_draw = kDPQuantileMaxInputs;
+  int from_here = 0;
+  int from_other = 0;
+  int remaining_here = num_inputs_;
+  int remaining_other = other_num_inputs;
+  while (num_to_draw > 0) {
+    int total_remaining = remaining_here + remaining_other;
+    if (absl::Uniform(bit_gen_, 0, total_remaining) < remaining_here) {
+      from_here++;
+      remaining_here--;
+    } else {
+      from_other++;
+      remaining_other--;
+    }
+    num_to_draw--;
+  }
+
+  // Here we sample `from_here` elements without replacement from this reservoir
+  // and `from_other` elements without replacement from the other reservoir.
+  std::vector<T> new_buffer;
+  new_buffer.reserve(kDPQuantileMaxInputs);
+
+  int sampled_here = 0;
+  for (size_t i = 0; i < buffer_.size() && sampled_here < from_here; ++i) {
+    if (absl::Uniform(bit_gen_, 0, static_cast<int>(buffer_.size() - i)) <
+        from_here - sampled_here) {
+      new_buffer.push_back(buffer_[i]);
+      sampled_here++;
+    }
+  }
+
+  int sampled_other = 0;
+  for (size_t i = 0;
+       i < other_ptr->buffer_.size() && sampled_other < from_other; ++i) {
+    if (absl::Uniform(bit_gen_, 0,
+                      static_cast<int>(other_ptr->buffer_.size() - i)) <
+        from_other - sampled_other) {
+      new_buffer.push_back(other_ptr->buffer_[i]);
+      sampled_other++;
+    }
+  }
+
+  // Shuffle `new_buffer` to eliminate internal bias for future merges.
+  for (size_t i = 0; i < new_buffer.size(); ++i) {
+    int swap_idx = absl::Uniform(bit_gen_, static_cast<int>(i),
+                                 static_cast<int>(new_buffer.size()));
+    std::swap(new_buffer[i], new_buffer[swap_idx]);
+  }
+
+  static_cast<std::vector<T>&>(buffer_) = std::move(new_buffer);
+  num_inputs_ = num_inputs_ + other_num_inputs;
+  reservoir_sampling_count_ =
+      std::max(0, num_inputs_ - static_cast<int>(buffer_.size()));
 
   return TFF_STATUS(OK);
 }
@@ -181,7 +230,9 @@ StatusOr<OutputTensorList> DPQuantileAggregator<T>::ReportWithEpsilonAndDelta(
       PrefixSumAboveThreshold(epsilon, histogram, target_rank, max_bucket));
 
   // Get the quantile estimate from the bucket.
-  auto quantile_estimate = BucketUpperBound(quantile_bucket);
+  auto quantile_estimate = (quantile_bucket == max_bucket)
+                               ? kDPQuantileMaxOutputMagnitude
+                               : BucketUpperBound(quantile_bucket);
 
   return SingleScalarTensor(quantile_estimate);
 }
@@ -220,8 +271,8 @@ StatusOr<int> DPQuantileAggregator<T>::PrefixSumAboveThreshold(
     }
 
     // If the noisy prefix_sum is above the noisy threshold, stop the loop.
-    double noisy_prefix_sum = mechanism->AddNoise(prefix_sum);
-    if (noisy_prefix_sum >= noisy_threshold) {
+    if (mechanism->NoisedValueAboveThreshold(/*result=*/prefix_sum,
+                                             /*threshold=*/noisy_threshold)) {
       break;
     }
   }

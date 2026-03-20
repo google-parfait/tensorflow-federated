@@ -17,6 +17,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_quantile_aggregator.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <random>
@@ -347,42 +348,163 @@ TEST(DPQuantileAggregatorTest, DifferentTargetQuantileIncompatible) {
 // but stay <= kDPQuantileMaxInputs. The total number of inputs should be the
 // sum of the two aggregators' input counts.
 TEST(DPQuantileAggregatorTest, MergeWithSameTargetQuantile) {
-  auto aggregator_status1 = CreateDPQuantileAggregator(DT_DOUBLE, 0.5);
-  TFF_EXPECT_OK(aggregator_status1);
-  auto& aggregator1 =
-      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status1.value());
   int kNumInputs1 = kDPQuantileMaxInputs - 10;
-  for (int i = 0; i < kNumInputs1; ++i) {
-    double val = 0.5 + i;
-    Tensor t =
-        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})).value();
-    auto accumulate_status = aggregator1.Accumulate(InputTensorList({&t}));
-    TFF_EXPECT_OK(accumulate_status);
-  }
-  EXPECT_EQ(aggregator1.GetBufferSize(),
-            std::min(kNumInputs1, kDPQuantileMaxInputs));
+  // Vary size of second population to cover the case where total size is below
+  // kDPQuantileMaxInputs and the case where it is above.
+  for (int num_inputs2 : {8, 18}) {
+    TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> base_aggregator1,
+                             CreateDPQuantileAggregator(DT_DOUBLE, 0.5));
+    auto& aggregator1 =
+        dynamic_cast<DPQuantileAggregator<double>&>(*base_aggregator1);
 
-  auto aggregator_status2 = CreateDPQuantileAggregator(DT_DOUBLE, 0.5);
-  TFF_EXPECT_OK(aggregator_status2);
-  auto& aggregator2 =
-      dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status2.value());
-  int kNumInputs2 = kDPQuantileMaxInputs + 10;
-  for (int i = 0; i < kNumInputs2; ++i) {
-    double val = 0.5 + i;
-    Tensor t =
-        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})).value();
-    auto accumulate_status = aggregator2.Accumulate(InputTensorList({&t}));
-    TFF_EXPECT_OK(accumulate_status);
-  }
-  EXPECT_EQ(aggregator2.GetBufferSize(),
-            std::min(kNumInputs2, kDPQuantileMaxInputs));
+    for (int i = 0; i < kNumInputs1; ++i) {
+      double val = 0.5 + i;
+      TFF_ASSERT_OK_AND_ASSIGN(
+          Tensor t,
+          Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})));
+      auto accumulate_status = aggregator1.Accumulate(InputTensorList({&t}));
+      TFF_EXPECT_OK(accumulate_status);
+    }
+    EXPECT_EQ(aggregator1.GetBufferSize(),
+              std::min(kNumInputs1, kDPQuantileMaxInputs));
 
-  auto merge_status = aggregator1.MergeWith(std::move(aggregator2));
-  TFF_EXPECT_OK(merge_status);
-  EXPECT_EQ(aggregator1.GetBufferSize(), kDPQuantileMaxInputs);
-  EXPECT_EQ(aggregator1.GetNumInputs(), kNumInputs1 + kNumInputs2);
-  EXPECT_EQ(aggregator1.GetReservoirSamplingCount(),
-            std::max(0, kNumInputs1 + kNumInputs2 - kDPQuantileMaxInputs));
+    TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> base_aggregator2,
+                             CreateDPQuantileAggregator(DT_DOUBLE, 0.5));
+    auto& aggregator2 =
+        dynamic_cast<DPQuantileAggregator<double>&>(*base_aggregator2);
+    for (int i = 0; i < num_inputs2; ++i) {
+      double val = 0.5 + i;
+      TFF_ASSERT_OK_AND_ASSIGN(
+          Tensor t,
+          Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})));
+      auto accumulate_status = aggregator2.Accumulate(InputTensorList({&t}));
+      TFF_EXPECT_OK(accumulate_status);
+    }
+    EXPECT_EQ(aggregator2.GetBufferSize(),
+              std::min(num_inputs2, kDPQuantileMaxInputs));
+
+    auto merge_status = aggregator1.MergeWith(std::move(aggregator2));
+    TFF_EXPECT_OK(merge_status);
+    EXPECT_EQ(aggregator1.GetBufferSize(),
+              std::min(kNumInputs1 + num_inputs2, kDPQuantileMaxInputs));
+    EXPECT_EQ(aggregator1.GetNumInputs(), kNumInputs1 + num_inputs2);
+    EXPECT_EQ(aggregator1.GetReservoirSamplingCount(),
+              std::max(0, kNumInputs1 + num_inputs2 - kDPQuantileMaxInputs));
+  }
+}
+
+// Statistical test to ensure that merging two reservoirs results in a uniform
+// sample of the combined population.
+TEST(DPQuantileAggregatorTest, MergeWithUniformityStatisticalTest) {
+  Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
+                                  {CreateTensorSpec("value", DT_DOUBLE)},
+                                  {CreateTensorSpec("value", DT_DOUBLE)},
+                                  {CreateDPQuantileParameters(0.5)},
+                                  {}};
+
+  TFF_ASSERT_OK_AND_ASSIGN(const auto* base_factory,
+                           GetAggregatorFactory(kDPQuantileUri));
+  auto factory = dynamic_cast<const DPQuantileAggregatorFactory*>(base_factory);
+  // Standard deviation for Bernoulli(k, 0.5)
+  double stddev = sqrt(kDPQuantileMaxInputs * 0.5 * 0.5);
+
+  // Case 1: Merge two equal populations
+  // Expect roughly equal numbers of zeros and ones in the merged reservoir.
+  {
+    int num_inputs = 2 * kDPQuantileMaxInputs;
+
+    DPQuantileAggregatorState state_a;
+    state_a.set_num_inputs(num_inputs);
+    state_a.set_reservoir_sampling_count(kDPQuantileMaxInputs);
+    std::vector<double> buffer_a(kDPQuantileMaxInputs, 0.0);
+    state_a.set_buffer(
+        std::string(reinterpret_cast<const char*>(buffer_a.data()),
+                    buffer_a.size() * sizeof(double)));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg_a,
+        factory->Deserialize(intrinsic, state_a.SerializeAsString()));
+
+    DPQuantileAggregatorState state_b;
+    state_b.set_num_inputs(num_inputs);
+    state_b.set_reservoir_sampling_count(kDPQuantileMaxInputs);
+    std::vector<double> buffer_b(kDPQuantileMaxInputs, 1.0);
+    state_b.set_buffer(
+        std::string(reinterpret_cast<const char*>(buffer_b.data()),
+                    buffer_b.size() * sizeof(double)));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg_b,
+        factory->Deserialize(intrinsic, state_b.SerializeAsString()));
+
+    TFF_EXPECT_OK(agg_a->MergeWith(std::move(*agg_b)));
+
+    TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_final,
+                             std::move(*agg_a).Serialize());
+    DPQuantileAggregatorState state_final;
+    state_final.ParseFromString(serialized_final);
+
+    const double* final_data =
+        reinterpret_cast<const double*>(state_final.buffer().data());
+    int zero_count = 0;
+    int one_count = 0;
+    for (int i = 0; i < kDPQuantileMaxInputs; ++i) {
+      if (final_data[i] == 0.0)
+        zero_count++;
+      else if (final_data[i] == 1.0)
+        one_count++;
+    }
+    EXPECT_EQ(zero_count + one_count, kDPQuantileMaxInputs);
+
+    EXPECT_NEAR(zero_count, kDPQuantileMaxInputs / 2, 10 * stddev);
+  }
+
+  // Case 2: Merge unequal populations.
+  // Expect roughly 1/4 zeros.
+  {
+    int a_size = 2 * kDPQuantileMaxInputs;  // 2 / (2+6) = 1/4
+    int b_size = 6 * kDPQuantileMaxInputs;
+
+    DPQuantileAggregatorState state_a;
+    state_a.set_num_inputs(a_size);
+    state_a.set_reservoir_sampling_count(a_size - kDPQuantileMaxInputs);
+    std::vector<double> buffer_a(kDPQuantileMaxInputs, 0.0);
+    state_a.set_buffer(
+        std::string(reinterpret_cast<const char*>(buffer_a.data()),
+                    buffer_a.size() * sizeof(double)));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg_a,
+        factory->Deserialize(intrinsic, state_a.SerializeAsString()));
+
+    DPQuantileAggregatorState state_b;
+    state_b.set_num_inputs(b_size);
+    state_b.set_reservoir_sampling_count(b_size - kDPQuantileMaxInputs);
+    std::vector<double> buffer_b(kDPQuantileMaxInputs, 1.0);
+    state_b.set_buffer(
+        std::string(reinterpret_cast<const char*>(buffer_b.data()),
+                    buffer_b.size() * sizeof(double)));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> agg_b,
+        factory->Deserialize(intrinsic, state_b.SerializeAsString()));
+
+    TFF_EXPECT_OK(agg_a->MergeWith(std::move(*agg_b)));
+
+    TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_final,
+                             std::move(*agg_a).Serialize());
+    DPQuantileAggregatorState state_final;
+    state_final.ParseFromString(serialized_final);
+
+    const double* final_data =
+        reinterpret_cast<const double*>(state_final.buffer().data());
+    int zero_count = 0;
+    int one_count = 0;
+    for (int i = 0; i < kDPQuantileMaxInputs; ++i) {
+      if (final_data[i] == 0.0)
+        zero_count++;
+      else if (final_data[i] == 1.0)
+        one_count++;
+    }
+    EXPECT_EQ(zero_count + one_count, kDPQuantileMaxInputs);
+    EXPECT_NEAR(zero_count, kDPQuantileMaxInputs / 4, 10 * stddev);
+  }
 }
 
 // The fourth batch of tests is on ReportWithEpsilonAndDelta. The DP quantile
