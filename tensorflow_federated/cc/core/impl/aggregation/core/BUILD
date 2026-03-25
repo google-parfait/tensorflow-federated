@@ -132,6 +132,20 @@ cc_library(
 )
 
 cc_library(
+    name = "domain_spec",
+    srcs = ["domain_spec.cc"],
+    hdrs = ["domain_spec.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":tensor",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "dp_noise_mechanisms",
     srcs = ["dp_noise_mechanisms.cc"],
     hdrs = [
@@ -502,6 +516,20 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+    ],
+)
+
+cc_test(
+    name = "domain_spec_test",
+    srcs = ["domain_spec_test.cc"],
+    deps = [
+        ":domain_spec",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/status",
     ],
 )
 
