@@ -86,6 +86,21 @@ Status ValidateDPParameters(double epsilon, double delta,
   return TFF_STATUS(OK);
 }
 
+// Build a map of parameter names to indices from an intrinsic.
+StatusOr<absl::flat_hash_map<std::string, int>> CreateParameterNameToIndexMap(
+    const Intrinsic& intrinsic) {
+  absl::flat_hash_map<std::string, int> parameter_name_to_index;
+  for (int i = 0; i < intrinsic.parameters.size(); ++i) {
+    if (parameter_name_to_index.contains(intrinsic.parameters[i].name())) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "DPGroupByFactory: Duplicate parameter name: "
+             << intrinsic.parameters[i].name();
+    }
+    parameter_name_to_index[intrinsic.parameters[i].name()] = i;
+  }
+  return parameter_name_to_index;
+}
+
 StatusOr<int> FindDPParameterLocationByName(
     const Intrinsic& intrinsic,
     const absl::flat_hash_map<std::string, int>& parameter_name_to_index,
@@ -305,9 +320,19 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Create(
 
 StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Deserialize(
     const Intrinsic& intrinsic, std::string serialized_state) const {
-  TFF_ASSIGN_OR_RETURN(int64_t content_size,
-                       DPGroupByAggregator::GetContentSize(serialized_state));
-  serialized_state.resize(content_size);
+  // Serialization branched on epsilon, so we need to first extract epsilon and
+  // then branch on it.
+  TFF_ASSIGN_OR_RETURN(auto parameter_name_to_index,
+                       CreateParameterNameToIndexMap(intrinsic));
+  TFF_ASSIGN_OR_RETURN(DPParameters dp_parameters,
+                       FindDPParameters(intrinsic, parameter_name_to_index));
+  double epsilon = dp_parameters.epsilon;
+  if (epsilon < kEpsilonThreshold) {
+    // If padding was used, implicitly remove it by resizing.
+    TFF_ASSIGN_OR_RETURN(int64_t content_size,
+                         DPGroupByAggregator::GetContentSize(serialized_state));
+    serialized_state.resize(content_size);
+  }
   GroupByAggregatorState aggregator_state;
   if (!aggregator_state.ParseFromString(serialized_state)) {
     return TFF_STATUS(INVALID_ARGUMENT) << "DPGroupByFactory::Deserialize: "
@@ -322,17 +347,8 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   // Check if the intrinsic is well-formed.
   TFF_RETURN_IF_ERROR(GroupByFactory::CheckIntrinsic(intrinsic, kDPGroupByUri));
 
-  // Build a map of parameter names to indices.
-  absl::flat_hash_map<std::string, int> parameter_name_to_index;
-  for (int i = 0; i < intrinsic.parameters.size(); ++i) {
-    if (parameter_name_to_index.contains(intrinsic.parameters[i].name())) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: Duplicate parameter name: "
-             << intrinsic.parameters[i].name();
-    }
-    parameter_name_to_index[intrinsic.parameters[i].name()] = i;
-  }
-
+  TFF_ASSIGN_OR_RETURN(auto parameter_name_to_index,
+                       CreateParameterNameToIndexMap(intrinsic));
   TFF_ASSIGN_OR_RETURN(
       std::optional<int64_t> min_contributors_to_group,
       FindMinContributorsToGroup(intrinsic, parameter_name_to_index));

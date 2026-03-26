@@ -50,11 +50,6 @@ class DPGroupByAggregator : public GroupByAggregator {
   // GroupByAggregator::ValidateInputs does.
   Status ValidateInputs(const InputTensorList& tensors) const override;
 
-  // Serializes the aggregator state. Pads the length with a random amount of
-  // kPaddingCharacter when DP is enabled. Terminates with a fixed number of
-  // bytes representing the length of the padding.
-  StatusOr<std::string> Serialize() && override;
-
   // Given a serialized state, returns how many bytes convey information about
   // uploads (length minus # of bytes for padding and encoding padding length).
   // Returns an error status when the padding length cannot be parsed.
@@ -85,6 +80,16 @@ class DPGroupByAggregator : public GroupByAggregator {
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributor_counts = {},
       int max_string_length = kDefaultMaxStringLength);
+
+  // Serializes the aggregator state. Pads the length with a random amount of
+  // kPaddingCharacter when DP is enabled. Terminates with a fixed number of
+  // bytes representing the length of the padding.
+  StatusOr<std::string> Serialize() && override;
+
+  // Creates partitions of the aggregator state identically with
+  // GroupByAggregator::Partition(), and then applies the same padding to each
+  // serialized state as Serialize().
+  StatusOr<std::vector<std::string>> Partition(int num_partitions) && override;
 
   // Different DP algorithms will produce noisy reports in different ways.
   virtual StatusOr<OutputTensorList> NoisyReport() = 0;

@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <memory>
 #include <optional>
 #include <string>
@@ -74,6 +75,13 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
   inline double GetDeltaPerAgg() { return delta_per_agg(); }
   inline StatusOr<int64_t> SerializeSensitivity() {
     return DPGroupByAggregator::CalculateSerializeSensitivity();
+  }
+  inline StatusOr<std::string> Serialize() && override {
+    return (std::move(*this)).DPGroupByAggregator::Serialize();
+  }
+  inline StatusOr<std::vector<std::string>> Partition(int num_partitions) &&
+      override {
+    return (std::move(*this)).DPGroupByAggregator::Partition(num_partitions);
   }
 
  protected:
@@ -200,9 +208,9 @@ TEST(DPGroupByAggregatorTest, CalculateVarintByteSize_Negative) {
 }
 
 // Creates a MockDPGroupByAggregator for testing SerializeSensitivity.
-MockDPGroupByAggregator CreateMockForTestingSerializeSensitivity(
+MockDPGroupByAggregator CreateMockForTestingPadding(
     std::vector<Intrinsic>& intrinsics, int max_groups_contributed,
-    int max_string_length) {
+    int max_string_length, double epsilon = 0.1) {
   std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
   for (const Intrinsic& intrinsic : intrinsics) {
     auto aggregator = CreateTensorAggregator(intrinsic).value();
@@ -223,7 +231,7 @@ MockDPGroupByAggregator CreateMockForTestingSerializeSensitivity(
       dp_histogram_testing::CreateTensorSpec("key2_out", DT_STRING));
   return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
                                  &intrinsics, std::move(aggregators),
-                                 /*num_inputs=*/0, /*epsilon=*/0.1,
+                                 /*num_inputs=*/0, epsilon,
                                  /*delta=*/1e-6, max_groups_contributed,
                                  std::nullopt, {}, max_string_length);
 }
@@ -233,54 +241,54 @@ TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysTwoSums) {
     intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
   }
   MockDPGroupByAggregator top_aggregator =
-      CreateMockForTestingSerializeSensitivity(intrinsics,
-                                               /*max_groups_contributed=*/1,
-                                               /*max_string_length=*/8);
+      CreateMockForTestingPadding(intrinsics,
+                                  /*max_groups_contributed=*/1,
+                                  /*max_string_length=*/8);
   EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(40));
 }
 TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSum) {
   std::vector<Intrinsic> intrinsics;
   intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
   MockDPGroupByAggregator top_aggregator =
-      CreateMockForTestingSerializeSensitivity(intrinsics,
-                                               /*max_groups_contributed=*/1,
-                                               /*max_string_length=*/8);
+      CreateMockForTestingPadding(intrinsics,
+                                  /*max_groups_contributed=*/1,
+                                  /*max_string_length=*/8);
   EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(31));
 }
 TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSumFloatingType) {
   std::vector<Intrinsic> intrinsics;
   intrinsics.push_back(CreateDefaultInnerIntrinsic<float, double>());
   MockDPGroupByAggregator top_aggregator =
-      CreateMockForTestingSerializeSensitivity(intrinsics,
-                                               /*max_groups_contributed=*/1,
-                                               /*max_string_length=*/8);
+      CreateMockForTestingPadding(intrinsics,
+                                  /*max_groups_contributed=*/1,
+                                  /*max_string_length=*/8);
   EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(31));
 }
 TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSumShorterType) {
   std::vector<Intrinsic> intrinsics;
   intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
   MockDPGroupByAggregator top_aggregator =
-      CreateMockForTestingSerializeSensitivity(intrinsics,
-                                               /*max_groups_contributed=*/1,
-                                               /*max_string_length=*/8);
+      CreateMockForTestingPadding(intrinsics,
+                                  /*max_groups_contributed=*/1,
+                                  /*max_string_length=*/8);
   EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(27));
 }
 TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSumTwoMaxGroups) {
   std::vector<Intrinsic> intrinsics;
   intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
   MockDPGroupByAggregator top_aggregator =
-      CreateMockForTestingSerializeSensitivity(intrinsics,
-                                               /*max_groups_contributed=*/2,
-                                               /*max_string_length=*/8);
+      CreateMockForTestingPadding(intrinsics,
+                                  /*max_groups_contributed=*/2,
+                                  /*max_string_length=*/8);
   EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(58));
 }
 TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysOneSumLongStrings) {
   std::vector<Intrinsic> intrinsics;
   intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
   MockDPGroupByAggregator top_aggregator =
-      CreateMockForTestingSerializeSensitivity(intrinsics,
-                                               /*max_groups_contributed=*/1,
-                                               /*max_string_length=*/64);
+      CreateMockForTestingPadding(intrinsics,
+                                  /*max_groups_contributed=*/1,
+                                  /*max_string_length=*/64);
   EXPECT_THAT(top_aggregator.SerializeSensitivity(), IsOkAndHolds(143));
 }
 
@@ -294,11 +302,11 @@ TEST(DPGroupByAggregatorTest, SerializedStateVarianceDependsOnSensitivity) {
     std::vector<Intrinsic> intrinsics;
     intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
     MockDPGroupByAggregator top_aggregator =
-        CreateMockForTestingSerializeSensitivity(intrinsics,
-                                                 /*max_groups_contributed=*/1,
-                                                 /*max_string_length=*/8);
-    std::string serialized_state =
-        std::move(top_aggregator).Serialize().value();
+        CreateMockForTestingPadding(intrinsics,
+                                    /*max_groups_contributed=*/1,
+                                    /*max_string_length=*/8);
+    TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_state,
+                             std::move(top_aggregator).Serialize());
     min_length = std::min(min_length, serialized_state.size());
     max_length = std::max(max_length, serialized_state.size());
   }
@@ -313,11 +321,11 @@ TEST(DPGroupByAggregatorTest, SerializedStateVarianceDependsOnSensitivity) {
     std::vector<Intrinsic> intrinsics;
     intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int64_t>());
     MockDPGroupByAggregator top_aggregator =
-        CreateMockForTestingSerializeSensitivity(intrinsics,
-                                                 /*max_groups_contributed=*/1,
-                                                 /*max_string_length=*/64);
-    std::string serialized_state =
-        std::move(top_aggregator).Serialize().value();
+        CreateMockForTestingPadding(intrinsics,
+                                    /*max_groups_contributed=*/1,
+                                    /*max_string_length=*/64);
+    TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_state,
+                             std::move(top_aggregator).Serialize());
     min_length = std::min(min_length, serialized_state.size());
     max_length = std::max(max_length, serialized_state.size());
   }
@@ -325,6 +333,109 @@ TEST(DPGroupByAggregatorTest, SerializedStateVarianceDependsOnSensitivity) {
 
   // The noise scale for the high-sensitivity case should be bigger.
   EXPECT_GT(high_sensitivity_range, low_sensitivity_range);
+}
+
+// Helper function for testing the Partition() method: returns the mean absolute
+// deviation of the padding length, which estimates the Laplace parameter.
+StatusOr<double> MeasureScaleOfPartitionPaddingLength(
+    int max_groups_contributed, int max_string_length, int num_partitions) {
+  std::vector<int> lengths;
+  for (int i = 0; i < 5000; ++i) {
+    std::vector<Intrinsic> intrinsics;
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
+    MockDPGroupByAggregator top_aggregator = CreateMockForTestingPadding(
+        intrinsics, max_groups_contributed, max_string_length);
+    TFF_ASSIGN_OR_RETURN(auto partitions,
+                         std::move(top_aggregator).Partition(num_partitions));
+    lengths.push_back(partitions[0].size());
+    lengths.push_back(partitions[1].size());
+  }
+  std::sort(lengths.begin(), lengths.end());
+  int median_length = lengths[lengths.size() / 2];
+  double mean_absolute_deviation = 0;
+  for (int length : lengths) {
+    mean_absolute_deviation += std::abs(length - median_length);
+  }
+  mean_absolute_deviation /= lengths.size();
+  return mean_absolute_deviation;
+}
+
+// Sixth behavior to test: when we double sensitivity, the empirical scale of
+// noise should approximately double.
+TEST(DPGroupByAggregatorTest, PartitionPaddingScaleDependsOnSensitivity) {
+  StatusOr<double> low_sensitivity_scale = MeasureScaleOfPartitionPaddingLength(
+      /*max_groups_contributed=*/1, /*max_string_length=*/8,
+      /*num_partitions=*/8);
+  StatusOr<double> high_sensitivity_scale =
+      MeasureScaleOfPartitionPaddingLength(
+          /*max_groups_contributed=*/2, /*max_string_length=*/8,
+          /*num_partitions=*/8);
+  TFF_ASSERT_OK(low_sensitivity_scale);
+  TFF_ASSERT_OK(high_sensitivity_scale);
+
+  // True blowup is 2x, but allow for slack due to randomness.
+  EXPECT_GT(high_sensitivity_scale.value(),
+            1.9 * low_sensitivity_scale.value());
+}
+
+// Seventh behavior to test: for a fixed max_groups_contributed, increasing
+// num_partitions should not inflate scale of noise.
+TEST(DPGroupByAggregatorTest, PartitionPaddingNotInflatedByLargeNumPartitions) {
+  StatusOr<double> scale1 = MeasureScaleOfPartitionPaddingLength(
+      /*max_groups_contributed=*/1, /*max_string_length=*/8,
+      /*num_partitions=*/2);
+  StatusOr<double> scale2 = MeasureScaleOfPartitionPaddingLength(
+      /*max_groups_contributed=*/1, /*max_string_length=*/8,
+      /*num_partitions=*/16);
+
+  TFF_ASSERT_OK(scale1);
+  TFF_ASSERT_OK(scale2);
+
+  EXPECT_LT(scale1.value(), 2 * scale2.value());
+  EXPECT_LT(scale2.value(), 2 * scale1.value());
+}
+
+// Eight behavior to test: large epsilon switches off random padding.
+TEST(DPGroupByAggregatorTest, LargeEpsilonSerializeIsNotRandom) {
+  size_t min_length = 1000000;
+  size_t max_length = 0;
+  for (int i = 0; i < 10; ++i) {
+    std::vector<Intrinsic> intrinsics;
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
+    MockDPGroupByAggregator top_aggregator =
+        CreateMockForTestingPadding(intrinsics,
+                                    /*max_groups_contributed=*/1,
+                                    /*max_string_length=*/8,
+                                    /*epsilon=*/kEpsilonThreshold);
+    TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_state,
+                             std::move(top_aggregator).Serialize());
+    min_length = std::min(min_length, serialized_state.size());
+    max_length = std::max(max_length, serialized_state.size());
+  }
+  EXPECT_EQ(max_length - min_length, 0);
+}
+TEST(DPGroupByAggregatorTest, LargeEpsilonPartitionIsNotRandom) {
+  size_t min_length_a = 1000000;
+  size_t min_length_b = 1000000;
+  size_t max_length_a = 0;
+  size_t max_length_b = 0;
+  for (int i = 0; i < 10; ++i) {
+    std::vector<Intrinsic> intrinsics;
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
+    MockDPGroupByAggregator top_aggregator =
+        CreateMockForTestingPadding(intrinsics,
+                                    /*max_groups_contributed=*/1,
+                                    /*max_string_length=*/8,
+                                    /*epsilon=*/kEpsilonThreshold);
+    TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_states,
+                             std::move(top_aggregator).Partition(2));
+    min_length_a = std::min(min_length_a, serialized_states[0].size());
+    max_length_a = std::max(max_length_a, serialized_states[0].size());
+    min_length_b = std::min(min_length_b, serialized_states[1].size());
+    max_length_b = std::max(max_length_b, serialized_states[1].size());
+  }
+  EXPECT_EQ(max_length_a - min_length_a, 0);
+  EXPECT_EQ(max_length_b - min_length_b, 0);
 }
 
 }  // namespace

@@ -16,6 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -207,24 +208,70 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
   return sensitivity;
 }
 
-StatusOr<std::string> DPGroupByAggregator::Serialize() && {
-  TFF_ASSIGN_OR_RETURN(std::string serialized_state,
-                       std::move(*this).GroupByAggregator::Serialize());
+// When epsilon is meaningful, lengthen the serialized state by an amount
+// determined by PositiveLaplaceMechanism (scaled to epsilon and sensitivity).
+StatusOr<std::string> PadSerializedState(absl::string_view serialized_state,
+                                         double epsilon, double delta,
+                                         int64_t sensitivity) {
   int64_t padding_length = 0;
-  if (epsilon_ < kEpsilonThreshold) {
-    // When epsilon is meaningful, lengthen the serialized state by an amount
-    // determined by PositiveLaplaceMechanism.
-    TFF_ASSIGN_OR_RETURN(int64_t sensitivity, CalculateSerializeSensitivity());
+  if (epsilon < kEpsilonThreshold) {
     TFF_ASSIGN_OR_RETURN(
         std::unique_ptr<PositiveLaplaceMechanism> mechanism,
-        PositiveLaplaceMechanism::Create(epsilon_, delta_, sensitivity));
+        PositiveLaplaceMechanism::Create(epsilon, delta, sensitivity));
     padding_length = mechanism->AddNoise(0);
   }
-  // Couple the padding with bytes that represent the length of the padding.
+  // Couple the padding with 8 bytes that represent the length of the padding.
   std::string padding(padding_length, kPaddingCharacter);
   std::string padding_length_bytes(reinterpret_cast<char*>(&padding_length),
                                    sizeof(padding_length));
   return absl::StrCat(serialized_state, padding, padding_length_bytes);
+}
+
+StatusOr<std::string> DPGroupByAggregator::Serialize() && {
+  TFF_ASSIGN_OR_RETURN(std::string serialized_state,
+                       std::move(*this).GroupByAggregator::Serialize());
+  if (epsilon_ >= kEpsilonThreshold) {
+    return serialized_state;
+  }
+
+  TFF_ASSIGN_OR_RETURN(int64_t sensitivity, CalculateSerializeSensitivity());
+  return PadSerializedState(serialized_state, epsilon_, delta_, sensitivity);
+}
+
+StatusOr<std::vector<std::string>> DPGroupByAggregator::Partition(
+    int num_partitions) && {
+  // Generate initial partitions using the base class.
+  TFF_ASSIGN_OR_RETURN(
+      std::vector<std::string> serialized_states,
+      std::move(*this).GroupByAggregator::Partition(num_partitions));
+  if (epsilon_ >= kEpsilonThreshold) {
+    return serialized_states;
+  }
+
+  TFF_ASSIGN_OR_RETURN(int64_t sensitivity, CalculateSerializeSensitivity());
+
+  // If we change one upload's data, the biggest possible impact is that
+  // max_groups_contributed groups vanish and max_groups_contributed groups
+  // appear. So <= 2 * max_groups_contributed different outputs of Partition()
+  // can be influenced.
+  int64_t partitions_influenced =
+      std::min<int64_t>(2 * max_groups_contributed_, num_partitions);
+
+  // Split the privacy budget across the influenced partitions.
+  double per_partition_epsilon = epsilon_ / partitions_influenced;
+  double per_partition_delta = delta_ / partitions_influenced;
+
+  // Add the padding to each partition.
+  std::vector<std::string> padded_serialized_states;
+  padded_serialized_states.reserve(serialized_states.size());
+  for (const std::string& serialized_state : serialized_states) {
+    TFF_ASSIGN_OR_RETURN(
+        std::string padded_serialized_state,
+        PadSerializedState(serialized_state, per_partition_epsilon,
+                           per_partition_delta, sensitivity));
+    padded_serialized_states.push_back(std::move(padded_serialized_state));
+  }
+  return padded_serialized_states;
 }
 
 StatusOr<int64_t> DPGroupByAggregator::GetContentSize(

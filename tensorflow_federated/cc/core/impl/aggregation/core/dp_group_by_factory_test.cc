@@ -520,9 +520,9 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsNoKeys) {
       /*key_types=*/{});
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
   // Check that the returned aggregator is a DPThresholdingHistogram.
-  auto* dp_open_domain_histogram =
+  auto* dp_thresholding_histogram =
       dynamic_cast<DPThresholdingHistogram*>(aggregator.get());
-  ASSERT_NE(dp_open_domain_histogram, nullptr);
+  ASSERT_NE(dp_thresholding_histogram, nullptr);
 }
 
 TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsWithKeys) {
@@ -531,9 +531,9 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsWithKeys) {
       /*min_contributors=*/10);
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
   // Check that the returned aggregator is a DPThresholdingHistogram.
-  auto* dp_open_domain_histogram =
+  auto* dp_thresholding_histogram =
       dynamic_cast<DPThresholdingHistogram*>(aggregator.get());
-  ASSERT_NE(dp_open_domain_histogram, nullptr);
+  ASSERT_NE(dp_thresholding_histogram, nullptr);
 
   // L_1 given
   Intrinsic intrinsic_l1 = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
@@ -542,9 +542,9 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithMinContributorsWithKeys) {
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator_l1,
                            CreateTensorAggregator(intrinsic_l1));
   // Check that the returned aggregator is a DPThresholdingHistogramHistogram.
-  auto* dp_open_domain_histogram_l1 =
+  auto* dp_thresholding_histogram_l1 =
       dynamic_cast<DPThresholdingHistogram*>(aggregator_l1.get());
-  ASSERT_NE(dp_open_domain_histogram_l1, nullptr);
+  ASSERT_NE(dp_thresholding_histogram_l1, nullptr);
 }
 
 TEST(DPGroupByFactoryTest, CreateAggregatorWithZeroMinContributors_Fails) {
@@ -575,9 +575,9 @@ TEST(DPGroupByFactoryTest, CreateAggregatorNoKeys_Success) {
                            CreateTensorAggregator(intrinsic));
 
   // Validate that domain_tensors is a valid empty span.
-  auto* dp_open_domain_histogram =
+  auto* dp_thresholding_histogram =
       dynamic_cast<DPThresholdingHistogram*>(aggregator.get());
-  ASSERT_NE(dp_open_domain_histogram, nullptr);
+  ASSERT_NE(dp_thresholding_histogram, nullptr);
 }
 
 TEST(DPGroupByFactoryTest, CreateAggregatorWithKeysNoMinContributors_Success) {
@@ -589,9 +589,9 @@ TEST(DPGroupByFactoryTest, CreateAggregatorWithKeysNoMinContributors_Success) {
                            CreateTensorAggregator(intrinsic));
 
   // Validate that the aggregator is a DPExhaustiveReportHistogram.
-  auto* dp_closed_domain_histogram =
+  auto* dp_exhaustive_report_histogram =
       dynamic_cast<DPExhaustiveReportHistogram*>(aggregator.get());
-  ASSERT_NE(dp_closed_domain_histogram, nullptr);
+  ASSERT_NE(dp_exhaustive_report_histogram, nullptr);
 }
 
 // Phase 7: Validate that the factory can catch bad serialized states.
@@ -612,6 +612,101 @@ TEST(DPThresholdingHistogramTest, Deserialize_FailToParseProto) {
   s = DeserializeTensorAggregator(intrinsic, invalid_state2).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Failed to parse serialized state"));
+}
+
+// Phase 8: Validate that the factory can deserialize any kind of DPGroupBy
+// aggregator, for small and large epsilon.
+
+// Should be able to deserialize an aggregator from output of Serialize()
+TEST(DPGroupByFactoryTest, DeserializeSuccessFromSerialize) {
+  for (double epsilon : {0.1, kEpsilonThreshold}) {
+    // DPThresholdingHistogram
+    Intrinsic intrinsic1 = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
+        /*epsilon=*/epsilon);
+    TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator1,
+                             CreateTensorAggregator(intrinsic1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys, Tensor::Create(DT_STRING, {2},
+                                    CreateTestData<string_view>({"a", "b"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor values,
+        Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
+    TFF_ASSERT_OK(aggregator1->Accumulate({&keys, &values}));
+    TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_state1,
+                             std::move(*aggregator1).Serialize());
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> aggregator1_des,
+        DeserializeTensorAggregator(intrinsic1, serialized_state1));
+    // Validate that the aggregator is a DPThresholdingHistogram.
+    auto* dp_thresholding_histogram1 =
+        dynamic_cast<DPThresholdingHistogram*>(aggregator1_des.get());
+    ASSERT_NE(dp_thresholding_histogram1, nullptr);
+
+    // DPExhaustiveReportHistogram
+    Intrinsic intrinsic2 =
+        CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
+            /*epsilon=*/epsilon);
+    TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator2,
+                             CreateTensorAggregator(intrinsic2));
+    TFF_ASSERT_OK(aggregator2->Accumulate({&keys, &values}));
+    TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_state2,
+                             std::move(*aggregator2).Serialize());
+    TFF_ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<TensorAggregator> aggregator2_des,
+        DeserializeTensorAggregator(intrinsic2, serialized_state2));
+    // Validate that the aggregator is a DPExhaustiveReportHistogram.
+    auto* dp_exhaustive_report_histogram =
+        dynamic_cast<DPExhaustiveReportHistogram*>(aggregator2_des.get());
+    ASSERT_NE(dp_exhaustive_report_histogram, nullptr);
+  }
+}
+
+// Should be able to deserialize aggregators from the outputs of Partition()
+TEST(DPGroupByFactoryTest, DeserializeSuccessFromPartition) {
+  for (double epsilon : {0.1, kEpsilonThreshold}) {
+    // DPThresholdingHistogram
+    Intrinsic intrinsic1 = CreateIntrinsicWithKeyTypes<int64_t, int64_t>(
+        /*epsilon=*/epsilon);
+    TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator1,
+                             CreateTensorAggregator(intrinsic1));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor keys, Tensor::Create(DT_STRING, {2},
+                                    CreateTestData<string_view>({"a", "b"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor values,
+        Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
+    TFF_ASSERT_OK(aggregator1->Accumulate({&keys, &values}));
+    TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_states1,
+                             std::move(*aggregator1).Partition(2));
+    for (const std::string& serialized_state1 : serialized_states1) {
+      TFF_ASSERT_OK_AND_ASSIGN(
+          std::unique_ptr<TensorAggregator> aggregator1_des,
+          DeserializeTensorAggregator(intrinsic1, serialized_state1));
+      // Validate that the aggregator is a DPThresholdingHistogram.
+      auto* dp_thresholding_histogram1 =
+          dynamic_cast<DPThresholdingHistogram*>(aggregator1_des.get());
+      ASSERT_NE(dp_thresholding_histogram1, nullptr);
+    }
+
+    // DPExhaustiveReportHistogram
+    Intrinsic intrinsic2 =
+        CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
+            /*epsilon=*/kEpsilonThreshold);
+    TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator2,
+                             CreateTensorAggregator(intrinsic2));
+    TFF_ASSERT_OK(aggregator2->Accumulate({&keys, &values}));
+    TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_states2,
+                             std::move(*aggregator2).Partition(2));
+    for (const std::string& serialized_state2 : serialized_states2) {
+      TFF_ASSERT_OK_AND_ASSIGN(
+          std::unique_ptr<TensorAggregator> aggregator2_des,
+          DeserializeTensorAggregator(intrinsic2, serialized_state2));
+      // Validate that the aggregator is a DPExhaustiveReportHistogram.
+      auto* dp_exhaustive_report_histogram2 =
+          dynamic_cast<DPExhaustiveReportHistogram*>(aggregator2_des.get());
+      ASSERT_NE(dp_exhaustive_report_histogram2, nullptr);
+    }
+  }
 }
 
 }  // namespace
