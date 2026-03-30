@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "absl/container/fixed_array.h"
@@ -26,6 +27,7 @@
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
@@ -55,8 +57,9 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   DPCompositeKeyCombiner& operator=(DPCompositeKeyCombiner&&) = delete;
 
   // Creates a CompositeKeyCombiner if inputs are valid or crashes otherwise.
-  explicit DPCompositeKeyCombiner(const std::vector<DataType>& dtypes,
-                                  int64_t l0_bound = kDefaultL0Bound);
+  explicit DPCompositeKeyCombiner(
+      const std::vector<DataType>& dtypes, int64_t l0_bound = kDefaultL0Bound,
+      std::optional<DomainSpec> domain_spec = std::nullopt);
 
   // If an l0_bound_ was not given or number of contributions is <= l0_bound_,
   // call parent's Accumulate. Otherwise, call AccumulateWithBound which will
@@ -83,9 +86,23 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   int64_t GetOrdinal(TensorSpan domain_tensors,
                      const absl::FixedArray<int64_t>& indices);
 
+ protected:
+  // Overrides base class CreateOrdinals to intercept calls from
+  // AccumulateWithBound and check whether to use CreateInDomainOrdinals.
+  std::unique_ptr<MutableVectorData<int64_t>> CreateOrdinals(
+      const InputTensorList& tensors, size_t num_elements,
+      CompositeKeyMap& composite_key_map) override;
+
  private:
   const int64_t l0_bound_;
+  const std::optional<DomainSpec> domain_spec_;
   absl::BitGen bitgen_;
+
+  // Creates ordinals only for in-domain elements. Out-of-domain elements
+  // will be mapped to kNoOrdinal.
+  std::unique_ptr<MutableVectorData<int64_t>> CreateInDomainOrdinals(
+      const InputTensorList& tensors, size_t num_elements,
+      CompositeKeyMap& composite_key_map);
 
   // Given a span of tensors (where each describes a key's domain) and indices
   // to tensor values, make a CompositeKey out of the data at those indices.

@@ -200,6 +200,7 @@ cc_library(
     ],
     deps = [
         ":composite_key_combiner",
+        ":domain_spec",
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -631,6 +632,7 @@ cc_test(
     srcs = ["dp_composite_key_combiner_test.cc"],
     deps = [
         ":aggregator",
+        ":domain_spec",
         ":dp_composite_key_combiner",
         ":tensor",
         ":tensor_cc_proto",

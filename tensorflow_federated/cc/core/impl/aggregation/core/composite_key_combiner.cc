@@ -263,11 +263,7 @@ CompositeKeyCombiner::CreateOrdinals(const InputTensorList& tensors,
         composite_key_map.InsertAndGetOrdinal(composite_key);
     ordinal = assigned_ordinal;
     if (inserted) {
-      // Verify that the key points to the "current" key.
-      TFF_CHECK(composite_key.data() ==
-                composite_key_store_.CurrentKey().data());
-      // Advance the key address.
-      composite_key_store_.AdvanceKey();
+      AdvanceCompositeKey(composite_key.data());
     }
   }
   return ordinals;

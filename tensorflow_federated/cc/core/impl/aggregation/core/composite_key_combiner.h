@@ -263,7 +263,7 @@ class CompositeKeyCombiner {
   //
   // The CompositeKeyMap is explicitly passed in to allow for temporary data
   // structures to be used in DPCompositeKeyCombiner::AccumulateWithBound.
-  std::unique_ptr<MutableVectorData<int64_t>> CreateOrdinals(
+  virtual std::unique_ptr<MutableVectorData<int64_t>> CreateOrdinals(
       const InputTensorList& tensors, size_t num_elements,
       CompositeKeyMap& composite_key_map);
 
@@ -274,6 +274,13 @@ class CompositeKeyCombiner {
   // Creates a new composite key.
   inline CompositeKey NewCompositeKey() {
     return composite_key_store_.CurrentKey();
+  }
+  // Advances the key to the next available slot.
+  inline void AdvanceCompositeKey(char* key_ptr) {
+    // Verify that the key points to the "current" key.
+    TFF_CHECK(key_ptr == composite_key_store_.CurrentKey().data());
+    // Advance the key address.
+    composite_key_store_.AdvanceKey();
   }
 
  private:

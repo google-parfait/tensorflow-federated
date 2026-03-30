@@ -22,6 +22,7 @@
 #include <cstring>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -33,6 +34,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -135,9 +137,11 @@ class LocalToGlobalInserter
 };
 
 DPCompositeKeyCombiner::DPCompositeKeyCombiner(
-    const std::vector<DataType>& dtypes, int64_t l0_bound)
+    const std::vector<DataType>& dtypes, int64_t l0_bound,
+    std::optional<DomainSpec> domain_spec)
     : CompositeKeyCombiner(dtypes),
       l0_bound_(l0_bound),
+      domain_spec_(std::move(domain_spec)),
       bitgen_(absl::BitGen()) {}
 
 StatusOr<Tensor> DPCompositeKeyCombiner::Accumulate(
@@ -146,11 +150,17 @@ StatusOr<Tensor> DPCompositeKeyCombiner::Accumulate(
 
   TFF_ASSIGN_OR_RETURN(size_t num_elements, shape.NumElements());
 
-  // We do not need to perform contribution bounding if no bound was given or
-  // the contribution is already bounded.
-  return (l0_bound_ <= 0 || num_elements <= l0_bound_)
-             ? CompositeKeyCombiner::Accumulate(tensors)
-             : AccumulateWithBound(tensors, shape, num_elements);
+  if (l0_bound_ > 0 && num_elements > l0_bound_) {
+    return AccumulateWithBound(tensors, shape, num_elements);
+  }
+
+  if (domain_spec_.has_value()) {
+    return Tensor::Create(
+        internal::TypeTraits<int64_t>::kDataType, shape,
+        CreateInDomainOrdinals(tensors, num_elements, GetCompositeKeys()));
+  }
+
+  return CompositeKeyCombiner::Accumulate(tensors);
 }
 
 StatusOr<Tensor> DPCompositeKeyCombiner::AccumulateWithBound(
@@ -183,7 +193,11 @@ StatusOr<Tensor> DPCompositeKeyCombiner::AccumulateWithBound(
 
   // Finally, transform the local ordinals into global ordinals
   for (int64_t& ordinal : *local_ordinals) {
-    ordinal = local_to_global[ordinal];
+    // The ordinal is kNoOrdinal if the provided key was not in the domain spec.
+    // If that is the case, we do not update the ordinal.
+    if (ordinal != kNoOrdinal) {
+      ordinal = local_to_global[ordinal];
+    }
   }
   return Tensor::Create(internal::TypeTraits<int64_t>::kDataType, shape,
                         std::move(local_ordinals));
@@ -243,6 +257,70 @@ CompositeKey DPCompositeKeyCombiner::MakeCompositeKeyFromDomainTensors(
     index_iter++;
   }
   return composite_key;
+}
+
+std::unique_ptr<MutableVectorData<int64_t>>
+DPCompositeKeyCombiner::CreateOrdinals(const InputTensorList& tensors,
+                                       size_t num_elements,
+                                       CompositeKeyMap& composite_key_map) {
+  if (domain_spec_.has_value()) {
+    return CreateInDomainOrdinals(tensors, num_elements, composite_key_map);
+  }
+  return CompositeKeyCombiner::CreateOrdinals(tensors, num_elements,
+                                              composite_key_map);
+}
+
+std::unique_ptr<MutableVectorData<int64_t>>
+DPCompositeKeyCombiner::CreateInDomainOrdinals(
+    const InputTensorList& tensors, size_t num_elements,
+    CompositeKeyMap& composite_key_map) {
+  // Unlike CompositeKeyCombiner::CreateOrdinals, we initialize all ordinals to
+  // kNoOrdinal. This is because we will skip composite keys that are not in the
+  // domain specified by domain_spec_, and we want to ensure that those keys
+  // are assigned kNoOrdinal.
+  auto ordinals =
+      std::make_unique<MutableVectorData<int64_t>>(num_elements, kNoOrdinal);
+
+  std::vector<const void*> iterators;
+  iterators.reserve(tensors.size());
+  for (const Tensor* t : tensors) {
+    iterators.push_back(t->data().data());
+  }
+
+  for (size_t i = 0; i < num_elements; ++i) {
+    CompositeKey composite_key = NewCompositeKey();
+    void* key_ptr = composite_key.data();
+    char* original_key_ptr = static_cast<char*>(key_ptr);
+    auto data_type_iter = dtypes().begin();
+    // Before assigning an ordinal to a composite key, we check if it is in the
+    // domain specified by domain_spec_.
+    bool in_domain = true;
+    for (int j = 0; j < iterators.size(); ++j) {
+      const void* itr = iterators[j];
+      DTYPE_CASES(
+          *(data_type_iter), T,
+          in_domain =
+              in_domain &&
+              domain_spec_->IsMember<T>(static_cast<const T*>(itr)[i], j)
+                  .value_or(false));
+      DTYPE_CASES(*(data_type_iter++), T,
+                  IndexedCopyToDest<T>(itr, i, key_ptr, GetInternPool()));
+    }
+
+    // If a composite key is not in domain, we do not insert it into the
+    // composite_key_map, and its corresponding ordinal remains kNoOrdinal.
+    if (!in_domain) {
+      continue;
+    }
+
+    auto [assigned_ordinal, inserted] =
+        composite_key_map.InsertAndGetOrdinal(composite_key);
+    (*ordinals)[i] = assigned_ordinal;
+    if (inserted) {
+      AdvanceCompositeKey(original_key_ptr);
+    }
+  }
+  return ordinals;
 }
 
 }  // namespace aggregation

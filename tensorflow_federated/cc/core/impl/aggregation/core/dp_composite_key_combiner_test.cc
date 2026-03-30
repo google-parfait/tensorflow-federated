@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <initializer_list>
+#include <utility>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -27,6 +28,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
@@ -113,6 +115,55 @@ TEST(DPCompositeKeyCombinerTest, AccumulateTwiceAndOutput_L0BoundIs1) {
     }
     EXPECT_TRUE(found_match);
   }
+}
+
+TEST(DPCompositeKeyCombinerTest, AccumulateWithL0BoundZero_NoBoundingApplied) {
+  DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT, DT_STRING},
+                                  0);
+
+  std::initializer_list<float> column1 = {1.1, 1.2, 1.3};
+  std::initializer_list<string_view> column2 = {"abc", "de", "fghi"};
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor t1, Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>(column1)));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor t2,
+      Tensor::Create(DT_STRING, {3}, CreateTestData<string_view>(column2)));
+
+  StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
+  ASSERT_OK(result);
+
+  EXPECT_THAT(result.value(), IsTensor<int64_t>({3}, {0, 1, 2}));
+
+  OutputTensorList output = combiner.GetOutputKeys();
+  EXPECT_THAT(output.size(), Eq(2));
+  EXPECT_THAT(output[0], IsTensor<float>({3}, {1.1, 1.2, 1.3}));
+  EXPECT_THAT(output[1], IsTensor<string_view>({3}, {"abc", "de", "fghi"}));
+}
+
+TEST(DPCompositeKeyCombinerTest,
+     AccumulateWithL0BoundEqualToNumElements_NoBoundingApplied) {
+  DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT, DT_STRING},
+                                  3);
+
+  std::initializer_list<float> column1 = {1.1, 1.2, 1.3};
+  std::initializer_list<string_view> column2 = {"abc", "de", "fghi"};
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor t1, Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>(column1)));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor t2,
+      Tensor::Create(DT_STRING, {3}, CreateTestData<string_view>(column2)));
+
+  StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
+  ASSERT_OK(result);
+
+  EXPECT_THAT(result.value(), IsTensor<int64_t>({3}, {0, 1, 2}));
+
+  OutputTensorList output = combiner.GetOutputKeys();
+  EXPECT_THAT(output.size(), Eq(2));
+  EXPECT_THAT(output[0], IsTensor<float>({3}, {1.1, 1.2, 1.3}));
+  EXPECT_THAT(output[1], IsTensor<string_view>({3}, {"abc", "de", "fghi"}));
 }
 
 TEST(DPCompositeKeyCombinerTest, AccumulateAndOutput_L0BoundIs1) {
@@ -539,6 +590,78 @@ TEST(DPCompositeKeyCombinerTest, AccumulateAndGetOrdinal_StringTypes) {
       EXPECT_EQ("jklmn", output[2].AsSpan<string_view>()[ordinal]);
     }
   }
+}
+
+TEST(DPCompositeKeyCombinerTest, AccumulateWithDomainSpec_FiltersOutElements) {
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor domain1,
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"ripe"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor domain2,
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"tomato"})));
+  std::vector<Tensor> domain_tensors;
+  domain_tensors.push_back(std::move(domain1));
+  domain_tensors.push_back(std::move(domain2));
+  DomainSpec domain_spec(domain_tensors);
+
+  DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_STRING, DT_STRING},
+                                  kDefaultL0Bound, std::move(domain_spec));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor t1,
+      Tensor::Create(DT_STRING, {3},
+                     CreateTestData<string_view>({"ripe", "old", "ripe"})));
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor t2,
+                           Tensor::Create(DT_STRING, {3},
+                                          CreateTestData<string_view>(
+                                              {"tomato", "apple", "apple"})));
+
+  StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
+  ASSERT_OK(result);
+
+  EXPECT_THAT(result.value(), IsTensor<int64_t>({3}, {0, -1, -1}));
+
+  OutputTensorList output = combiner.GetOutputKeys();
+  EXPECT_THAT(output.size(), Eq(2));
+  EXPECT_THAT(output[0], IsTensor<string_view>({1}, {"ripe"}));
+  EXPECT_THAT(output[1], IsTensor<string_view>({1}, {"tomato"}));
+}
+
+TEST(DPCompositeKeyCombinerTest,
+     AccumulateWithBoundAndDomainSpec_FiltersAndBounds) {
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor domain1,
+      Tensor::Create(DT_STRING, {2},
+                     CreateTestData<string_view>({"ripe", "old"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor domain2,
+      Tensor::Create(DT_STRING, {2},
+                     CreateTestData<string_view>({"tomato", "apple"})));
+  std::vector<Tensor> domain_tensors;
+  domain_tensors.push_back(std::move(domain1));
+  domain_tensors.push_back(std::move(domain2));
+  DomainSpec domain_spec(domain_tensors);
+
+  // L0 bound of 1 means we prevent contributing to more than one group.
+  DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_STRING, DT_STRING},
+                                  /*l0_bound=*/1, std::move(domain_spec));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor t1,
+      Tensor::Create(DT_STRING, {3},
+                     CreateTestData<string_view>({"ripe", "old", "unseen"})));
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor t2,
+                           Tensor::Create(DT_STRING, {3},
+                                          CreateTestData<string_view>(
+                                              {"tomato", "apple", "unseen"})));
+
+  StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
+  ASSERT_OK(result);
+
+  auto result_span = result.value().AsSpan<int64_t>();
+  EXPECT_EQ(result_span[2], kNoOrdinal);
+  EXPECT_TRUE((result_span[0] == 0 && result_span[1] == kNoOrdinal) ||
+              (result_span[0] == kNoOrdinal && result_span[1] == 0));
 }
 
 }  // namespace

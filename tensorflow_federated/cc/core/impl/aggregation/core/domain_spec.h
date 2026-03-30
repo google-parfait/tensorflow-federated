@@ -50,6 +50,8 @@ class DomainSpec {
  public:
   explicit DomainSpec(TensorSpan domain_tensors);
   ~DomainSpec() = default;
+  DomainSpec(DomainSpec&&) = default;
+  DomainSpec& operator=(DomainSpec&&) = default;
 
   // Returns whether the datum is a member of the domain for the column at the
   // given index.
