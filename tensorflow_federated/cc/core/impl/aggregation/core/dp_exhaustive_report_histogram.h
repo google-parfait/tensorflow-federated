@@ -56,15 +56,15 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
  protected:
   friend class DPGroupByFactory;
 
-  // Constructs a DPExhaustiveReportHistogram.
-  // This constructor is meant for use by the DPGroupByFactory; most callers
+  // Create a DPExhaustiveReportHistogram.
+  // This function is meant for use by the DPGroupByFactory; most callers
   // should instead create a DPExhaustiveReportHistogram from an intrinsic using
   // the factory, i.e.
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
   //
   // Takes the same inputs as DPGroupByAggregator, plus `domain_tensors`, a Span
   // of Tensors where the i-th describes the domain of the i-th grouping key.
-  DPExhaustiveReportHistogram(
+  static StatusOr<std::unique_ptr<DPExhaustiveReportHistogram>> Create(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
@@ -79,6 +79,18 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
   StatusOr<OutputTensorList> NoisyReport() override;
 
  private:
+  // Constructs a DPExhaustiveReportHistogram.
+  // This constructor is meant for use by the Create method above.
+  DPExhaustiveReportHistogram(
+      const std::vector<TensorSpec>& input_key_specs,
+      const std::vector<TensorSpec>* output_key_specs,
+      const std::vector<Intrinsic>* intrinsics,
+      std::unique_ptr<CompositeKeyCombiner> key_combiner,
+      std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
+      int num_inputs, double epsilon, double delta,
+      int64_t max_groups_contributed, TensorSpan domain_tensors,
+      int max_string_length = kDefaultMaxStringLength);
+
   // When merging two DPExhaustiveReportHistograms, bounding the aggregates will
   // destroy accuracy and is not needed for privacy. Hence, this function calls
   // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.

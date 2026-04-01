@@ -429,11 +429,10 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
         contributor_counts);
   }
 
-  return std::unique_ptr<DPExhaustiveReportHistogram>(
-      new DPExhaustiveReportHistogram(
-          intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-          std::move(key_combiner), std::move(nested_aggregators), num_inputs,
-          epsilon, delta, max_groups_contributed, key_tensors));
+  return DPExhaustiveReportHistogram::Create(
+      intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
+      std::move(key_combiner), std::move(nested_aggregators), num_inputs,
+      epsilon, delta, max_groups_contributed, key_tensors);
 }
 
 REGISTER_AGGREGATOR_FACTORY(std::string(kDPGroupByUri), DPGroupByFactory);

@@ -66,6 +66,15 @@ DPGroupByAggregator::DPGroupByAggregator(
                             : kEpsilonThreshold)),
       delta_per_agg_(delta / intrinsics->size()) {}
 
+StatusOr<const DPHistogramBundle&> DPGroupByAggregator::GetBundle(int i) const {
+  if (i >= bundles_.size() || i < 0) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "DPGroupByAggregator::GetBundle: " << i
+           << " is not in the range [0, " << bundles_.size() << ")";
+  }
+  return bundles_[i];
+}
+
 StatusOr<OutputTensorList> DPGroupByAggregator::Report() && {
   if (!CanReport()) {
     return TFF_STATUS(FAILED_PRECONDITION)

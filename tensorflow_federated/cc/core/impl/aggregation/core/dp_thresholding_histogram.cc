@@ -72,15 +72,9 @@ namespace internal {
 // proof for the case where inputs are positive; our use of sign() generalizes
 // the analysis to the non-positive case.
 template <typename OutputType>
-Status NoiseAndThreshold(double epsilon, double delta, int64_t l0_bound,
-                         OutputType linfinity_bound, double l1_bound,
-                         double l2_bound, TensorSliceData& column,
+Status NoiseAndThreshold(const DPHistogramBundle& bundle,
+                         TensorSliceData& column,
                          absl::flat_hash_set<size_t>& survivor_indices) {
-  TFF_ASSIGN_OR_RETURN(
-      auto bundle,
-      CreateDPHistogramBundle(epsilon, delta, l0_bound, linfinity_bound,
-                              l1_bound, l2_bound, true));
-
   TFF_CHECK(bundle.threshold.has_value())
       << "NoiseAndThreshold: threshold was not set.";
   OutputType threshold = static_cast<OutputType>(bundle.threshold.value());
@@ -108,15 +102,8 @@ Status NoiseAndThreshold(double epsilon, double delta, int64_t l0_bound,
 // DPThresholdingHistogram::Report when k-thresholding is enabled and so we
 // don't need to threshold based on the noisy value.
 template <typename OutputType>
-Status NoiseWithoutThresholding(double epsilon, double delta, int64_t l0_bound,
-                                OutputType linfinity_bound, double l1_bound,
-                                double l2_bound, TensorSliceData& column) {
-  TFF_ASSIGN_OR_RETURN(
-      DPHistogramBundle bundle,
-      CreateDPHistogramBundle(epsilon, delta, l0_bound, linfinity_bound,
-                              l1_bound, l2_bound,
-                              /*threshold_by_value=*/false));
-
+Status NoiseWithoutThresholding(const DPHistogramBundle& bundle,
+                                TensorSliceData& column) {
   TFF_ASSIGN_OR_RETURN(absl::Span<OutputType> column_span,
                        column.AsSpan<OutputType>());
 
@@ -206,6 +193,25 @@ DPThresholdingHistogram::Create(
             ceil(selector->GetSecondCrossover())));
     dp_thresholding_histogram->selector_ = std::move(selector);
   }
+
+  double epsilon_per_agg = dp_thresholding_histogram->epsilon_per_agg();
+  double delta_per_agg = dp_thresholding_histogram->delta_per_agg();
+  if (epsilon_per_agg < kEpsilonThreshold) {
+    for (int j = 0; j < intrinsics->size(); ++j) {
+      const std::vector<Tensor>& inner_parameters =
+          intrinsics->at(j).parameters;
+      const Tensor& linfinity_tensor = inner_parameters[kLinfinityIndex];
+      double l1_bound = inner_parameters[kL1Index].CastToScalar<double>();
+      double l2_bound = inner_parameters[kL2Index].CastToScalar<double>();
+      TFF_ASSIGN_OR_RETURN(
+          auto bundle,
+          CreateDPHistogramBundle(
+              epsilon_per_agg, delta_per_agg, max_groups_contributed,
+              linfinity_tensor.CastToScalar<double>(), l1_bound, l2_bound,
+              /*threshold_by_value=*/!need_selector));
+      dp_thresholding_histogram->AddBundle(std::move(bundle));
+    }
+  }
   return dp_thresholding_histogram;
 }
 
@@ -289,19 +295,13 @@ StatusOr<OutputTensorList> DPThresholdingHistogram::NoisyReport() {
     // For each aggregation, run NoiseAndThreshold to noise the aggregates and
     // identify which of them that should survive.
     for (int j = 0; j < num_aggregations; ++j) {
-      const auto& inner_parameters = intrinsics()[j].parameters;
-      const Tensor& linfinity_tensor = inner_parameters[kLinfinityIndex];
-      double l1_bound = inner_parameters[kL1Index].CastToScalar<double>();
-      double l2_bound = inner_parameters[kL2Index].CastToScalar<double>();
       size_t column = num_output_keys + j;
       StatusOr<Tensor> tensor;
+      TFF_ASSIGN_OR_RETURN(const DPHistogramBundle& bundle, GetBundle(j));
       NUMERICAL_ONLY_DTYPE_CASES(
           column_dtypes[column], OutputType,
           TFF_RETURN_IF_ERROR(internal::NoiseAndThreshold<OutputType>(
-              epsilon_per_agg(), delta_per_agg(),
-              /*l0_bound=*/max_groups_contributed(),
-              linfinity_tensor.CastToScalar<OutputType>(), l1_bound, l2_bound,
-              *column_data[column], survivor_indices)));
+              bundle, *column_data[column], survivor_indices)));
     }
 
     // When there are no grouping keys, aggregation will be scalar. Hence, the
@@ -343,19 +343,13 @@ StatusOr<OutputTensorList> DPThresholdingHistogram::NoisyReport() {
 
   // Noise all entries without thresholding by values.
   for (int j = 0; j < num_aggregations; ++j) {
-    const std::vector<Tensor>& inner_parameters = intrinsics()[j].parameters;
-    const Tensor& linfinity_tensor = inner_parameters[kLinfinityIndex];
-    double l1_bound = inner_parameters[kL1Index].CastToScalar<double>();
-    double l2_bound = inner_parameters[kL2Index].CastToScalar<double>();
     size_t column = num_output_keys + j;
     StatusOr<Tensor> tensor;
+    TFF_ASSIGN_OR_RETURN(const DPHistogramBundle& bundle, GetBundle(j));
     NUMERICAL_ONLY_DTYPE_CASES(
         column_dtypes[column], OutputType,
         TFF_RETURN_IF_ERROR(internal::NoiseWithoutThresholding<OutputType>(
-            epsilon_per_agg(), delta_per_agg(),
-            /*l0_bound=*/max_groups_contributed(),
-            linfinity_tensor.CastToScalar<OutputType>(), l1_bound, l2_bound,
-            *column_data[column])));
+            bundle, *column_data[column])));
   }
 
   // Convert the sliced data back to a histogram i.e. OutputTensorList.

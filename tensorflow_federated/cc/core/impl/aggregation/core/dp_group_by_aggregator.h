@@ -20,12 +20,14 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -105,6 +107,14 @@ class DPGroupByAggregator : public GroupByAggregator {
   // Access the delta budget allocated to each aggregation.
   inline double delta_per_agg() const { return delta_per_agg_; }
 
+  // Access the DPHistogramBundle for a given aggregation.
+  StatusOr<const DPHistogramBundle&> GetBundle(int i) const;
+
+  // Add to the vector of DPHistogramBundles.
+  inline void AddBundle(DPHistogramBundle bundle) {
+    bundles_.push_back(std::move(bundle));
+  }
+
   // Calculate how much a single Accumulate call impacts the length of the
   // output of Serialize().
   StatusOr<int64_t> CalculateSerializeSensitivity();
@@ -116,6 +126,7 @@ class DPGroupByAggregator : public GroupByAggregator {
   int max_string_length_;
   double epsilon_per_agg_;
   double delta_per_agg_;
+  std::vector<DPHistogramBundle> bundles_;
 };
 
 }  // namespace aggregation

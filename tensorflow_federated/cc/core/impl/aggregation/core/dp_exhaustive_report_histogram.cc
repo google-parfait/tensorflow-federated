@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "absl/container/fixed_array.h"
+#include "absl/memory/memory.h"
 #include "algorithms/numerical-mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
@@ -87,6 +88,49 @@ DPExhaustiveReportHistogram::DPExhaustiveReportHistogram(
                           /*contributor_counts=*/{}, max_string_length),
       domain_tensors_(domain_tensors) {}
 
+StatusOr<std::unique_ptr<DPExhaustiveReportHistogram>>
+DPExhaustiveReportHistogram::Create(
+    const std::vector<TensorSpec>& input_key_specs,
+    const std::vector<TensorSpec>* output_key_specs,
+    const std::vector<Intrinsic>* intrinsics,
+    std::unique_ptr<CompositeKeyCombiner> key_combiner,
+    std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
+    int num_inputs, double epsilon, double delta,
+    int64_t max_groups_contributed, TensorSpan domain_tensors,
+    int max_string_length) {
+  std::unique_ptr<DPExhaustiveReportHistogram> aggregator =
+      absl::WrapUnique(new DPExhaustiveReportHistogram(
+          input_key_specs, output_key_specs, intrinsics,
+          std::move(key_combiner), std::move(aggregators), num_inputs, epsilon,
+          delta, max_groups_contributed, domain_tensors, max_string_length));
+
+  // If epsilon is too large, we are done here (no noise addition).
+  if (aggregator->epsilon_per_agg() >= kEpsilonThreshold) {
+    return aggregator;
+  }
+
+  // Make a noise mechanism for each aggregation.
+  for (int i = 0; i < intrinsics->size(); ++i) {
+    const Intrinsic& intrinsic = (*intrinsics)[i];
+    // Get norm bounds for the ith aggregation.
+    double linfinity_bound =
+        intrinsic.parameters[kLinfinityIndex].CastToScalar<double>();
+    double l1_bound = intrinsic.parameters[kL1Index].CastToScalar<double>();
+    double l2_bound = intrinsic.parameters[kL2Index].CastToScalar<double>();
+
+    // Create a noise mechanism out of those norm bounds and privacy params.
+    TFF_ASSIGN_OR_RETURN(
+        DPHistogramBundle noise_mechanism,
+        CreateDPHistogramBundle(aggregator->epsilon_per_agg(),
+                                aggregator->delta_per_agg(),
+                                /*l0_bound=*/max_groups_contributed,
+                                linfinity_bound, l1_bound, l2_bound,
+                                /*threshold_by_value=*/false));
+    aggregator->AddBundle(std::move(noise_mechanism));
+  }
+  return aggregator;
+}
+
 StatusOr<Tensor>
 DPExhaustiveReportHistogram::CreateOrdinalsByGroupingKeysForMerge(
     const InputTensorList& inputs) {
@@ -140,32 +184,6 @@ StatusOr<OutputTensorList> DPExhaustiveReportHistogram::NoisyReport() {
   int64_t domain_size = 1;
   for (const auto& domain_tensor : domain_tensors_) {
     domain_size *= domain_tensor.num_elements();
-  }
-
-  // Make a noise mechanism for each aggregation.
-  std::vector<std::unique_ptr<NumericalMechanism>> mechanisms;
-  for (int i = 0; i < intrinsics().size(); ++i) {
-    const Intrinsic& intrinsic = intrinsics()[i];
-    // Do not bother making mechanism if epsilon is too large.
-    if (epsilon_per_agg() >= kEpsilonThreshold) {
-      mechanisms.push_back(nullptr);
-      continue;
-    }
-
-    // Get norm bounds for the ith aggregation.
-    double linfinity_bound =
-        intrinsic.parameters[kLinfinityIndex].CastToScalar<double>();
-    double l1_bound = intrinsic.parameters[kL1Index].CastToScalar<double>();
-    double l2_bound = intrinsic.parameters[kL2Index].CastToScalar<double>();
-
-    // Create a noise mechanism out of those norm bounds and privacy params.
-    TFF_ASSIGN_OR_RETURN(
-        DPHistogramBundle noise_mechanism,
-        CreateDPHistogramBundle(epsilon_per_agg(), delta_per_agg(),
-                                /*l0_bound=*/max_groups_contributed(),
-                                linfinity_bound, l1_bound, l2_bound,
-                                /*open_domain=*/false));
-    mechanisms.push_back(std::move(noise_mechanism.mechanism));
   }
 
   // Create MutableVectorData containers, one for each output tensor, that are
@@ -232,13 +250,18 @@ StatusOr<OutputTensorList> DPExhaustiveReportHistogram::NoisyReport() {
         // Get the current column of aggregates
         const Tensor& column_of_aggregates = noiseless_aggregates[i];
 
+        NumericalMechanism* mechanism = nullptr;
+        if (epsilon_per_agg() < kEpsilonThreshold) {
+          TFF_ASSIGN_OR_RETURN(const DPHistogramBundle& bundle,
+                               GetBundle(mech_to_use));
+          mechanism = bundle.mechanism.get();
+        }
         // Copy the number associated with the ordinal to the container.
         NUMERICAL_ONLY_DTYPE_CASES(
             column_of_aggregates.dtype(), T,
             CopyAggregateFromColumn<T>(
                 column_of_aggregates, ordinal,
-                dynamic_cast<MutableVectorData<T>&>(container),
-                mechanisms[mech_to_use].get()));
+                dynamic_cast<MutableVectorData<T>&>(container), mechanism));
 
         // Move on to the next mechanism.
         mech_to_use++;

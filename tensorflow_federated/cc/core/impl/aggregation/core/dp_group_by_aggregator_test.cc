@@ -29,11 +29,13 @@
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_histogram_test_utils.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -49,6 +51,7 @@ namespace {
 
 using ::tensorflow_federated::aggregation::dp_histogram_testing::
     CreateInnerIntrinsic;
+using ::testing::Eq;
 using ::testing::HasSubstr;
 
 // Mock class for testing the abstract DPGroupByAggregator.
@@ -82,6 +85,15 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
   inline StatusOr<std::vector<std::string>> Partition(int num_partitions) &&
       override {
     return (std::move(*this)).DPGroupByAggregator::Partition(num_partitions);
+  }
+
+  inline absl::StatusOr<const DPHistogramBundle&> GetBundle(int i) const {
+    return DPGroupByAggregator::GetBundle(i);
+  }
+
+  // Add to the vector of DPHistogramBundles.
+  inline void AddBundle(DPHistogramBundle bundle) {
+    DPGroupByAggregator::AddBundle(std::move(bundle));
   }
 
  protected:
@@ -436,6 +448,31 @@ TEST(DPGroupByAggregatorTest, LargeEpsilonPartitionIsNotRandom) {
   }
   EXPECT_EQ(max_length_a - min_length_a, 0);
   EXPECT_EQ(max_length_b - min_length_b, 0);
+}
+
+// Ninth behavior to test: GetBundle() returns an error if the index is out of
+// range (e.g. due to empty list of bundles).
+TEST(DPGroupByAggregatorTest, GetBundleReturnsError) {
+  MockDPGroupByAggregator aggregator = CreateMockForTestingEpsilonAndDeltaSplit(
+      /*epsilon=*/0.1, /*delta=*/0.1, /*num_intrinsics=*/1);
+  EXPECT_THAT(aggregator.GetBundle(0),
+              StatusIs(INVALID_ARGUMENT, HasSubstr("is not in the range")));
+}
+// Tenth behavior to test: GetBundle() returns the right bundle if the index is
+// in range.
+TEST(DPGroupByAggregatorTest, GetBundleReturnsBundle) {
+  MockDPGroupByAggregator aggregator = CreateMockForTestingEpsilonAndDeltaSplit(
+      /*epsilon=*/0.1, /*delta=*/0.1, /*num_intrinsics=*/1);
+  aggregator.AddBundle({/*mechanism=*/nullptr,
+                        /*threshold=*/111,
+                        /*use_laplace=*/true});
+  aggregator.AddBundle({/*mechanism=*/nullptr,
+                        /*threshold=*/222,
+                        /*use_laplace=*/false});
+  EXPECT_THAT(aggregator.GetBundle(0),
+              IsOkAndHolds(testing::FieldsAre(Eq(nullptr), Eq(111), Eq(true))));
+  EXPECT_THAT(aggregator.GetBundle(1), IsOkAndHolds(testing::FieldsAre(
+                                           Eq(nullptr), Eq(222), Eq(false))));
 }
 
 }  // namespace

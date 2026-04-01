@@ -383,6 +383,7 @@ cc_library(
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:fixed_array",
+        "@com_google_absl//absl/memory",
         "@com_google_cc_differential_privacy//algorithms:numerical-mechanisms",
     ],
 )
@@ -725,6 +726,7 @@ cc_test(
         ":dp_group_by_aggregator",
         ":dp_grouping_federated_sum",
         ":dp_histogram_test_utils",
+        ":dp_noise_mechanisms",
         ":intrinsic",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
@@ -732,6 +734,7 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 
