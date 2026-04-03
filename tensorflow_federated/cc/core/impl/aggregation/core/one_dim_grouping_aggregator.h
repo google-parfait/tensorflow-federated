@@ -273,12 +273,12 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
   virtual OutputT GetDefaultValue() = 0;
 
  private:
-  // TODO: b/447139788 - Optimize memory usage when serializing the state.
   OneDimGroupingAggregatorState CreateStateFromMutableVectorData(
       MutableVectorData<OutputT>&& data) {
     OneDimGroupingAggregatorState aggregator_state;
     aggregator_state.set_num_inputs(num_inputs_);
-    *(aggregator_state.mutable_vector_data()) = data.EncodeContent();
+    aggregator_state.mutable_vector_data()->assign(
+        static_cast<const char*>(data.data()), data.byte_size());
     return aggregator_state;
   }
 
