@@ -32,6 +32,8 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
@@ -300,6 +302,20 @@ StatusOr<int64_t> DPGroupByAggregator::GetContentSize(
               " Failed to parse padding length.";
   }
   return total_size - characters_to_remove;
+}
+
+std::unique_ptr<DPCompositeKeyCombiner>
+DPGroupByAggregator::CreateDPKeyCombiner(
+    const std::vector<TensorSpec>& input_key_specs,
+    const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
+    std::optional<DomainSpec> domain_spec) {
+  if (input_key_specs.empty()) {
+    return nullptr;
+  }
+  return std::make_unique<DPCompositeKeyCombiner>(
+      GroupByAggregator::CreateKeyTypes(input_key_specs.size(), input_key_specs,
+                                        output_key_specs),
+      l0_bound, std::move(domain_spec));
 }
 
 }  // namespace aggregation

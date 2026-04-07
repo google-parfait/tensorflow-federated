@@ -78,9 +78,6 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
 
   // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
   // on the input specification
-  static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
-      const std::vector<TensorSpec>& input_key_specs,
-      const std::vector<TensorSpec>* output_key_specs, int64_t l0_bound);
 
   // Applies NoiseAndThreshold to the noiseless aggregate.
   StatusOr<OutputTensorList> NoisyReport() override;

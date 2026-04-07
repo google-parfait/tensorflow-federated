@@ -346,16 +346,20 @@ TEST(DPExhaustiveReportHistogramTest, CatchDuplicateParameterNames) {
                        HasSubstr("Duplicate parameter name: epsilon")));
 }
 
-TEST(DPExhaustiveReportHistogramTest, CatchKeyNamesAndMinContributorsToGroup) {
+TEST(DPThresholdingHistogramTest,
+     CreateWithMinContributorsAndKeyNames_Success) {
   Intrinsic intrinsic =
       CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>();
   intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {1},
                                                 CreateTestData({10}),
                                                 "min_contributors_to_group")
                                      .value());
-  EXPECT_THAT(CreateTensorAggregator(intrinsic),
-              StatusIs(INVALID_ARGUMENT,
-                       HasSubstr("do not have an algorithm that uses both")));
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+
+  // Check that the returned aggregator is a DPThresholdingHistogram.
+  auto* dp_thresholding_histogram =
+      dynamic_cast<DPThresholdingHistogram*>(aggregator.get());
+  ASSERT_NE(dp_thresholding_histogram, nullptr);
 }
 
 // Phase 2: Test that the factory catches problems in Intrinsics that are set up

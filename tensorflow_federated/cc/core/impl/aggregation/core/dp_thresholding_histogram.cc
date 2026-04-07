@@ -215,24 +215,6 @@ DPThresholdingHistogram::Create(
   return dp_thresholding_histogram;
 }
 
-std::unique_ptr<DPCompositeKeyCombiner>
-DPThresholdingHistogram::CreateDPKeyCombiner(
-    const std::vector<TensorSpec>& input_key_specs,
-    const std::vector<TensorSpec>* output_key_specs, int64_t l0_bound) {
-  // If there are no input keys, support a columnar aggregation that aggregates
-  // all the values in each column and produces a single output value per
-  // column. This would be equivalent to having identical key values for all
-  // rows.
-  if (input_key_specs.empty()) {
-    return nullptr;
-  }
-
-  // Otherwise create a DP-ready key combiner
-  return std::make_unique<DPCompositeKeyCombiner>(
-      GroupByAggregator::CreateKeyTypes(input_key_specs.size(), input_key_specs,
-                                        *output_key_specs),
-      l0_bound);
-}
 
 StatusOr<Tensor> DPThresholdingHistogram::CreateOrdinalsByGroupingKeysForMerge(
     const InputTensorList& inputs) {

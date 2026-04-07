@@ -32,6 +32,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_exhaustive_report_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
@@ -359,9 +360,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   SupportedDPAlgorithms which_algorithm =
       SupportedDPAlgorithms::kPreAggregationThreshold;
   if (has_min_contributors_to_group && has_key_names) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: We currently do not have an algorithm that "
-              "uses both min_contributors_to_group and key_names.";
+    which_algorithm = SupportedDPAlgorithms::kPreAggregationThresholdAndFilter;
   } else if (!has_min_contributors_to_group && !has_key_names) {
     which_algorithm = SupportedDPAlgorithms::kPostAggregationThreshold;
   } else if (has_key_names) {
@@ -384,7 +383,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   // For the closed-domain case we must find the key tensors to pass on. This is
   // guaranteed to be present by the definition of the open_domain variable.
   TensorSpan key_tensors;
-  if (which_algorithm == SupportedDPAlgorithms::kExhaustiveReport) {
+  if (has_key_names) {
     TFF_ASSIGN_OR_RETURN(
         std::vector<std::string> key_names,
         FindAndValidateKeyNames(intrinsic, parameter_name_to_index));
@@ -407,8 +406,14 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
 
   // Create the DP key combiner, and only populate the key combiner with state
   // if there are keys.
-  auto key_combiner = DPThresholdingHistogram::CreateDPKeyCombiner(
-      intrinsic.inputs, &intrinsic.outputs, max_groups_contributed);
+  std::optional<DomainSpec> domain_spec;
+  if (!key_tensors.empty()) {
+    domain_spec = DomainSpec(key_tensors);
+  }
+
+  auto key_combiner = DPGroupByAggregator::CreateDPKeyCombiner(
+      intrinsic.inputs, intrinsic.outputs, max_groups_contributed,
+      std::move(domain_spec));
   if (aggregator_state != nullptr && key_combiner != nullptr) {
     TFF_RETURN_IF_ERROR(GroupByFactory::PopulateKeyCombinerFromState(
         *key_combiner, *aggregator_state));

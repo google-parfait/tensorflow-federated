@@ -1,3 +1,4 @@
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 /*
  * Copyright 2025 Google LLC
  *
@@ -26,6 +27,7 @@
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
@@ -37,6 +39,7 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
+
 // Number of bytes to represent a number in `varint` format.
 StatusOr<int64_t> CalculateVarintByteSize(int64_t value);
 
@@ -56,6 +59,12 @@ class DPGroupByAggregator : public GroupByAggregator {
   // uploads (length minus # of bytes for padding and encoding padding length).
   // Returns an error status when the padding length cannot be parsed.
   static StatusOr<int64_t> GetContentSize(absl::string_view serialized_state);
+
+  // Creates a DP key combiner.
+  static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
+      const std::vector<TensorSpec>& input_key_specs,
+      const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
+      std::optional<DomainSpec> domain_spec = std::nullopt);
 
  protected:
   // Constructs a DPGroupByAggregator. Only intended for use by child classes.

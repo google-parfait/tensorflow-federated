@@ -696,6 +696,35 @@ TEST_P(DPThresholdingHistogramTest,
   EXPECT_EQ(num_dog, 2);
 }
 
+TEST_P(DPThresholdingHistogramTest,
+       SingleKeySingleAggWithDomainSpec_FiltersOutElements) {
+  for (int i = 0; i < 9; i++) {
+    // Epsilon = 1, Delta = 0.01, L0_bound = 100 (from default).
+    // Use default domain spec ("a", "b", "c")
+    Intrinsic intrinsic =
+        dp_histogram_testing::CreateIntrinsicWithKeyTypes_ExhaustiveReport<
+            int64_t, int64_t>();
+
+    TFF_ASSERT_OK_AND_ASSIGN(
+        auto min_contributors_tensor,
+        Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({1}),
+                       "min_contributors_to_group"));
+    intrinsic.parameters.push_back(std::move(min_contributors_tensor));
+
+    // We contribute "a", "b", "d"
+    // "d" is not in the domain ("a", "b", "c"). It should be filtered out.
+    TFF_ASSERT_OK_AND_ASSIGN(auto result, SingleKeySingleAgg<int64_t>(
+                                              intrinsic, {3}, {"a", "b", "d"},
+                                              {1, 2, 3}, GetParam()));
+    EXPECT_THAT(result.size(), Eq(2));
+
+    const auto& keys = result[0].AsSpan<string_view>();
+    EXPECT_THAT(keys, Not(Contains("d")));
+    EXPECT_THAT(keys, Contains("a"));
+    EXPECT_THAT(keys, Contains("b"));
+  }
+}
+
 // Seventh test batch: merge should not clip or noise intermediary aggregates.
 
 TEST_P(DPThresholdingHistogramTest, MergeDoesNotDistortData_SingleKey) {
