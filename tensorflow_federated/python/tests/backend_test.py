@@ -174,6 +174,41 @@ class FederatedComputationTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   @test_contexts.with_contexts(*test_contexts.get_all_contexts())
+  def test_dataset(self):
+
+    client_data_type = federated_language.FederatedType(
+        federated_language.TensorType(np.int32, [3]),
+        federated_language.CLIENTS,
+    )
+    server_state_type = federated_language.FederatedType(
+        np.int32, federated_language.SERVER
+    )
+
+    def reduce_fn(state, batch):
+      return state + batch
+
+    @tff.tensorflow.computation(client_data_type.member)
+    def client_transform(data):
+      dataset = tf.data.Dataset.from_tensor_slices(data)
+      return dataset.reduce(0, reduce_fn)
+
+    @federated_language.federated_computation(
+        [client_data_type, server_state_type]
+    )
+    def my_comp(client_data, server_data):
+      transformed_client_data = federated_language.federated_map(
+          client_transform, client_data
+      )
+      return (
+          federated_language.federated_sum(transformed_client_data),
+          server_data,
+      )
+
+    result_1, result_2 = my_comp([[1, 2, 3], [4, 5, 6]], 30)
+    self.assertEqual(result_1, 21)
+    self.assertEqual(result_2, 30)
+
+  @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_empty_tuple(self):
 
     @federated_language.federated_computation
