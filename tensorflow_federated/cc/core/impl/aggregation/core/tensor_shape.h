@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/inlined_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 
@@ -33,7 +34,9 @@ namespace aggregation {
 // dimension sizes.
 class TensorShape final {
  public:
-  using DimSizesVector = std::vector<int64_t>;
+  // Similar to `std::vector<int64_t>` but with a small inline capacity for
+  // speed of shapes up to 1 dimension, the most common usage for this class.
+  using DimSizesVector = absl::InlinedVector<int64_t, 1>;
 
   template <typename ForwardIterator>
   TensorShape(ForwardIterator first, ForwardIterator last)
@@ -89,8 +92,6 @@ class TensorShape final {
     return TFF_STATUS(OK);
   }
 
-  // TODO: b/222605809 - Consider optimizing the storage for better inlining
-  // of small number of dimensions.
   DimSizesVector dim_sizes_;
 };
 
