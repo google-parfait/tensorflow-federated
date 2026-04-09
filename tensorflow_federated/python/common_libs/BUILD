@@ -4,6 +4,7 @@ package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
         ":common_libs_packages",
+        "//inputmethod/keyboard/tensorflow/federated/fedrecon:__subpackages__",
         "//tensorflow_federated/python:internal_packages",
 
         # Python package namespace
