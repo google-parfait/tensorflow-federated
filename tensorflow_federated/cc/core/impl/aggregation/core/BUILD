@@ -571,6 +571,44 @@ cc_library(
     hdrs = ["dp_fedsql_constants.h"],
 )
 
+cc_library(
+    name = "dp_fedsql_util",
+    srcs = ["dp_fedsql_util.cc"],
+    hdrs = ["dp_fedsql_util.h"],
+    deps = [
+        ":dp_fedsql_constants",
+        ":intrinsic",
+        ":tensor",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "dp_fedsql_util_test",
+    srcs = ["dp_fedsql_util_test.cc"],
+    deps = [
+        ":aggregator",
+        ":dp_fedsql_util",
+        ":intrinsic",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/protocol:config_converter",
+        "//tensorflow_federated/cc/core/impl/aggregation/protocol:configuration_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:parse_text_proto",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
 cc_test(
     name = "federated_mean_test",
     srcs = ["federated_mean_test.cc"],

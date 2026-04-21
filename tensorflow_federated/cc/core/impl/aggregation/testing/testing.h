@@ -225,6 +225,12 @@ TensorMatcher<T> IsTensor(TensorShape expected_shape,
                           expected_values, tolerance);
 }
 
+template <typename T>
+TensorMatcher<T> IsScalarTensor(T expected_value,
+                                std::optional<T> tolerance = std::nullopt) {
+  return IsTensor<T>({}, {expected_value}, tolerance);
+}
+
 // Writes description of an intrinsic to the ostream.
 std::ostream& operator<<(std::ostream& os, const Intrinsic& intrinsic);
 
