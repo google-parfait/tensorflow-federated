@@ -57,5 +57,8 @@ cc_library(
 cc_binary(
     name = "worker_binary",
     linkopts = ["-lrt"],
-    deps = [":worker_main"],
+    deps = [
+        ":worker_main",
+        "//file/placer",  # build_cleaner: keep; required for reading from Placer
+    ],
 )
