@@ -184,13 +184,9 @@ Status DPQuantileAggregator<T>::CheckValid() const {
 }
 
 // Create an OutputTensorList containing a single scalar tensor.
-StatusOr<OutputTensorList> SingleScalarTensor(double value) {
-  auto data_container = std::make_unique<MutableVectorData<double>>();
-  data_container->push_back(value);
-  TFF_ASSIGN_OR_RETURN(
-      auto tensor, Tensor::Create(DT_DOUBLE, {}, std::move(data_container)));
+OutputTensorList SingleScalarTensor(double value) {
   OutputTensorList output;
-  output.push_back(std::move(tensor));
+  output.push_back(Tensor(value));
   return output;
 }
 
