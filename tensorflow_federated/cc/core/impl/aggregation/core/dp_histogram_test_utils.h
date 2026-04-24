@@ -31,6 +31,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_exhaustive_report_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_thresholding_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
@@ -46,11 +47,34 @@
 namespace tensorflow_federated {
 namespace aggregation {
 
+// Peer class for testing private methods of DPExhaustiveReportHistogram.
+// This allows us to test, among other things, the noise description.
+class DPExhaustiveReportHistogramPeer {
+ public:
+  explicit DPExhaustiveReportHistogramPeer(
+      std::unique_ptr<TensorAggregator> aggregator) {
+    auto* raw_ptr =
+        dynamic_cast<DPExhaustiveReportHistogram*>(aggregator.get());
+    TFF_CHECK(raw_ptr != nullptr)
+        << "Aggregator must be a DPExhaustiveReportHistogram";
+    dp_histogram_ = std::unique_ptr<DPExhaustiveReportHistogram>(
+        dynamic_cast<DPExhaustiveReportHistogram*>(aggregator.release()));
+  }
+  StatusOr<std::string> GetNoiseDescription() const {
+    return dp_histogram_->GetNoiseDescription();
+  }
+
+ private:
+  std::unique_ptr<DPExhaustiveReportHistogram> dp_histogram_;
+  friend class DPExhaustiveReportHistogram;
+  friend class GroupByAggregator;
+};
+
 // Peer class for testing private methods of DPThresholdingHistogram.
-// This allows us to test the creation of the selector, which is not at time of
-// writing exposed in the public API and won't be exposed except through
-// complicated code that should be tested separately. We also have access to
-// some other internals that are useful to test.
+// This allows us to test, among other things, the creation of the selector,
+// which is not at time of writing exposed in the public API and won't be
+// exposed except through complicated code that should be tested separately. We
+// also have access to some other internals that are useful to test.
 class DPThresholdingHistogramPeer {
  public:
   explicit DPThresholdingHistogramPeer(
@@ -87,6 +111,10 @@ class DPThresholdingHistogramPeer {
   }
 
   double GetDeltaPerAgg() const { return dp_histogram_->delta_per_agg(); }
+
+  StatusOr<std::string> GetNoiseDescription() const {
+    return dp_histogram_->GetNoiseDescription();
+  }
 
  private:
   std::unique_ptr<DPThresholdingHistogram> dp_histogram_;

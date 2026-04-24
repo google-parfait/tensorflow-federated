@@ -299,6 +299,29 @@ TEST(DPExhaustiveReportHistogramTest, FloatTest) {
   }
 }
 
+// Third batch of tests: Noise descriptions are correct.
+TEST(DPExhaustiveReportHistogramTest, NoiseDescriptionHasNoThresholding) {
+  Intrinsic intrinsic =
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
+          /*epsilon=*/0.01,
+          /*delta=*/1e-8,
+          /*l0_bound=*/2,
+          /*linfinity_bound=*/1);
+  TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator,
+                           CreateTensorAggregator(intrinsic));
+  DPExhaustiveReportHistogramPeer peer(std::move(dp_aggregator));
+  EXPECT_THAT(peer.GetNoiseDescription(),
+              IsOkAndHolds(testing::HasSubstr("Noise was drawn from")));
+  // This class does not use thresholding, either based on the sum or the number
+  // of contributors.
+  EXPECT_THAT(peer.GetNoiseDescription(),
+              IsOkAndHolds(Not(
+                  testing::HasSubstr("Any group with any noisy sum below"))));
+  EXPECT_THAT(
+      peer.GetNoiseDescription(),
+      IsOkAndHolds(Not(testing::HasSubstr("Any group with fewer than"))));
+}
+
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated

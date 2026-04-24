@@ -66,6 +66,8 @@ class DPGroupByAggregator : public GroupByAggregator {
       const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
       std::optional<DomainSpec> domain_spec = std::nullopt);
 
+  virtual StatusOr<std::string> GetNoiseDescription() const;
+
  protected:
   // Constructs a DPGroupByAggregator. Only intended for use by child classes.
   //

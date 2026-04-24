@@ -28,6 +28,7 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -75,6 +76,47 @@ StatusOr<const DPHistogramBundle&> DPGroupByAggregator::GetBundle(int i) const {
            << " is not in the range [0, " << bundles_.size() << ")";
   }
   return bundles_[i];
+}
+
+StatusOr<std::string> DPGroupByAggregator::GetNoiseDescription() const {
+  if (epsilon_ >= kEpsilonThreshold) {
+    return "No noise added.";
+  }
+  std::string noise_description = "";
+  constexpr absl::string_view kDistributionTemplate =
+      "\tNoise was drawn from a %s distribution with standard deviation %f.\n";
+  for (int i = 0; i < bundles_.size(); ++i) {
+    if (bundles_[i].mechanism == nullptr) {
+      return TFF_STATUS(FAILED_PRECONDITION)
+             << "DPGroupByAggregator::GetNoiseDescription: a mechanism was not "
+                "set.";
+    }
+    absl::StrAppend(&noise_description, "Aggregation ", i, ": \n");
+
+    // Report the error magnitude of the noised values.
+    TFF_ASSIGN_OR_RETURN(auto confidence_interval,
+                         bundles_[i].mechanism->NoiseConfidenceInterval(0.9));
+
+    double error_magnitude = confidence_interval.upper_bound();
+    absl::StrAppend(
+        &noise_description,
+        "\tDP error 90 percent confidence interval: ", error_magnitude, "\n");
+
+    // Report the distribution of the noise.
+    absl::StrAppend(
+        &noise_description,
+        absl::StrFormat(kDistributionTemplate,
+                        bundles_[i].use_laplace ? "Laplace" : "Gaussian",
+                        std::sqrt(bundles_[i].mechanism->GetVariance())));
+
+    // Report the threshold on noisy sums if it exists.
+    if (bundles_[i].threshold.has_value()) {
+      absl::StrAppend(&noise_description,
+                      "\tAny group with any noisy sum below ",
+                      bundles_[i].threshold.value(), " was dropped.\n");
+    }
+  }
+  return noise_description;
 }
 
 StatusOr<OutputTensorList> DPGroupByAggregator::Report() && {

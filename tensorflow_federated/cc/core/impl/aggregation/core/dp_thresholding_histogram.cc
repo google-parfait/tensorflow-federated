@@ -28,13 +28,13 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "algorithms/partition-selection.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
@@ -215,6 +215,28 @@ DPThresholdingHistogram::Create(
   return dp_thresholding_histogram;
 }
 
+StatusOr<std::string> DPThresholdingHistogram::GetNoiseDescription() const {
+  TFF_ASSIGN_OR_RETURN(std::string noise_description,
+                       DPGroupByAggregator::GetNoiseDescription());
+  if (selector_ == nullptr) {
+    return noise_description;
+  }
+
+  // selector_ is not null only when `need_selector` was true in the Create call
+  // which means that min_contributors_to_group_ was set. Additionally, when
+  // `need_selector` is true, we will set max_contributors_to_group_.
+  TFF_CHECK(min_contributors_to_group().has_value());
+  TFF_CHECK(max_contributors_to_group().has_value());
+
+  absl::StrAppend(&noise_description, "Any group with fewer than ",
+                  min_contributors_to_group().value(),
+                  " contributors was dropped.\n");
+  absl::StrAppend(&noise_description, "Any group with more than ",
+                  max_contributors_to_group().value(),
+                  " contributors was kept.\n");
+
+  return noise_description;
+}
 
 StatusOr<Tensor> DPThresholdingHistogram::CreateOrdinalsByGroupingKeysForMerge(
     const InputTensorList& inputs) {

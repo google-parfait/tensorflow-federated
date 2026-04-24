@@ -1215,6 +1215,33 @@ TEST_P(DPThresholdingHistogramTest,
   EXPECT_THAT(values, Contains(Ne(kNumInputs)));
 }
 
+// Twelfth test batch: check that the noise description is correct. If there is
+// no min_contributors_to_group parameter, thresholding is based on the noisy
+// sum; otherwise, it is based on the number of contributors.
+TEST(DPThresholdingHistogramTest,
+     NoiseDescriptionWithoutMinContributorsToGroup) {
+  Intrinsic intrinsic0 =
+      CreateIntrinsic<int64_t, int64_t>(/*epsilon=*/1.0987,
+                                        /*delta=*/1e-8,
+                                        /*l0_bound=*/3854,
+                                        /*linfinity_bound=*/141);
+  TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator0,
+                           CreateTensorAggregator(intrinsic0));
+  DPThresholdingHistogramPeer peer0(std::move(dp_aggregator0));
+  EXPECT_THAT(
+      peer0.GetNoiseDescription(),
+      IsOkAndHolds(testing::HasSubstr("Any group with any noisy sum below")));
+}
+TEST(DPThresholdingHistogramTest, NoiseDescriptionWithMinContributorsToGroup) {
+  Intrinsic intrinsic1 = CreateIntrinsicWithMinContributors<int64_t, int64_t>(
+      /*min_contributors=*/5, /*epsilon=*/1.0987,
+      /*delta=*/1e-8, /*l0_bound=*/3854, /*linfinity_bound=*/141);
+  TFF_ASSERT_OK_AND_ASSIGN(auto dp_aggregator1,
+                           CreateTensorAggregator(intrinsic1));
+  DPThresholdingHistogramPeer peer1(std::move(dp_aggregator1));
+  EXPECT_THAT(peer1.GetNoiseDescription(),
+              IsOkAndHolds(testing::HasSubstr("Any group with fewer than")));
+}
 INSTANTIATE_TEST_SUITE_P(
     DPThresholdingHistogramTestInstantiation, DPThresholdingHistogramTest,
     ValuesIn<bool>({false, true}),

@@ -338,6 +338,7 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 
@@ -351,7 +352,6 @@ cc_library(
         ":agg_core_cc_proto",
         ":aggregator",
         ":composite_key_combiner",
-        ":dp_composite_key_combiner",
         ":dp_fedsql_constants",
         ":dp_group_by_aggregator",
         ":dp_noise_mechanisms",
@@ -363,6 +363,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
         "@com_google_cc_differential_privacy//algorithms:partition-selection",
     ],
@@ -786,6 +787,7 @@ cc_library(
     hdrs = ["dp_histogram_test_utils.h"],
     deps = [
         ":aggregator",
+        ":dp_exhaustive_report_histogram",
         ":dp_fedsql_constants",
         ":dp_thresholding_histogram",
         ":group_by_aggregator",

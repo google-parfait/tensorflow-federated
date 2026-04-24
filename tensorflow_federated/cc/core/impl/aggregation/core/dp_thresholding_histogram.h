@@ -20,13 +20,13 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "algorithms/partition-selection.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -81,6 +81,9 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
 
   // Applies NoiseAndThreshold to the noiseless aggregate.
   StatusOr<OutputTensorList> NoisyReport() override;
+
+  // Adds information about the thresholding to the noise description.
+  StatusOr<std::string> GetNoiseDescription() const override;
 
  private:
   // Constructs a DPThresholdingHistogram. Only called by the Create() method

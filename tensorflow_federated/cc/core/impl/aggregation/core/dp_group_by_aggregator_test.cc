@@ -475,6 +475,25 @@ TEST(DPGroupByAggregatorTest, GetBundleReturnsBundle) {
                                            Eq(nullptr), Eq(222), Eq(false))));
 }
 
+// Tenth: noise descriptions.
+TEST(DPGroupByAggregatorTest, NoiseDescriptionForLargeEpsilons) {
+  MockDPGroupByAggregator aggregator = CreateMockForTestingEpsilonAndDeltaSplit(
+      /*epsilon=*/kEpsilonThreshold + 1, /*delta=*/1e-8,
+      /*num_intrinsics=*/1);
+  EXPECT_THAT(aggregator.GetNoiseDescription(),
+              IsOkAndHolds(testing::HasSubstr("No noise added.")));
+}
+TEST(DPGroupByAggregatorTest, NoiseDescriptionFailsForMissingMechanism) {
+  MockDPGroupByAggregator aggregator = CreateMockForTestingEpsilonAndDeltaSplit(
+      /*epsilon=*/0.1, /*delta=*/1e-8, /*num_intrinsics=*/1);
+  aggregator.AddBundle({/*mechanism=*/nullptr,
+                        /*threshold=*/111,
+                        /*use_laplace=*/true});
+  EXPECT_THAT(
+      aggregator.GetNoiseDescription(),
+      StatusIs(FAILED_PRECONDITION, HasSubstr("a mechanism was not set.")));
+}
+
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated
