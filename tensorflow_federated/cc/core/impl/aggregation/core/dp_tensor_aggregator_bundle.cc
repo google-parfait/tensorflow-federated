@@ -53,10 +53,15 @@ DPTensorAggregatorBundle::DPTensorAggregatorBundle(
 
 Status DPTensorAggregatorBundle::ValidateInputs(
     const InputTensorList& tensors) const {
-  if (tensors.size() != num_tensors_per_input_) {
+  const bool has_privacy_id =
+      tensors.size() > 0 &&
+      tensors[tensors.size() - 1]->name() == kPrivacyIdName;
+  int privacy_id_present = has_privacy_id ? 1 : 0;
+  if (tensors.size() != num_tensors_per_input_ + privacy_id_present) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "DPTensorAggregatorBundle::ValidateInputs: Expected "
-           << num_tensors_per_input_ << " tensors, got " << tensors.size();
+           << num_tensors_per_input_ << " tensors excluding optional "
+           << kPrivacyIdName << ", got " << tensors.size() - privacy_id_present;
   }
 
   // Verify that each batch is valid, by calling ValidateInputs() on the
