@@ -170,7 +170,7 @@ absl::Status SetParameterIfUnset(Tensor& parameter, absl::string_view name,
         absl::StrCat("PopulateDPParameters: Expected untuned ", name, " to be ",
                      unset_value, " but got ", current_value, " instead."));
   }
-  parameter = Tensor(new_value);
+  parameter = Tensor(new_value, std::string(name));
   return absl::OkStatus();
 }
 

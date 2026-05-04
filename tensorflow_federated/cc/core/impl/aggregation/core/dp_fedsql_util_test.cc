@@ -27,6 +27,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_factory.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
@@ -52,7 +53,7 @@ class MockFactory : public TensorAggregatorFactory {
               (const Intrinsic&, std::string), (const, override));
 };
 
-REGISTER_AGGREGATOR_FACTORY("fedsql_dp_group_by", MockFactory);
+// REGISTER_AGGREGATOR_FACTORY("fedsql_dp_group_by", MockFactory);
 
 namespace foo {
 using FooFactory = MockFactory;
@@ -370,6 +371,53 @@ TEST_F(PopulateDPParametersTest, PopulatedAlreadySetParameters) {
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Expected untuned L_1 to be -1 "
                                  "but got 0.5 instead.")));
+}
+
+// Test that the DPGroupByFactory can create a DPGroupByAggregator from a
+// populated intrinsic.
+TEST_F(PopulateDPParametersTest, DPGroupByFactoryAcceptsPopulatedIntrinsic) {
+  auto intrinsics = LoadConfig(R"pb(
+    intrinsic_configs:
+    [ {
+      intrinsic_uri: "fedsql_dp_group_by"
+      intrinsic_args:
+      [ { parameter { dtype: DT_DOUBLE double_val: 1.0 } }
+        , { parameter { dtype: DT_DOUBLE double_val: 0.00001 } }
+        , { parameter { dtype: DT_INT64 int64_val: -1 } }]
+      inner_intrinsics:
+      [ {
+        intrinsic_uri: "GoogleSQL:$differential_privacy_sum"
+        intrinsic_args:
+        [ {
+          input_tensor {
+            name: "input 1"
+            dtype: DT_INT32
+            shape { dim_sizes: -1 }
+          }
+        }
+          , { parameter { dtype: DT_DOUBLE double_val: -1.0 } }
+          , { parameter { dtype: DT_DOUBLE double_val: -1.0 } }
+          , { parameter { dtype: DT_DOUBLE double_val: -1.0 } }]
+        output_tensors:
+        [ {
+          name: "output 1"
+          dtype: DT_INT32
+          shape { dim_sizes: -1 }
+        }]
+      }]
+    }]
+  )pb");
+
+  // Fill in the missing parameters and check creation
+  absl::flat_hash_map<std::string, double> parameters = {
+      {"max_groups_contributed_estimated", 10},
+      {"Linf_0_estimated", 0.5},
+  };
+  EXPECT_OK(PopulateDPParameters(intrinsics[0], parameters));
+
+  DPGroupByFactory real_factory;
+  auto created = real_factory.Create(intrinsics[0]);
+  EXPECT_OK(created);
 }
 
 }  // namespace

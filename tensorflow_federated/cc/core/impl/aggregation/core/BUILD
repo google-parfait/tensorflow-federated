@@ -596,6 +596,8 @@ cc_test(
     deps = [
         ":aggregator",
         ":dp_fedsql_util",
+        ":dp_group_by_factory",
+        ":dp_grouping_federated_sum",
         ":intrinsic",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:config_converter",
