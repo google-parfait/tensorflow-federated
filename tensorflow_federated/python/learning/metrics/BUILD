@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -56,7 +57,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "sum_aggregation_factory_test",
     srcs = ["sum_aggregation_factory_test.py"],
     shard_count = 2,
@@ -87,7 +88,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "aggregation_utils_test",
     srcs = ["aggregation_utils_test.py"],
     deps = [
@@ -116,7 +117,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "aggregator_test",
     srcs = ["aggregator_test.py"],
     deps = [
@@ -140,7 +141,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "counters_test",
     srcs = ["counters_test.py"],
     deps = [
@@ -161,7 +162,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "keras_finalizer_test",
     srcs = ["keras_finalizer_test.py"],
     deps = [
@@ -185,7 +186,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "keras_utils_test",
     srcs = ["keras_utils_test.py"],
     deps = [
@@ -198,7 +199,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "sampling_aggregation_factory_test",
     srcs = ["sampling_aggregation_factory_test.py"],
     deps = [

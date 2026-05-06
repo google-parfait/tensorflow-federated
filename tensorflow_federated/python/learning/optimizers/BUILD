@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -27,7 +28,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "adafactor_test",
     srcs = ["adafactor_test.py"],
     deps = [
@@ -50,7 +51,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "adagrad_test",
     srcs = ["adagrad_test.py"],
     deps = [
@@ -73,7 +74,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "adam_test",
     srcs = ["adam_test.py"],
     deps = [
@@ -111,7 +112,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "keras_optimizer_test",
     srcs = ["keras_optimizer_test.py"],
     deps = [
@@ -126,7 +127,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "integration_test",
     srcs = ["integration_test.py"],
     deps = [
@@ -155,7 +156,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "optimizer_test",
     srcs = ["optimizer_test.py"],
     deps = [
@@ -174,7 +175,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "optimizer_test_utils_test",
     srcs = ["optimizer_test_utils_test.py"],
     deps = [
@@ -194,7 +195,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "rmsprop_test",
     srcs = ["rmsprop_test.py"],
     deps = [
@@ -215,7 +216,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "scheduling_test",
     srcs = ["scheduling_test.py"],
     deps = [
@@ -242,7 +243,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "sgdm_test",
     srcs = ["sgdm_test.py"],
     deps = [
@@ -282,7 +283,7 @@ py_library(
     deps = ["@pypi//tensorflow"],
 )
 
-py_test(
+py_strict_test(
     name = "yogi_test",
     srcs = ["yogi_test.py"],
     deps = [
@@ -294,7 +295,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "adamw_test",
     srcs = ["adamw_test.py"],
     deps = [
@@ -306,7 +307,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "nest_utils_test",
     srcs = ["nest_utils_test.py"],
     deps = [

@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -45,7 +46,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "iterative_process_compositions_test",
     size = "small",
     srcs = ["iterative_process_compositions_test.py"],
@@ -67,7 +68,7 @@ py_library(
     deps = ["@pypi//numpy"],
 )
 
-py_test(
+py_strict_test(
     name = "sampling_utils_test",
     size = "small",
     srcs = ["sampling_utils_test.py"],
@@ -89,7 +90,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "training_loop_test",
     size = "medium",
     srcs = ["training_loop_test.py"],

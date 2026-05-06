@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -41,7 +42,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "tag_prediction_preprocessing_test",
     size = "medium",
     srcs = ["tag_prediction_preprocessing_test.py"],
@@ -71,7 +72,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "tag_prediction_tasks_test",
     srcs = ["tag_prediction_tasks_test.py"],
     deps = [
@@ -89,7 +90,7 @@ py_library(
     deps = ["@pypi//tensorflow"],
 )
 
-py_test(
+py_strict_test(
     name = "word_prediction_models_test",
     srcs = ["word_prediction_models_test.py"],
     deps = [
@@ -109,7 +110,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "word_prediction_preprocessing_test",
     size = "medium",
     srcs = ["word_prediction_preprocessing_test.py"],
@@ -141,7 +142,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "word_prediction_tasks_test",
     srcs = ["word_prediction_tasks_test.py"],
     deps = [

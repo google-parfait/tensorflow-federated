@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -49,7 +50,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "celeba_test",
     size = "small",
     srcs = ["celeba_test.py"],
@@ -71,7 +72,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "cifar100_test",
     size = "small",
     srcs = ["cifar100_test.py"],
@@ -88,7 +89,7 @@ py_library(
     deps = ["@pypi//tensorflow"],
 )
 
-py_test(
+py_strict_test(
     name = "dataset_utils_test",
     size = "small",
     srcs = ["dataset_utils_test.py"],
@@ -108,7 +109,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "download_test",
     size = "small",
     srcs = ["download_test.py"],
@@ -131,7 +132,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "emnist_test",
     timeout = "long",
     srcs = ["emnist_test.py"],
@@ -153,7 +154,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "flair_test",
     srcs = ["flair_test.py"],
     deps = [
@@ -174,7 +175,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "shakespeare_test",
     size = "small",
     srcs = ["shakespeare_test.py"],
@@ -196,7 +197,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "stackoverflow_test",
     size = "medium",
     srcs = ["stackoverflow_test.py"],
@@ -218,7 +219,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "gldv2_test",
     size = "small",
     srcs = ["gldv2_test.py"],
@@ -240,7 +241,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "inaturalist_test",
     size = "small",
     srcs = ["inaturalist_test.py"],
@@ -262,7 +263,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "vision_datasets_utils_test",
     srcs = ["vision_datasets_utils_test.py"],
     deps = [
@@ -284,7 +285,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "client_data_test",
     size = "small",
     srcs = ["client_data_test.py"],
@@ -308,7 +309,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "file_per_user_client_data_test",
     size = "small",
     srcs = ["file_per_user_client_data_test.py"],
@@ -330,7 +331,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "from_tensor_slices_client_data_test",
     size = "small",
     srcs = ["from_tensor_slices_client_data_test.py"],
@@ -356,7 +357,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "sql_client_data_test",
     size = "small",
     srcs = ["sql_client_data_test.py"],
@@ -378,7 +379,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "transforming_client_data_test",
     srcs = ["transforming_client_data_test.py"],
     deps = [
@@ -400,7 +401,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "sql_client_data_utils_test",
     srcs = ["sql_client_data_utils_test.py"],
     deps = [

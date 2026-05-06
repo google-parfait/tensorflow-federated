@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 load("//tools:build_defs.bzl", "py_cpu_gpu_test")
 
 package(
@@ -13,7 +14,7 @@ package_group(
 
 licenses(["notice"])
 
-py_test(
+py_strict_test(
     name = "ast_generation_test",
     size = "small",
     srcs = ["ast_generation_test.py"],
@@ -25,7 +26,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "async_execution_context_integration_test",
     srcs = ["async_execution_context_integration_test.py"],
     deps = [
@@ -36,7 +37,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "backend_test",
     timeout = "long",
     srcs = ["backend_test.py"],
@@ -63,7 +64,7 @@ py_cpu_gpu_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "map_reduce_form_test",
     size = "medium",
     srcs = ["map_reduce_form_test.py"],
@@ -75,7 +76,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "mergeable_comp_execution_context_integration_test",
     size = "small",
     timeout = "long",
@@ -88,7 +89,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "simulation_test",
     size = "medium",
     timeout = "long",
@@ -101,7 +102,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "remote_runtime_stream_structs_test",
     size = "large",
     srcs = ["remote_runtime_stream_structs_test.py"],
@@ -116,7 +117,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "sync_local_cpp_execution_context_test",
     size = "small",
     srcs = ["sync_local_cpp_execution_context_test.py"],
@@ -151,7 +152,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "test_contexts_test",
     srcs = ["test_contexts_test.py"],
     deps = [

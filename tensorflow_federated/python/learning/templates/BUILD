@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -48,7 +49,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "apply_optimizer_finalizer_test",
     srcs = ["apply_optimizer_finalizer_test.py"],
     deps = [
@@ -79,7 +80,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "client_works_test",
     size = "small",
     srcs = ["client_works_test.py"],
@@ -119,7 +120,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "composers_test",
     size = "small",
     timeout = "moderate",
@@ -161,7 +162,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "distributors_test",
     size = "small",
     srcs = ["distributors_test.py"],
@@ -190,7 +191,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "finalizers_test",
     size = "small",
     srcs = ["finalizers_test.py"],
@@ -217,7 +218,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "hparams_base_test",
     srcs = ["hparams_base_test.py"],
     deps = [
@@ -241,7 +242,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "learning_process_test",
     size = "small",
     srcs = ["learning_process_test.py"],
@@ -279,7 +280,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "model_delta_client_work_test",
     size = "small",
     timeout = "moderate",
@@ -330,7 +331,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "proximal_client_work_test",
     size = "small",
     timeout = "moderate",
@@ -365,7 +366,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "type_checks_test",
     srcs = ["type_checks_test.py"],
     deps = [

@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -40,7 +41,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "mobilenet_v2_test",
     srcs = ["mobilenet_v2_test.py"],
     deps = [
@@ -57,7 +58,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "resnet_models_test",
     srcs = ["resnet_models_test.py"],
     deps = [

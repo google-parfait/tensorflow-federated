@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -42,7 +43,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "baseline_task_test",
     srcs = ["baseline_task_test.py"],
     deps = [
@@ -67,7 +68,7 @@ py_library(
     deps = ["@pypi//tensorflow"],
 )
 
-py_test(
+py_strict_test(
     name = "keras_metrics_test",
     srcs = ["keras_metrics_test.py"],
     deps = [
@@ -87,7 +88,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "task_data_test",
     srcs = ["task_data_test.py"],
     deps = [

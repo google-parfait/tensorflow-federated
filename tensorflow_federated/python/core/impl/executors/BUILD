@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -33,7 +34,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "cardinality_test",
     srcs = ["cardinality_test.py"],
     deps = [
@@ -60,7 +61,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "cpp_to_python_executor_test",
     srcs = ["cpp_to_python_executor_test.py"],
     deps = [
@@ -79,7 +80,7 @@ py_library(
     deps = ["@federated_language//federated_language"],
 )
 
-py_test(
+py_strict_test(
     name = "data_conversions_test",
     srcs = ["data_conversions_test.py"],
     deps = [
@@ -102,7 +103,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "executor_bindings_test",
     timeout = "moderate",
     srcs = ["executor_bindings_test.py"],
@@ -131,7 +132,7 @@ py_library(
     deps = ["@federated_language//federated_language"],
 )
 
-py_test(
+py_strict_test(
     name = "executor_utils_test",
     srcs = ["executor_utils_test.py"],
     deps = [
@@ -172,7 +173,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "remote_executor_test",
     size = "small",
     srcs = ["remote_executor_test.py"],
@@ -210,7 +211,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "remote_executor_grpc_stub_test",
     srcs = ["remote_executor_grpc_stub_test.py"],
     data = ["@pybind11_abseil//pybind11_abseil:status.so"],
@@ -244,7 +245,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "value_serialization_test",
     size = "small",
     srcs = ["value_serialization_test.py"],

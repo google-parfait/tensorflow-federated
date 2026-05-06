@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 load("//tools:build_defs.bzl", "py_cpu_gpu_test")
 
 package(
@@ -255,7 +256,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "kmeans_clustering_test",
     srcs = ["kmeans_clustering_test.py"],
     deps = [

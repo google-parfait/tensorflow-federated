@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -35,7 +36,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "evaluation_program_logic_test",
     timeout = "moderate",
     srcs = ["evaluation_program_logic_test.py"],
@@ -77,7 +78,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "training_program_logic_test",
     timeout = "moderate",
     srcs = ["training_program_logic_test.py"],

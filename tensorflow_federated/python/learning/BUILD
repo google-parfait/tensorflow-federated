@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 load("//tools:build_defs.bzl", "py_cpu_gpu_test")
 
 package(
@@ -77,7 +78,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "model_update_aggregator_test",
     timeout = "long",
     srcs = ["model_update_aggregator_test.py"],
@@ -106,7 +107,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "debug_measurements_test",
     srcs = ["debug_measurements_test.py"],
     deps = [
@@ -129,7 +130,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "tensor_utils_test",
     size = "small",
     srcs = ["tensor_utils_test.py"],

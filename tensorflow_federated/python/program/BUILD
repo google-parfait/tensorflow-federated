@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -40,7 +41,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "client_id_data_source_test",
     srcs = ["client_id_data_source_test.py"],
     deps = [
@@ -62,7 +63,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "dataset_data_source_test",
     srcs = ["dataset_data_source_test.py"],
     deps = [
@@ -86,7 +87,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "file_program_state_manager_test",
     srcs = ["file_program_state_manager_test.py"],
     deps = [
@@ -112,7 +113,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "file_release_manager_test",
     srcs = ["file_release_manager_test.py"],
     deps = [
@@ -137,7 +138,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "file_utils_test",
     srcs = ["file_utils_test.py"],
     deps = [
@@ -172,7 +173,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "serialization_utils_test",
     srcs = ["serialization_utils_test.py"],
     deps = [
@@ -195,7 +196,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "structure_utils_test",
     srcs = ["structure_utils_test.py"],
     deps = [
@@ -218,7 +219,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "tensorboard_release_manager_test",
     srcs = ["tensorboard_release_manager_test.py"],
     deps = [

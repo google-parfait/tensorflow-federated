@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -36,7 +37,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "cpp_executor_factory_test",
     srcs = ["cpp_executor_factory_test.py"],
     deps = [
@@ -75,7 +76,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "executor_stack_bindings_test",
     srcs = ["executor_stack_bindings_test.py"],
     deps = [
@@ -101,7 +102,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "python_executor_stacks_test",
     size = "small",
     srcs = ["python_executor_stacks_test.py"],

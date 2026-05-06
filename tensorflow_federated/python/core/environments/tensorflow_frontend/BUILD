@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -36,7 +37,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "tensorflow_computation_test",
     size = "small",
     srcs = ["tensorflow_computation_test.py"],
@@ -64,7 +65,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "tensorflow_computation_context_test",
     size = "small",
     srcs = ["tensorflow_computation_context_test.py"],
@@ -94,7 +95,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "tensorflow_serialization_test",
     size = "small",
     srcs = ["tensorflow_serialization_test.py"],
@@ -129,7 +130,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "variable_utils_test",
     size = "small",
     timeout = "moderate",
@@ -141,7 +142,7 @@ py_test(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "tensorflow_types_test",
     srcs = ["tensorflow_types_test.py"],
     deps = [

@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -41,7 +42,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "landmark_tasks_test",
     srcs = ["landmark_tasks_test.py"],
     deps = [
@@ -63,7 +64,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "landmark_preprocessing_test",
     srcs = ["landmark_preprocessing_test.py"],
     deps = [

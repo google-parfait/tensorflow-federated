@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -44,7 +45,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "transformations_test",
     srcs = ["transformations_test.py"],
     deps = [
@@ -69,7 +70,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "tree_transformations_test",
     size = "small",
     srcs = ["tree_transformations_test.py"],
@@ -105,7 +106,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "compiler_test_utils_test",
     size = "small",
     srcs = ["compiler_test_utils_test.py"],

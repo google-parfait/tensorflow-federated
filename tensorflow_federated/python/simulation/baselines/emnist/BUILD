@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//devtools/python/blaze:strict.bzl", "py_strict_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -42,7 +43,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "autoencoder_tasks_test",
     srcs = ["autoencoder_tasks_test.py"],
     deps = [
@@ -72,7 +73,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "char_recognition_tasks_test",
     srcs = ["char_recognition_tasks_test.py"],
     deps = [
@@ -92,7 +93,7 @@ py_library(
     deps = ["@pypi//tensorflow"],
 )
 
-py_test(
+py_strict_test(
     name = "emnist_models_test",
     srcs = ["emnist_models_test.py"],
     deps = [
@@ -110,7 +111,7 @@ py_library(
     ],
 )
 
-py_test(
+py_strict_test(
     name = "emnist_preprocessing_test",
     size = "medium",
     srcs = ["emnist_preprocessing_test.py"],
