@@ -14,7 +14,7 @@
 """TensorFlow Federated build macros and rules."""
 
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
-load("//third_party/bazel_rules/rules_python/python:py_test.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_test")
 
 def if_static(extra, framework_shared_object = []):  # buildifier: disable=unused-variable
     return_value = {
