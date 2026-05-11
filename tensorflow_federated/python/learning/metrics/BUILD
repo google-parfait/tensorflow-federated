@@ -156,6 +156,7 @@ py_library(
     srcs = ["keras_finalizer.py"],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi//keras",
         "@pypi//tensorflow",
     ],
 )

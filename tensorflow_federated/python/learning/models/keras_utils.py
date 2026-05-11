@@ -20,6 +20,7 @@ import warnings
 
 from absl import logging
 import federated_language
+import keras
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -29,7 +30,11 @@ from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 from tensorflow_federated.python.learning.models import variable
 
-Loss = Union[tf.keras.losses.Loss, list[tf.keras.losses.Loss]]
+Loss = Union[
+    tf.keras.losses.Loss,
+    keras.losses.Loss,
+    list[Union[tf.keras.losses.Loss, keras.losses.Loss]],
+]
 
 
 # TODO: b/197746608 - Remove the code path that takes in constructed Keras
@@ -116,11 +121,11 @@ def from_keras_model(
       is a dictionary and does not contain keys `'x'` and `'y'`.
   """.format(variable.MODEL_ARG_NAME, variable.MODEL_LABEL_NAME)
   # Validate `keras_model`
-  py_typecheck.check_type(keras_model, tf.keras.Model)
+  py_typecheck.check_type(keras_model, (tf.keras.Model, keras.Model))
 
   # Validate and normalize `loss` and `loss_weights`
   if not isinstance(loss, list):
-    py_typecheck.check_type(loss, tf.keras.losses.Loss)
+    py_typecheck.check_type(loss, (tf.keras.losses.Loss, keras.losses.Loss))
     if loss_weights is not None:
       raise ValueError('`loss_weights` cannot be used if `loss` is not a list.')
     loss = [loss]
@@ -135,7 +140,9 @@ def from_keras_model(
           )
       )
     for loss_fn in loss:
-      py_typecheck.check_type(loss_fn, tf.keras.losses.Loss)
+      py_typecheck.check_type(
+          loss_fn, (tf.keras.losses.Loss, keras.losses.Loss)
+      )
 
     if loss_weights is None:
       loss_weights = [1.0] * len(loss)
@@ -291,7 +298,7 @@ def federated_aggregate_keras_metric(
       with tf.control_dependencies(assignments):
         return keras_metric.result()
 
-    if isinstance(metrics, tf.keras.metrics.Metric):
+    if isinstance(metrics, (tf.keras.metrics.Metric, keras.metrics.Metric)):
       # Only a single metric to aggregate.
       return finalize_metric(metrics, accumulators)
     else:
@@ -334,13 +341,16 @@ class _KerasModel(variable.VariableModel):
       has_keras_metric_constructor = False
 
       for metric in metrics:
-        if isinstance(metric, tf.keras.metrics.Metric):
+        if isinstance(metric, (tf.keras.metrics.Metric, keras.metrics.Metric)):
           self._metrics.append(metric)
-          metric_names.add(metric.name)
+          metric_names.add(metric.name)  # type: ignore[attribute-error]
           has_keras_metric = True
         elif callable(metric):
           constructed_metric = metric()
-          if not isinstance(constructed_metric, tf.keras.metrics.Metric):
+          if not isinstance(
+              constructed_metric,
+              (tf.keras.metrics.Metric, keras.metrics.Metric),
+          ):
             raise TypeError(
                 f'Metric constructor {metric} is not a no-arg callable that '
                 'creates a `tf.keras.metrics.Metric`, it created a '

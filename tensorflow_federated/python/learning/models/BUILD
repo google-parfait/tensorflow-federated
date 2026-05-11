@@ -91,6 +91,7 @@ py_library(
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
         "@federated_language//federated_language",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//tensorflow",
     ],
 )

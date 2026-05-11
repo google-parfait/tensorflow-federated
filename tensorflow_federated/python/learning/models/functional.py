@@ -344,8 +344,8 @@ class _ModelFromFunctional(variable.VariableModel):
         # `loss` result is computed by `loss_sum` / `num_examples`.
         loss=tf.function(func=lambda x: x[0] / x[1])
     )
-    for metric_builder in self._metric_builders:
-      metric_name = metric_builder().name
+    for metric, metric_builder in zip(self._metrics, self._metric_builders):
+      metric_name = metric.name
       finalizers[metric_name] = keras_finalizer.create_keras_metric_finalizer(
           metric_builder
       )

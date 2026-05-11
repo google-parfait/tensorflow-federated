@@ -17,6 +17,7 @@ from collections.abc import Callable
 import inspect
 from typing import Any, Union
 
+import keras
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -92,7 +93,7 @@ def _check_keras_metric_config_constructable(metric: tf.keras.metrics.Metric):
     TypeError: If the metric is not an instance of `tf.keras.metrics.Metric`, if
     the metric is not constructable from the `get_config()` method.
   """
-  if not isinstance(metric, tf.keras.metrics.Metric):
+  if not isinstance(metric, (tf.keras.metrics.Metric, keras.metrics.Metric)):
     raise TypeError(
         f'Metric {type(metric)} is not a `tf.keras.metrics.Metric` '
         'to be constructable from the `get_config()` method.'
@@ -147,12 +148,14 @@ def create_keras_metric(
     no-arg callable that creates a `tf.keras.metrics.Metric`.
   """
   keras_metric = None
-  if isinstance(metric, tf.keras.metrics.Metric):
+  if isinstance(metric, (tf.keras.metrics.Metric, keras.metrics.Metric)):
     _check_keras_metric_config_constructable(metric)
-    keras_metric = type(metric).from_config(metric.get_config())
+    keras_metric = type(metric).from_config(metric.get_config())  # type: ignore[attribute-error]
   elif callable(metric):
     keras_metric = metric()
-    if not isinstance(keras_metric, tf.keras.metrics.Metric):
+    if not isinstance(
+        keras_metric, (tf.keras.metrics.Metric, keras.metrics.Metric)
+    ):
       raise TypeError(
           'Expected input `metric` to be either a `tf.keras.metrics.Metric` '
           'or a no-arg callable that creates a `tf.keras.metrics.Metric`, '
