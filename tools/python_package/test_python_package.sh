@@ -23,6 +23,14 @@ usage() {
 }
 
 main() {
+  # Ensure Python 3.12 or newer is used.
+  local python_major=$(python -c 'import sys; print(sys.version_info[0])')
+  local python_minor=$(python -c 'import sys; print(sys.version_info[1])')
+  if (( python_major < 3 || (python_major == 3 && python_minor < 12) )); then
+    echo "error: This script requires Python 3.12 or newer." 1>&2
+    exit 1
+  fi
+
   # Parse the arguments.
   local package=""
 
@@ -64,7 +72,7 @@ main() {
   trap "rm -rf ${temp_dir}" EXIT
 
   # Create a Python environment.
-  python3 -m venv "${temp_dir}/venv"
+  python -m venv "${temp_dir}/venv"
   source "${temp_dir}/venv/bin/activate"
   python --version
   pip install --upgrade "pip"
