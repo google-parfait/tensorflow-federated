@@ -15,7 +15,9 @@
 import collections
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -146,12 +148,38 @@ class WeightsTypeFromModelTest(absltest.TestCase):
     )
 
 
-class AssignWeightsToTest(tf.test.TestCase):
+class FromModelTest(parameterized.TestCase, tf.test.TestCase):
 
-  def test_weights_to_keras_model(self):
-    keras_model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=[5]),
-        tf.keras.layers.Dense(
+  @parameterized.parameters((tf.keras), (keras))
+  def test_returns_model_weights_for_keras(self, keras_module):
+    keras_model = keras_module.Sequential(
+        [keras_module.layers.Dense(1, input_shape=(5,), use_bias=False)]
+    )
+    weights = model_weights.ModelWeights.from_model(keras_model)
+    self.assertIsInstance(weights, model_weights.ModelWeights)
+    self.assertLen(weights.trainable, 1)
+    self.assertEmpty(weights.non_trainable)
+
+  def test_weights_to_variable_model(self):
+    model = TestModel()
+    weights = model_weights.ModelWeights.from_model(model)
+    self.assertIsInstance(weights, model_weights.ModelWeights)
+    self.assertAllClose(
+        weights,
+        model_weights.ModelWeights(
+            trainable=[tf.zeros([3]), tf.zeros([1])],
+            non_trainable=[tf.zeros([], dtype=tf.int32)],
+        ),
+    )
+
+
+class AssignWeightsToTest(parameterized.TestCase, tf.test.TestCase):
+
+  @parameterized.parameters((tf.keras), (keras))
+  def test_weights_to_keras_model(self, keras_module):
+    keras_model = keras_module.Sequential([
+        keras_module.layers.InputLayer(input_shape=[5]),
+        keras_module.layers.Dense(
             units=1, use_bias=False, kernel_initializer='zeros'
         ),
     ])

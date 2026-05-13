@@ -164,6 +164,7 @@ py_test(
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],
