@@ -116,6 +116,7 @@ py_library(
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 

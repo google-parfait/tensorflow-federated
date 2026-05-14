@@ -18,6 +18,7 @@ from collections.abc import Callable
 from typing import Any, NamedTuple
 
 import federated_language
+import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -62,7 +63,8 @@ def compose_learning_process(
     model_weights_distributor: distributors.DistributionProcess,
     client_work: client_works.ClientWorkProcess,
     model_update_aggregator: aggregation_process.AggregationProcess,
-    model_finalizer: finalizers.FinalizerProcess
+    model_finalizer: finalizers.FinalizerProcess,
+    measure_timing: bool = False
 ) -> learning_process.LearningProcess:
   """Composes specialized measured processes into a learning process.
 
@@ -121,6 +123,8 @@ def compose_learning_process(
     client_work: A `tff.learning.templates.ClientWorkProcess`.
     model_update_aggregator: A `tff.templates.AggregationProcess`.
     model_finalizer: A `tff.learning.templates.FinalizerProcess`.
+    measure_timing: An optional boolean indicating whether to measure full
+      on-device time for client work using data dependencies. Defaults to False.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -135,10 +139,28 @@ def compose_learning_process(
                  client_work, model_update_aggregator, model_finalizer)
   client_data_type = client_work.next.type_signature.parameter[2]  # pytype: disable=unsupported-operands
 
+  @tensorflow_computation.tf_computation(client_data_type.member)
+  def record_start_time(dataset):
+    # The dataset is added as a pass-through to setup appropriate data
+    # dependencies to enforce the order of execution.
+    return dataset, tf.timestamp()
+
+  client_work_result_member_type = client_work.next.type_signature.result.result.member  # pytype: disable=attribute-error
+  @tensorflow_computation.tf_computation(client_work_result_member_type)
+  def record_end_time(client_result):
+    # The result is added as a pass-through to setup appropriate data
+    # dependencies to enforce the order of execution.
+    return client_result, tf.timestamp()
+
+  @tensorflow_computation.tf_computation(tf.float64, tf.float64)
+  def compute_duration(start, end):
+    return end - start
+
   @federated_language.federated_computation()
   def init_fn():
-    initial_model_weights = federated_language.federated_eval(initial_model_weights_fn,
-                                                      federated_language.SERVER)
+    initial_model_weights = federated_language.federated_eval(
+        initial_model_weights_fn, federated_language.SERVER
+    )
     return federated_language.federated_zip(
         LearningAlgorithmState(initial_model_weights,
                                model_weights_distributor.initialize(),
@@ -146,21 +168,40 @@ def compose_learning_process(
                                model_update_aggregator.initialize(),
                                model_finalizer.initialize()))
 
-  @federated_language.federated_computation(init_fn.type_signature.result,
-                                               client_data_type)
+  @federated_language.federated_computation(
+      init_fn.type_signature.result, client_data_type
+  )
   def next_fn(state, client_data):
     # Compose processes.
     distributor_output = model_weights_distributor.next(
         state.distributor, state.global_model_weights)
-    client_work_output = client_work.next(state.client_work,
-                                          distributor_output.result,
-                                          client_data)
+
+    if measure_timing:
+      client_data_extracted, start_times = federated_language.federated_map(
+          record_start_time, client_data)
+      client_work_output = client_work.next(
+          state.client_work, distributor_output.result, client_data_extracted
+      )
+      client_result_extracted, end_times = federated_language.federated_map(
+          record_end_time, client_work_output.result)
+      durations = federated_language.federated_map(
+          compute_duration, (start_times, end_times))
+      min_duration = federated_language.federated_min(durations)
+      max_duration = federated_language.federated_max(durations)
+      mean_duration = federated_language.federated_mean(durations)
+      client_result_to_aggregate = client_result_extracted
+    else:
+      client_work_output = client_work.next(
+          state.client_work, distributor_output.result, client_data
+      )
+      client_result_to_aggregate = client_work_output.result
+
     aggregator_output = model_update_aggregator.next(
-        state.aggregator, client_work_output.result.update,
-        client_work_output.result.update_weight)
-    finalizer_output = model_finalizer.next(state.finalizer,
-                                            state.global_model_weights,
-                                            aggregator_output.result)
+        state.aggregator, client_result_to_aggregate.update,
+        client_result_to_aggregate.update_weight)
+    finalizer_output = model_finalizer.next(
+        state.finalizer, state.global_model_weights, aggregator_output.result
+    )
 
     # Form the learning process output.
     new_global_model_weights = finalizer_output.result
@@ -169,12 +210,30 @@ def compose_learning_process(
                                distributor_output.state,
                                client_work_output.state,
                                aggregator_output.state, finalizer_output.state))
-    metrics = federated_language.federated_zip(
-        collections.OrderedDict(
-            distributor=distributor_output.measurements,
-            client_work=client_work_output.measurements,
-            aggregator=aggregator_output.measurements,
-            finalizer=finalizer_output.measurements))
+
+    metrics_dict = collections.OrderedDict(
+        distributor=distributor_output.measurements,
+        client_work=client_work_output.measurements,
+        aggregator=aggregator_output.measurements,
+        finalizer=finalizer_output.measurements)
+
+    if measure_timing:
+      client_work_metrics_type = client_work.next.type_signature.result.measurements.member
+      new_client_work_metrics_dict = collections.OrderedDict(
+          (name, client_work_output.measurements[name])
+          for name, _ in client_work_metrics_type.items()
+      )
+
+      # Add timing metrics as a nested dict
+      new_client_work_metrics_dict['timing'] = collections.OrderedDict(
+          min=min_duration,
+          max=max_duration,
+          mean=mean_duration)
+      metrics_dict['client_work'] = federated_language.federated_zip(
+          new_client_work_metrics_dict
+      )
+
+    metrics = federated_language.federated_zip(metrics_dict)
 
     return learning_process.LearningProcessOutput(new_state, metrics)
 

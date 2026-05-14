@@ -158,9 +158,36 @@ class ComposeLearningProcessTest(tf.test.TestCase):
     metrics_type = process.next.type_signature.result.metrics.member
     self.assertIn('distributor', metrics_type.fields())
     self.assertIn('client_work', metrics_type.fields())
+    self.assertNotIn('timing', metrics_type['client_work'].fields())
     self.assertIn('aggregator', metrics_type.fields())
     self.assertIn('finalizer', metrics_type.fields())
     self.assertLen(metrics_type, 4)
+
+  def test_learning_process_composes_with_timing(self):
+    process = composers.compose_learning_process(
+        test_init_model_weights_fn,
+        test_distributor(),
+        test_client_work(),
+        test_aggregator(),
+        test_finalizer(),
+        measure_timing=True,
+    )
+
+    self.assertIsInstance(process, learning_process.LearningProcess)
+    metrics_type = process.next.type_signature.result.metrics.member
+    self.assertIn('timing', metrics_type['client_work'].fields())
+    self.assertCountEqual(
+        ('min', 'max', 'mean'), metrics_type['client_work']['timing'].fields()
+    )
+    state = process.initialize()
+
+    def get_test_data():
+      return tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0])
+
+    metrics = process.next(state, [get_test_data()] * 3).metrics
+    self.assertGreater(metrics['client_work']['timing']['min'], 0.0)
+    self.assertGreater(metrics['client_work']['timing']['max'], 0.0)
+    self.assertGreater(metrics['client_work']['timing']['mean'], 0.0)
 
   def test_one_arg_computation_init_raises(self):
 
@@ -320,7 +347,12 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
       last_loss = loss
     self.assertIsInstance(state, composers.LearningAlgorithmState)
     self.assertLen(metrics, 4)
-    for key in ['distributor', 'client_work', 'aggregator', 'finalizer']:
+    for key in [
+        'distributor',
+        'client_work',
+        'aggregator',
+        'finalizer',
+    ]:
       self.assertIn(key, metrics)
 
   def test_get_set_model_weights_roundtrip(self):

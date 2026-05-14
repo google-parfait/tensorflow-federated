@@ -72,6 +72,7 @@ def build_weighted_fed_avg(
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
+    measure_timing: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
@@ -152,6 +153,8 @@ def build_weighted_fed_avg(
       `tff.learning.metrics.sum_then_finalize`.
     loop_implementation: Changes the implementation of the training loop
       generated. See `tff.learning.LoopImplementation` for more details.
+    measure_timing: An optional boolean indicating whether to measure full
+      on-device time for client work using data dependencies. Defaults to False.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -268,6 +271,7 @@ def build_weighted_fed_avg(
       client_work,
       aggregator,
       finalizer,
+      measure_timing=measure_timing,
   )
 
 
@@ -281,6 +285,7 @@ def build_unweighted_fed_avg(
     model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
     metrics_aggregator: types.MetricsAggregatorType = metric_aggregator.sum_then_finalize,
     loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
+    measure_timing: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
@@ -355,6 +360,8 @@ def build_unweighted_fed_avg(
       `tff.learning.metrics.sum_then_finalize`.
     loop_implementation: Changes the implementation of the training loop
       generated. See `tff.learning.LoopImplementation` for more details.
+    measure_timing: An optional boolean indicating whether to measure full
+      on-device time for client work using data dependencies. Defaults to False.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -376,4 +383,5 @@ def build_unweighted_fed_avg(
       model_aggregator=factory_utils.as_weighted_aggregator(model_aggregator),
       metrics_aggregator=metrics_aggregator,
       loop_implementation=loop_implementation,
+      measure_timing=measure_timing,
   )
