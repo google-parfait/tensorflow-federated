@@ -27,7 +27,7 @@ main() {
   local python_major=$(python -c 'import sys; print(sys.version_info[0])')
   local python_minor=$(python -c 'import sys; print(sys.version_info[1])')
   if (( python_major < 3 || (python_major == 3 && python_minor < 12) )); then
-    echo "error: This script requires Python 3.12 or newer." 1>&2
+    echo "error: This script requires Python 3.12 or newer. You are using Python ${python_major}.${python_minor}." 1>&2
     exit 1
   fi
 
