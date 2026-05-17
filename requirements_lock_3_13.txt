@@ -2,7 +2,7 @@
 #    uv pip compile --python-version=3.13 --output-file=requirements_lock_3_13.txt requirements.in
 absl-py==2.4.0
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   dm-tree
     #   dp-accounting
     #   keras
@@ -11,21 +11,21 @@ astunparse==1.6.3
     # via tensorflow
 attrs==23.2.0
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   dm-tree
     #   dp-accounting
 cachetools==5.5.2
-    # via -r tensorflow_federated/requirements.in
+    # via -r requirements.in
 certifi==2026.2.25
     # via requests
 charset-normalizer==3.4.4
     # via requests
 dm-tree==0.1.9
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   dp-accounting
 dp-accounting==0.6.0
-    # via -r tensorflow_federated/requirements.in
+    # via -r requirements.in
 flatbuffers==25.12.19
     # via tensorflow
 gast==0.7.0
@@ -34,7 +34,7 @@ google-pasta==0.2.0
     # via tensorflow
 grpcio==1.74.0
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   tensorflow
 h5py==3.14.0
     # via
@@ -44,7 +44,7 @@ idna==3.11
     # via requests
 keras==3.12.1
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   tensorflow
 libclang==18.1.1
     # via tensorflow
@@ -54,7 +54,7 @@ mdurl==0.1.2
     # via markdown-it-py
 ml-dtypes==0.5.4
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   keras
     #   tensorflow
 mpmath==1.4.0
@@ -63,7 +63,7 @@ namex==0.1.0
     # via keras
 numpy==2.1.3
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   dm-tree
     #   dp-accounting
     #   h5py
@@ -81,12 +81,12 @@ packaging==26.0
     #   tensorflow
     #   wheel
 portpicker==1.6.0
-    # via -r tensorflow_federated/requirements.in
+    # via -r requirements.in
 protobuf==7.34.0
     # via tensorflow
 psutil==7.2.2
     # via portpicker
-pygments==2.19.2
+pygments==2.20.0
     # via rich
 requests==2.32.5
     # via tensorflow
@@ -94,24 +94,22 @@ rich==14.3.3
     # via keras
 scipy==1.17.1
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   dp-accounting
-setuptools==82.0.0
-    # via tensorflow
 six==1.17.0
     # via
     #   astunparse
     #   google-pasta
     #   tensorflow
 tensorflow==2.21.0
-    # via -r tensorflow_federated/requirements.in
+    # via -r requirements.in
 termcolor==3.3.0
     # via tensorflow
 tqdm==4.64.1
-    # via -r tensorflow_federated/requirements.in
+    # via -r requirements.in
 typing-extensions==4.6.3
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   optree
     #   tensorflow
 urllib3==2.6.3
@@ -120,6 +118,6 @@ wheel==0.46.3
     # via astunparse
 wrapt==1.14.1
     # via
-    #   -r tensorflow_federated/requirements.in
+    #   -r requirements.in
     #   dm-tree
     #   tensorflow
