@@ -37,8 +37,11 @@ numpy>=2.0.0,<2.2.0
 portpicker~=1.6
 scipy~=1.16
 tqdm>=4.64.0,==4.64.*
-typing-extensions>=4.6.0,==4.6.*
 wrapt==1.14.1  # https://github.com/tensorflow/tensorflow/issues/59869
+
+# The version of this dependency should match the version in
+# https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.
+federated_language~=0.5.3
 
 # The version of this dependency should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.

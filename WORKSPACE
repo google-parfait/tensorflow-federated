@@ -102,14 +102,15 @@ http_archive(
         "//third_party/federated_language:python_deps.patch",
         # Must come after `python_deps.patch`, this patches the output of `python_deps.patch`.
         "//third_party/federated_language:structure_visibility.patch",
+        "//third_party/federated_language:remove_compile_pip_requirements.patch",
     ],
     repo_mapping = {
         "@protobuf": "@com_google_protobuf",
         "@federated_language_pypi": "@pypi",
     },
-    sha256 = "51e13f9ce23c9886f34e20c5f4bd7941b6335867405d3b4f7cbc704d6f89e820",
-    strip_prefix = "federated-language-16e734b633e68b613bb92918e6f3304774853e9b",
-    url = "https://github.com/google-parfait/federated-language/archive/16e734b633e68b613bb92918e6f3304774853e9b.tar.gz",
+    sha256 = "30c3a4861e63b4ac2b4d17251527763a9a0cd5e049a5b10038ed4e09c4374862",
+    strip_prefix = "federated-language-0.5.3",
+    url = "https://github.com/google-parfait/federated-language/archive/refs/tags/v0.5.3.tar.gz",
 )
 
 # The version of TensorFlow should match the version in

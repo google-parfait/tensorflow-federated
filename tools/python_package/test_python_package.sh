@@ -23,11 +23,37 @@ usage() {
 }
 
 main() {
+  # Find hermetic Python in runfiles.
+  local hermetic_python=""
+  if [[ -d "${RUNFILES_DIR}" ]]; then
+    for path in "python_3_12_host/bin/python" "python_3_12_host/python" "external/python_3_12_host/bin/python" "external/python_3_12_host/python"; do
+      if [[ -x "${RUNFILES_DIR}/${path}" ]]; then
+        hermetic_python="${RUNFILES_DIR}/${path}"
+        break
+      fi
+    done
+  fi
+
+  local python_cmd="python"
+  if [[ -n "${hermetic_python}" ]]; then
+    python_cmd="${hermetic_python}"
+    echo "Using hermetic Python: ${python_cmd}"
+
+    # Determine PYTHONHOME based on executable location
+    if [[ "${python_cmd}" == */bin/python ]]; then
+      export PYTHONHOME="$(dirname "$(dirname "${python_cmd}")")"
+    else
+      export PYTHONHOME="$(dirname "${python_cmd}")"
+    fi
+    echo "Set PYTHONHOME=${PYTHONHOME}"
+  fi
+
   # Ensure Python 3.12 or newer is used.
-  local python_major=$(python -c 'import sys; print(sys.version_info[0])')
-  local python_minor=$(python -c 'import sys; print(sys.version_info[1])')
+  local python_version=$("${python_cmd}" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')
+  local python_major="${python_version%.*}"
+  local python_minor="${python_version#*.}"
   if (( python_major < 3 || (python_major == 3 && python_minor < 12) )); then
-    echo "error: This script requires Python 3.12 or newer. You are using Python ${python_major}.${python_minor}." 1>&2
+    echo "error: This script requires Python 3.12 or newer. You are using Python ${python_version}." 1>&2
     exit 1
   fi
 
@@ -72,8 +98,14 @@ main() {
   trap "rm -rf ${temp_dir}" EXIT
 
   # Create a Python environment.
-  python -m venv "${temp_dir}/venv"
+  "${python_cmd}" -m venv "${temp_dir}/venv"
   source "${temp_dir}/venv/bin/activate"
+
+  # Unset PYTHONHOME to avoid conflicts with venv
+  if [[ -n "${hermetic_python}" ]]; then
+    unset PYTHONHOME
+  fi
+
   python --version
   pip install --upgrade "pip"
   pip --version

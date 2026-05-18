@@ -98,8 +98,19 @@ jobs:
     name: Build Package
     needs: [publish-release]
     runs-on: ubuntu-latest
+    container: ubuntu:22.04
     timeout-minutes: 60
     steps:
+
+    - name: Install prerequisites
+      run: |
+        apt-get update
+        apt-get install -y git curl tar
+
+    - name: Install Bazelisk
+      run: |
+        curl -L https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-amd64 -o /usr/local/bin/bazelisk
+        chmod +x /usr/local/bin/bazelisk
 
     - name: Checkout repository
       uses: actions/checkout@v4.1.7
@@ -123,7 +134,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5.1.0
       with:
-        python-version: "3.11"
+        python-version: "3.12"
         cache: "pip"
 
     - name: Install Python dependencies
@@ -132,7 +143,6 @@ jobs:
 
     - name: Build Python package
       run: |
-        pip install --upgrade "numpy~=1.25"
         bazelisk run //tools/python_package:build_python_package \
             --build_tag_filters="-nokokoro,-nopresubmit,-requires-gpu-nvidia" \
             --google_credentials="${{ steps.auth.outputs.credentials_file_path }}" \
@@ -167,7 +177,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5.1.0
       with:
-        python-version: "3.11"
+        python-version: "3.12"
         cache: "pip"
 
     - name: Install Python dependencies

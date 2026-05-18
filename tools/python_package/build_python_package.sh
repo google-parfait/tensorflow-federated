@@ -23,6 +23,19 @@ usage() {
   echo "                       '{BUILD_WORKING_DIRECTORY}/dist')."
 }
 
+# Returns 0 if $1 >= $2, 1 otherwise.
+#
+# This function uses `sort -V` (version sort) to compare version strings.
+# `sort -V` orders version numbers naturally (e.g., 2.27 < 2.31).
+# By printing the expected version and the current version, and piping to `sort -V`,
+# the smaller version will appear first. If the expected version is the first line
+# of the sorted output, then the current version is greater than or equal to the expected version.
+version_ge() {
+  local current="$1"
+  local expected="$2"
+  [[ "$(printf '%s\n%s\n' "${expected}" "${current}" | sort -V | head -n1)" == "${expected}" ]]
+}
+
 main() {
   # Parse the arguments.
   local output_dir="${BUILD_WORKING_DIRECTORY}/dist"
@@ -49,9 +62,11 @@ main() {
   fi
 
   # Check the GLIBC version.
-  local expected_glibc="2.31"
-  if ! ldd --version | grep --quiet "${expected_glibc}"; then
-    echo "error: expected GLIBC version to be '${expected_glibc}', found:" 1>&2
+  local expected_glibc="2.27"
+  local current_glibc=$(ldd --version | head -n1 | awk '{print $NF}')
+
+  if [[ -z "${current_glibc}" ]] || ! version_ge "${current_glibc}" "${expected_glibc}"; then
+    echo "error: expected GLIBC version to be at least '${expected_glibc}', found: ${current_glibc}" 1>&2
     ldd --version 1>&2
     exit 1
   fi

@@ -17,10 +17,9 @@ import builtins
 from collections.abc import Sequence
 import sys
 import typing
-from typing import Optional, Protocol, TypeVar, Union
+from typing import Optional, Protocol, TypeGuard, TypeVar, Union
 
 import attrs
-from typing_extensions import TypeGuard
 
 
 def check_type(target, type_spec, label=None):

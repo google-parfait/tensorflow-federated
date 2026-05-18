@@ -43,4 +43,5 @@ sh_binary(
 sh_binary(
     name = "test_python_package",
     srcs = ["test_python_package.sh"],
+    data = ["@python_3_12_host//:python"],
 )

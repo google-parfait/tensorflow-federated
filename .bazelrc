@@ -122,6 +122,7 @@ common:linux --linkopt="-lm"
 
 common --incompatible_enable_cc_toolchain_resolution
 common --repo_env USE_HERMETIC_CC_TOOLCHAIN=1
+build --repo_env=SYSROOT_DIST=linux_glibc_2_27
 
 # By default, build TF in C++ 17 mode.
 build:linux --cxxopt=-std=c++17

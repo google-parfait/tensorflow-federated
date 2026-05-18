@@ -44,7 +44,6 @@ py_test(
         "@pypi//absl_py",
         "@pypi//dm_tree",  # buildcleaner: keep
         "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//typing_extensions",  # buildcleaner: keep
     ],
 )
 
@@ -88,7 +87,6 @@ py_test(
         "@pypi//absl_py",
         "@pypi//dm_tree",  # buildcleaner: keep
         "@pypi//ml_dtypes",  # buildcleaner: keep
-        "@pypi//typing_extensions",  # buildcleaner: keep
     ],
 )
 
@@ -141,7 +139,6 @@ py_test(
         "@pypi//dm_tree",  # buildcleaner: keep
         "@pypi//ml_dtypes",  # buildcleaner: keep
         "@pypi//numpy",
-        "@pypi//typing_extensions",  # buildcleaner: keep
     ],
 )
 
@@ -152,7 +149,6 @@ py_library(
         "@federated_language//federated_language",
         "@pybind11_abseil//pybind11_abseil:status",
         "@pypi//grpcio",
-        "@pypi//typing_extensions",
     ],
 )
 
@@ -260,6 +256,5 @@ py_test(
         "@pypi//dm_tree",  # buildcleaner: keep
         "@pypi//ml_dtypes",  # buildcleaner: keep
         "@pypi//numpy",
-        "@pypi//typing_extensions",  # buildcleaner: keep
     ],
 )

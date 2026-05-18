@@ -78,7 +78,6 @@ py_library(
     srcs = ["py_typecheck.py"],
     deps = [
         "@pypi//attrs",
-        "@pypi//typing_extensions",
     ],
 )
 

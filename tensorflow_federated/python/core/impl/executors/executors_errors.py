@@ -14,11 +14,10 @@
 """Custom exceptions and symbols for TFF executors."""
 
 import typing
-from typing import Union
+from typing import TypeGuard, Union
 
 import federated_language
 import grpc
-from typing_extensions import TypeGuard
 
 
 class RetryableGRPCError(
