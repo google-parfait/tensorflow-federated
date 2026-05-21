@@ -45,8 +45,15 @@ size_t CombineHashes(size_t a, size_t b) {
 StatusOr<Partitioner> Partitioner::Create(
     const std::vector<Tensor>& key_tensors, int num_partitions) {
   if (key_tensors.empty()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Expected at least one output key tensor.";
+    // If there are no keys, there is exactly one group containing all
+    // accumulated rows. We partition it by routing this single element entirely
+    // to partition 0, leaving other partitions empty. All data vectors are
+    // expected to have size = 1, which will match the size of the hashes
+    // vector.
+    std::vector<size_t> hashes(1, 0);
+    std::vector<int> partition_sizes(num_partitions, 0);
+    partition_sizes[0] = 1;
+    return Partitioner(std::move(hashes), std::move(partition_sizes));
   }
   if (key_tensors[0].shape().dim_sizes().size() != 1) {
     return TFF_STATUS(INVALID_ARGUMENT)

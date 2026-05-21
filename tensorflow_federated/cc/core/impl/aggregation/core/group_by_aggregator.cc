@@ -341,7 +341,10 @@ StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
 
   std::vector<GroupByAggregatorState> group_by_aggregator_states(
       num_partitions);
-  OutputTensorList keys = key_combiner_->GetOutputKeys();
+  OutputTensorList keys;
+  if (key_combiner_ != nullptr) {
+    keys = key_combiner_->GetOutputKeys();
+  }
   TFF_ASSIGN_OR_RETURN(Partitioner partitioner,
                        Partitioner::Create(keys, num_partitions));
   for (auto& group_by_aggregator_state : group_by_aggregator_states) {

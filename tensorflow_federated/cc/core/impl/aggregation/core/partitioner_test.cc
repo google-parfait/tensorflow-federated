@@ -79,11 +79,16 @@ TEST(PartitionerTest, CreatePartitioner_Succeeds) {
 
 TEST(PartitionerTest, CreatePartitioner_EmptyKeyTensors) {
   std::vector<Tensor> key_tensors;
-  EXPECT_THAT(
-      Partitioner::Create(key_tensors,
-                          /*num_partitions=*/2),
-      StatusIs(INVALID_ARGUMENT,
-               testing::HasSubstr("Expected at least one output key tensor.")));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Partitioner partitioner,
+      Partitioner::Create(key_tensors, /*num_partitions=*/2));
+  EXPECT_EQ(partitioner.GetNumPartitions(), 2);
+
+  TFF_ASSERT_OK_AND_ASSIGN(auto slices,
+                           partitioner.PartitionData<double>({42.0}));
+  EXPECT_EQ(slices.size(), 2);
+  EXPECT_THAT(slices[0], testing::ElementsAre(42.0));
+  EXPECT_TRUE(slices[1].empty());
 }
 
 TEST(PartitionerTest, CreatePartitioner_KeyTensorNotOneDimensional) {

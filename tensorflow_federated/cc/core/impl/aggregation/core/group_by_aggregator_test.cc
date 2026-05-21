@@ -3040,6 +3040,46 @@ TEST(GroupByAggregatorTest,
     EXPECT_THAT(result[1], IsTensor<int64_t>({1}, {24}));
 }
 
+TEST(GroupByAggregatorTest, Partition_NoKeys_Succeeds) {
+  Intrinsic intrinsic{"fedsql_group_by", {}, {}, {}, {}};
+  Intrinsic inner{"GoogleSQL:sum",
+                  {CreateTensorSpec("val", DT_INT32)},
+                  {CreateTensorSpec("val_out", DT_INT32)},
+                  {},
+                  {}};
+  intrinsic.nested_intrinsics.push_back(std::move(inner));
+
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor t, Tensor::Create(DT_INT32, {3}, CreateTestData({1, 2, 3})));
+  EXPECT_THAT(aggregator->Accumulate({&t}), IsOk());
+
+  TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> partitioned_states,
+                           std::move(*aggregator).Partition(2));
+  EXPECT_EQ(partitioned_states.size(), 2);
+
+  TFF_ASSERT_OK_AND_ASSIGN(auto factory, GetAggregatorFactory(intrinsic.uri));
+
+  // Partition 0 should contain the accumulated data (sum = 6)
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto deserialized_aggregator0,
+      factory->Deserialize(intrinsic, std::move(partitioned_states[0])));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result0,
+                           std::move(*deserialized_aggregator0).Report());
+  EXPECT_EQ(result0.size(), 1);
+  EXPECT_THAT(result0[0], IsTensor<int32_t>({1}, {6}));
+
+  // Partition 1 should be empty
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto deserialized_aggregator1,
+      factory->Deserialize(intrinsic, std::move(partitioned_states[1])));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result1,
+                           std::move(*deserialized_aggregator1).Report());
+  EXPECT_EQ(result1.size(), 1);
+  EXPECT_THAT(result1[0], IsTensor<int32_t>({0}, {}));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     GroupByAggregatorTestInstantiation, GroupByAggregatorTest,
     testing::ValuesIn<bool>({false, true}),
