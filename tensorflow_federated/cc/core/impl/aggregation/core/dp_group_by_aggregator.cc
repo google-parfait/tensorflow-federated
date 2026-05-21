@@ -263,9 +263,8 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
 
 // When epsilon is meaningful, lengthen the serialized state by an amount
 // determined by PositiveLaplaceMechanism (scaled to epsilon and sensitivity).
-StatusOr<std::string> PadSerializedState(absl::string_view serialized_state,
-                                         double epsilon, double delta,
-                                         int64_t sensitivity) {
+Status PadSerializedState(std::string& serialized_state, double epsilon,
+                          double delta, int64_t sensitivity) {
   int64_t padding_length = 0;
   if (epsilon < kEpsilonThreshold) {
     TFF_ASSIGN_OR_RETURN(
@@ -277,7 +276,9 @@ StatusOr<std::string> PadSerializedState(absl::string_view serialized_state,
   std::string padding(padding_length, kPaddingCharacter);
   std::string padding_length_bytes(reinterpret_cast<char*>(&padding_length),
                                    sizeof(padding_length));
-  return absl::StrCat(serialized_state, padding, padding_length_bytes);
+  absl::StrAppend(&serialized_state, std::move(padding),
+                  std::move(padding_length_bytes));
+  return absl::OkStatus();
 }
 
 StatusOr<std::string> DPGroupByAggregator::Serialize() && {
@@ -288,7 +289,9 @@ StatusOr<std::string> DPGroupByAggregator::Serialize() && {
   }
 
   TFF_ASSIGN_OR_RETURN(int64_t sensitivity, CalculateSerializeSensitivity());
-  return PadSerializedState(serialized_state, epsilon_, delta_, sensitivity);
+  TFF_RETURN_IF_ERROR(
+      PadSerializedState(serialized_state, epsilon_, delta_, sensitivity));
+  return serialized_state;
 }
 
 StatusOr<std::vector<std::string>> DPGroupByAggregator::Partition(
@@ -315,16 +318,12 @@ StatusOr<std::vector<std::string>> DPGroupByAggregator::Partition(
   double per_partition_delta = delta_ / partitions_influenced;
 
   // Add the padding to each partition.
-  std::vector<std::string> padded_serialized_states;
-  padded_serialized_states.reserve(serialized_states.size());
-  for (const std::string& serialized_state : serialized_states) {
-    TFF_ASSIGN_OR_RETURN(
-        std::string padded_serialized_state,
-        PadSerializedState(serialized_state, per_partition_epsilon,
-                           per_partition_delta, sensitivity));
-    padded_serialized_states.push_back(std::move(padded_serialized_state));
+  for (int i = 0; i < serialized_states.size(); ++i) {
+    TFF_RETURN_IF_ERROR(PadSerializedState(serialized_states[i],
+                                           per_partition_epsilon,
+                                           per_partition_delta, sensitivity));
   }
-  return padded_serialized_states;
+  return serialized_states;
 }
 
 StatusOr<int64_t> DPGroupByAggregator::GetContentSize(
