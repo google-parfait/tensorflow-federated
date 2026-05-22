@@ -37,6 +37,42 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
+namespace {
+
+// Helper template to implement Tensor::Gather for numeric data types.
+template <typename T>
+StatusOr<Tensor> GatherHelper(const Tensor* tensor,
+                              absl::Span<const size_t> indices,
+                              std::string new_name) {
+  auto span = tensor->AsSpan<T>();
+  std::vector<T> new_values;
+  new_values.reserve(indices.size());
+  for (size_t index : indices) {
+    new_values.push_back(span[index]);
+  }
+  return Tensor::Create(tensor->dtype(),
+                        TensorShape({static_cast<int64_t>(indices.size())}),
+                        std::make_unique<VectorData<T>>(std::move(new_values)),
+                        std::move(new_name));
+}
+
+// Template specialization of GatherHelper for string tensors (DT_STRING).
+template <>
+StatusOr<Tensor> GatherHelper<absl::string_view>(
+    const Tensor* tensor, absl::Span<const size_t> indices,
+    std::string new_name) {
+  auto span = tensor->AsSpan<absl::string_view>();
+  std::vector<std::string> new_values;
+  new_values.reserve(indices.size());
+  for (size_t index : indices) {
+    new_values.push_back(std::string(span[index]));
+  }
+  return Tensor::Create(
+      tensor->dtype(), TensorShape({static_cast<int64_t>(indices.size())}),
+      std::make_unique<VectorData<absl::string_view>>(std::move(new_values)),
+      std::move(new_name));
+}
+}  // namespace
 
 Status Tensor::CheckValid() const {
   if (dtype_ == DT_INVALID) {
@@ -380,6 +416,27 @@ TensorProto Tensor::ToProto() const {
   *(tensor_proto.mutable_content()) = std::move(content);
   tensor_proto.set_name(name_);
   return tensor_proto;
+}
+
+StatusOr<Tensor> Tensor::Gather(absl::Span<const size_t> indices,
+                                absl::string_view output_name) const {
+  if (shape_.dim_sizes().size() != 1) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "Tensor::Gather is only supported for 1D tensors.";
+  }
+  size_t num_elements = shape_.dim_sizes()[0];
+  for (size_t index : indices) {
+    if (index >= num_elements) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "Tensor::Gather index " << index
+             << " is out of bounds for tensor of size " << num_elements << ".";
+    }
+  }
+  std::string new_name = output_name.empty() ? name_ : std::string(output_name);
+  StatusOr<Tensor> result;
+  DTYPE_CASES(dtype_, T,
+              result = GatherHelper<T>(this, indices, std::move(new_name)));
+  return result;
 }
 
 }  // namespace aggregation
