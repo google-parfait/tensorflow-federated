@@ -84,15 +84,54 @@ std::vector<Tensor> CreateDPGFSParameters(InputType linfinity_bound,
       linfinity_bound, l1_bound, l2_bound);
 }
 
-TEST(DPGroupingFederatedSumTest, PermitNegativeNormValues) {
+TEST(DPGroupingFederatedSumTest, NegativeNormValuesDoNothing) {
   Intrinsic intrinsic{kDPSumUri,
                       {CreateTensorSpec("value", DT_INT64)},
                       {CreateTensorSpec("value", DT_INT64)},
                       {CreateDPGFSParameters<int64_t>(-1, -1, -1)},
                       {}};
 
-  auto aggregator_status = CreateTensorAggregator(intrinsic);
-  TFF_EXPECT_OK(aggregator_status);
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key1, Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({0})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto value1,
+      Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({10000})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key2, Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({1})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto value2,
+      Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({20000})));
+  EXPECT_OK(aggregator->Accumulate({&key1, &value1}));
+  EXPECT_OK(aggregator->Accumulate({&key2, &value2}));
+  EXPECT_TRUE(aggregator->CanReport());
+  TFF_ASSERT_OK_AND_ASSIGN(auto result, std::move(*aggregator).Report());
+  EXPECT_EQ(result.size(), 1);
+  EXPECT_THAT(result[0].AsSpan<int64_t>(), testing::ElementsAre(10000, 20000));
+}
+TEST(DPGroupingFederatedSumTest, NegativeNormValuesDoNothing_Unsigned) {
+  Intrinsic intrinsic{kDPSumUri,
+                      {CreateTensorSpec("value", DT_UINT64)},
+                      {CreateTensorSpec("value", DT_UINT64)},
+                      {CreateDPGFSParameters<int64_t>(-1, -1, -1)},
+                      {}};
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key1, Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({0})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto value1,
+      Tensor::Create(DT_UINT64, {}, CreateTestData<uint64_t>({10000})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto key2, Tensor::Create(DT_INT64, {}, CreateTestData<int64_t>({1})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto value2,
+      Tensor::Create(DT_UINT64, {}, CreateTestData<uint64_t>({20000})));
+  EXPECT_OK(aggregator->Accumulate({&key1, &value1}));
+  EXPECT_OK(aggregator->Accumulate({&key2, &value2}));
+  EXPECT_TRUE(aggregator->CanReport());
+  TFF_ASSERT_OK_AND_ASSIGN(auto result, std::move(*aggregator).Report());
+  EXPECT_EQ(result.size(), 1);
+  EXPECT_THAT(result[0].AsSpan<uint64_t>(), testing::ElementsAre(10000, 20000));
 }
 
 Intrinsic CreateDefaultIntrinsic() {
