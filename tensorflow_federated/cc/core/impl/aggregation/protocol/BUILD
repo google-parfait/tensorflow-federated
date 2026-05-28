@@ -109,6 +109,20 @@ cc_library(
 )
 
 cc_library(
+    name = "in_memory_checkpoint_parser",
+    hdrs = ["in_memory_checkpoint_parser.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":checkpoint_parser",
+        "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "checkpoint_aggregator",
     srcs = ["checkpoint_aggregator.cc"],
     hdrs = ["checkpoint_aggregator.h"],
@@ -253,6 +267,20 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/testing:oss_test_main",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "in_memory_checkpoint_parser_test",
+    srcs = ["in_memory_checkpoint_parser_test.cc"],
+    deps = [
+        ":in_memory_checkpoint_parser",
+        "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
     ],
