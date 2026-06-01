@@ -137,7 +137,11 @@ def run_training_process(
   Returns:
     The `state` of the training process after training.
   """
-  loop = asyncio.get_event_loop()
+  try:
+    loop = asyncio.get_event_loop()
+  except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
   logging.info('Running training process')
   if program_state_manager is not None:
