@@ -26,8 +26,8 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/vector_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -94,8 +94,7 @@ StatusOr<std::vector<Tensor>> Partitioner::PartitionKeys(
       TFF_ASSIGN_OR_RETURN(
           Tensor tensor,
           Tensor::Create(key_tensor.dtype(), {static_cast<int64_t>(dim_size)},
-                         std::make_unique<MutableVectorData<T>>(slice.begin(),
-                                                                slice.end())));
+                         std::make_unique<VectorData<T>>(std::move(slice))));
       result_tensors.push_back(std::move(tensor));
     }
   });

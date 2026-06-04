@@ -357,7 +357,7 @@ StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
     TFF_ASSIGN_OR_RETURN(auto partitioned_keys, partitioner.PartitionKeys(key));
     for (int i = 0; i < num_partitions; ++i) {
       group_by_aggregator_states[i].mutable_keys()->Add(
-          partitioned_keys[i].ToProto());
+          std::move(partitioned_keys[i]).ToProto());
     }
   }
   for (const auto& nested_aggregator : aggregators_) {

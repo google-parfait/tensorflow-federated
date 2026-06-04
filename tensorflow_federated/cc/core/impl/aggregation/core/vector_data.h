@@ -44,6 +44,9 @@ class VectorData : public TensorData {
 template <>
 class VectorData<absl::string_view> : public TensorData {
  public:
+  explicit VectorData(std::vector<absl::string_view>&& values)
+      : string_views_(std::move(values)) {}
+
   explicit VectorData(std::vector<std::string>&& values)
       : strings_(std::move(values)) {
     string_views_.reserve(strings_.size());

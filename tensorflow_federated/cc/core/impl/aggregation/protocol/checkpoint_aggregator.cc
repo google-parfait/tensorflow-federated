@@ -323,8 +323,8 @@ absl::StatusOr<std::vector<std::string>> CheckpointAggregator::Partition(
   }
   std::vector<std::string> serialized_states;
   serialized_states.reserve(states.size());
-  for (const auto& state : states) {
-    serialized_states.push_back(state.SerializeAsString());
+  for (auto& state : states) {
+    serialized_states.push_back(std::move(state).SerializeAsString());
   }
   return serialized_states;
 }
