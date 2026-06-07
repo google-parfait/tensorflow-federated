@@ -231,6 +231,13 @@ class Tensor final {
     return absl::Span<const T>(GetData<T>(), num_elements());
   }
 
+  // Gathers elements from a 1D tensor using the provided indices.
+  // output[i] = input[indices[i]]. Indices may be in any order and may contain
+  // duplicates. If output_name is empty, the resulting tensor retains the name
+  // of the original tensor.
+  StatusOr<Tensor> Gather(absl::Span<const size_t> indices,
+                          absl::string_view output_name = "") const;
+
   // Updates the tensor name.
   Status set_name(absl::string_view name);
 
