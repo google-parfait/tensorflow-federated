@@ -19,7 +19,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
-        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
+        "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
         "//tensorflow_federated/python/core/impl/executors:remote_executor",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
