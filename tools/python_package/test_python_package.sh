@@ -25,10 +25,29 @@ usage() {
 main() {
   # Find hermetic Python in runfiles.
   local hermetic_python=""
-  if [[ -d "${RUNFILES_DIR}" ]]; then
-    for path in "python_3_12_host/bin/python" "python_3_12_host/python" "external/python_3_12_host/bin/python" "external/python_3_12_host/python"; do
-      if [[ -x "${RUNFILES_DIR}/${path}" ]]; then
-        hermetic_python="${RUNFILES_DIR}/${path}"
+  local runfiles_dir="${RUNFILES_DIR:-}"
+
+  # Fallback runfiles resolution
+  if [[ -z "${runfiles_dir}" ]]; then
+    if [[ -d "${0}.runfiles" ]]; then
+      runfiles_dir="${0}.runfiles"
+    elif [[ -d "${BASH_SOURCE[0]}.runfiles" ]]; then
+      runfiles_dir="${BASH_SOURCE[0]}.runfiles"
+    else
+      local dir_name=$(dirname "${BASH_SOURCE[0]}")
+      if [[ "${dir_name}" == *.runfiles* ]]; then
+        runfiles_dir="${dir_name%%.runfiles*}.runfiles"
+      fi
+    fi
+  fi
+
+  if [[ -d "${runfiles_dir}" ]]; then
+    # Search for python or python3 executable under python_3_12 directories.
+    # Restrict depth to 5 to avoid traversing deep into the python library.
+    local paths=$(find -L "${runfiles_dir}" -maxdepth 5 \( -name "python" -o -name "python3" \) -path "*python_3_12*" 2>/dev/null)
+    for path in ${paths}; do
+      if [[ -x "${path}" ]]; then
+        hermetic_python="${path}"
         break
       fi
     done
@@ -40,7 +59,7 @@ main() {
     echo "Using hermetic Python: ${python_cmd}"
 
     # Determine PYTHONHOME based on executable location
-    if [[ "${python_cmd}" == */bin/python ]]; then
+    if [[ "${python_cmd}" == */bin/python* ]]; then
       export PYTHONHOME="$(dirname "$(dirname "${python_cmd}")")"
     else
       export PYTHONHOME="$(dirname "${python_cmd}")"
