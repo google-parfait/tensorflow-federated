@@ -22,8 +22,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from examplesstateful_clients import stateful_fedavg_tf
-from examplesstateful_clients import stateful_fedavg_tff
+from examples.stateful_clients import stateful_fedavg_tf
+from examples.stateful_clients import stateful_fedavg_tff
 
 
 def _create_test_cnn_model():
@@ -54,13 +54,6 @@ def _create_test_cnn_model():
   ])
 
   return model
-
-
-def _create_random_batch():
-  return collections.OrderedDict(
-      x=tf.random.uniform(tf.TensorShape([1, 28, 28, 1]), dtype=tf.float32),
-      y=tf.constant(1, dtype=tf.int32, shape=[1]),
-  )
 
 
 def _create_one_client_state():
@@ -352,7 +345,7 @@ def _server_init(model, optimizer):
   stateful_fedavg_tff._initialize_optimizer_vars(model, optimizer)
   return stateful_fedavg_tf.ServerState(
       model_weights=model.weights,
-      optimizer_state=optimizer.variables(),
+      optimizer_state=stateful_fedavg_tf.get_optimizer_variables(optimizer),
       round_num=0,
       total_iters_count=0,
   )

@@ -36,12 +36,10 @@ class ExecutorStackBindingsTest(parameterized.TestCase):
   ):
     with self.assertRaisesRegex(Exception, 'UNAVAILABLE'):
       executor_stack_bindings.create_remote_executor_stack(
-          channels=container_constructor(
-              [
-                  executor_bindings.create_insecure_grpc_channel(t)
-                  for t in _TARGET_LIST
-              ]
-          ),
+          channels=container_constructor([
+              executor_bindings.create_insecure_grpc_channel(t)
+              for t in _TARGET_LIST
+          ]),
           cardinalities=_CARDINALITIES,
       )
 

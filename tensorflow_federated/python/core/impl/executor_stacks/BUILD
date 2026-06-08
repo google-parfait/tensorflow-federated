@@ -49,29 +49,15 @@ py_test(
 )
 
 py_library(
-    name = "executor_factory",
-    srcs = ["executor_factory.py"],
-    data = ["//tensorflow_federated/data:worker_binary"],
-    tags = ["ignore_for_dep=third_party.py.IPython.get_ipython"],
-    deps = [
-        ":python_executor_stacks",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
-        "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//grpcio",
-        "@pypi//portpicker",
-    ],
-)
-
-py_library(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.py"],
     deps = [
-        "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stack_bindings",
+        "//tensorflow_federated/cc/core/impl:tff_bindings",  # buildcleaner: keep
+        "//tensorflow_federated/cc/core/impl/executor_stacks:cc_executor_stacks_init",
         "//tensorflow_federated/python/core/impl/executors:data_conversions",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -87,6 +73,7 @@ py_test(
         "@pypi//dm_tree",
         "@pypi//ml_dtypes",
         "@pypi//numpy",
+        "@pypi//tensorflow",  # buildcleaner: keep
         "@pypi//typing_extensions",
     ],
 )

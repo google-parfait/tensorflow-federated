@@ -14,6 +14,7 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("//third_party/tensorflow:tf_deps.bzl", "tff_tf_deps")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -29,15 +30,17 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor_cc_proto",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/platform:tstring",
         "@tsl//tsl/platform:refcount",
-    ],
+    ]),
 )
 
 cc_test(
@@ -54,10 +57,11 @@ cc_test(
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/platform:tstring",
-    ],
+    ]),
 )
 
 cc_library(
@@ -65,15 +69,23 @@ cc_library(
     srcs = ["tf_checkpoint_reader.cc"],
     hdrs = ["tf_checkpoint_reader.h"],
     deps = [
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/c:tf_status",
         "@org_tensorflow//tensorflow/c:tf_status_helper",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:lib",
         "@org_tensorflow//tensorflow/core/util/tensor_bundle",
         "@org_tensorflow//tensorflow/core/util/tensor_bundle:naming",
-    ],
+    ]),
 )
 
 cc_library(
@@ -89,12 +101,13 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:str_format",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/c:tf_status",  # buildcleaner: keep
         "@org_tensorflow//tensorflow/c:tf_status_headers",
         "@org_tensorflow//tensorflow/c:tf_status_helper",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
+    ]),
 )
 
 cc_test(
@@ -119,10 +132,12 @@ cc_library(
     deps = [
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core/platform:tstring",
-    ],
+    ]),
 )
 
 cc_test(
@@ -147,14 +162,16 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:checkpoint_builder",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core/platform:env",
         "@tsl//tsl/platform:env",
-    ],
+    ]),
 )
 
 cc_test(
@@ -188,9 +205,10 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core/platform:env",
         "@tsl//tsl/platform:env",
-    ],
+    ]),
 )
 
 cc_test(
@@ -205,7 +223,8 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/cc:cc_ops",
         "@org_tensorflow//tensorflow/core:tensorflow",
-    ],
+    ]),
 )

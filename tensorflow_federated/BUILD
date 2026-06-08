@@ -13,6 +13,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":version",
+        "//tensorflow_federated/cc/core/impl:tff_bindings",
         "//tensorflow_federated/python/aggregators",
         "//tensorflow_federated/python/analytics",
         "//tensorflow_federated/python/common_libs:structure",
@@ -29,4 +30,13 @@ py_library(
 py_library(
     name = "version",
     srcs = ["version.py"],
+)
+
+py_library(
+    name = "cc_init",
+    srcs = [
+        "cc/__init__.py",
+        "cc/core/__init__.py",
+    ],
+    visibility = ["//visibility:public"],
 )

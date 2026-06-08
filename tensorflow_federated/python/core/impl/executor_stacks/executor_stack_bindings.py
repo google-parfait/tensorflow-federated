@@ -17,6 +17,9 @@ from collections.abc import Mapping, Sequence
 
 import federated_language
 
+# Required to load TF Python extension.
+import tensorflow as tf  # pylint: disable=unused-import
+
 from tensorflow_federated.cc.core.impl.executor_stacks import executor_stack_bindings
 from tensorflow_federated.python.core.impl.executors import data_conversions
 from tensorflow_federated.python.core.impl.executors import executor_bindings

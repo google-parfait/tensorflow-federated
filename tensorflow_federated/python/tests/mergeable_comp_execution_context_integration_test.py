@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import mock
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
@@ -365,13 +367,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(num_contexts):
-      context = federated_language.framework.AsyncExecutionContext(
-          executor_fn=tff.framework.local_cpp_executor_factory(
-              max_concurrent_computation_calls=1
-          ),
-          compiler_fn=tff.backends.native.desugar_and_transform_to_native,
-          transform_args=tff.tensorflow.transform_args,
-          transform_result=tff.tensorflow.transform_result,
+      context = tff.backends.native.create_async_local_cpp_execution_context(
+          max_concurrent_computation_calls=1
       )
       contexts.append(context)
     mergeable_comp_context = tff.framework.MergeableCompExecutionContext(
@@ -443,13 +440,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(5):
-      context = federated_language.framework.AsyncExecutionContext(
-          executor_fn=tff.framework.local_cpp_executor_factory(
-              max_concurrent_computation_calls=1
-          ),
-          compiler_fn=tff.backends.native.desugar_and_transform_to_native,
-          transform_args=tff.tensorflow.transform_args,
-          transform_result=tff.tensorflow.transform_result,
+      context = tff.backends.native.create_async_local_cpp_execution_context(
+          max_concurrent_computation_calls=1
       )
       contexts.append(context)
     mergeable_comp_context = tff.framework.MergeableCompExecutionContext(
@@ -499,13 +491,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(1):
-      context = federated_language.framework.AsyncExecutionContext(
-          executor_fn=tff.framework.local_cpp_executor_factory(
-              max_concurrent_computation_calls=1
-          ),
-          compiler_fn=tff.backends.native.desugar_and_transform_to_native,
-          transform_args=tff.tensorflow.transform_args,
-          transform_result=tff.tensorflow.transform_result,
+      context = tff.backends.native.create_async_local_cpp_execution_context(
+          max_concurrent_computation_calls=1
       )
       contexts.append(context)
     mergeable_comp_context = tff.framework.MergeableCompExecutionContext(
@@ -536,14 +523,9 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     )
     contexts = []
     for _ in range(num_executors):
-      context = federated_language.framework.AsyncExecutionContext(
-          executor_fn=tff.framework.local_cpp_executor_factory(
-              default_num_clients=int(num_clients / num_executors),
-              max_concurrent_computation_calls=1,
-          ),
-          compiler_fn=tff.backends.native.desugar_and_transform_to_native,
-          transform_args=tff.tensorflow.transform_args,
-          transform_result=tff.tensorflow.transform_result,
+      context = tff.backends.native.create_async_local_cpp_execution_context(
+          default_num_clients=int(num_clients / num_executors),
+          max_concurrent_computation_calls=1,
       )
       contexts.append(context)
     mergeable_comp_context = tff.framework.MergeableCompExecutionContext(
@@ -560,7 +542,11 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     def return_one():
       return 1
 
-    factory = tff.framework.local_cpp_executor_factory()
+    factory = mock.create_autospec(
+        federated_language.framework.ExecutorFactory,
+        instance=True,
+        spec_set=True,
+    )
     context = federated_language.framework.AsyncExecutionContext(
         executor_fn=factory,
         transform_args=tff.tensorflow.transform_args,
@@ -577,7 +563,11 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     def return_one():
       return 1
 
-    factory = tff.framework.local_cpp_executor_factory()
+    factory = mock.create_autospec(
+        federated_language.framework.ExecutorFactory,
+        instance=True,
+        spec_set=True,
+    )
     context = federated_language.framework.AsyncExecutionContext(
         executor_fn=factory,
         transform_args=tff.tensorflow.transform_args,

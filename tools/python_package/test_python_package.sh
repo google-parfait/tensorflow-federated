@@ -16,65 +16,46 @@
 # Tool to test the TensorFlow Federated Python package.
 set -e
 
+# --- begin runfiles.bash initialization v2 ---
+# Copy-pasted from the Bazel Bash runfiles library v2.
+set -uo pipefail; f=bazel_tools/tools/bash/runfiles/runfiles.bash
+#shellcheck source=/dev/null
+source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
+  source "$(grep -sm1 "^$f " "${RUNFILES_MANIFEST_FILE:-/dev/null}" | cut -f2- -d' ')" 2>/dev/null || \
+  source "$0.runfiles/$f" 2>/dev/null || \
+  source "$(dirname "$0")/$f" 2>/dev/null || \
+  source "$(dirname "$(realpath "$0")")/$f" 2>/dev/null || \
+  { echo >&2 "ERROR: cannot find $f"; exit 1; }; f=; set -e
+# --- end runfiles.bash initialization v2 ---
+
+# Ensure RUNFILES_DIR is populated and exported if runfiles.bash didn't set it.
+if [[ -z "${RUNFILES_DIR:-}" ]]; then
+  if [[ -d "$0.runfiles" ]]; then
+    export RUNFILES_DIR="$0.runfiles"
+  elif [[ -d "$(dirname "$0")/.runfiles" ]]; then
+    export RUNFILES_DIR="$(dirname "$0")/.runfiles"
+  elif [[ -d "$(dirname "$(realpath "$0")").runfiles" ]]; then
+    export RUNFILES_DIR="$(dirname "$(realpath "$0")").runfiles"
+  fi
+fi
+
+runfiles_export_envvars
+
 usage() {
   local script_name=$(basename "${0}")
   echo "usage: ${script_name} --package=<path>"
   echo "  --package=<path>  A path to a local Python package."
 }
-
 main() {
-  # Find hermetic Python in runfiles.
-  local hermetic_python=""
-  local runfiles_dir="${RUNFILES_DIR:-}"
-
-  # Fallback runfiles resolution
-  if [[ -z "${runfiles_dir}" ]]; then
-    if [[ -d "${0}.runfiles" ]]; then
-      runfiles_dir="${0}.runfiles"
-    elif [[ -d "${BASH_SOURCE[0]}.runfiles" ]]; then
-      runfiles_dir="${BASH_SOURCE[0]}.runfiles"
-    else
-      local dir_name=$(dirname "${BASH_SOURCE[0]}")
-      if [[ "${dir_name}" == *.runfiles* ]]; then
-        runfiles_dir="${dir_name%%.runfiles*}.runfiles"
-      fi
-    fi
-  fi
-
-  if [[ -d "${runfiles_dir}" ]]; then
-    # Search for python or python3 executable under python_3_12 directories.
-    # Restrict depth to 5 to avoid traversing deep into the python library.
-    local paths=$(find -L "${runfiles_dir}" -maxdepth 5 \( -name "python" -o -name "python3" \) -path "*python_3_12*" 2>/dev/null)
-    for path in ${paths}; do
-      if [[ -x "${path}" ]]; then
-        hermetic_python="${path}"
-        break
-      fi
-    done
-  fi
-
-  local python_cmd="python"
-  if [[ -n "${hermetic_python}" ]]; then
-    python_cmd="${hermetic_python}"
-    echo "Using hermetic Python: ${python_cmd}"
-
-    # Determine PYTHONHOME based on executable location
-    if [[ "${python_cmd}" == */bin/python* ]]; then
-      export PYTHONHOME="$(dirname "$(dirname "${python_cmd}")")"
-    else
-      export PYTHONHOME="$(dirname "${python_cmd}")"
-    fi
-    echo "Set PYTHONHOME=${PYTHONHOME}"
-  fi
-
-  # Ensure Python 3.12 or newer is used.
-  local python_version=$("${python_cmd}" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')
-  local python_major="${python_version%.*}"
-  local python_minor="${python_version#*.}"
-  if (( python_major < 3 || (python_major == 3 && python_minor < 12) )); then
-    echo "error: This script requires Python 3.12 or newer. You are using Python ${python_version}." 1>&2
+  # Load shared python helper from runfiles.
+  local helper_path="$(rlocation org_tensorflow_federated/tools/python_package/get_hermetic_python.sh)"
+  if [[ -z "${helper_path}" || ! -f "${helper_path}" ]]; then
+    echo "ERROR: get_hermetic_python.sh not found in runfiles" >&2
     exit 1
   fi
+  source "${helper_path}"
+
+  local python_cmd=$(setup_hermetic_python "${RUNFILES_DIR:-}")
 
   # Parse the arguments.
   local package=""
@@ -105,7 +86,7 @@ main() {
   fi
 
   # Check Python package sizes.
-  local actual_size="$(du -b "${package}" | cut -f1)"
+  local actual_size=$(wc -c < "${package}" | tr -d ' ')
   local maximum_size=80000000  # 80 MiB
   if [[ "${actual_size}" -ge "${maximum_size}" ]]; then
     echo "error: expected '${package}' to be less than '${maximum_size}' bytes, it was '${actual_size}' bytes" 1>&2
@@ -121,18 +102,26 @@ main() {
   source "${temp_dir}/venv/bin/activate"
 
   # Unset PYTHONHOME to avoid conflicts with venv
-  if [[ -n "${hermetic_python}" ]]; then
+  if [[ "${python_cmd}" != "python3" ]]; then
     unset PYTHONHOME
   fi
 
   python --version
-  pip install --upgrade "pip"
+  pip install --extra-index-url https://pypi.org/simple --upgrade "pip"
   pip --version
 
   # Test the Python package.
-  pip install --upgrade "${package}"
+  pip install --extra-index-url https://pypi.org/simple --upgrade "${package}"
   pip freeze
   python -c "import tensorflow_federated as tff; print(tff.__version__)"
+
+  # Run a federated computation to exercise the C++ executor bindings.
+  local test_script="$(rlocation org_tensorflow_federated/tools/python_package/test_computation.py)"
+  if [[ -z "${test_script}" || ! -f "${test_script}" ]]; then
+    echo "ERROR: test_computation.py not found in runfiles" >&2
+    exit 1
+  fi
+  python "${test_script}"
 }
 
 main "$@"

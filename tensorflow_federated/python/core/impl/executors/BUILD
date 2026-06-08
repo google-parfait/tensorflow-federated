@@ -95,8 +95,10 @@ py_library(
     srcs = ["executor_bindings.py"],
     deps = [
         ":data_conversions",
-        "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
+        "//tensorflow_federated/cc/core/impl:tff_bindings",  # buildcleaner: keep
+        "//tensorflow_federated/cc/core/impl/executors:cc_executors_init",  # buildcleaner: keep
         "@federated_language//federated_language",
+        "@pypi//tensorflow",
     ],
 )
 
@@ -113,6 +115,7 @@ py_test(
         "@pypi//dm_tree",
         "@pypi//ml_dtypes",
         "@pypi//portpicker",
+        "@pypi//tensorflow",  # buildcleaner: keep
         "@pypi//typing_extensions",
     ],
 )
@@ -120,7 +123,10 @@ py_test(
 py_library(
     name = "executor_test_utils_bindings",
     srcs = ["executor_test_utils_bindings.py"],
-    deps = ["//tensorflow_federated/cc/core/impl/executors:executor_test_utils_bindings"],
+    deps = [
+        "//tensorflow_federated/cc/core/impl:tff_test_bindings",  # buildcleaner: keep
+        "//tensorflow_federated/cc/core/impl/executors:cc_executors_init",
+    ],
 )
 
 py_library(

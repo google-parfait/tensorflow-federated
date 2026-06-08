@@ -49,6 +49,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
+#include "tensorflow_federated/cc/testing/grpc_status_matchers.h"
 #include "tensorflow_federated/cc/testing/protobuf_matchers.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
@@ -126,8 +127,7 @@ v0::CreateStructRequest CreateStructRequestForValues(
   v0::CreateStructRequest create_struct_request;
   create_struct_request.mutable_executor()->set_id(kExecutorId);
   for (absl::string_view ref_name : ref_names) {
-    create_struct_request.add_element()->mutable_value_ref()->set_id(
-        std::string(ref_name));
+    create_struct_request.add_element()->mutable_value_ref()->set_id(ref_name);
   }
   return create_struct_request;
 }

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//third_party/tensorflow:tf_deps.bzl", "tff_tf_deps")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -35,6 +36,7 @@ cc_library(
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_googletest//:gtest",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/c:tf_status_headers",
         "@org_tensorflow//tensorflow/c:tf_status_helper",
         "@org_tensorflow//tensorflow/cc:cc_ops",
@@ -45,7 +47,7 @@ cc_library(
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
         "@org_tensorflow//tensorflow/core/platform:tstring",
-    ],
+    ]),
 )
 
 cc_library(
