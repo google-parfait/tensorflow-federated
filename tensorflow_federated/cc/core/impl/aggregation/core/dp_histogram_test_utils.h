@@ -36,13 +36,10 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_thresholding_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -147,26 +144,9 @@ std::vector<Tensor> CreateTopLevelParameters(
     absl::Span<const DataType> key_types, bool add_spec = false) {
   std::vector<Tensor> parameters;
 
-  std::unique_ptr<MutableVectorData<EpsilonType>> epsilon_tensor =
-      CreateTestData<EpsilonType>({epsilon});
-  parameters.push_back(
-      Tensor::Create(internal::TypeTraits<EpsilonType>::kDataType, {},
-                     std::move(epsilon_tensor), "epsilon")
-          .value());
-
-  std::unique_ptr<MutableVectorData<DeltaType>> delta_tensor =
-      CreateTestData<DeltaType>({delta});
-  parameters.push_back(
-      Tensor::Create(internal::TypeTraits<DeltaType>::kDataType, {},
-                     std::move(delta_tensor), "delta")
-          .value());
-
-  std::unique_ptr<MutableVectorData<L0_BoundType>> l0_bound_tensor =
-      CreateTestData<L0_BoundType>({l0_bound});
-  parameters.push_back(
-      Tensor::Create(internal::TypeTraits<L0_BoundType>::kDataType, {},
-                     std::move(l0_bound_tensor), "max_groups_contributed")
-          .value());
+  parameters.push_back(Tensor(epsilon, "epsilon"));
+  parameters.push_back(Tensor(delta, "delta"));
+  parameters.push_back(Tensor(l0_bound, "max_groups_contributed"));
 
   if (key_types.empty() || !add_spec) {
     return parameters;
@@ -174,31 +154,24 @@ std::vector<Tensor> CreateTopLevelParameters(
 
   // First tensor contains the names of keys
   int64_t num_keys = key_types.size();
-  auto key_names = std::make_unique<MutableStringData>(num_keys);
+  std::vector<std::string> key_names(num_keys);
   for (int i = 0; i < num_keys; i++) {
-    key_names->Add(absl::StrCat("key", i));
+    key_names[i] = absl::StrCat("key", i);
   }
-  parameters.push_back(
-      Tensor::Create(DT_STRING, {num_keys}, std::move(key_names), "key_names")
-          .value());
+  parameters.push_back(Tensor(std::move(key_names), "key_names"));
 
   // The ith tensor contains the domain of values that the ith key can take.
   int key_type_index = 0;
   for (DataType dtype : key_types) {
-    const int kNumValues = 3;
+    std::string tensor_name = absl::StrCat("key", key_type_index);
     if (dtype == DT_STRING) {
-      parameters.push_back(
-          Tensor::Create(DT_STRING, {kNumValues},
-                         CreateTestData<string_view>({"a", "b", "c"}),
-                         absl::StrCat("key", key_type_index))
-              .value());
+      parameters.push_back(Tensor({"a", "b", "c"}, tensor_name));
     } else {
       NUMERICAL_ONLY_DTYPE_CASES(
           dtype, T,
           parameters.push_back(
-              Tensor::Create(dtype, {kNumValues}, CreateTestData<T>({0, 1, 2}),
-                             absl::StrCat("key", key_type_index))
-                  .value()));
+              Tensor({static_cast<T>(0), static_cast<T>(1), static_cast<T>(2)},
+                     tensor_name)));
     }
     key_type_index++;
   }
@@ -222,18 +195,9 @@ std::vector<Tensor> CreateNestedParameters(InputType linfinity_bound,
                                            double l1_bound, double l2_bound) {
   std::vector<Tensor> parameters;
 
-  parameters.push_back(
-      Tensor::Create(internal::TypeTraits<InputType>::kDataType, {},
-                     CreateTestData<InputType>({linfinity_bound}))
-          .value());
-
-  parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({l1_bound}))
-          .value());
-
-  parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({l2_bound}))
-          .value());
+  parameters.push_back(Tensor(linfinity_bound));
+  parameters.push_back(Tensor(l1_bound));
+  parameters.push_back(Tensor(l2_bound));
 
   return parameters;
 }
@@ -319,13 +283,8 @@ Intrinsic CreateIntrinsicWithMinContributors(
     std::vector<DataType> key_types = {DT_STRING}) {
   Intrinsic intrinsic = CreateIntrinsicWithKeyTypes<InputType, OutputType>(
       epsilon, delta, l0_bound, linfinity_bound, l1_bound, l2_bound, key_types);
-  std::unique_ptr<MutableVectorData<int64_t>> min_contributors_tensor =
-      CreateTestData<int64_t>({min_contributors});
   intrinsic.parameters.push_back(
-      Tensor::Create(internal::TypeTraits<int64_t>::kDataType, {},
-                     std::move(min_contributors_tensor),
-                     "min_contributors_to_group")
-          .value());
+      Tensor(min_contributors, "min_contributors_to_group"));
 
   return intrinsic;
 }

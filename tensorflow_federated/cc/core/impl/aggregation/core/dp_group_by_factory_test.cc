@@ -35,7 +35,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -108,9 +107,8 @@ TEST(DPExhaustiveReportHistogramTest, CatchWrongNumberOfKeyNames) {
 TEST(DPExhaustiveReportHistogramTest, CatchWrongKeyNamesType) {
   Intrinsic wrong_key_names_type =
       CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>();
-  TFF_ASSERT_OK_AND_ASSIGN(
-      wrong_key_names_type.parameters[3],
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1}), "key_names"));
+  wrong_key_names_type.parameters[3] =
+      Tensor(static_cast<int64_t>(1), "key_names");
 
   EXPECT_THAT(CreateTensorAggregator(wrong_key_names_type).status(),
               StatusIs(INVALID_ARGUMENT,
@@ -138,8 +136,7 @@ TEST(DPExhaustiveReportHistogramTest, CatchWrongKeyTypes) {
 std::vector<Tensor> CreateNParameters(int n) {
   std::vector<Tensor> parameters;
   for (int i = 0; i < n; i++) {
-    parameters.push_back(
-        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({10})).value());
+    parameters.push_back(Tensor(10));
   }
   return parameters;
 }
@@ -148,10 +145,7 @@ TEST(DPExhaustiveReportHistogramTest, CatchMisnamedParameters) {
   std::vector<DataType> key_types = {DT_STRING, DT_STRING};
   std::vector<Tensor> parameters =
       CreateTopLevelParameters(1.0, 0.01, 10, key_types, /*add_spec=*/true);
-  parameters[5] = Tensor::Create(DT_STRING, {3},
-                                 CreateTestData<string_view>({"a", "b", "c"}),
-                                 "wrong key name")
-                      .value();
+  parameters[5] = Tensor({"a", "b", "c"}, "wrong key name");
   Intrinsic invalid_key_name = {
       .uri = kDPGroupByUri,
       .inputs = {CreateTensorSpec("key0", DT_STRING),
@@ -172,9 +166,7 @@ TEST(DPExhaustiveReportHistogramTest, CatchUnnamedParameter) {
   std::vector<DataType> key_types = {DT_STRING, DT_STRING};
   std::vector<Tensor> parameters =
       CreateTopLevelParameters(1.0, 0.01, 10, key_types, /*add_spec=*/true);
-  parameters[1] = Tensor::Create(internal::TypeTraits<double>::kDataType, {},
-                                 CreateTestData<double>({0.01}), "")
-                      .value();
+  parameters[1] = Tensor(0.01, "");
   Intrinsic unnamed_delta = {
       .uri = kDPGroupByUri,
       .inputs = {CreateTensorSpec("key0", DT_STRING),
@@ -231,22 +223,12 @@ std::vector<Tensor> CreateGenericDPGFSParameters(LinfType linfinity_bound,
                                                  L1Type l1_bound,
                                                  L2Type l2_bound) {
   std::vector<Tensor> parameters;
-
-  parameters.push_back(
-      Tensor::Create(internal::TypeTraits<LinfType>::kDataType, {},
-                     CreateTestData<LinfType>({linfinity_bound}))
-          .value());
-
-  parameters.push_back(Tensor::Create(internal::TypeTraits<L1Type>::kDataType,
-                                      {}, CreateTestData<L1Type>({l1_bound}))
-                           .value());
-
-  parameters.push_back(Tensor::Create(internal::TypeTraits<L2Type>::kDataType,
-                                      {}, CreateTestData<L2Type>({l2_bound}))
-                           .value());
-
+  parameters.push_back(Tensor(linfinity_bound));
+  parameters.push_back(Tensor(l1_bound));
+  parameters.push_back(Tensor(l2_bound));
   return parameters;
 }
+
 TEST(DPExhaustiveReportHistogramTest, CatchInnerParameters_WrongTypes) {
   Intrinsic first_inner_parameter_wrong_type = {
       .uri = kDPGroupByUri,
@@ -338,8 +320,7 @@ TEST(DPExhaustiveReportHistogramTest, CatchInvalidParameterValues) {
 TEST(DPExhaustiveReportHistogramTest, CatchDuplicateParameterNames) {
   Intrinsic duplicate_parameter_names =
       CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>();
-  duplicate_parameter_names.parameters.push_back(
-      Tensor::Create(DT_INT32, {}, CreateTestData({1}), "epsilon").value());
+  duplicate_parameter_names.parameters.push_back(Tensor(1, "epsilon"));
 
   EXPECT_THAT(CreateTensorAggregator(duplicate_parameter_names),
               StatusIs(INVALID_ARGUMENT,
@@ -350,10 +331,7 @@ TEST(DPThresholdingHistogramTest,
      CreateWithMinContributorsAndKeyNames_Success) {
   Intrinsic intrinsic =
       CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>();
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {1},
-                                                CreateTestData({10}),
-                                                "min_contributors_to_group")
-                                     .value());
+  intrinsic.parameters.push_back(Tensor({10}, "min_contributors_to_group"));
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
 
   // Check that the returned aggregator is a DPThresholdingHistogram.
@@ -370,10 +348,7 @@ std::vector<Tensor> CreateTopLevelParameters_ThresholdingHistogram() {
 
 TEST(DPThresholdingHistogramTest, CatchTooFewParameters) {
   std::vector<Tensor> parameters;
-  auto epsilon_tensor = CreateTestData({1.0});
-  parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, std::move(epsilon_tensor), "epsilon")
-          .value());
+  parameters.push_back(Tensor(1.0, "epsilon"));
 
   Intrinsic too_few = {.uri = kDPGroupByUri,
                        .inputs = {CreateTensorSpec("key", DT_STRING)},
@@ -629,12 +604,8 @@ TEST(DPGroupByFactoryTest, DeserializeSuccessFromSerialize) {
         /*epsilon=*/epsilon);
     TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator1,
                              CreateTensorAggregator(intrinsic1));
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor keys, Tensor::Create(DT_STRING, {2},
-                                    CreateTestData<string_view>({"a", "b"})));
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor values,
-        Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
+    Tensor keys({"a", "b"});
+    Tensor values({static_cast<int64_t>(1), static_cast<int64_t>(2)});
     TFF_ASSERT_OK(aggregator1->Accumulate({&keys, &values}));
     TFF_ASSERT_OK_AND_ASSIGN(std::string serialized_state1,
                              std::move(*aggregator1).Serialize());
@@ -673,12 +644,8 @@ TEST(DPGroupByFactoryTest, DeserializeSuccessFromPartition) {
         /*epsilon=*/epsilon);
     TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> aggregator1,
                              CreateTensorAggregator(intrinsic1));
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor keys, Tensor::Create(DT_STRING, {2},
-                                    CreateTestData<string_view>({"a", "b"})));
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor values,
-        Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
+    Tensor keys({"a", "b"});
+    Tensor values({static_cast<int64_t>(1), static_cast<int64_t>(2)});
     TFF_ASSERT_OK(aggregator1->Accumulate({&keys, &values}));
     TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> serialized_states1,
                              std::move(*aggregator1).Partition(2));

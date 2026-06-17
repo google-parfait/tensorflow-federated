@@ -29,7 +29,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -48,16 +47,13 @@ TEST(DPTensorAggregatorTest, WrongNumberOfInputs) {
                                   {TensorSpec("value", DT_DOUBLE, {})},
                                   {},
                                   {}};
-  intrinsic.parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({0.5})).value());
+  intrinsic.parameters.push_back(Tensor(0.5));
 
   auto aggregator_status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(aggregator_status);
   auto aggregator = std::move(aggregator_status.value());
-  Tensor t1 =
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({1})).value();
-  Tensor t2 =
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({2})).value();
+  Tensor t1(1.0);
+  Tensor t2(2.0);
   auto* ptr = dynamic_cast<DPTensorAggregator*>(aggregator.get());
   auto status = ptr->ValidateInputs(InputTensorList({&t1, &t2}));
   EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
@@ -72,14 +68,12 @@ TEST(DPTensorAggregatorTest, WrongShape) {
                                   {TensorSpec("value", DT_DOUBLE, {})},
                                   {},
                                   {}};
-  intrinsic.parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({0.5})).value());
+  intrinsic.parameters.push_back(Tensor(0.5));
 
   auto aggregator_status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(aggregator_status);
   auto aggregator = std::move(aggregator_status.value());
-  Tensor t =
-      Tensor::Create(DT_DOUBLE, {2}, CreateTestData<double>({1, 2})).value();
+  Tensor t({1.0, 2.0});
   auto* ptr = dynamic_cast<DPTensorAggregator*>(aggregator.get());
   auto status = ptr->ValidateInputs(InputTensorList({&t}));
   EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
@@ -94,13 +88,12 @@ TEST(DPTensorAggregatorTest, WrongDType) {
                                   {TensorSpec("value", DT_DOUBLE, {})},
                                   {},
                                   {}};
-  intrinsic.parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({0.5})).value());
+  intrinsic.parameters.push_back(Tensor(0.5));
 
   auto aggregator_status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(aggregator_status);
   auto aggregator = std::move(aggregator_status.value());
-  Tensor t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1.0})).value();
+  Tensor t(1.0f);
   auto* ptr = dynamic_cast<DPTensorAggregator*>(aggregator.get());
   auto status = ptr->ValidateInputs(InputTensorList({&t}));
   EXPECT_THAT(status, StatusIs(INVALID_ARGUMENT));
@@ -116,14 +109,12 @@ TEST(DPTensorAggregatorTest, ValidInput) {
                                   {TensorSpec("value", DT_DOUBLE, {})},
                                   {},
                                   {}};
-  intrinsic.parameters.push_back(
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({0.5})).value());
+  intrinsic.parameters.push_back(Tensor(0.5));
 
   auto aggregator_status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(aggregator_status);
   auto aggregator = std::move(aggregator_status.value());
-  Tensor t =
-      Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({1.0})).value();
+  Tensor t(1.0);
   auto* ptr = dynamic_cast<DPTensorAggregator*>(aggregator.get());
   auto status = ptr->ValidateInputs(InputTensorList({&t}));
   TFF_EXPECT_OK(status);
