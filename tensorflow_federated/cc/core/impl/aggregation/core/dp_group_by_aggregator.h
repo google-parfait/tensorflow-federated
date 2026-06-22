@@ -108,21 +108,19 @@ class DPGroupByAggregator : public GroupByAggregator {
   virtual StatusOr<OutputTensorList> NoisyReport() = 0;
 
   // Access the maximum number of groups that a privacy unit can contribute to.
-  inline int64_t max_groups_contributed() const {
-    return max_groups_contributed_;
-  }
+  int64_t max_groups_contributed() const { return max_groups_contributed_; }
 
   // Access the epsilon budget allocated to each aggregation.
-  inline double epsilon_per_agg() const { return epsilon_per_agg_; }
+  double epsilon_per_agg() const { return epsilon_per_agg_; }
 
   // Access the delta budget allocated to each aggregation.
-  inline double delta_per_agg() const { return delta_per_agg_; }
+  double delta_per_agg() const { return delta_per_agg_; }
 
   // Access the DPHistogramBundle for a given aggregation.
   StatusOr<const DPHistogramBundle&> GetBundle(int i) const;
 
   // Add to the vector of DPHistogramBundles.
-  inline void AddBundle(DPHistogramBundle bundle) {
+  void AddBundle(DPHistogramBundle bundle) {
     bundles_.push_back(std::move(bundle));
   }
 
@@ -130,7 +128,13 @@ class DPGroupByAggregator : public GroupByAggregator {
   // output of Serialize().
   StatusOr<int64_t> CalculateSerializeSensitivity();
 
+  // Computes the L1 sensitivity of the sum of the lengths of all serialized
+  // states returned by Partition().
+  StatusOr<int64_t> CalculatePartitionSensitivity(int num_partitions);
+
  private:
+  StatusOr<int64_t> CalculateSensitivityImpl(int64_t partitions_influenced);
+
   double epsilon_;
   double delta_;
   int64_t max_groups_contributed_;

@@ -17,6 +17,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -74,25 +75,27 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
             std::move(aggregators), num_inputs, epsilon, delta,
             max_groups_contributed, min_contributors_to_group,
             contributors_to_groups, max_string_length) {}
-  inline double GetEpsilonPerAgg() { return epsilon_per_agg(); }
-  inline double GetDeltaPerAgg() { return delta_per_agg(); }
-  inline StatusOr<int64_t> SerializeSensitivity() {
+  double GetEpsilonPerAgg() { return epsilon_per_agg(); }
+  double GetDeltaPerAgg() { return delta_per_agg(); }
+  StatusOr<int64_t> SerializeSensitivity() {
     return DPGroupByAggregator::CalculateSerializeSensitivity();
   }
-  inline StatusOr<std::string> Serialize() && override {
+  StatusOr<int64_t> PartitionSensitivity(int num_partitions) {
+    return DPGroupByAggregator::CalculatePartitionSensitivity(num_partitions);
+  }
+  StatusOr<std::string> Serialize() && override {
     return (std::move(*this)).DPGroupByAggregator::Serialize();
   }
-  inline StatusOr<std::vector<std::string>> Partition(int num_partitions) &&
-      override {
+  StatusOr<std::vector<std::string>> Partition(int num_partitions) && override {
     return (std::move(*this)).DPGroupByAggregator::Partition(num_partitions);
   }
 
-  inline absl::StatusOr<const DPHistogramBundle&> GetBundle(int i) const {
+  absl::StatusOr<const DPHistogramBundle&> GetBundle(int i) const {
     return DPGroupByAggregator::GetBundle(i);
   }
 
   // Add to the vector of DPHistogramBundles.
-  inline void AddBundle(DPHistogramBundle bundle) {
+  void AddBundle(DPHistogramBundle bundle) {
     DPGroupByAggregator::AddBundle(std::move(bundle));
   }
 
@@ -222,7 +225,7 @@ TEST(DPGroupByAggregatorTest, CalculateVarintByteSize_Negative) {
 // Creates a MockDPGroupByAggregator for testing SerializeSensitivity.
 MockDPGroupByAggregator CreateMockForTestingPadding(
     std::vector<Intrinsic>& intrinsics, int max_groups_contributed,
-    int max_string_length, double epsilon = 0.1) {
+    int max_string_length, double epsilon = 0.1, double delta = 1e-6) {
   std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
   for (const Intrinsic& intrinsic : intrinsics) {
     auto aggregator = CreateTensorAggregator(intrinsic).value();
@@ -241,11 +244,10 @@ MockDPGroupByAggregator CreateMockForTestingPadding(
       dp_histogram_testing::CreateTensorSpec("key1_out", DT_STRING));
   output_key_specs.push_back(
       dp_histogram_testing::CreateTensorSpec("key2_out", DT_STRING));
-  return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
-                                 &intrinsics, std::move(aggregators),
-                                 /*num_inputs=*/0, epsilon,
-                                 /*delta=*/1e-6, max_groups_contributed,
-                                 std::nullopt, {}, max_string_length);
+  return MockDPGroupByAggregator(
+      input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
+      /*num_inputs=*/0, epsilon, delta, max_groups_contributed, std::nullopt,
+      {}, max_string_length);
 }
 TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysTwoSums) {
   std::vector<Intrinsic> intrinsics;
@@ -347,20 +349,82 @@ TEST(DPGroupByAggregatorTest, SerializedStateVarianceDependsOnSensitivity) {
   EXPECT_GT(high_sensitivity_range, low_sensitivity_range);
 }
 
+// If we increase the number of groups that can be contributed by a single user,
+// the sensitivity of Partition() should increase.
+TEST(DPGroupByAggregatorTest, PartitionSensitivity_IncreasesWithMaxGroups) {
+  int num_partitions = 10;
+  int prev_sensitivity = 0;
+  for (int max_groups_contributed : {1, 2, 4, 8, 16, 32}) {
+    std::vector<Intrinsic> intrinsics;
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
+    MockDPGroupByAggregator top_aggregator = CreateMockForTestingPadding(
+        intrinsics, max_groups_contributed, /*max_string_length=*/256);
+    TFF_ASSERT_OK_AND_ASSIGN(
+        auto partition_sensitivity,
+        top_aggregator.PartitionSensitivity(num_partitions));
+    EXPECT_GT(partition_sensitivity, prev_sensitivity);
+    prev_sensitivity = partition_sensitivity;
+  }
+}
+// If we increase the number of partitions, the sensitivity of Partition()
+// should not increase after a certain point.
+TEST(DPGroupByAggregatorTest, PartitionSensitivity_PlateausWithNumPartitions) {
+  int max_groups_contributed = 8;
+  int prev_sensitivity = 0;
+  for (int num_partitions : {1, 2, 4, 8, 16, 32}) {
+    std::vector<Intrinsic> intrinsics;
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
+    MockDPGroupByAggregator top_aggregator = CreateMockForTestingPadding(
+        intrinsics, max_groups_contributed, /*max_string_length=*/256);
+    TFF_ASSERT_OK_AND_ASSIGN(
+        auto partition_sensitivity,
+        top_aggregator.PartitionSensitivity(num_partitions));
+    if (num_partitions <= 2 * max_groups_contributed) {
+      EXPECT_GT(partition_sensitivity, prev_sensitivity);
+    } else {
+      EXPECT_EQ(partition_sensitivity, prev_sensitivity);
+    }
+    prev_sensitivity = partition_sensitivity;
+  }
+}
+
+// There should be no noise in partitioning if epsilon is above the threshold.
+TEST(DPGroupByAggregatorTest, Partition_LargeEpsilonNoNoise) {
+  std::vector<std::string> previous_partitions;
+  for (int i = 0; i < 10; ++i) {
+    std::vector<Intrinsic> intrinsics;
+    intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
+    MockDPGroupByAggregator top_aggregator = CreateMockForTestingPadding(
+        intrinsics, /*max_groups_contributed=*/1,
+        /*max_string_length=*/8, /*epsilon=*/kEpsilonThreshold + 1);
+    TFF_ASSERT_OK_AND_ASSIGN(auto partitions,
+                             std::move(top_aggregator).Partition(10));
+    if (i > 0) {
+      EXPECT_EQ(partitions, previous_partitions);
+    }
+    previous_partitions = partitions;
+  }
+}
+
+// Otherwise, there should be noise in partitioning. Increasing the number of
+// partitions should increase the scale until it plateaus.
+
 // Helper function for testing the Partition() method: returns the mean absolute
 // deviation of the padding length, which estimates the Laplace parameter.
 StatusOr<double> MeasureScaleOfPartitionPaddingLength(
-    int max_groups_contributed, int max_string_length, int num_partitions) {
+    int max_groups_contributed, int max_string_length, int num_partitions,
+    double epsilon = 1.0, double delta = 1e-6) {
   std::vector<int> lengths;
   for (int i = 0; i < 5000; ++i) {
     std::vector<Intrinsic> intrinsics;
     intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
     MockDPGroupByAggregator top_aggregator = CreateMockForTestingPadding(
-        intrinsics, max_groups_contributed, max_string_length);
+        intrinsics, max_groups_contributed, max_string_length, epsilon, delta);
     TFF_ASSIGN_OR_RETURN(auto partitions,
                          std::move(top_aggregator).Partition(num_partitions));
-    lengths.push_back(partitions[0].size());
-    lengths.push_back(partitions[1].size());
+    for (const auto& partition : partitions) {
+      lengths.push_back(partition.size());
+    }
   }
   std::sort(lengths.begin(), lengths.end());
   int median_length = lengths[lengths.size() / 2];
@@ -372,39 +436,54 @@ StatusOr<double> MeasureScaleOfPartitionPaddingLength(
   return mean_absolute_deviation;
 }
 
-// Sixth behavior to test: when we double sensitivity, the empirical scale of
-// noise should approximately double.
-TEST(DPGroupByAggregatorTest, PartitionPaddingScaleDependsOnSensitivity) {
-  StatusOr<double> low_sensitivity_scale = MeasureScaleOfPartitionPaddingLength(
-      /*max_groups_contributed=*/1, /*max_string_length=*/8,
-      /*num_partitions=*/8);
-  StatusOr<double> high_sensitivity_scale =
-      MeasureScaleOfPartitionPaddingLength(
-          /*max_groups_contributed=*/2, /*max_string_length=*/8,
-          /*num_partitions=*/8);
-  TFF_ASSERT_OK(low_sensitivity_scale);
-  TFF_ASSERT_OK(high_sensitivity_scale);
-
-  // True blowup is 2x, but allow for slack due to randomness.
-  EXPECT_GT(high_sensitivity_scale.value(),
-            1.9 * low_sensitivity_scale.value());
+TEST(DPGroupByAggregatorTest, Partition_NoiseScaleIncreasesWithNumPartitions) {
+  int max_groups_contributed = 8;
+  double previous_scale = 0;
+  for (int num_partitions : {1, 2, 4, 8, 16, 32}) {
+    StatusOr<double> scale = MeasureScaleOfPartitionPaddingLength(
+        max_groups_contributed, /*max_string_length=*/8, num_partitions);
+    TFF_ASSERT_OK(scale);
+    if (num_partitions <= 2 * max_groups_contributed) {
+      EXPECT_GT(scale.value(), previous_scale);
+    } else {
+      double ratio = scale.value() / previous_scale;
+      EXPECT_GT(ratio, 0.9);
+      EXPECT_LT(ratio, 1.1);
+    }
+    previous_scale = scale.value();
+  }
 }
 
-// Seventh behavior to test: for a fixed max_groups_contributed, increasing
-// num_partitions should not inflate scale of noise.
-TEST(DPGroupByAggregatorTest, PartitionPaddingNotInflatedByLargeNumPartitions) {
-  StatusOr<double> scale1 = MeasureScaleOfPartitionPaddingLength(
-      /*max_groups_contributed=*/1, /*max_string_length=*/8,
-      /*num_partitions=*/2);
-  StatusOr<double> scale2 = MeasureScaleOfPartitionPaddingLength(
-      /*max_groups_contributed=*/1, /*max_string_length=*/8,
-      /*num_partitions=*/16);
+// Confirm that our new Partition function adds less noise than the old one.
+TEST(DPGroupByAggregatorTest, Partition_NoiseScaleDecreasesWithNewMethod) {
+  int max_groups_contributed = 8000;
+  int max_string_length = 256;
+  double epsilon = 1.0987;
+  double delta = 1e-8;
+  int num_partitions = 10;
 
-  TFF_ASSERT_OK(scale1);
-  TFF_ASSERT_OK(scale2);
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(CreateDefaultInnerIntrinsic<int32_t, int32_t>());
+  MockDPGroupByAggregator top_aggregator = CreateMockForTestingPadding(
+      intrinsics, max_groups_contributed, max_string_length);
+  int64_t partitions_influenced =
+      std::min<int64_t>(2 * max_groups_contributed, num_partitions);
+  double per_partition_delta = delta / partitions_influenced;
+  // Current technique: only split delta and rely on L1 sensitivity of
+  // Partition().
+  TFF_ASSERT_OK_AND_ASSIGN(int partition_sensitivity,
+                           top_aggregator.PartitionSensitivity(num_partitions));
+  double new_scale =
+      (partition_sensitivity / epsilon) * log(1.0 / per_partition_delta);
 
-  EXPECT_LT(scale1.value(), 2 * scale2.value());
-  EXPECT_LT(scale2.value(), 2 * scale1.value());
+  // Old technique: split epsilon and delta and rely on sensitivity of
+  // Serialize().
+  TFF_ASSERT_OK_AND_ASSIGN(int serialize_sensitivity,
+                           top_aggregator.SerializeSensitivity());
+  double per_partition_epsilon = epsilon / partitions_influenced;
+  double old_scale = (serialize_sensitivity / per_partition_epsilon) *
+                     log(1.0 / per_partition_delta);
+  EXPECT_LT(new_scale, old_scale);
 }
 
 // Eight behavior to test: large epsilon switches off random padding.

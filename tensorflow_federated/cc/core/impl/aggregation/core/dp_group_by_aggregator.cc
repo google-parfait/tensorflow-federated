@@ -167,8 +167,21 @@ StatusOr<int64_t> CalculateVarintByteSize(int64_t value) {
 // type contains (a) the byte-length of content, then (b) the content itself.
 // ToProto creates content via EncodeContent, which has different behavior
 // depending on the Tensor's data type.
+//
+// These helpers take a `partitions_influenced` parameter because a single
+// tensor's data may be partitioned into multiple serialized outputs (by
+// Partition()). When one person's groups shift between partitions, up to
+// `partitions_influenced` headers can change, so the bytes that encode (a) can
+// change by at most that extra factor. Meanwhile, the content bytes (b)
+// redistribute across partitions without duplication, so an upper bound on the
+// sensitivity of the content bytes in Serialize() also serves as an upper bound
+// on the L1 sensitivity of the content bytes in Partition().
+//
+// The Serialize() function calls these helpers with `partitions_influenced=1`,
+// recovering the logic used prior to the introduction of Partition().
 StatusOr<int64_t> StringTensorSensitivity(int64_t max_groups_contributed,
-                                          int64_t max_string_length) {
+                                          int64_t max_string_length,
+                                          int64_t partitions_influenced) {
   // For a string tensor, first a stream of varints is written, where the ith
   // varint is the length of the ith string. Then the strings are fed in one
   // after the other.
@@ -183,11 +196,13 @@ StatusOr<int64_t> StringTensorSensitivity(int64_t max_groups_contributed,
   // We have to account for (a) the byte-length of the content.
   TFF_ASSIGN_OR_RETURN(int64_t bytes_to_encode_content_length,
                        CalculateVarintByteSize(bytes_of_content));
-  return bytes_of_content + bytes_to_encode_content_length;
+  return bytes_of_content +
+         partitions_influenced * bytes_to_encode_content_length;
 }
 
 StatusOr<int64_t> NumericalTensorSensitivity(int64_t max_groups_contributed,
-                                             int64_t bytes_per_value) {
+                                             int64_t bytes_per_value,
+                                             int64_t partitions_influenced) {
   // For a numerical tensor, the content consists entirely of the raw bytes
   // representing the numerical values.
   int64_t bytes_of_content = max_groups_contributed * bytes_per_value;
@@ -195,28 +210,35 @@ StatusOr<int64_t> NumericalTensorSensitivity(int64_t max_groups_contributed,
   // We have to account for (a) the byte-length of the content.
   TFF_ASSIGN_OR_RETURN(int64_t bytes_to_encode_content_length,
                        CalculateVarintByteSize(bytes_of_content));
-  return bytes_of_content + bytes_to_encode_content_length;
+  return bytes_of_content +
+         partitions_influenced * bytes_to_encode_content_length;
 }
 
-StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
+// Core implementation shared by CalculateSerializeSensitivity and
+// CalculatePartitionSensitivity. The `partitions_influenced` parameter
+// controls how the varint overhead is accounted for — see the comment block
+// above StringTensorSensitivity for the full explanation.
+StatusOr<int64_t> DPGroupByAggregator::CalculateSensitivityImpl(
+    int64_t partitions_influenced) {
   int64_t sensitivity = 0;
   // First calculate the sensitivity of the keys to one Accumulate call.
   if (key_combiner() != nullptr) {
     for (DataType key_type : GroupByAggregator::key_combiner()->dtypes()) {
       int64_t tensor_sensitivity = 0;
       if (key_type == DT_STRING) {
-        TFF_ASSIGN_OR_RETURN(tensor_sensitivity,
-                             StringTensorSensitivity(max_groups_contributed_,
-                                                     max_string_length_));
-      } else if (key_type == DT_FLOAT || key_type == DT_INT32) {
         TFF_ASSIGN_OR_RETURN(
             tensor_sensitivity,
-            NumericalTensorSensitivity(max_groups_contributed_, 4));
+            StringTensorSensitivity(max_groups_contributed_, max_string_length_,
+                                    partitions_influenced));
+      } else if (key_type == DT_FLOAT || key_type == DT_INT32) {
+        TFF_ASSIGN_OR_RETURN(tensor_sensitivity, NumericalTensorSensitivity(
+                                                     max_groups_contributed_, 4,
+                                                     partitions_influenced));
       } else if (key_type == DT_INT64 || key_type == DT_DOUBLE ||
                  key_type == DT_UINT64) {
-        TFF_ASSIGN_OR_RETURN(
-            tensor_sensitivity,
-            NumericalTensorSensitivity(max_groups_contributed_, 8));
+        TFF_ASSIGN_OR_RETURN(tensor_sensitivity, NumericalTensorSensitivity(
+                                                     max_groups_contributed_, 8,
+                                                     partitions_influenced));
       } else {
         return TFF_STATUS(INVALID_ARGUMENT)
                << "Unsupported key type: " << key_type;
@@ -237,12 +259,14 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
     if (aggregation_type == DT_FLOAT || aggregation_type == DT_INT32) {
       TFF_ASSIGN_OR_RETURN(
           aggregation_sensitivity,
-          NumericalTensorSensitivity(max_groups_contributed_, 4));
+          NumericalTensorSensitivity(max_groups_contributed_, 4,
+                                     partitions_influenced));
     } else if (aggregation_type == DT_INT64 || aggregation_type == DT_DOUBLE ||
                aggregation_type == DT_UINT64) {
       TFF_ASSIGN_OR_RETURN(
           aggregation_sensitivity,
-          NumericalTensorSensitivity(max_groups_contributed_, 8));
+          NumericalTensorSensitivity(max_groups_contributed_, 8,
+                                     partitions_influenced));
     } else {
       return TFF_STATUS(INVALID_ARGUMENT)
              << "Unsupported aggregation type: " << aggregation_type;
@@ -256,9 +280,28 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
   // contributions, they insert at most max_groups_contributed_ groups.
   TFF_ASSIGN_OR_RETURN(int64_t bytes_to_encode_max_groups_contributed,
                        CalculateVarintByteSize(max_groups_contributed_));
-  sensitivity +=
-      max_groups_contributed_ + bytes_to_encode_max_groups_contributed;
+  sensitivity += max_groups_contributed_ +
+                 partitions_influenced * bytes_to_encode_max_groups_contributed;
   return sensitivity;
+}
+
+// Sensitivity of the length of a single Serialize() output.
+// With one output there is only one varint header per tensor,
+// so partitions_influenced = 1.
+StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
+  return CalculateSensitivityImpl(1);
+}
+
+// L1 sensitivity of the vector of partition lengths returned by
+// Partition(). When one person changes their contribution, at most
+// max_groups_contributed groups can vanish and max_groups_contributed
+// groups can appear, influencing at most
+// min(2 * max_groups_contributed, num_partitions) outputs.
+StatusOr<int64_t> DPGroupByAggregator::CalculatePartitionSensitivity(
+    int num_partitions) {
+  int64_t partitions_influenced =
+      std::min<int64_t>(2 * max_groups_contributed_, num_partitions);
+  return CalculateSensitivityImpl(partitions_influenced);
 }
 
 // When epsilon is meaningful, lengthen the serialized state by an amount
@@ -304,7 +347,9 @@ StatusOr<std::vector<std::string>> DPGroupByAggregator::Partition(
     return serialized_states;
   }
 
-  TFF_ASSIGN_OR_RETURN(int64_t sensitivity, CalculateSerializeSensitivity());
+  // Calculate the L1 sensitivity of the vector of partition lengths.
+  TFF_ASSIGN_OR_RETURN(int64_t sensitivity,
+                       CalculatePartitionSensitivity(num_partitions));
 
   // If we change one upload's data, the biggest possible impact is that
   // max_groups_contributed groups vanish and max_groups_contributed groups
@@ -313,14 +358,15 @@ StatusOr<std::vector<std::string>> DPGroupByAggregator::Partition(
   int64_t partitions_influenced =
       std::min<int64_t>(2 * max_groups_contributed_, num_partitions);
 
-  // Split the privacy budget across the influenced partitions.
-  double per_partition_epsilon = epsilon_ / partitions_influenced;
+  // Split the delta budget across the influenced partitions because the Laplace
+  // offset consumes delta. Epsilon is not split because we are adding noise to
+  // the coordinates of a vector-valued function whose L1-sensitivity we
+  // bounded.
   double per_partition_delta = delta_ / partitions_influenced;
 
   // Add the padding to each partition.
   for (int i = 0; i < serialized_states.size(); ++i) {
-    TFF_RETURN_IF_ERROR(PadSerializedState(serialized_states[i],
-                                           per_partition_epsilon,
+    TFF_RETURN_IF_ERROR(PadSerializedState(serialized_states[i], epsilon_,
                                            per_partition_delta, sensitivity));
   }
   return serialized_states;
