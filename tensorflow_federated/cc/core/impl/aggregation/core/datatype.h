@@ -79,16 +79,17 @@ MATCH_TYPE_AND_DTYPE(string_view, DT_STRING, TypeKind::kString);
 // parameter in the statement in the third argument.
 
 #define SINGLE_ARG(...) __VA_ARGS__
-#define DTYPE_CASE(TYPE, TYPE_ARG, STMTS)       \
-  case internal::TypeTraits<TYPE>::kDataType: { \
-    typedef TYPE TYPE_ARG;                      \
-    STMTS;                                      \
-    break;                                      \
+#define DTYPE_CASE(TYPE, TYPE_ARG, STMTS)                         \
+  case ::tensorflow_federated::aggregation::internal::TypeTraits< \
+      TYPE>::kDataType: {                                         \
+    typedef TYPE TYPE_ARG;                                        \
+    STMTS;                                                        \
+    break;                                                        \
   }
 
 #define DTYPE_CASES_BEGIN(TYPE_ENUM) switch (TYPE_ENUM) {
 #define DTYPE_CASES_END(TYPE_ENUM)                      \
-  case DT_INVALID:                                      \
+  case ::tensorflow_federated::aggregation::DT_INVALID: \
     TFF_LOG(FATAL) << "Invalid type";                   \
     break;                                              \
   default:                                              \
@@ -100,9 +101,9 @@ MATCH_TYPE_AND_DTYPE(string_view, DT_STRING, TypeKind::kString);
   DTYPE_CASE(double, TYPE_ARG, STMTS)
 
 #define DTYPE_INTEGER_CASES(TYPE_ARG, STMTS) \
-DTYPE_CASE(int32_t, TYPE_ARG, STMTS)         \
-DTYPE_CASE(int64_t, TYPE_ARG, STMTS)         \
-DTYPE_CASE(uint64_t, TYPE_ARG, STMTS)
+  DTYPE_CASE(int32_t, TYPE_ARG, STMTS)       \
+  DTYPE_CASE(int64_t, TYPE_ARG, STMTS)       \
+  DTYPE_CASE(uint64_t, TYPE_ARG, STMTS)
 
 #define DTYPE_NUMERICAL_CASES(TYPE_ARG, STMTS) \
   DTYPE_FLOATING_CASES(TYPE_ARG, STMTS)        \
