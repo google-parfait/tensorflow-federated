@@ -143,7 +143,6 @@ py_library(
 py_library(
     name = "test_contexts",
     srcs = ["test_contexts.py"],
-    data = ["//tensorflow_federated/cc/simulation:worker_binary"],
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
