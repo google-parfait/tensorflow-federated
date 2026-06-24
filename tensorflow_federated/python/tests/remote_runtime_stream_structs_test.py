@@ -23,7 +23,6 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.tests import test_contexts
 
-
 _CONTEXTS = [
     (
         'native_sync_local_cpp',

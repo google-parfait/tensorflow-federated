@@ -31,7 +31,6 @@ limitations under the License
 #include "include/pybind11/pytypes.h"
 #include "include/pybind11/stl.h"
 #include "pybind11_abseil/absl_casters.h"
-#include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/native_proto_caster.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/safe_ptr.h"
@@ -39,6 +38,7 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_casters.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -60,8 +60,6 @@ namespace {
 // here will raise `NotOkStatus` errors from absl, which are not user friendly.
 ////////////////////////////////////////////////////////////////////////////////
 PYBIND11_MODULE(tensorflow_bindings, m) {
-  py::google::ImportStatusModule();
-
   // IMPORTANT: The binding defined in this module are dependent on the binding
   // defined in the `executor_bindings` module.
   py::module::import(

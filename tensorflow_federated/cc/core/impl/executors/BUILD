@@ -1,13 +1,15 @@
-load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("@org_tensorflow//third_party/xla/third_party/py/rules_pywrap:pywrap.impl.bzl", "pybind_extension")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//third_party/tensorflow:tf_deps.bzl", "tff_tf_deps")
 load("//tools:build_defs.bzl", "tff_cc_cpu_gpu_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
         ":executors_packages",
+        "//tensorflow_federated/cc/core/impl:__pkg__",
         "//tensorflow_federated/cc/core/impl:impl_users",
         "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stacks_packages",
     ],
@@ -22,6 +24,20 @@ package_group(
 )
 
 licenses(["notice"])
+
+cc_library(
+    name = "status_casters",
+    hdrs = ["status_casters.h"],
+    copts = ["-fexceptions"],
+    features = ["-use_header_modules"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@pybind11",
+        "@pybind11_abseil//pybind11_abseil:status_not_ok_exception",
+    ],
+)
 
 cc_library(
     name = "array_shape_test_utils",
@@ -176,11 +192,18 @@ cc_library(
     deps = [
         ":session_provider",
         ":status_macros",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:cc_ops",
         "@org_tensorflow//tensorflow/cc:ops",
@@ -188,7 +211,7 @@ cc_library(
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:graph",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
+    ]),
 )
 
 cc_test(
@@ -209,11 +232,12 @@ cc_test(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:portable_gif_internal",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
-    ],
+    ]),
 )
 
 cc_library(
@@ -226,17 +250,22 @@ cc_library(
         ":status_macros",
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/cc:scope",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:graph",
         "@org_tensorflow//tensorflow/core:portable_gif_internal",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
+    ]),
 )
 
 cc_test(
@@ -247,10 +276,11 @@ cc_test(
         ":value_test_utils",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
-    ],
+    ]),
 )
 
 cc_library(
@@ -273,13 +303,15 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/utility",
         "@federated_language//federated_language/proto:computation_cc_proto",
+    ] + tff_tf_deps([
         "@tsl//tsl/profiler/lib:traceme",
-    ],
+    ]),
 )
 
 pybind_extension(
     name = "executor_bindings",
     srcs = ["executor_bindings.cc"],
+    common_lib_packages = ["tensorflow_federated/cc/core/impl"],
     visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
@@ -289,6 +321,7 @@ pybind_extension(
         ":reference_resolving_executor",
         ":remote_executor",
         ":sequence_executor",
+        ":status_casters",
         ":streaming_remote_executor",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_github_grpc_grpc//:grpc++",
@@ -298,7 +331,6 @@ pybind_extension(
         "@com_google_absl//absl/strings",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
-        "@pybind11_abseil//pybind11_abseil:status_casters",
         "@pybind11_protobuf//pybind11_protobuf:native_proto_caster",
     ],
 )
@@ -337,7 +369,7 @@ cc_test(
         ":mock_executor",
         ":status_conversion",
         ":tensorflow_test_utils",
-        ":value_test_utils",
+        "//tensorflow_federated/cc/testing:grpc_status_matchers",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
@@ -347,7 +379,6 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
-        "@federated_language//federated_language/proto:computation_cc_proto",
     ],
 )
 
@@ -368,6 +399,7 @@ cc_library(
 pybind_extension(
     name = "executor_test_utils_bindings",
     srcs = ["executor_test_utils_bindings.cc"],
+    common_lib_packages = ["tensorflow_federated/cc/core/impl"],
     visibility = ["//visibility:public"],
     deps = [":mock_executor"],
 )
@@ -430,8 +462,9 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:tensorflow",
-    ],
+    ]),
 )
 
 genrule(
@@ -556,11 +589,12 @@ cc_test(
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:math_ops",
         "@org_tensorflow//tensorflow/core:core_cpu_base",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
+    ]),
 )
 
 cc_library(
@@ -598,6 +632,7 @@ cc_test(
         ":remote_executor",
         ":tensorflow_test_utils",
         ":value_test_utils",
+        "//tensorflow_federated/cc/testing:grpc_status_matchers",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
@@ -610,9 +645,10 @@ cc_test(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:math_ops",
-    ],
+    ]),
 )
 
 cc_library(
@@ -660,8 +696,9 @@ cc_test(
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/status",
         "@federated_language//federated_language/proto:computation_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:tensorflow",
-    ],
+    ]),
 )
 
 cc_library(
@@ -683,19 +720,25 @@ cc_library(
     deps = [
         ":status_macros",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/common_runtime:device_mgr",
         "@org_tensorflow//tensorflow/core/common_runtime:session",
         "@org_tensorflow//tensorflow/core/common_runtime:session_options",
-    ],
+    ]),
 )
 
 cc_test(
@@ -705,8 +748,9 @@ cc_test(
         ":session_provider",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:tensorflow",
-    ],
+    ]),
 )
 
 cc_library(
@@ -771,6 +815,7 @@ cc_test(
         ":tensorflow_test_utils",
         ":type_utils",
         ":value_test_utils",
+        "//tensorflow_federated/cc/testing:grpc_status_matchers",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
@@ -790,9 +835,10 @@ cc_test(
         "@com_google_protobuf//:protobuf",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:math_ops",
-    ],
+    ]),
 )
 
 cc_library(
@@ -827,35 +873,45 @@ cc_library(
         ":status_macros",
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
+    ]),
 )
 
 pybind_extension(
     name = "tensorflow_bindings",
     srcs = ["tensorflow_bindings.cc"],
+    common_lib_packages = ["tensorflow_federated/cc/core/impl"],
     deps = [
+        ":status_casters",
         ":tensorflow_executor",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@federated_language//federated_language/proto:computation_cc_proto",
+        "@pybind11_abseil//pybind11_abseil:absl_casters",
+        "@pybind11_abseil//pybind11_abseil:status_casters",
+        "@pybind11_protobuf//pybind11_protobuf:native_proto_caster",
+        "@pypi//numpy:numpy_headers",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/c:safe_ptr",
         "@org_tensorflow//tensorflow/c:tf_tensor_hdrs",
         "@org_tensorflow//tensorflow/c/eager:c_api_experimental_hdrs",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor",
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_bridge",
-        "@pybind11_abseil//pybind11_abseil:absl_casters",
-        "@pybind11_abseil//pybind11_abseil:status_casters",
-        "@pybind11_protobuf//pybind11_protobuf:native_proto_caster",
-    ],
+    ]),
 )
 
 cc_library(
@@ -874,8 +930,12 @@ cc_library(
         ":threading",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -883,12 +943,13 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
         "@org_tensorflow//tensorflow/core/common_runtime:core",
         "@org_tensorflow//tensorflow/core/common_runtime:session",
-    ],
+    ]),
 )
 
 tff_cc_cpu_gpu_test(
@@ -921,6 +982,7 @@ tff_cc_cpu_gpu_test(
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/c:tf_status_headers",
         "@org_tensorflow//tensorflow/c/eager:c_api",
         "@org_tensorflow//tensorflow/c/eager:tfe_context_internal",
@@ -931,7 +993,7 @@ tff_cc_cpu_gpu_test(
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
-    ],
+    ]),
 )
 
 cc_library(
@@ -952,9 +1014,10 @@ cc_library(
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
+    ]),
 )
 
 cc_library(
@@ -964,7 +1027,12 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":status_macros",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -974,10 +1042,11 @@ cc_library(
         "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:portable_gif_internal",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
+    ]),
 )
 
 cc_test(
@@ -991,17 +1060,18 @@ cc_test(
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
         "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
+    ] + tff_tf_deps([
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:portable_gif_internal",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/framework:tensor_testutil",
-    ],
+    ]),
 )
 
 cc_library(
@@ -1112,4 +1182,10 @@ cc_test(
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
     ],
+)
+
+py_library(
+    name = "cc_executors_init",
+    srcs = ["__init__.py"],
+    visibility = ["//visibility:public"],
 )

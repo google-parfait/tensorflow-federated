@@ -31,7 +31,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from examplesstateful_clients import stateful_fedavg_tf
+from examples.stateful_clients import stateful_fedavg_tf
 
 
 def _initialize_optimizer_vars(model, optimizer):
@@ -44,7 +44,10 @@ def _initialize_optimizer_vars(model, optimizer):
   model_weights = stateful_fedavg_tf.get_model_weights(model)
   zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
   optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
-  assert optimizer.variables()
+  variables = optimizer.variables
+  if callable(variables):
+    variables = variables()
+  assert variables
 
 
 def build_federated_averaging_process(
@@ -78,7 +81,9 @@ def build_federated_averaging_process(
     _initialize_optimizer_vars(model, server_optimizer)
     return stateful_fedavg_tf.ServerState(
         model_weights=stateful_fedavg_tf.get_model_weights(model),
-        optimizer_state=server_optimizer.variables(),
+        optimizer_state=stateful_fedavg_tf.get_optimizer_variables(
+            server_optimizer
+        ),
         round_num=0,
         total_iters_count=0,
     )

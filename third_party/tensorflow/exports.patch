@@ -1,0 +1,128 @@
+TFF exports patch: fix missing symbols in libtensorflow_cc.so
+=============================================================
+
+TensorFlow's own pip package build uses `pywrap_rules` which bypasses the
+`cc_shared_library` mechanism entirely (see `tf_cc_shared_library_opensource`
+in tensorflow.bzl — it early-returns when `use_pywrap_rules()` is true).
+
+TFF, however, consumes TF as an external dependency via `cc_shared_library`,
+which builds `libtensorflow_cc.so` using a `roots` attribute to determine
+which symbols to export. Any symbol whose defining target is not listed in
+`roots` (directly or transitively) gets stripped from the shared library by
+the linker, even if other code *inside* the same .so references it.
+
+This patch works around those gaps. The three symbol groups fixed here:
+
+  kernel_shape_util: GetWindowedOutputSize, GetWindowedOutputSizeVerbose,
+    Get3dOutputSizeV2 — referenced by nn_ops, conv_ops, conv_ops_3d, and
+    array_ops shape functions/kernels inside TF.
+
+  wav_io: EncodeAudioAsS16LEWav, DecodeLin16WaveAsFloatVector — referenced
+    by summary_audio_op, encode_wav_op, and decode_wav_op kernels inside TF.
+
+  percentile_sampler: PercentileSamplerCell — referenced by
+    batch_resource_base (TF serving batching) inside TF.
+
+diff --git a/tensorflow/BUILD b/tensorflow/BUILD
+index 0100234567..0100234568 100644
+--- a/tensorflow/BUILD
++++ b/tensorflow/BUILD
+@@ -1205,3 +1205,6 @@
+         "@xla//xla/tsl/framework:bfc_allocator",
+         "@xla//xla/tsl/framework:metrics",
++        "//tensorflow/core/framework:kernel_shape_util",
++        "//tensorflow/core/lib/wav:wav_io",
++        "@xla//xla/tsl/lib/monitoring:percentile_sampler",
+         "//tensorflow/core/data:captured_function",
+diff --git a/tensorflow/core/framework/BUILD b/tensorflow/core/framework/BUILD
+index 0100456789..0100456790 100644
+--- a/tensorflow/core/framework/BUILD
++++ b/tensorflow/core/framework/BUILD
+@@ -923,3 +923,4 @@
+ cc_library(
+     name = "kernel_shape_util",
++    visibility = default_visibility + ["//tensorflow:__pkg__"],
+     srcs = ["kernel_shape_util.cc"],
+diff --git a/tensorflow/core/framework/kernel_shape_util.h b/tensorflow/core/framework/kernel_shape_util.h
+index 010014c53f..0100151cdd 100644
+--- a/tensorflow/core/framework/kernel_shape_util.h
++++ b/tensorflow/core/framework/kernel_shape_util.h
+@@ -19,4 +19,5 @@
+ #include <array>
+ 
++#include "tensorflow/core/platform/macros.h"
+ #include "tensorflow/core/platform/status.h"
+ #include "tensorflow/core/util/padding.h"
+@@ -75,4 +76,4 @@
+-absl::Status GetWindowedOutputSize(int64_t input_size, int64_t filter_size,
++TF_EXPORT absl::Status GetWindowedOutputSize(int64_t input_size, int64_t filter_size,
+                                    int dilation_rate, int64_t stride,
+                                    Padding padding_type, int64_t* output_size,
+                                    int64_t* padding_size);
+@@ -87,4 +88,4 @@
+-absl::Status GetWindowedOutputSizeVerbose(
++TF_EXPORT absl::Status GetWindowedOutputSizeVerbose(
+     int64_t input_size, int64_t filter_size, int64_t dilation_rate,
+     int64_t stride, Padding padding_type, int64_t* output_size,
+     int64_t* padding_before, int64_t* padding_after);
+@@ -100,7 +101,7 @@
+-absl::Status Get3dOutputSizeV2(const std::array<int64_t, 3>& input,
++TF_EXPORT absl::Status Get3dOutputSizeV2(const std::array<int64_t, 3>& input,
+                                const std::array<int64_t, 3>& window,
+                                const std::array<int64_t, 3>& dilations,
+                                const std::array<int64_t, 3>& strides,
+                                Padding padding_type,
+                                std::array<int64_t, 3>* output_ptr,
+                                std::array<int64_t, 3>* padding_ptr);
+diff --git a/tensorflow/core/lib/wav/BUILD b/tensorflow/core/lib/wav/BUILD
+index 0100567890..0100567891 100644
+--- a/tensorflow/core/lib/wav/BUILD
++++ b/tensorflow/core/lib/wav/BUILD
+@@ -21,3 +21,4 @@
+ cc_library(
+     name = "wav_io",
++    visibility = ["//tensorflow:__pkg__", "//tensorflow/core:__pkg__"],
+     srcs = [
+diff --git a/tensorflow/core/lib/wav/wav_io.h b/tensorflow/core/lib/wav/wav_io.h
+index 01001028bb..010010891e 100644
+--- a/tensorflow/core/lib/wav/wav_io.h
++++ b/tensorflow/core/lib/wav/wav_io.h
+@@ -21,4 +21,5 @@
+ #include <string>
+ #include <vector>
+ 
++#include "tensorflow/core/platform/macros.h"
+ #include "tensorflow/core/lib/core/coding.h"
+@@ -44,15 +45,15 @@
+ template <typename T>
+-absl::Status EncodeAudioAsS16LEWav(const float* audio, size_t sample_rate,
++TF_EXPORT absl::Status EncodeAudioAsS16LEWav(const float* audio, size_t sample_rate,
+                                    size_t num_channels, size_t num_frames,
+                                    T* wav_string);
+ 
+ // Explicit instantiations defined in wav_io.cc.
+-extern template Status EncodeAudioAsS16LEWav<std::string>(
++extern template TF_EXPORT Status EncodeAudioAsS16LEWav<std::string>(
+     const float* audio, size_t sample_rate, size_t num_channels,
+     size_t num_frames, std::string* wav_string);
+-extern template Status EncodeAudioAsS16LEWav<tstring>(const float* audio,
++extern template TF_EXPORT Status EncodeAudioAsS16LEWav<tstring>(const float* audio,
+                                                       size_t sample_rate,
+                                                       size_t num_channels,
+                                                       size_t num_frames,
+                                                       tstring* wav_string);
+@@ -65,5 +66,5 @@
+ // The results are output as floats within the range -1 to 1,
+-absl::Status DecodeLin16WaveAsFloatVector(const std::string& wav_string,
++TF_EXPORT absl::Status DecodeLin16WaveAsFloatVector(const std::string& wav_string,
+                                           std::vector<float>* float_values,
+                                           uint32_t* sample_count,
+                                           uint16_t* channel_count,
+diff --git a/third_party/xla/xla/tsl/lib/monitoring/percentile_sampler.h b/third_party/xla/xla/tsl/lib/monitoring/percentile_sampler.h
+--- a/third_party/xla/xla/tsl/lib/monitoring/percentile_sampler.h
++++ b/third_party/xla/xla/tsl/lib/monitoring/percentile_sampler.h
+@@ -100,3 +100,3 @@
+ // This class is thread-safe.
+-class PercentileSamplerCell {
++class TF_EXPORT PercentileSamplerCell {
+  public:

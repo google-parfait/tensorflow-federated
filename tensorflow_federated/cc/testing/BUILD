@@ -26,6 +26,7 @@ cc_library(
         "@com_google_absl//absl/flags:parse",
         "@com_google_googletest//:gtest",
     ],
+    alwayslink = 1,
 )
 
 cc_library(
@@ -48,11 +49,20 @@ cc_library(
     hdrs = ["status_matchers.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+cc_library(
+    name = "grpc_status_matchers",
+    hdrs = ["grpc_status_matchers.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
         "@com_google_googletest//:gtest",
     ],
 )

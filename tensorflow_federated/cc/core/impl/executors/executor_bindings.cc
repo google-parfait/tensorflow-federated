@@ -41,7 +41,6 @@ limitations under the License
 #include "include/pybind11/pytypes.h"
 #include "include/pybind11/stl.h"
 #include "pybind11_abseil/absl_casters.h"
-#include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/native_proto_caster.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
@@ -50,6 +49,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_casters.h"
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -67,8 +67,6 @@ namespace {
 // here will raise `NotOkStatus` errors from absl, which are not user friendly.
 ////////////////////////////////////////////////////////////////////////////////
 PYBIND11_MODULE(executor_bindings, m) {
-  py::google::ImportStatusModule();
-
   m.doc() = "Bindings for the C++ ";
 
   // Provide an `OwnedValueId` class to handle return values from the
