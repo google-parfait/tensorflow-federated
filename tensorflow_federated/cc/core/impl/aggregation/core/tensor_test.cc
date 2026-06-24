@@ -16,10 +16,12 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
@@ -608,6 +610,104 @@ TEST(TensorTest, SetNameSuccess) {
 
   // Verify the name has been set correctly.
   EXPECT_THAT(tensor.name(), Eq("my_test_tensor"));
+}
+
+TEST(TensorTest, GatherNumericTensorSuccess) {
+  std::initializer_list<int32_t> values{10, 20, 30, 40, 50};
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor,
+      Tensor::Create(DT_INT32, {5}, CreateTestData(values), "test_int32"));
+
+  std::vector<size_t> indices = {1, 3, 4};
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor gathered, tensor.Gather(indices));
+
+  EXPECT_THAT(gathered.name(), Eq("test_int32"));
+  EXPECT_THAT(gathered, IsTensor({3}, {20, 40, 50}));
+}
+
+TEST(TensorTest, GatherStringTensorSuccess) {
+  std::initializer_list<string_view> values{"apple", "banana", "cherry",
+                                            "date"};
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor,
+      Tensor::Create(DT_STRING, {4}, CreateTestData(values), "test_string"));
+
+  std::vector<size_t> indices = {0, 2, 2, 3};
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor gathered,
+                           tensor.Gather(indices, "gathered_string"));
+
+  EXPECT_THAT(gathered.name(), Eq("gathered_string"));
+  std::initializer_list<string_view> expected_values{"apple", "cherry",
+                                                     "cherry", "date"};
+  EXPECT_THAT(gathered, IsTensor({4}, expected_values));
+}
+
+TEST(TensorTest, GatherEmptyIndicesSuccess) {
+  std::initializer_list<float> values{1.0f, 2.0f, 3.0f};
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor,
+      Tensor::Create(DT_FLOAT, {3}, CreateTestData(values), "test_float"));
+
+  std::vector<size_t> indices = {};
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor gathered, tensor.Gather(indices));
+
+  EXPECT_THAT(gathered.name(), Eq("test_float"));
+  EXPECT_THAT(gathered, IsTensor({0}, std::initializer_list<float>{}));
+}
+
+TEST(TensorTest, GatherNon1DTensorFails) {
+  std::initializer_list<int32_t> values{1, 2, 3, 4};
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor,
+      Tensor::Create(DT_INT32, {2, 2}, CreateTestData(values), "test_2d"));
+
+  std::vector<size_t> indices = {0, 1};
+  EXPECT_THAT(tensor.Gather(indices), StatusIs(INVALID_ARGUMENT));
+}
+
+TEST(TensorTest, GatherScalarTensorFails) {
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({42}),
+                                    "test_scalar"));
+
+  std::vector<size_t> indices = {0};
+  EXPECT_THAT(tensor.Gather(indices), StatusIs(INVALID_ARGUMENT));
+}
+
+TEST(TensorTest, GatherOutOfBoundsFails) {
+  std::initializer_list<int32_t> values{10, 20, 30};
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor,
+      Tensor::Create(DT_INT32, {3}, CreateTestData(values), "test_bounds"));
+
+  std::vector<size_t> indices = {0, 3};  // Index 3 is out of bounds (size 3)
+  EXPECT_THAT(tensor.Gather(indices), StatusIs(INVALID_ARGUMENT));
+}
+
+TEST(TensorTest, GatherSingleIndexSuccess) {
+  std::initializer_list<double> values{1.1};
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor,
+      Tensor::Create(DT_DOUBLE, {1}, CreateTestData(values), "test_single"));
+
+  std::vector<size_t> indices = {0};
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor gathered, tensor.Gather(indices));
+
+  EXPECT_THAT(gathered.name(), Eq("test_single"));
+  EXPECT_THAT(gathered, IsTensor({1}, {1.1}));
+}
+
+TEST(TensorTest, GatherOutOfOrderSuccess) {
+  std::initializer_list<int32_t> values{10, 20, 30, 40};
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor tensor,
+      Tensor::Create(DT_INT32, {4}, CreateTestData(values), "test_order"));
+
+  std::vector<size_t> indices = {3, 1, 0, 2, 1};
+  TFF_ASSERT_OK_AND_ASSIGN(Tensor gathered, tensor.Gather(indices));
+
+  EXPECT_THAT(gathered.name(), Eq("test_order"));
+  EXPECT_THAT(gathered, IsTensor({5}, {40, 20, 10, 30, 20}));
 }
 
 }  // namespace
