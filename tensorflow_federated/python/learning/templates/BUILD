@@ -4,6 +4,7 @@ package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
         ":templates_packages",
+        "//inputmethod/keyboard/tensorflow/federated/fedrecon:__subpackages__",
         "//tensorflow_federated/python/learning:learning_users",
         "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
         "//tensorflow_federated/python/learning/programs:programs_packages",

@@ -19,6 +19,9 @@ package_group(
 package_group(
     name = "learning_users",
     includes = ["//tensorflow_federated/python/simulation:simulation_packages"],
+    packages = [
+        "//inputmethod/keyboard/tensorflow/federated/fedrecon/...",
+    ],
 )
 
 licenses(["notice"])
