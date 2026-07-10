@@ -173,9 +173,7 @@ Intrinsic CreateDefaultIntrinsic() {
 Intrinsic CreateIntrinsicWithMinContributors(int min_contributors) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   intrinsic.parameters.push_back(
-      Tensor::Create(DT_INT32, {}, CreateTestData({min_contributors}),
-                     "min_contributors_to_group")
-          .value());
+      Tensor(min_contributors, "min_contributors_to_group"));
   return intrinsic;
 }
 
@@ -258,12 +256,10 @@ TEST_P(GroupByAggregatorTest, ScalarAggregation_Succeeds) {
   // Intrinsic lifetime must outlast that of the TensorAggregator.
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor key =
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"key_string"}))
-          .value();
-  Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
-  Tensor t2 = Tensor::Create(DT_INT32, {}, CreateTestData({2})).value();
-  Tensor t3 = Tensor::Create(DT_INT32, {}, CreateTestData({3})).value();
+  Tensor key("key_string");
+  Tensor t1(1);
+  Tensor t2(2);
+  Tensor t3(3);
   EXPECT_THAT(group_by_aggregator->Accumulate({&key, &t1}), IsOk());
   EXPECT_THAT(group_by_aggregator->Accumulate({&key, &t2}), IsOk());
 
@@ -289,10 +285,8 @@ TEST_P(GroupByAggregatorTest, AggregateOnlyEmptyTensorsSucceeds) {
   // Intrinsic lifetime must outlast that of the TensorAggregator.
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor key =
-      Tensor::Create(DT_STRING, {0}, CreateTestData<string_view>({})).value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, {0}, CreateTestData<int32_t>({})).value();
+  Tensor key(std::vector<std::string>{});
+  Tensor t1(std::vector<int32_t>{});
   EXPECT_THAT(group_by_aggregator->Accumulate({&key, &t1}), IsOk());
   EXPECT_THAT(group_by_aggregator->Accumulate({&key, &t1}), IsOk());
 
@@ -319,17 +313,10 @@ TEST_P(GroupByAggregatorTest, DenseAggregation_Succeeds) {
   const TensorShape shape = {4};
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor keys =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"zero", "one", "two", "three"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({3, 11, 7, 20})).value();
+  Tensor keys({"zero", "one", "two", "three"});
+  Tensor t1({1, 3, 15, 27});
+  Tensor t2({10, 5, 1, 2});
+  Tensor t3({3, 11, 7, 20});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys, &t1}), IsOk());
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys, &t2}), IsOk());
 
@@ -360,27 +347,18 @@ TEST_P(GroupByAggregatorTest, AccumulateEmptyInputDoesNotAffectResult) {
   const TensorShape shape = {4};
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor keys =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"zero", "one", "two", "three"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({3, 11, 7, 20})).value();
+  Tensor keys({"zero", "one", "two", "three"});
+  Tensor t1({1, 3, 15, 27});
+  Tensor t2({10, 5, 1, 2});
+  Tensor t3({3, 11, 7, 20});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys, &t1}), IsOk());
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys, &t2}), IsOk());
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys, &t3}), IsOk());
 
   // Now accumulate an empty input. This will increase NumInputs to 4 but
   // otherwise has no effect on the result.
-  Tensor empty_keys =
-      Tensor::Create(DT_STRING, {0}, CreateTestData<string_view>({})).value();
-  Tensor empty_tensor =
-      Tensor::Create(DT_INT32, {0}, CreateTestData<int32_t>({})).value();
+  Tensor empty_keys(std::vector<std::string>{});
+  Tensor empty_tensor(std::vector<int32_t>{});
   EXPECT_THAT(group_by_aggregator->Accumulate({&empty_keys, &empty_tensor}),
               IsOk());
 
@@ -410,22 +388,12 @@ TEST_P(GroupByAggregatorTest, DifferentKeysPerAccumulate_Succeeds) {
   const TensorShape shape = {4};
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor keys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"zero", "zero", "one", "two"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
+  Tensor keys1({"zero", "zero", "one", "two"});
+  Tensor t1({1, 3, 15, 27});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys1, &t1}), IsOk());
   // Totals: [4, 15, 27]
-  Tensor keys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"one", "zero", "one", "three"}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
+  Tensor keys2({"one", "zero", "one", "three"});
+  Tensor t2({10, 5, 1, 2});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys2, &t2}), IsOk());
   // Totals: [9, 26, 27, 2]
 
@@ -436,12 +404,8 @@ TEST_P(GroupByAggregatorTest, DifferentKeysPerAccumulate_Succeeds) {
             .value();
   }
 
-  Tensor keys3 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"two", "two", "four", "one"}))
-          .value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({3, 11, 7, 20})).value();
+  Tensor keys3({"two", "two", "four", "one"});
+  Tensor t3({3, 11, 7, 20});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys3, &t3}), IsOk());
   // Totals: [9, 46, 41, 2, 7]
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
@@ -461,19 +425,12 @@ TEST_P(GroupByAggregatorTest, DifferentShapesPerAccumulate_Succeeds) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
 
-  Tensor keys1 = Tensor::Create(DT_STRING, {2},
-                                CreateTestData<string_view>({"zero", "one"}))
-                     .value();
-  Tensor t1 = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 3})).value();
+  Tensor keys1({"zero", "one"});
+  Tensor t1({1, 3});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys1, &t1}), IsOk());
   // Totals: [1, 3]
-  Tensor keys2 =
-      Tensor::Create(DT_STRING, {6},
-                     CreateTestData<string_view>(
-                         {"two", "one", "zero", "one", "three", "two"}))
-          .value();
-  Tensor t2 = Tensor::Create(DT_INT32, {6}, CreateTestData({10, 5, 1, 2, 4, 9}))
-                  .value();
+  Tensor keys2({"two", "one", "zero", "one", "three", "two"});
+  Tensor t2({10, 5, 1, 2, 4, 9});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys2, &t2}), IsOk());
   // Totals: [2, 10, 19, 4]
 
@@ -484,13 +441,8 @@ TEST_P(GroupByAggregatorTest, DifferentShapesPerAccumulate_Succeeds) {
             .value();
   }
 
-  Tensor keys3 =
-      Tensor::Create(
-          DT_STRING, {5},
-          CreateTestData<string_view>({"two", "two", "one", "zero", "four"}))
-          .value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, {5}, CreateTestData({3, 11, 7, 6, 3})).value();
+  Tensor keys3({"two", "two", "one", "zero", "four"});
+  Tensor t3({3, 11, 7, 6, 3});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys3, &t3}), IsOk());
   // Totals: [8, 17, 33, 4, 3]
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
@@ -519,26 +471,14 @@ TEST_P(GroupByAggregatorTest, Accumulate_MultipleValueTensors_Succeeds) {
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
 
-  Tensor keys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"zero", "zero", "one", "two"}))
-          .value();
-  Tensor tA1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
-  Tensor tB1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({14, 11, 7, 14})).value();
+  Tensor keys1({"zero", "zero", "one", "two"});
+  Tensor tA1({1, 3, 15, 27});
+  Tensor tB1({14, 11, 7, 14});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys1, &tA1, &tB1}), IsOk());
   // Totals: [4, 15, 27], [25, 7, 14]
-  Tensor keys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"one", "zero", "one", "three"}))
-          .value();
-  Tensor tA2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
-  Tensor tB2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 2, 8})).value();
+  Tensor keys2({"one", "zero", "one", "three"});
+  Tensor tA2({10, 5, 1, 2});
+  Tensor tB2({1, 3, 2, 8});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys2, &tA2, &tB2}), IsOk());
   // Totals: [9, 26, 27, 2], [28, 10, 14, 8]
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
@@ -562,7 +502,6 @@ TEST_P(GroupByAggregatorTest, Accumulate_MultipleValueTensors_Succeeds) {
 }
 
 TEST_P(GroupByAggregatorTest, Accumulate_NoValueTensors_Succeeds) {
-  const TensorShape shape = {4};
   Intrinsic intrinsic{"fedsql_group_by",
                       {CreateTensorSpec("key", DT_STRING)},
                       {CreateTensorSpec("key_out", DT_STRING)},
@@ -570,17 +509,9 @@ TEST_P(GroupByAggregatorTest, Accumulate_NoValueTensors_Succeeds) {
                       {}};
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
 
-  Tensor keys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"zero", "zero", "one", "two"}))
-          .value();
+  Tensor keys1({"zero", "zero", "one", "two"});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys1}), IsOk());
-  Tensor keys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"one", "zero", "one", "three"}))
-          .value();
+  Tensor keys2({"one", "zero", "one", "three"});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys2}), IsOk());
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
   EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(2));
@@ -601,7 +532,6 @@ TEST_P(GroupByAggregatorTest, Accumulate_NoValueTensors_Succeeds) {
 }
 
 TEST_P(GroupByAggregatorTest, Accumulate_MultipleKeyTensors_Succeeds) {
-  const TensorShape shape = {4};
   Intrinsic intrinsic{"fedsql_group_by",
                       {CreateTensorSpec("key1", DT_STRING),
                        CreateTensorSpec("key2", DT_STRING)},
@@ -612,31 +542,15 @@ TEST_P(GroupByAggregatorTest, Accumulate_MultipleKeyTensors_Succeeds) {
   intrinsic.nested_intrinsics.push_back(
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor sizeKeys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"large", "large", "small", "large"}))
-          .value();
-  Tensor animalKeys1 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
+  Tensor sizeKeys1({"large", "large", "small", "large"});
+  Tensor animalKeys1({"cat", "cat", "cat", "dog"});
+  Tensor t1({1, 3, 15, 27});
   EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys1, &animalKeys1, &t1}),
               IsOk());
   // Totals: [4, 15, 27]
-  Tensor sizeKeys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"small", "large", "small", "small"}))
-          .value();
-  Tensor animalKeys2 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
+  Tensor sizeKeys2({"small", "large", "small", "small"});
+  Tensor animalKeys2({"cat", "cat", "cat", "dog"});
+  Tensor t2({10, 5, 1, 2});
   EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys2, &animalKeys2, &t2}),
               IsOk());
   // Totals: [9, 26, 27, 2]
@@ -648,18 +562,9 @@ TEST_P(GroupByAggregatorTest, Accumulate_MultipleKeyTensors_Succeeds) {
             .value();
   }
 
-  Tensor sizeKeys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"large", "large", "small", "small"}))
-          .value();
-  Tensor animalKeys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"dog", "dog", "rabbit", "cat"}))
-          .value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({3, 11, 7, 20})).value();
+  Tensor sizeKeys3({"large", "large", "small", "small"});
+  Tensor animalKeys3({"dog", "dog", "rabbit", "cat"});
+  Tensor t3({3, 11, 7, 20});
   EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys3, &animalKeys3, &t3}),
               IsOk());
   // Totals: [9, 46, 41, 2, 7]
@@ -681,7 +586,6 @@ TEST_P(GroupByAggregatorTest, Accumulate_MultipleKeyTensors_Succeeds) {
 
 TEST_P(GroupByAggregatorTest,
        Accumulate_MultipleKeyTensors_SomeKeysNotInOutput_Succeeds) {
-  const TensorShape shape = {4};
   Intrinsic intrinsic{
       "fedsql_group_by",
       {CreateTensorSpec("key1", DT_STRING),
@@ -695,31 +599,15 @@ TEST_P(GroupByAggregatorTest,
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
 
-  Tensor sizeKeys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"large", "large", "small", "large"}))
-          .value();
-  Tensor animalKeys1 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
+  Tensor sizeKeys1({"large", "large", "small", "large"});
+  Tensor animalKeys1({"cat", "cat", "cat", "dog"});
+  Tensor t1({1, 3, 15, 27});
   EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys1, &animalKeys1, &t1}),
               IsOk());
   // Totals: [4, 15, 27]
-  Tensor sizeKeys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"small", "large", "small", "small"}))
-          .value();
-  Tensor animalKeys2 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
+  Tensor sizeKeys2({"small", "large", "small", "small"});
+  Tensor animalKeys2({"cat", "cat", "cat", "dog"});
+  Tensor t2({10, 5, 1, 2});
   EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys2, &animalKeys2, &t2}),
               IsOk());
   // Totals: [9, 26, 27, 2]
@@ -745,7 +633,6 @@ TEST_P(GroupByAggregatorTest,
 
 TEST_P(GroupByAggregatorTest,
        MultipleKeyTensorsSomeKeysNotInOutputSucceedsWhenAllInputsEmpty) {
-  const TensorShape shape = {0};
   Intrinsic intrinsic{
       "fedsql_group_by",
       {CreateTensorSpec("key1", DT_STRING),
@@ -759,11 +646,9 @@ TEST_P(GroupByAggregatorTest,
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
 
-  Tensor size_keys =
-      Tensor::Create(DT_STRING, {0}, CreateTestData<string_view>({})).value();
-  Tensor animal_keys =
-      Tensor::Create(DT_STRING, {0}, CreateTestData<string_view>({})).value();
-  Tensor t = Tensor::Create(DT_INT32, {0}, CreateTestData<int32_t>({})).value();
+  Tensor size_keys(std::vector<std::string>{});
+  Tensor animal_keys(std::vector<std::string>{});
+  Tensor t(std::vector<int32_t>{});
   EXPECT_THAT(group_by_aggregator->Accumulate({&size_keys, &animal_keys, &t}),
               IsOk());
   EXPECT_THAT(group_by_aggregator->Accumulate({&size_keys, &animal_keys, &t}),
@@ -793,10 +678,9 @@ TEST_P(GroupByAggregatorTest, Accumulate_NoKeyTensors) {
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
 
-  Tensor t1 =
-      Tensor::Create(DT_INT32, {4}, CreateTestData({1, 3, 15, 27})).value();
+  Tensor t1({1, 3, 15, 27});
   EXPECT_THAT(group_by_aggregator->Accumulate({&t1}), IsOk());
-  Tensor t2 = Tensor::Create(DT_INT32, {3}, CreateTestData({10, 5, 1})).value();
+  Tensor t2({10, 5, 1});
   EXPECT_THAT(group_by_aggregator->Accumulate({&t2}), IsOk());
 
   if (GetParam()) {
@@ -806,8 +690,7 @@ TEST_P(GroupByAggregatorTest, Accumulate_NoKeyTensors) {
             .value();
   }
 
-  Tensor t3 =
-      Tensor::Create(DT_INT32, {5}, CreateTestData({3, 11, 7, 20, 5})).value();
+  Tensor t3({3, 11, 7, 20, 5});
   EXPECT_THAT(group_by_aggregator->Accumulate({&t3}), IsOk());
 
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
@@ -825,14 +708,12 @@ TEST_P(GroupByAggregatorTest, Merge_Succeeds) {
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor key =
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}))
-          .value();
-  Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
-  Tensor t2 = Tensor::Create(DT_INT32, {}, CreateTestData({2})).value();
-  Tensor t3 = Tensor::Create(DT_INT32, {}, CreateTestData({3})).value();
-  Tensor t4 = Tensor::Create(DT_INT32, {}, CreateTestData({4})).value();
-  Tensor t5 = Tensor::Create(DT_INT32, {}, CreateTestData({5})).value();
+  Tensor key("foo");
+  Tensor t1(1);
+  Tensor t2(2);
+  Tensor t3(3);
+  Tensor t4(4);
+  Tensor t5(5);
   EXPECT_THAT(aggregator1->Accumulate({&key, &t1}), IsOk());
   EXPECT_THAT(aggregator1->Accumulate({&key, &t2}), IsOk());
   EXPECT_THAT(aggregator2->Accumulate({&key, &t3}), IsOk());
@@ -874,26 +755,14 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleValueTensors_Succeeds) {
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor keys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"zero", "zero", "one", "two"}))
-          .value();
-  Tensor tA1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
-  Tensor tB1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({14, 11, 7, 14})).value();
+  Tensor keys1({"zero", "zero", "one", "two"});
+  Tensor tA1({1, 3, 15, 27});
+  Tensor tB1({14, 11, 7, 14});
   EXPECT_THAT(aggregator1->Accumulate({&keys1, &tA1, &tB1}), IsOk());
   // Totals: [4, 15, 27], [25, 7, 14]
-  Tensor keys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"one", "zero", "one", "three"}))
-          .value();
-  Tensor tA2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
-  Tensor tB2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 2, 8})).value();
+  Tensor keys2({"one", "zero", "one", "three"});
+  Tensor tA2({10, 5, 1, 2});
+  Tensor tB2({1, 3, 2, 8});
   EXPECT_THAT(aggregator1->Accumulate({&keys2, &tA2, &tB2}), IsOk());
   // aggregator1 totals: [9, 26, 27, 2], [28, 10, 14, 8]
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
@@ -902,15 +771,9 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleValueTensors_Succeeds) {
   // Create a second aggregator and accumulate an input with overlapping
   // keys.
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
-  Tensor keys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"three", "two", "three", "two"}))
-          .value();
-  Tensor tA3 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({11, 3, 4, 2})).value();
-  Tensor tB3 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({6, 1, 4, 12})).value();
+  Tensor keys3({"three", "two", "three", "two"});
+  Tensor tA3({11, 3, 4, 2});
+  Tensor tB3({6, 1, 4, 12});
   EXPECT_THAT(aggregator2->Accumulate({&keys3, &tA3, &tB3}), IsOk());
 
   if (GetParam()) {
@@ -939,7 +802,6 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleValueTensors_Succeeds) {
 }
 
 TEST_P(GroupByAggregatorTest, Merge_NoValueTensors_Succeeds) {
-  const TensorShape shape = {4};
   Intrinsic intrinsic{"fedsql_group_by",
                       {CreateTensorSpec("key", DT_STRING)},
                       {CreateTensorSpec("key_out", DT_STRING)},
@@ -947,17 +809,9 @@ TEST_P(GroupByAggregatorTest, Merge_NoValueTensors_Succeeds) {
                       {}};
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor keys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"zero", "zero", "one", "two"}))
-          .value();
+  Tensor keys1({"zero", "zero", "one", "two"});
   EXPECT_THAT(aggregator1->Accumulate({&keys1}), IsOk());
-  Tensor keys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"one", "zero", "one", "three"}))
-          .value();
+  Tensor keys2({"one", "zero", "one", "three"});
   EXPECT_THAT(aggregator1->Accumulate({&keys2}), IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
   EXPECT_THAT(aggregator1->GetNumInputs(), Eq(2));
@@ -965,11 +819,7 @@ TEST_P(GroupByAggregatorTest, Merge_NoValueTensors_Succeeds) {
   // Create a second aggregator and accumulate an input with overlapping
   // keys.
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
-  Tensor keys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"three", "two", "three", "two"}))
-          .value();
+  Tensor keys3({"three", "two", "three", "two"});
   EXPECT_THAT(aggregator2->Accumulate({&keys3}), IsOk());
 
   if (GetParam()) {
@@ -996,7 +846,6 @@ TEST_P(GroupByAggregatorTest, Merge_NoValueTensors_Succeeds) {
 }
 
 TEST_P(GroupByAggregatorTest, Merge_MultipleKeyTensors_Succeeds) {
-  const TensorShape shape = {4};
   Intrinsic intrinsic{"fedsql_group_by",
                       {CreateTensorSpec("key1", DT_STRING),
                        CreateTensorSpec("key2", DT_STRING)},
@@ -1007,47 +856,22 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleKeyTensors_Succeeds) {
   intrinsic.nested_intrinsics.push_back(
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
-  Tensor sizeKeys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"large", "large", "small", "large"}))
-          .value();
-  Tensor animalKeys1 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
+  Tensor sizeKeys1({"large", "large", "small", "large"});
+  Tensor animalKeys1({"cat", "cat", "cat", "dog"});
+  Tensor t1({1, 3, 15, 27});
   EXPECT_THAT(aggregator1->Accumulate({&sizeKeys1, &animalKeys1, &t1}), IsOk());
   // aggregator1 totals: [4, 15, 27]
-  Tensor sizeKeys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"small", "large", "small", "small"}))
-          .value();
-  Tensor animalKeys2 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
+  Tensor sizeKeys2({"small", "large", "small", "small"});
+  Tensor animalKeys2({"cat", "cat", "cat", "dog"});
+  Tensor t2({10, 5, 1, 2});
   EXPECT_THAT(aggregator1->Accumulate({&sizeKeys2, &animalKeys2, &t2}), IsOk());
   // aggregator1 totals: [9, 26, 27, 2]
 
   // Create a second GroupByAggregator.
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
-  Tensor sizeKeys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"large", "large", "small", "small"}))
-          .value();
-  Tensor animalKeys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"dog", "dog", "rabbit", "cat"}))
-          .value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({3, 11, 7, 20})).value();
+  Tensor sizeKeys3({"large", "large", "small", "small"});
+  Tensor animalKeys3({"dog", "dog", "rabbit", "cat"});
+  Tensor t3({3, 11, 7, 20});
   EXPECT_THAT(aggregator2->Accumulate({&sizeKeys3, &animalKeys3, &t3}), IsOk());
 
   if (GetParam()) {
@@ -1082,7 +906,6 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleKeyTensors_Succeeds) {
 
 TEST_P(GroupByAggregatorTest,
        Merge_MultipleKeyTensors_SomeKeysNotInOutput_Succeeds) {
-  const TensorShape shape = {4};
   Intrinsic intrinsic{
       "fedsql_group_by",
       {CreateTensorSpec("key1", DT_STRING),
@@ -1094,47 +917,22 @@ TEST_P(GroupByAggregatorTest,
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor sizeKeys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"large", "large", "small", "large"}))
-          .value();
-  Tensor animalKeys1 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
+  Tensor sizeKeys1({"large", "large", "small", "large"});
+  Tensor animalKeys1({"cat", "cat", "cat", "dog"});
+  Tensor t1({1, 3, 15, 27});
   EXPECT_THAT(aggregator1->Accumulate({&sizeKeys1, &animalKeys1, &t1}), IsOk());
   // aggregator1 totals: [4, 15, 27]
-  Tensor sizeKeys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"small", "large", "small", "small"}))
-          .value();
-  Tensor animalKeys2 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
+  Tensor sizeKeys2({"small", "large", "small", "small"});
+  Tensor animalKeys2({"cat", "cat", "cat", "dog"});
+  Tensor t2({10, 5, 1, 2});
   EXPECT_THAT(aggregator1->Accumulate({&sizeKeys2, &animalKeys2, &t2}), IsOk());
   // aggregator1 totals: [9, 26, 27, 2]
 
   // Create a second GroupByAggregator.
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
-  Tensor sizeKeys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"large", "large", "small", "small"}))
-          .value();
-  Tensor animalKeys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"dog", "dog", "rabbit", "cat"}))
-          .value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({3, 11, 7, 20})).value();
+  Tensor sizeKeys3({"large", "large", "small", "small"});
+  Tensor animalKeys3({"dog", "dog", "rabbit", "cat"});
+  Tensor t3({3, 11, 7, 20});
   EXPECT_THAT(aggregator2->Accumulate({&sizeKeys3, &animalKeys3, &t3}), IsOk());
 
   if (GetParam()) {
@@ -1171,15 +969,13 @@ TEST_P(GroupByAggregatorTest, Merge_NoKeyTensors) {
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor t1 =
-      Tensor::Create(DT_INT32, {4}, CreateTestData({1, 3, 15, 27})).value();
+  Tensor t1({1, 3, 15, 27});
   EXPECT_THAT(aggregator1->Accumulate({&t1}), IsOk());
-  Tensor t2 = Tensor::Create(DT_INT32, {3}, CreateTestData({10, 5, 1})).value();
+  Tensor t2({10, 5, 1});
   EXPECT_THAT(aggregator1->Accumulate({&t2}), IsOk());
 
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, {5}, CreateTestData({3, 11, 7, 20, 5})).value();
+  Tensor t3({3, 11, 7, 20, 5});
   EXPECT_THAT(aggregator2->Accumulate({&t3}), IsOk());
 
   if (GetParam()) {
@@ -1210,19 +1006,12 @@ TEST_P(GroupByAggregatorTest, MergeThisOutputReceivedNoInputsSucceeds) {
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor keys1 = Tensor::Create(DT_STRING, {2},
-                                CreateTestData<string_view>({"zero", "one"}))
-                     .value();
-  Tensor t1 = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 3})).value();
+  Tensor keys1({"zero", "one"});
+  Tensor t1({1, 3});
   EXPECT_THAT(aggregator2->Accumulate({&keys1, &t1}), IsOk());
   // aggregator2 totals: [1, 3]
-  Tensor keys2 =
-      Tensor::Create(DT_STRING, {6},
-                     CreateTestData<string_view>(
-                         {"two", "one", "zero", "one", "three", "two"}))
-          .value();
-  Tensor t2 = Tensor::Create(DT_INT32, {6}, CreateTestData({10, 5, 1, 2, 4, 9}))
-                  .value();
+  Tensor keys2({"two", "one", "zero", "one", "three", "two"});
+  Tensor t2({10, 5, 1, 2, 4, 9});
   EXPECT_THAT(aggregator2->Accumulate({&keys2, &t2}), IsOk());
   // aggregator2 totals: [2, 10, 19, 4]
 
@@ -1258,27 +1047,18 @@ TEST_P(GroupByAggregatorTest, MergeThisOutputReceivedOnlyEmptyInputsSucceeds) {
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor keys1 = Tensor::Create(DT_STRING, {2},
-                                CreateTestData<string_view>({"zero", "one"}))
-                     .value();
-  Tensor t1 = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 3})).value();
+  Tensor keys1({"zero", "one"});
+  Tensor t1({1, 3});
   EXPECT_THAT(aggregator2->Accumulate({&keys1, &t1}), IsOk());
   // aggregator2 totals: [1, 3]
-  Tensor keys2 =
-      Tensor::Create(DT_STRING, {6},
-                     CreateTestData<string_view>(
-                         {"two", "one", "zero", "one", "three", "two"}))
-          .value();
-  Tensor t2 = Tensor::Create(DT_INT32, {6}, CreateTestData({10, 5, 1, 2, 4, 9}))
-                  .value();
+  Tensor keys2({"two", "one", "zero", "one", "three", "two"});
+  Tensor t2({10, 5, 1, 2, 4, 9});
   EXPECT_THAT(aggregator2->Accumulate({&keys2, &t2}), IsOk());
   // aggregator2 totals: [2, 10, 19, 4]
 
   // aggregator1 receives only an empty input.
-  Tensor empty_keys =
-      Tensor::Create(DT_STRING, {0}, CreateTestData<string_view>({})).value();
-  Tensor empty_tensor =
-      Tensor::Create(DT_INT32, {0}, CreateTestData<int32_t>({})).value();
+  Tensor empty_keys(std::vector<std::string>{});
+  Tensor empty_tensor(std::vector<int32_t>{});
   EXPECT_THAT(aggregator1->Accumulate({&empty_keys, &empty_tensor}), IsOk());
 
   if (GetParam()) {
@@ -1313,19 +1093,12 @@ TEST_P(GroupByAggregatorTest, MergeOtherAggregatorReceivedNoInputsSucceeds) {
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor keys1 = Tensor::Create(DT_STRING, {2},
-                                CreateTestData<string_view>({"zero", "one"}))
-                     .value();
-  Tensor t1 = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 3})).value();
+  Tensor keys1({"zero", "one"});
+  Tensor t1({1, 3});
   EXPECT_THAT(aggregator1->Accumulate({&keys1, &t1}), IsOk());
   // aggregator1 totals: [1, 3]
-  Tensor keys2 =
-      Tensor::Create(DT_STRING, {6},
-                     CreateTestData<string_view>(
-                         {"two", "one", "zero", "one", "three", "two"}))
-          .value();
-  Tensor t2 = Tensor::Create(DT_INT32, {6}, CreateTestData({10, 5, 1, 2, 4, 9}))
-                  .value();
+  Tensor keys2({"two", "one", "zero", "one", "three", "two"});
+  Tensor t2({10, 5, 1, 2, 4, 9});
   EXPECT_THAT(aggregator1->Accumulate({&keys2, &t2}), IsOk());
   // aggregator1 totals: [2, 10, 19, 4]
 
@@ -1362,27 +1135,18 @@ TEST_P(GroupByAggregatorTest,
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor keys1 = Tensor::Create(DT_STRING, {2},
-                                CreateTestData<string_view>({"zero", "one"}))
-                     .value();
-  Tensor t1 = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 3})).value();
+  Tensor keys1({"zero", "one"});
+  Tensor t1({1, 3});
   EXPECT_THAT(aggregator1->Accumulate({&keys1, &t1}), IsOk());
   // aggregator1 totals: [1, 3]
-  Tensor keys2 =
-      Tensor::Create(DT_STRING, {6},
-                     CreateTestData<string_view>(
-                         {"two", "one", "zero", "one", "three", "two"}))
-          .value();
-  Tensor t2 = Tensor::Create(DT_INT32, {6}, CreateTestData({10, 5, 1, 2, 4, 9}))
-                  .value();
+  Tensor keys2({"two", "one", "zero", "one", "three", "two"});
+  Tensor t2({10, 5, 1, 2, 4, 9});
   EXPECT_THAT(aggregator1->Accumulate({&keys2, &t2}), IsOk());
   // aggregator1 totals: [2, 10, 19, 4]
 
   // aggregator2 receives only an empty input.
-  Tensor empty_keys =
-      Tensor::Create(DT_STRING, {0}, CreateTestData<string_view>({})).value();
-  Tensor empty_tensor =
-      Tensor::Create(DT_INT32, {0}, CreateTestData<int32_t>({})).value();
+  Tensor empty_keys(std::vector<std::string>{});
+  Tensor empty_tensor(std::vector<int32_t>{});
   EXPECT_THAT(aggregator2->Accumulate({&empty_keys, &empty_tensor}), IsOk());
 
   if (GetParam()) {
@@ -1419,9 +1183,8 @@ TEST_P(GroupByAggregatorTest,
 TEST(GroupByAggregatorTest, AccumulateKeyTensorHasIncompatibleDataType) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor key =
-      Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1.2})).value();
-  Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({0})).value();
+  Tensor key(1.2f);
+  Tensor t(0);
   Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(
@@ -1432,10 +1195,8 @@ TEST(GroupByAggregatorTest, AccumulateKeyTensorHasIncompatibleDataType) {
 TEST(GroupByAggregatorTest, AccumulateValueTensorHasIncompatibleDataType) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor key =
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"key_string"}))
-          .value();
-  Tensor t = Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({1.2})).value();
+  Tensor key("key_string");
+  Tensor t(1.2f);
   Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(
@@ -1454,10 +1215,8 @@ TEST(GroupByAggregatorTest, Accumulate_FewerTensorsThanExpected) {
   intrinsic.nested_intrinsics.push_back(
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor key =
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"key_string"}))
-          .value();
-  Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
+  Tensor key("key_string");
+  Tensor t(1);
   Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
@@ -1468,13 +1227,9 @@ TEST(GroupByAggregatorTest, Accumulate_FewerTensorsThanExpected) {
 TEST(GroupByAggregatorTest, ValidateInputs_MoreTensorsThanExpected) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor key1 = Tensor::Create(DT_STRING, {},
-                               CreateTestData<string_view>({"key_string_1"}))
-                    .value();
-  Tensor key2 = Tensor::Create(DT_STRING, {},
-                               CreateTestData<string_view>({"key_string_2"}))
-                    .value();
-  Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
+  Tensor key1("key_string_1");
+  Tensor key2("key_string_2");
+  Tensor t(1);
   Status s = group_by_aggregator->ValidateInputs({&key1, &key2, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
@@ -1485,10 +1240,8 @@ TEST(GroupByAggregatorTest, ValidateInputs_MoreTensorsThanExpected) {
 TEST(GroupByAggregatorTest, ValidateInputs_KeyTensorSmallerThanValueTensor) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor key = Tensor::Create(DT_STRING, {},
-                              CreateTestData<string_view>({"key_string_1"}))
-                   .value();
-  Tensor t = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 2})).value();
+  Tensor key("key_string_1");
+  Tensor t({1, 2});
   Status s = group_by_aggregator->ValidateInputs({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
@@ -1499,12 +1252,8 @@ TEST(GroupByAggregatorTest, ValidateInputs_KeyTensorSmallerThanValueTensor) {
 TEST(GroupByAggregatorTest, ValidateInputs_KeyTensorLargerThanValueTensor) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor key =
-      Tensor::Create(DT_STRING, {3},
-                     CreateTestData<string_view>(
-                         {"key_string_1", "key_string_2", "key_string_3"}))
-          .value();
-  Tensor t = Tensor::Create(DT_INT32, {2}, CreateTestData({1, 2})).value();
+  Tensor key({"key_string_1", "key_string_2", "key_string_3"});
+  Tensor t({1, 2});
   Status s = group_by_aggregator->ValidateInputs({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
@@ -1531,9 +1280,8 @@ TEST(GroupByAggregatorTest,
 TEST(GroupByAggregatorTest, ValidateInputs_WrongKeyType) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor key =
-      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({42})).value();
-  Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
+  Tensor key(42);
+  Tensor t(1);
   Status s = group_by_aggregator->ValidateInputs({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), ::testing::HasSubstr("Tensor at position 0 did not"
@@ -1738,10 +1486,8 @@ TEST(GroupByAggregatorTest, FailsAfterBeingConsumed) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor key =
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}))
-          .value();
-  Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
+  Tensor key("foo");
+  Tensor t(1);
 
   EXPECT_THAT(aggregator1->Accumulate({&key, &t}), IsOk());
   EXPECT_THAT(std::move(*aggregator1).Report(), IsOk());
@@ -1773,7 +1519,7 @@ TEST(GroupByAggregatorTest, FailsAfterBeingConsumed_WhenNoKeys) {
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor t = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
+  Tensor t(1);
   EXPECT_THAT(aggregator1->Accumulate({&t}), IsOk());
   EXPECT_THAT(std::move(*aggregator1).Report(), IsOk());
 
@@ -1803,8 +1549,7 @@ TEST_P(GroupByAggregatorTest, AddOneContributor_Success) {
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  Tensor ordinals =
-      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({2, 0, 3})).value();
+  Tensor ordinals(std::vector<int64_t>{2, 0, 3});
 
   EXPECT_THAT(peer.AddOneContributor(std::move(ordinals)), IsOk());
 
@@ -1821,10 +1566,8 @@ TEST_P(GroupByAggregatorTest, AddOneContributor_StopsAtMaxValue) {
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  Tensor ordinals_1 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 1})).value();
-  Tensor ordinals_2 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({0})).value();
+  Tensor ordinals_1(std::vector<int64_t>{0, 1});
+  Tensor ordinals_2(std::vector<int64_t>{0});
 
   EXPECT_THAT(peer.AddOneContributor(std::move(ordinals_1)), IsOk());
 
@@ -1837,8 +1580,7 @@ TEST_P(GroupByAggregatorTest, AddOneContributor_StopsAtMaxValue) {
               testing::ContainerEq(std::vector<int>{2, 1}));
 
   // Add one more contributor; the count for group 0 should not increase.
-  Tensor ordinals_3 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({0})).value();
+  Tensor ordinals_3(std::vector<int64_t>{0});
   EXPECT_THAT(peer.AddOneContributor(std::move(ordinals_3)), IsOk());
 
   // The count for group 0 should not increase further.
@@ -1851,8 +1593,7 @@ TEST_P(GroupByAggregatorTest, AddOneContributor_HandlesEmptyTensor) {
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  Tensor empty_ordinals =
-      Tensor::Create(DT_INT64, {0}, CreateTestData<int64_t>({})).value();
+  Tensor empty_ordinals(std::vector<int64_t>{});
   EXPECT_THAT(peer.AddOneContributor(std::move(empty_ordinals)), IsOk());
 
   if (GetParam()) {
@@ -1867,8 +1608,7 @@ TEST(GroupByAggregatorTest, AddOneContributor_FailsWithInvalidDtype) {
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  Tensor ordinals =
-      Tensor::Create(DT_INT32, {2}, CreateTestData({0, 1})).value();
+  Tensor ordinals({0, 1});
 
   EXPECT_THAT(peer.AddOneContributor(std::move(ordinals)),
               StatusIs(INVALID_ARGUMENT, HasSubstr("Expected int64 ordinals")));
@@ -1879,8 +1619,7 @@ TEST(GroupByAggregatorTest, AddOneContributor_FailsWhenMaxContributorsNotSet) {
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  Tensor ordinals =
-      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({0, 1, 2})).value();
+  Tensor ordinals(std::vector<int64_t>{0, 1, 2});
 
   EXPECT_THAT(
       peer.AddOneContributor(std::move(ordinals)),
@@ -1895,8 +1634,7 @@ TEST_P(GroupByAggregatorTest, AddMultipleContributors_Success) {
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  Tensor ordinals =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
+  Tensor ordinals(std::vector<int64_t>{0, 2});
   std::vector<int> num_contributors = std::vector<int>{2, 5};
 
   EXPECT_THAT(
@@ -1918,8 +1656,7 @@ TEST_P(GroupByAggregatorTest,
   GroupByAggregatorPeer peer(std::move(aggregator));
 
   // First, add 3 contributors to group 0 and 5 contributors to group 2.
-  Tensor ordinals1 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
+  Tensor ordinals1(std::vector<int64_t>{0, 2});
   std::vector<int> num_contributors1 = {3, 5};
   EXPECT_THAT(
       peer.AddMultipleContributors(std::move(ordinals1), num_contributors1),
@@ -1934,8 +1671,7 @@ TEST_P(GroupByAggregatorTest,
   }
 
   // Second, add 2 contributors to group 0, 4 to group 1, and 1 to group 2.
-  Tensor ordinals2 =
-      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({0, 1, 2})).value();
+  Tensor ordinals2(std::vector<int64_t>{0, 1, 2});
   std::vector<int> num_contributors2 = {2, 4, 1};
   EXPECT_THAT(
       peer.AddMultipleContributors(std::move(ordinals2), num_contributors2),
@@ -1955,8 +1691,7 @@ TEST_P(GroupByAggregatorTest, AddMultipleContributors_ClampsToMaxContributors) {
   GroupByAggregatorPeer peer(std::move(aggregator));
 
   // First, add 3 contributors to group 0.
-  Tensor ordinals1 =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({0})).value();
+  Tensor ordinals1(std::vector<int64_t>{0});
   std::vector<int> num_contributors1 = {3};
   EXPECT_THAT(
       peer.AddMultipleContributors(std::move(ordinals1), num_contributors1),
@@ -1967,8 +1702,7 @@ TEST_P(GroupByAggregatorTest, AddMultipleContributors_ClampsToMaxContributors) {
   }
 
   // Second, add 4 contributors to each of group 0 and 1.
-  Tensor ordinals2 =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 1})).value();
+  Tensor ordinals2(std::vector<int64_t>{0, 1});
   std::vector<int> num_contributors2 = {4, 4};
   EXPECT_THAT(
       peer.AddMultipleContributors(std::move(ordinals2), num_contributors2),
@@ -1986,8 +1720,7 @@ TEST(GroupByAggregatorTest,
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  Tensor ordinals =
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({0})).value();
+  Tensor ordinals(std::vector<int64_t>{0});
   std::vector<int> num_contributors = {1};
 
   EXPECT_THAT(
@@ -2004,8 +1737,7 @@ TEST(GroupByAggregatorTest, AddMultipleContributors_FailsOnSizeMismatch) {
   GroupByAggregatorPeer peer(std::move(aggregator));
 
   // Ordinals tensor has 2 elements, but num_contributors vector has 3.
-  Tensor ordinals =
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 1})).value();
+  Tensor ordinals(std::vector<int64_t>{0, 1});
   std::vector<int> num_contributors = {1, 1, 1};
 
   EXPECT_THAT(
@@ -2019,8 +1751,7 @@ TEST(GroupByAggregatorTest, AddMultipleContributors_HandlesEmptyInputs) {
   auto aggregator = CreateTensorAggregator(intrinsic).value();
   GroupByAggregatorPeer peer(std::move(aggregator));
 
-  Tensor empty_ordinals =
-      Tensor::Create(DT_INT64, {0}, CreateTestData<int64_t>({})).value();
+  Tensor empty_ordinals(std::vector<int64_t>{});
   std::vector<int> empty_num_contributors = {};
 
   EXPECT_THAT(peer.AddMultipleContributors(std::move(empty_ordinals),
@@ -2036,11 +1767,8 @@ TEST(GroupByAggregatorTest,
   Intrinsic intrinsic = CreateDefaultIntrinsic();
   auto aggregator = CreateTensorAggregator(intrinsic).value();
 
-  Tensor key =
-      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"foo"}))
-          .value();
-  Tensor value =
-      Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})).value();
+  Tensor key({"foo"});
+  Tensor value({1});
 
   EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
 
@@ -2055,12 +1783,8 @@ TEST(GroupByAggregatorTest, AccumulateUpdatesContributorsWithMinContributors) {
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors(2);
   auto aggregator = CreateTensorAggregator(intrinsic).value();
 
-  Tensor key =
-      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"foo"}))
-          .value();
-  Tensor value =
-      Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({1})).value();
-
+  Tensor key({"foo"});
+  Tensor value({1});
   EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
 
   GroupByAggregatorPeer peer(std::move(aggregator));
@@ -2077,10 +1801,8 @@ TEST(GroupByAggregatorTest, AccumulateDoesNotUpdateContributorsWithEmptyInput) {
   auto aggregator = CreateTensorAggregator(intrinsic).value();
 
   // Use empty input tensors.
-  Tensor key =
-      Tensor::Create(DT_STRING, {0}, CreateTestData<string_view>({})).value();
-  Tensor value =
-      Tensor::Create(DT_INT32, {0}, CreateTestData<int32_t>({})).value();
+  Tensor key(std::vector<std::string>{});
+  Tensor value(std::vector<int32_t>{});
 
   EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
 
@@ -2096,12 +1818,10 @@ TEST_P(GroupByAggregatorTest, MergeWithMinContributors_Succeeds) {
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
 
-  Tensor key =
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}))
-          .value();
-  Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData({1})).value();
-  Tensor t2 = Tensor::Create(DT_INT32, {}, CreateTestData({2})).value();
-  Tensor t3 = Tensor::Create(DT_INT32, {}, CreateTestData({3})).value();
+  Tensor key("foo");
+  Tensor t1(1);
+  Tensor t2(2);
+  Tensor t3(3);
   ASSERT_THAT(aggregator1->Accumulate({&key, &t1}), IsOk());
   ASSERT_THAT(aggregator2->Accumulate({&key, &t2}), IsOk());
   ASSERT_THAT(aggregator2->Accumulate({&key, &t3}), IsOk());
@@ -2130,22 +1850,16 @@ TEST_P(GroupByAggregatorTest, MergeWithClampsContributorsAtMax) {
   auto aggregator1 = CreateTensorAggregator(intrinsic).value();
   // Give group "foo" 3 contributors.
   for (int i = 0; i < 3; ++i) {
-    Tensor key1 =
-        Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}))
-            .value();
-    Tensor value1 =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    Tensor key1("foo");
+    Tensor value1(1);
     ASSERT_THAT(aggregator1->Accumulate({&key1, &value1}), IsOk());
   }
 
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
   // Give group "foo" 4 contributors.
   for (int i = 0; i < 4; ++i) {
-    Tensor key2 =
-        Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}))
-            .value();
-    Tensor value2 =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    Tensor key2("foo");
+    Tensor value2(1);
     ASSERT_THAT(aggregator2->Accumulate({&key2, &value2}), IsOk());
   }
 
@@ -2175,37 +1889,25 @@ TEST_P(GroupByAggregatorTest, MergeHandlesDifferentGroupOrder) {
   auto aggregator2 = CreateTensorAggregator(intrinsic).value();
 
   // Accumulate into aggregator1: "foo" once, then "bar" twice.
-  Tensor key_foo_1 =
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}))
-          .value();
-  Tensor value_foo_1 =
-      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+  Tensor key_foo_1("foo");
+  Tensor value_foo_1(1);
   ASSERT_THAT(aggregator1->Accumulate({&key_foo_1, &value_foo_1}), IsOk());
   for (int i = 0; i < 2; ++i) {
-    Tensor key =
-        Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"bar"}))
-            .value();
-    Tensor value =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    Tensor key("bar");
+    Tensor value(1);
     ASSERT_THAT(aggregator1->Accumulate({&key, &value}), IsOk());
   }
 
   // Accumulate into aggregator2 in reverse order: "bar" three times, then
   // "foo" five times.
   for (int i = 0; i < 3; ++i) {
-    Tensor key =
-        Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"bar"}))
-            .value();
-    Tensor value =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    Tensor key("bar");
+    Tensor value(1);
     ASSERT_THAT(aggregator2->Accumulate({&key, &value}), IsOk());
   }
   for (int i = 0; i < 5; ++i) {
-    Tensor key =
-        Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}))
-            .value();
-    Tensor value =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    Tensor key("foo");
+    Tensor value(1);
     ASSERT_THAT(aggregator2->Accumulate({&key, &value}), IsOk());
   }
 
@@ -2239,35 +1941,23 @@ TEST_P(GroupByAggregatorTest, MergeWithClampsMultipleGroupsIndependently) {
 
   // Accumulate into aggregator1: "foo" 3 times, "bar" 1 time.
   for (int i = 0; i < 3; ++i) {
-    Tensor key =
-        Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}))
-            .value();
-    Tensor value =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    Tensor key("foo");
+    Tensor value(1);
     ASSERT_THAT(aggregator1->Accumulate({&key, &value}), IsOk());
   }
-  Tensor key_bar_1 =
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"bar"}))
-          .value();
-  Tensor value_bar_1 =
-      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+  Tensor key_bar_1("bar");
+  Tensor value_bar_1(1);
   ASSERT_THAT(aggregator1->Accumulate({&key_bar_1, &value_bar_1}), IsOk());
 
   // Accumulate into aggregator2: "bar" 2 times, "foo" 4 times.
   for (int i = 0; i < 2; ++i) {
-    Tensor key =
-        Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"bar"}))
-            .value();
-    Tensor value =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    Tensor key("bar");
+    Tensor value(1);
     ASSERT_THAT(aggregator2->Accumulate({&key, &value}), IsOk());
   }
   for (int i = 0; i < 4; ++i) {
-    Tensor key =
-        Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"foo"}))
-            .value();
-    Tensor value =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})).value();
+    Tensor key("foo");
+    Tensor value(1);
     ASSERT_THAT(aggregator2->Accumulate({&key, &value}), IsOk());
   }
 
@@ -2385,24 +2075,16 @@ TEST(GroupByFactoryTest, SubIntrinsicNotGroupingAggregator) {
 
 TEST(GroupByFactoryDeathTest, MinContributorsToGroupTensorNotScalar) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {3},
-                                                CreateTestData({0, 0, 0}),
-                                                "min_contributors_to_group")
-                                     .value());
+  intrinsic.parameters.push_back(
+      Tensor({0, 0, 0}, "min_contributors_to_group"));
   EXPECT_DEATH(CreateTensorAggregator(intrinsic).IgnoreError(),
                "used on scalar tensors");
 }
 
 TEST(GroupByFactoryTest, TooManyParameters) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
-                                                CreateTestData({5}),
-                                                "min_contributors_to_group")
-                                     .value());
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
-                                                CreateTestData({5}),
-                                                "min_contributors_to_group")
-                                     .value());
+  intrinsic.parameters.push_back(Tensor(5, "min_contributors_to_group"));
+  intrinsic.parameters.push_back(Tensor(5, "min_contributors_to_group"));
   EXPECT_THAT(CreateTensorAggregator(intrinsic).status(),
               StatusIs(INVALID_ARGUMENT,
                        HasSubstr("At most one input parameter expected")));
@@ -2410,37 +2092,27 @@ TEST(GroupByFactoryTest, TooManyParameters) {
 
 TEST(GroupByFactoryTest, MinContributorsToGroupNegative) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
-                                                CreateTestData({-5}),
-                                                "min_contributors_to_group")
-                                     .value());
+  intrinsic.parameters.push_back(Tensor(-5, "min_contributors_to_group"));
   EXPECT_THAT(CreateTensorAggregator(intrinsic).status(),
               StatusIs(INVALID_ARGUMENT, HasSubstr("must be positive")));
 }
 
 TEST(GroupByFactoryTest, MinContributorsToGroupZero) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
-                                                CreateTestData({0}),
-                                                "min_contributors_to_group")
-                                     .value());
+  intrinsic.parameters.push_back(Tensor(0, "min_contributors_to_group"));
   EXPECT_THAT(CreateTensorAggregator(intrinsic).status(),
               StatusIs(INVALID_ARGUMENT, HasSubstr("must be positive")));
 }
 
 TEST(GroupByFactoryTest, MinContributorsToGroupSetDoesNotCauseError) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
-                                                CreateTestData({5}),
-                                                "min_contributors_to_group")
-                                     .value());
+  intrinsic.parameters.push_back(Tensor(5, "min_contributors_to_group"));
   EXPECT_THAT(CreateTensorAggregator(intrinsic).status(), StatusIs(OK));
 }
 
 TEST(GroupByFactoryTest, MinContributorsToGroupWrongName) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
-  intrinsic.parameters.push_back(
-      Tensor::Create(DT_INT32, {}, CreateTestData({5}), "wrong_name").value());
+  intrinsic.parameters.push_back(Tensor(5, "wrong_name"));
   EXPECT_THAT(CreateTensorAggregator(intrinsic).status(),
               StatusIs(INVALID_ARGUMENT,
                        HasSubstr("The name of the provided parameter does "
@@ -2449,8 +2121,7 @@ TEST(GroupByFactoryTest, MinContributorsToGroupWrongName) {
 
 TEST(GroupByFactoryTest, MinContributorsToGroupNoName) {
   Intrinsic intrinsic = CreateDefaultIntrinsic();
-  intrinsic.parameters.push_back(
-      Tensor::Create(DT_INT32, {}, CreateTestData({5}), "").value());
+  intrinsic.parameters.push_back(Tensor(5));
   EXPECT_THAT(CreateTensorAggregator(intrinsic).status(),
               StatusIs(INVALID_ARGUMENT,
                        HasSubstr("The name of the provided parameter does "
@@ -2466,20 +2137,7 @@ TEST(GroupByAggregatorTest, Deserialize_FailToParseProto) {
 }
 
 TEST(GroupByAggregatorTest, ShrinkTensorSliceToSurvivors_Success) {
-  Tensor t = Tensor::Create(DT_INT32, {10},
-                            CreateTestData<int32_t>({
-                                0,
-                                1,
-                                2,
-                                3,
-                                4,
-                                5,
-                                6,
-                                7,
-                                8,
-                                9,
-                            }))
-                 .value();
+  Tensor t({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
   TensorSliceData column = TensorSliceData::Create(std::move(t), 40).value();
   EXPECT_THAT(
       GroupByAggregatorPeer::ShrinkTensorSliceToSurvivors<int32_t>(column,
@@ -2498,20 +2156,7 @@ TEST(GroupByAggregatorTest, ShrinkTensorSliceToSurvivors_Success) {
 
 TEST_P(GroupByAggregatorTest,
        ShrinkTensorSliceToSurvivors_InvalidSurvivorIndex) {
-  Tensor t = Tensor::Create(DT_INT32, {10},
-                            CreateTestData<int32_t>({
-                                0,
-                                1,
-                                2,
-                                3,
-                                4,
-                                5,
-                                6,
-                                7,
-                                8,
-                                9,
-                            }))
-                 .value();
+  Tensor t({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
   TensorSliceData column = TensorSliceData::Create(std::move(t), 40).value();
 
   // The tensor has 10 elements. The survivor_indices set
@@ -2533,20 +2178,8 @@ TEST_P(GroupByAggregatorTest,
 
 TEST(GroupByAggregatorTest, ConvertHistogramToSliceDataSucceeds) {
   OutputTensorList histogram;
-  histogram.push_back(Tensor::Create(DT_STRING, {3},
-                                     CreateTestData<string_view>({
-                                         "a",
-                                         "b",
-                                         "c",
-                                     }))
-                          .value());
-  histogram.push_back(Tensor::Create(DT_INT64, {3},
-                                     CreateTestData<int64_t>({
-                                         1,
-                                         2,
-                                         3,
-                                     }))
-                          .value());
+  histogram.push_back(Tensor({"a", "b", "c"}));
+  histogram.push_back(Tensor(std::vector<int64_t>{1, 2, 3}));
 
   auto result = GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram);
   ASSERT_THAT(result, IsOk());
@@ -2575,13 +2208,10 @@ TEST(GroupByAggregatorTest,
      ConvertHistogramToSliceData_InconsistentColumnSizes) {
   // Create a histogram where the tensors (columns) have different lengths.
   OutputTensorList histogram;
-  histogram.push_back(
-      Tensor::Create(DT_STRING, {3},
-                     CreateTestData<string_view>({"a", "b", "c"}))
-          .value());
+  histogram.push_back(Tensor({"a", "b", "c"}));
   histogram.push_back(
       // This tensor has a different size from the one above.
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value());
+      Tensor(std::vector<int64_t>{1, 2}));
 
   EXPECT_THAT(
       GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram),
@@ -2591,13 +2221,8 @@ TEST(GroupByAggregatorTest,
 
 TEST(GroupByAggregatorTest, ShrinkHistogramToSurvivorsSucceeds) {
   OutputTensorList histogram;
-  histogram.push_back(
-      Tensor::Create(DT_STRING, {4},
-                     CreateTestData<string_view>({"a", "b", "c", "d"}))
-          .value());
-  histogram.push_back(
-      Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({10, 20, 30, 40}))
-          .value());
+  histogram.push_back(Tensor({"a", "b", "c", "d"}));
+  histogram.push_back(Tensor(std::vector<int64_t>{10, 20, 30, 40}));
   auto slice_data_result =
       GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram);
   ASSERT_THAT(slice_data_result, IsOk());
@@ -2620,11 +2245,8 @@ TEST(GroupByAggregatorTest, ShrinkHistogramToSurvivorsSucceeds) {
 
 TEST(GroupByAggregatorTest, ShrinkHistogramToSurvivorsNoSurvivors) {
   OutputTensorList histogram;
-  histogram.push_back(
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
-          .value());
-  histogram.push_back(
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({10, 20})).value());
+  histogram.push_back(Tensor({"a", "b"}));
+  histogram.push_back(Tensor(std::vector<int64_t>{10, 20}));
   auto slice_data_result =
       GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram);
   ASSERT_THAT(slice_data_result, IsOk());
@@ -2643,11 +2265,8 @@ TEST(GroupByAggregatorTest, ShrinkHistogramToSurvivorsNoSurvivors) {
 
 TEST(GroupByAggregatorTest, ShrinkHistogramToSurvivorsAllSurvivors) {
   OutputTensorList histogram;
-  histogram.push_back(
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
-          .value());
-  histogram.push_back(
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({10, 20})).value());
+  histogram.push_back(Tensor({"a", "b"}));
+  histogram.push_back(Tensor(std::vector<int64_t>{10, 20}));
   auto slice_data_result =
       GroupByAggregatorPeer::ConvertHistogramToSliceData(histogram);
   ASSERT_THAT(slice_data_result, IsOk());
@@ -2675,55 +2294,37 @@ TEST_P(GroupByAggregatorTest, ReportWithMinContributors) {
                            CreateTensorAggregator(intrinsic));
 
   // Create key tensors once to avoid redundancy.
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto key_a,
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"a"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto key_b,
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"b"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto key_c,
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"c"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto key_d,
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"d"})));
+  Tensor key_a("a");
+  Tensor key_b("b");
+  Tensor key_c("c");
+  Tensor key_d("d");
 
   // Accumulate data for group "a" (3 contributors) -> should survive.
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_a1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({10})));
+  Tensor val_a1(10);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_a, &val_a1}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_a2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})));
+  Tensor val_a2(1);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_a, &val_a2}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_a3, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({5})));
+  Tensor val_a3(5);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_a, &val_a3}));
 
   // Accumulate data for group "b" (2 contributors) -> should be dropped.
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_b1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({20})));
+  Tensor val_b1(20);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_b, &val_b1}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_b2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({2})));
+  Tensor val_b2(2);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_b, &val_b2}));
 
   // Accumulate data for group "c" (4 contributors) -> should survive.
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_c1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({30})));
+  Tensor val_c1(30);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_c, &val_c1}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_c2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  Tensor val_c2(3);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_c, &val_c2}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_c3, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  Tensor val_c3(3);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_c, &val_c3}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_c4, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  Tensor val_c4(3);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_c, &val_c4}));
 
   // Accumulate data for group "d" (1 contributor) -> should be dropped.
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val_d1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({40})));
+  Tensor val_d1(40);
   TFF_ASSERT_OK(aggregator->Accumulate({&key_d, &val_d1}));
 
   // Check that serializing and deserializing doesn't break anything.
@@ -2756,48 +2357,30 @@ TEST_P(GroupByAggregatorTest, MergeAndReportWithMinContributors) {
                            CreateTensorAggregator(intrinsic));
 
   // Create key tensors once to avoid redundancy.
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto key_a,
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"a"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto key_b,
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"b"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto key_c,
-      Tensor::Create(DT_STRING, {}, CreateTestData<string_view>({"c"})));
+  Tensor key_a("a");
+  Tensor key_b("b");
+  Tensor key_c("c");
 
   // In aggregator1, "a" and "b" have 2 contributors each.
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val1_a1,
-      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({10})));
+  Tensor val1_a1(10);
   TFF_ASSERT_OK(aggregator1->Accumulate({&key_a, &val1_a1}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val1_a2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({1})));
+  Tensor val1_a2(1);
   TFF_ASSERT_OK(aggregator1->Accumulate({&key_a, &val1_a2}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val1_b1,
-      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({20})));
+  Tensor val1_b1(20);
   TFF_ASSERT_OK(aggregator1->Accumulate({&key_b, &val1_b1}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val1_b2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({2})));
+  Tensor val1_b2(2);
   TFF_ASSERT_OK(aggregator1->Accumulate({&key_b, &val1_b2}));
 
   // In aggregator2, "a" gets 2 more contributors and "c" gets 3.
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val2_a1, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({5})));
+  Tensor val2_a1(5);
   TFF_ASSERT_OK(aggregator2->Accumulate({&key_a, &val2_a1}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val2_a2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({4})));
+  Tensor val2_a2(4);
   TFF_ASSERT_OK(aggregator2->Accumulate({&key_a, &val2_a2}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val2_c1,
-      Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({30})));
+  Tensor val2_c1(30);
   TFF_ASSERT_OK(aggregator2->Accumulate({&key_c, &val2_c1}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val2_c2, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  Tensor val2_c2(3);
   TFF_ASSERT_OK(aggregator2->Accumulate({&key_c, &val2_c2}));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto val2_c3, Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({3})));
+  Tensor val2_c3(3);
   TFF_ASSERT_OK(aggregator2->Accumulate({&key_c, &val2_c3}));
 
   // Check that serializing and deserializing doesn't break anything.
@@ -2831,7 +2414,6 @@ TEST_P(GroupByAggregatorTest, MergeAndReportWithMinContributors) {
 }
 
 TEST(GroupByAggregatorTest, Partition_MultipleKeyTensors_Succeeds) {
-  const TensorShape shape = {4};
   Intrinsic intrinsic{"fedsql_group_by",
                       {CreateTensorSpec("key1", DT_STRING),
                        CreateTensorSpec("key2", DT_STRING)},
@@ -2842,31 +2424,15 @@ TEST(GroupByAggregatorTest, Partition_MultipleKeyTensors_Succeeds) {
   intrinsic.nested_intrinsics.push_back(
       CreateDefaultInnerIntrinsic(DT_INT32, DT_INT64));
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor sizeKeys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"large", "large", "small", "large"}))
-          .value();
-  Tensor animalKeys1 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
+  Tensor sizeKeys1({"large", "large", "small", "large"});
+  Tensor animalKeys1({"cat", "cat", "cat", "dog"});
+  Tensor t1({1, 3, 15, 27});
   EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys1, &animalKeys1, &t1}),
               IsOk());
   // Totals: [4, 15, 27]
-  Tensor sizeKeys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"small", "large", "small", "small"}))
-          .value();
-  Tensor animalKeys2 =
-      Tensor::Create(DT_STRING, shape,
-                     CreateTestData<string_view>({"cat", "cat", "cat", "dog"}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
+  Tensor sizeKeys2({"small", "large", "small", "small"});
+  Tensor animalKeys2({"cat", "cat", "cat", "dog"});
+  Tensor t2({10, 5, 1, 2});
   EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys2, &animalKeys2, &t2}),
               IsOk());
   // Totals: [9, 26, 27, 2]
@@ -2878,18 +2444,9 @@ TEST(GroupByAggregatorTest, Partition_MultipleKeyTensors_Succeeds) {
   group_by_aggregator =
       DeserializeTensorAggregator(intrinsic, serialized_states[1]).value();
 
-  Tensor sizeKeys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"large", "large", "small", "small"}))
-          .value();
-  Tensor animalKeys3 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"dog", "dog", "rabbit", "cat"}))
-          .value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({3, 11, 7, 20})).value();
+  Tensor sizeKeys3({"large", "large", "small", "small"});
+  Tensor animalKeys3({"dog", "dog", "rabbit", "cat"});
+  Tensor t3({3, 11, 7, 20});
   EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys3, &animalKeys3, &t3}),
               IsOk());
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
@@ -2915,29 +2472,15 @@ TEST(GroupByAggregatorTest, Partition_InvalidNumPartitions_Fails) {
 }
 
 TEST(GroupByAggregatorTest, Partition_WithMinContributor_Success) {
-  const TensorShape shape = {4};
   Intrinsic intrinsic = CreateDefaultIntrinsic();
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
-                                                CreateTestData({10}),
-                                                "min_contributors_to_group")
-                                     .value());
+  intrinsic.parameters.push_back(Tensor(10, "min_contributors_to_group"));
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor keys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"zero", "zero", "one", "four"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 27})).value();
+  Tensor keys1({"zero", "zero", "one", "four"});
+  Tensor t1({1, 3, 15, 27});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys1, &t1}), IsOk());
   // Totals: [4, 15, 27]
-  Tensor keys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"one", "zero", "one", "five"}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 5, 1, 2})).value();
+  Tensor keys2({"one", "zero", "one", "five"});
+  Tensor t2({10, 5, 1, 2});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys2, &t2}), IsOk());
   // Totals: [9, 26, 27, 2]
 
@@ -2969,28 +2512,14 @@ TEST(GroupByAggregatorTest, Partition_WithMinContributor_Success) {
 
 TEST(GroupByAggregatorTest,
      Partition_WithMinContributor_StopsAtMaxContributors) {
-  const TensorShape shape = {4};
   Intrinsic intrinsic = CreateDefaultIntrinsic();
-  intrinsic.parameters.push_back(Tensor::Create(DT_INT32, {},
-                                                CreateTestData({2}),
-                                                "min_contributors_to_group")
-                                     .value());
+  intrinsic.parameters.push_back(Tensor(2, "min_contributors_to_group"));
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
-  Tensor keys1 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"zero", "zero", "zero", "zero"}))
-          .value();
-  Tensor t1 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({1, 3, 15, 5})).value();
+  Tensor keys1({"zero", "zero", "zero", "zero"});
+  Tensor t1({1, 3, 15, 5});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys1, &t1}), IsOk());
-  Tensor keys2 =
-      Tensor::Create(
-          DT_STRING, shape,
-          CreateTestData<string_view>({"seven", "seven", "seven", "one"}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, shape, CreateTestData({10, 27, 1, 2})).value();
+  Tensor keys2({"seven", "seven", "seven", "one"});
+  Tensor t2({10, 27, 1, 2});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys2, &t2}), IsOk());
 
   TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> partitioned_states,
@@ -3051,8 +2580,7 @@ TEST(GroupByAggregatorTest, Partition_NoKeys_Succeeds) {
 
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
 
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor t, Tensor::Create(DT_INT32, {3}, CreateTestData({1, 2, 3})));
+  Tensor t({1, 2, 3});
   EXPECT_THAT(aggregator->Accumulate({&t}), IsOk());
 
   TFF_ASSERT_OK_AND_ASSIGN(std::vector<std::string> partitioned_states,
