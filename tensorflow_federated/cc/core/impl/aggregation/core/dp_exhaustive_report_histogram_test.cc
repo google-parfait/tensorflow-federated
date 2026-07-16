@@ -36,7 +36,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
@@ -89,22 +88,14 @@ TEST(DPExhaustiveReportHistogramTest, NoiselessReport_OneKey) {
   TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
 
   // Accumulate twice
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key1,
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor value1,
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
-  auto acc_status = agg->Accumulate({&key1, &value1});
-  TFF_EXPECT_OK(acc_status);
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key2,
-      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"a"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor value2,
-      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({3})));
-  acc_status = agg->Accumulate({&key2, &value2});
-  TFF_EXPECT_OK(acc_status);
+
+  Tensor key1({"c", "a"});
+  Tensor value1({INT64_C(1), INT64_C(2)});
+  TFF_EXPECT_OK(agg->Accumulate({&key1, &value1}));
+
+  Tensor key2({"a"});
+  Tensor value2({INT64_C(3)});
+  TFF_EXPECT_OK(agg->Accumulate({&key2, &value2}));
 
   // Report should look like {a: 5, b: 0, c: 1}
   EXPECT_TRUE(agg->CanReport());
@@ -124,28 +115,15 @@ TEST(DPExhaustiveReportHistogramTest, NoiselessReport_TwoKeys) {
   TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
 
   // Accumulate twice
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key1a,
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key1b,
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor value1,
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
-  auto acc_status = agg->Accumulate({&key1a, &key1b, &value1});
-  TFF_EXPECT_OK(acc_status);
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key2a,
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "a"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key2b,
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor value2,
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({3, 3})));
-  acc_status = agg->Accumulate({&key2a, &key2b, &value2});
-  TFF_EXPECT_OK(acc_status);
+  Tensor key1a({"c", "a"});
+  Tensor key1b({INT64_C(1), INT64_C(2)});
+  Tensor value1({INT64_C(1), INT64_C(2)});
+  TFF_EXPECT_OK(agg->Accumulate({&key1a, &key1b, &value1}));
+
+  Tensor key2a({"a", "a"});
+  Tensor key2b({INT64_C(0), INT64_C(2)});
+  Tensor value2({INT64_C(3), INT64_C(3)});
+  TFF_EXPECT_OK(agg->Accumulate({&key2a, &key2b, &value2}));
 
   EXPECT_TRUE(agg->CanReport());
   TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*agg).Report());
@@ -177,28 +155,15 @@ TEST(DPExhaustiveReportHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
   TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
 
   // Accumulate twice
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key1a,
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key1b,
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor value1,
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})));
-  auto acc_status = agg->Accumulate({&key1a, &key1b, &value1});
-  TFF_EXPECT_OK(acc_status);
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key2a,
-      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "a"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor key2b,
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor value2,
-      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({3, 3})));
-  acc_status = agg->Accumulate({&key2a, &key2b, &value2});
-  TFF_EXPECT_OK(acc_status);
+  Tensor key1({"c", "a"});
+  Tensor key1b({INT64_C(1), INT64_C(2)});
+  Tensor value1({INT64_C(1), INT64_C(2)});
+  TFF_EXPECT_OK(agg->Accumulate({&key1, &key1b, &value1}));
+
+  Tensor key2a({"a", "a"});
+  Tensor key2b({INT64_C(0), INT64_C(2)});
+  Tensor value2({INT64_C(3), INT64_C(3)});
+  TFF_EXPECT_OK(agg->Accumulate({&key2a, &key2b, &value2}));
 
   EXPECT_TRUE(agg->CanReport());
   TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*agg).Report());
@@ -227,14 +192,9 @@ TEST(DPExhaustiveReportHistogramTest, NoiseAddedForSmallEpsilons) {
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
   int num_inputs = 4000;
   for (int i = 0; i < num_inputs; i++) {
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor keys, Tensor::Create(DT_STRING, {2},
-                                    CreateTestData<string_view>({"a", "b"})));
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor values,
-        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})));
-    auto acc_status = aggregator->Accumulate({&keys, &values});
-    EXPECT_THAT(acc_status, IsOk());
+    Tensor key({"a", "b"});
+    Tensor value({1, 1});
+    EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
   }
   EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
   EXPECT_TRUE(aggregator->CanReport());
@@ -269,14 +229,9 @@ TEST(DPExhaustiveReportHistogramTest, FloatTest) {
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
   int num_inputs = 4000;
   for (int i = 0; i < num_inputs; i++) {
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor keys, Tensor::Create(DT_STRING, {2},
-                                    CreateTestData<string_view>({"a", "b"})));
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor values,
-        Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({1, 0})));
-    auto acc_status = aggregator->Accumulate({&keys, &values});
-    EXPECT_THAT(acc_status, IsOk());
+    Tensor key({"a", "b"});
+    Tensor value({1.0f, 0.0f});
+    EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
   }
   EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
   EXPECT_TRUE(aggregator->CanReport());

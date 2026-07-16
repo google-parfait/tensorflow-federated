@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <random>
 #include <string>
@@ -28,7 +29,6 @@
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -37,7 +37,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -50,25 +49,11 @@ TensorSpec CreateTensorSpec(std::string name, DataType dtype) {
   return TensorSpec(name, dtype, {});
 }
 
-// Function to create a variable number of parameters. If is_string is false,
-// the parameters will be copies of the target_quantile. Otherwise, they will
-// be strings "invalid value".
-std::vector<Tensor> CreateDPQuantileParameters(double target_quantile,
-                                               int copies = 1,
-                                               bool is_string = false) {
+template <typename T>
+std::vector<Tensor> CreateParameters(std::initializer_list<T> values) {
   std::vector<Tensor> parameters;
-  for (int i = 0; i < copies; ++i) {
-    if (is_string) {
-      parameters.push_back(
-          Tensor::Create(DT_STRING, {},
-                         CreateTestData<string_view>({"invalid value"}))
-              .value());
-    } else {
-      parameters.push_back(
-          Tensor::Create(DT_DOUBLE, {},
-                         CreateTestData<double>({target_quantile}))
-              .value());
-    }
+  for (const T& value : values) {
+    parameters.push_back(Tensor(value));
   }
   return parameters;
 }
@@ -81,7 +66,7 @@ TEST(DPQuantileAggregatorTest, CreateWorks) {
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
                                   {CreateTensorSpec("value", DT_INT32)},
                                   {CreateTensorSpec("value", DT_DOUBLE)},
-                                  {CreateDPQuantileParameters(0.5)},
+                                  {CreateParameters({0.5})},
                                   {}};
   auto aggregator_status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(aggregator_status);
@@ -96,7 +81,7 @@ TEST(DPQuantileAggregatorTest, MultipleParametersInIntrinsic) {
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
                                   {CreateTensorSpec("value", DT_INT32)},
                                   {CreateTensorSpec("value", DT_DOUBLE)},
-                                  {CreateDPQuantileParameters(0.5, 2)},
+                                  {CreateParameters({0.5, 0.5})},
                                   {}};
   auto aggregator_status = CreateTensorAggregator(intrinsic);
   EXPECT_THAT(aggregator_status, StatusIs(INVALID_ARGUMENT));
@@ -109,7 +94,7 @@ TEST(DPQuantileAggregatorTest, OneStringParameterInIntrinsic) {
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
                                   {CreateTensorSpec("value", DT_INT32)},
                                   {CreateTensorSpec("value", DT_DOUBLE)},
-                                  {CreateDPQuantileParameters(0.5, 1, true)},
+                                  {CreateParameters({"invalid value"})},
                                   {}};
   auto aggregator_status = CreateTensorAggregator(intrinsic);
   EXPECT_THAT(aggregator_status, StatusIs(INVALID_ARGUMENT));
@@ -124,7 +109,7 @@ TEST(DPQuantileAggregatorTest, NegativeParameterInIntrinsic) {
   Intrinsic intrinsic1 = Intrinsic{kDPQuantileUri,
                                    {CreateTensorSpec("value", DT_INT32)},
                                    {CreateTensorSpec("value", DT_DOUBLE)},
-                                   {CreateDPQuantileParameters(-0.5)},
+                                   {CreateParameters({-0.5})},
                                    {}};
   auto aggregator_status1 = CreateTensorAggregator(intrinsic1);
   EXPECT_THAT(aggregator_status1, StatusIs(INVALID_ARGUMENT));
@@ -135,7 +120,7 @@ TEST(DPQuantileAggregatorTest, NegativeParameterInIntrinsic) {
   Intrinsic intrinsic2 = Intrinsic{kDPQuantileUri,
                                    {CreateTensorSpec("value", DT_INT32)},
                                    {CreateTensorSpec("value", DT_DOUBLE)},
-                                   {CreateDPQuantileParameters(0)},
+                                   {CreateParameters({0.0})},
                                    {}};
   auto aggregator_status2 = CreateTensorAggregator(intrinsic2);
   EXPECT_THAT(aggregator_status2, StatusIs(INVALID_ARGUMENT));
@@ -149,7 +134,7 @@ TEST(DPQuantileAggregatorTest, LargeParameterInIntrinsic) {
   Intrinsic intrinsic1 = Intrinsic{kDPQuantileUri,
                                    {CreateTensorSpec("value", DT_INT32)},
                                    {CreateTensorSpec("value", DT_DOUBLE)},
-                                   {CreateDPQuantileParameters(1.5)},
+                                   {CreateParameters({1.5})},
                                    {}};
   auto aggregator_status1 = CreateTensorAggregator(intrinsic1);
   EXPECT_THAT(aggregator_status1, StatusIs(INVALID_ARGUMENT));
@@ -160,7 +145,7 @@ TEST(DPQuantileAggregatorTest, LargeParameterInIntrinsic) {
   Intrinsic intrinsic2 = Intrinsic{kDPQuantileUri,
                                    {CreateTensorSpec("value", DT_INT32)},
                                    {CreateTensorSpec("value", DT_DOUBLE)},
-                                   {CreateDPQuantileParameters(1)},
+                                   {CreateParameters({1.0})},
                                    {}};
   auto aggregator_status2 = CreateTensorAggregator(intrinsic2);
   EXPECT_THAT(aggregator_status2, StatusIs(INVALID_ARGUMENT));
@@ -175,7 +160,7 @@ TEST(DPQuantileAggregatorTest, MultipleInputOrOutputSpecs) {
                 {CreateTensorSpec("value", DT_INT32)},
                 {CreateTensorSpec("value", DT_DOUBLE),
                  CreateTensorSpec("value", DT_DOUBLE)},
-                {CreateDPQuantileParameters(0.5)},
+                {CreateParameters({0.5})},
                 {}};
   auto aggregator_status1 = CreateTensorAggregator(two_output_intrinsic);
   EXPECT_THAT(aggregator_status1, StatusIs(INVALID_ARGUMENT));
@@ -187,7 +172,7 @@ TEST(DPQuantileAggregatorTest, MultipleInputOrOutputSpecs) {
                 {CreateTensorSpec("value", DT_INT32),
                  CreateTensorSpec("value", DT_INT32)},
                 {CreateTensorSpec("value", DT_DOUBLE)},
-                {CreateDPQuantileParameters(0.5)},
+                {CreateParameters({0.5})},
                 {}};
   auto aggregator_status2 = CreateTensorAggregator(two_input_intrinsic);
   EXPECT_THAT(aggregator_status2, StatusIs(INVALID_ARGUMENT));
@@ -201,7 +186,7 @@ TEST(DPQuantileAggregatorTest, NonScalarInputOrOutputSpecs) {
       Intrinsic{kDPQuantileUri,
                 {CreateTensorSpec("value", DT_INT32)},
                 {TensorSpec("value", DT_DOUBLE, {2})},
-                {CreateDPQuantileParameters(0.5)},
+                {CreateParameters({0.5})},
                 {}};
   auto aggregator_status1 = CreateTensorAggregator(vector_output_intrinsic);
   EXPECT_THAT(aggregator_status1, StatusIs(INVALID_ARGUMENT));
@@ -215,7 +200,7 @@ TEST(DPQuantileAggregatorTest, NonNumericInput) {
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
                                   {CreateTensorSpec("value", DT_STRING)},
                                   {CreateTensorSpec("value", DT_STRING)},
-                                  {CreateDPQuantileParameters(0.5)},
+                                  {CreateParameters({0.5})},
                                   {}};
   auto aggregator_status = CreateTensorAggregator(intrinsic);
   EXPECT_THAT(aggregator_status, StatusIs(INVALID_ARGUMENT));
@@ -229,7 +214,7 @@ TEST(DPQuantileAggregatorTest, WrongOutputType) {
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
                                   {CreateTensorSpec("value", DT_DOUBLE)},
                                   {CreateTensorSpec("value", DT_INT32)},
-                                  {CreateDPQuantileParameters(0.5)},
+                                  {CreateParameters({0.5})},
                                   {}};
   auto aggregator_status = CreateTensorAggregator(intrinsic);
   EXPECT_THAT(aggregator_status, StatusIs(INVALID_ARGUMENT));
@@ -244,7 +229,7 @@ StatusOr<std::unique_ptr<TensorAggregator>> CreateDPQuantileAggregator(
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
                                   {CreateTensorSpec("value", dtype)},
                                   {CreateTensorSpec("value", DT_DOUBLE)},
-                                  {CreateDPQuantileParameters(target_quantile)},
+                                  {CreateParameters({target_quantile})},
                                   {}};
   return CreateTensorAggregator(intrinsic);
 }
@@ -257,9 +242,7 @@ TEST(DPQuantileAggregatorTest, AggregateTensorsSuccessful_Fractional) {
       dynamic_cast<DPQuantileAggregator<float>&>(*aggregator_status.value());
 
   for (int i = 1; i <= kDPQuantileMaxInputs + 10; ++i) {
-    float val = 0.5 + i;
-    Tensor t =
-        Tensor::Create(DT_FLOAT, {}, CreateTestData<float>({val})).value();
+    Tensor t(0.5f + i);
     auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
     TFF_EXPECT_OK(accumulate_status);
     EXPECT_EQ(aggregator.GetBufferSize(),
@@ -275,9 +258,7 @@ TEST(DPQuantileAggregatorTest, AggregateTensorsSuccessful_Integer) {
       dynamic_cast<DPQuantileAggregator<int32_t>&>(*aggregator_status.value());
 
   for (int i = 1; i <= kDPQuantileMaxInputs + 10; ++i) {
-    int32_t val = i;
-    Tensor t =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({val})).value();
+    Tensor t(i);
     auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
     TFF_EXPECT_OK(accumulate_status);
     EXPECT_EQ(aggregator.GetBufferSize(),
@@ -308,15 +289,10 @@ TEST(DPQuantileAggregatorTest, DifferentTypeIncompatible) {
                         " the same input type."));
 
   // Cannot merge DPQualtileAggregator<double> with DPGroupingFederatedSum.
-  std::vector<Tensor> parameters;
-  for (int i = 0; i < 3; ++i) {
-    parameters.push_back(
-        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({10})).value());
-  }
   Intrinsic intrinsic = Intrinsic{kDPSumUri,
                                   {CreateTensorSpec("value", DT_INT64)},
                                   {CreateTensorSpec("value", DT_INT64)},
-                                  std::move(parameters),
+                                  CreateParameters({10.0, 10.0, 10.0}),
                                   {}};
   auto mismatched_aggregator_status2 = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(mismatched_aggregator_status2);
@@ -358,10 +334,7 @@ TEST(DPQuantileAggregatorTest, MergeWithSameTargetQuantile) {
         dynamic_cast<DPQuantileAggregator<double>&>(*base_aggregator1);
 
     for (int i = 0; i < kNumInputs1; ++i) {
-      double val = 0.5 + i;
-      TFF_ASSERT_OK_AND_ASSIGN(
-          Tensor t,
-          Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})));
+      Tensor t(0.5 + i);
       auto accumulate_status = aggregator1.Accumulate(InputTensorList({&t}));
       TFF_EXPECT_OK(accumulate_status);
     }
@@ -373,10 +346,7 @@ TEST(DPQuantileAggregatorTest, MergeWithSameTargetQuantile) {
     auto& aggregator2 =
         dynamic_cast<DPQuantileAggregator<double>&>(*base_aggregator2);
     for (int i = 0; i < num_inputs2; ++i) {
-      double val = 0.5 + i;
-      TFF_ASSERT_OK_AND_ASSIGN(
-          Tensor t,
-          Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})));
+      Tensor t(0.5 + i);
       auto accumulate_status = aggregator2.Accumulate(InputTensorList({&t}));
       TFF_EXPECT_OK(accumulate_status);
     }
@@ -399,7 +369,7 @@ TEST(DPQuantileAggregatorTest, MergeWithUniformityStatisticalTest) {
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
                                   {CreateTensorSpec("value", DT_DOUBLE)},
                                   {CreateTensorSpec("value", DT_DOUBLE)},
-                                  {CreateDPQuantileParameters(0.5)},
+                                  {CreateParameters({0.5})},
                                   {}};
 
   TFF_ASSERT_OK_AND_ASSIGN(const auto* base_factory,
@@ -556,8 +526,7 @@ void AccumulateAndAssessDPQuantile(double target_quantile, int num_samples,
   for (int i = 0; i < num_samples; ++i) {
     double sample = distribution(rng);
     samples.push_back(sample);
-    Tensor t =
-        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({sample})).value();
+    Tensor t(sample);
     auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
     TFF_EXPECT_OK(accumulate_status);
   }
@@ -611,9 +580,7 @@ TEST(DPQuantileAggregatorTest, ExactQuantileForLargeEpsilon) {
     auto& aggregator =
         dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status.value());
     for (int i = 0; i < 100; ++i) {
-      double val = 0.1 * (99 - i);
-      Tensor t =
-          Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({val})).value();
+      Tensor t(0.1 * (99 - i));
       auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
       TFF_EXPECT_OK(accumulate_status);
     }
@@ -663,8 +630,7 @@ TEST(DPQuantileAggregatorTest, CorrectHelperFunctions) {
   // Check that GetTargetRank works as intended.
   EXPECT_EQ(aggregator.GetTargetRank(), 0.0);
   for (int i = 0; i < 1000; ++i) {
-    Tensor t =
-        Tensor::Create(DT_INT32, {}, CreateTestData<int32_t>({i})).value();
+    Tensor t(i);
     auto accumulate_status = aggregator.Accumulate(InputTensorList({&t}));
     TFF_EXPECT_OK(accumulate_status);
   }
@@ -676,7 +642,7 @@ TEST(DPQuantileAggregatorTest, SerializeAndDeserialize) {
   Intrinsic intrinsic = Intrinsic{kDPQuantileUri,
                                   {CreateTensorSpec("value", DT_DOUBLE)},
                                   {CreateTensorSpec("value", DT_DOUBLE)},
-                                  {CreateDPQuantileParameters(0.1)},
+                                  {CreateParameters({0.1})},
                                   {}};
 
   auto aggregator_status1 = CreateTensorAggregator(intrinsic);
@@ -684,8 +650,7 @@ TEST(DPQuantileAggregatorTest, SerializeAndDeserialize) {
   auto& aggregator1 =
       dynamic_cast<DPQuantileAggregator<double>&>(*aggregator_status1.value());
   for (int i = 0; i < kDPQuantileMaxInputs + 1; ++i) {
-    Tensor t =
-        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({50})).value();
+    Tensor t(50.0);
     auto accumulate_status = aggregator1.Accumulate(InputTensorList({&t}));
     TFF_EXPECT_OK(accumulate_status);
   }
