@@ -18,6 +18,7 @@
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_TESTING_TESTING_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <optional>
 #include <ostream>
@@ -223,6 +224,22 @@ TensorMatcher<T> IsTensor(TensorShape expected_shape,
                           std::optional<T> tolerance = std::nullopt) {
   return TensorMatcher<T>(internal::TypeTraits<T>::kDataType, expected_shape,
                           expected_values, tolerance);
+}
+
+template <typename T>
+TensorMatcher<T> IsTensor(std::initializer_list<T> expected_values) {
+  return TensorMatcher<T>(
+      internal::TypeTraits<T>::kDataType,
+      TensorShape{static_cast<int64_t>(expected_values.size())},
+      expected_values);
+}
+
+template <typename T>
+TensorMatcher<T> IsTensor(std::vector<T> expected_values) {
+  return TensorMatcher<T>(
+      internal::TypeTraits<T>::kDataType,
+      TensorShape{static_cast<int64_t>(expected_values.size())},
+      expected_values);
 }
 
 template <typename T>

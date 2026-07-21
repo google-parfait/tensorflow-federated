@@ -79,7 +79,7 @@ class Tensor final {
   Tensor() : dtype_(DT_INVALID), shape_{}, data_(nullptr), name_("") {}
 
   // Constructor for a scalar tensor of type T.
-  template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+  template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
   explicit Tensor(T value, std::string name = "")
       : dtype_(internal::TypeTraits<T>::kDataType),
         shape_{},
@@ -89,8 +89,8 @@ class Tensor final {
                   "Incompatible tensor dtype()");
   }
 
-  template <typename T, typename = std::enable_if_t<
-                            std::is_constructible_v<std::string, T>>>
+  template <typename T,
+            std::enable_if_t<std::is_constructible_v<std::string, T>, int> = 0>
   explicit Tensor(T&& value, std::string name = "")
       : dtype_(DT_STRING),
         shape_{},
@@ -99,7 +99,7 @@ class Tensor final {
         name_(std::move(name)) {}
 
   // Constructor for a one-dimensional tensor of type T.
-  template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+  template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
   explicit Tensor(std::vector<T>&& values, std::string name = "")
       : dtype_(internal::TypeTraits<T>::kDataType),
         shape_{static_cast<int64_t>(values.size())},
@@ -118,12 +118,14 @@ class Tensor final {
         name_(std::move(name)) {}
 
   // Constructor for one-dimensional numeric tensor from an initializer list.
-  template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+  template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
   Tensor(std::initializer_list<T> values, std::string name = "")
       : Tensor(std::vector<T>(values.begin(), values.end()), std::move(name)) {}
 
   // Constructor for one-dimensional string tensor from an initializer list.
-  Tensor(std::initializer_list<std::string> values, std::string name = "")
+  template <typename T,
+            std::enable_if_t<std::is_constructible_v<std::string, T>, int> = 0>
+  Tensor(std::initializer_list<T> values, std::string name = "")
       : Tensor(std::vector<std::string>(values.begin(), values.end()),
                std::move(name)) {}
 

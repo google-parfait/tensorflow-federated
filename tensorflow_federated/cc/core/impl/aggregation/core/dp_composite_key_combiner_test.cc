@@ -33,8 +33,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
@@ -42,6 +40,7 @@ namespace tensorflow_federated {
 namespace aggregation {
 namespace {
 
+using ::testing::ElementsAre;
 using ::testing::Eq;
 using testing::internal::MakePredicateFormatterFromMatcher;
 
@@ -77,22 +76,14 @@ TEST(DPCompositeKeyCombinerTest, AccumulateTwiceAndOutput_L0BoundIs1) {
     DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_STRING, DT_STRING},
                                     1);
 
-    Tensor alice_t1 = Tensor::Create(DT_STRING, {2},
-                                     CreateTestData<string_view>(alice_column1))
-                          .value();
-    Tensor alice_t2 = Tensor::Create(DT_STRING, {2},
-                                     CreateTestData<string_view>(alice_column2))
-                          .value();
+    Tensor alice_t1(alice_column1);
+    Tensor alice_t2(alice_column2);
     StatusOr<Tensor> alice_result =
         combiner.Accumulate(InputTensorList({&alice_t1, &alice_t2}));
     ASSERT_OK(alice_result);
 
-    Tensor bob_t1 =
-        Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>(bob_column1))
-            .value();
-    Tensor bob_t2 =
-        Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>(bob_column2))
-            .value();
+    Tensor bob_t1(bob_column1);
+    Tensor bob_t2(bob_column2);
     StatusOr<Tensor> bob_result =
         combiner.Accumulate(InputTensorList({&bob_t1, &bob_t2}));
     ASSERT_OK(bob_result);
@@ -104,8 +95,7 @@ TEST(DPCompositeKeyCombinerTest, AccumulateTwiceAndOutput_L0BoundIs1) {
     for (auto option : options) {
       found_match = true;
       for (int i = 0; i < 2; i++) {
-        auto matcher = IsTensor<string_view>(
-            {static_cast<int64_t>(option[i].size())}, option[i]);
+        auto matcher = IsTensor<string_view>(option[i]);
         auto callable_matcher = MakePredicateFormatterFromMatcher(matcher);
         found_match = found_match && callable_matcher("output[i]", output[i]);
       }
@@ -121,24 +111,13 @@ TEST(DPCompositeKeyCombinerTest, AccumulateWithL0BoundZero_NoBoundingApplied) {
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT, DT_STRING},
                                   0);
 
-  std::initializer_list<float> column1 = {1.1, 1.2, 1.3};
-  std::initializer_list<string_view> column2 = {"abc", "de", "fghi"};
-
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor t1, Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>(column1)));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor t2,
-      Tensor::Create(DT_STRING, {3}, CreateTestData<string_view>(column2)));
-
-  StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
-  ASSERT_OK(result);
-
-  EXPECT_THAT(result.value(), IsTensor<int64_t>({3}, {0, 1, 2}));
-
-  OutputTensorList output = combiner.GetOutputKeys();
-  EXPECT_THAT(output.size(), Eq(2));
-  EXPECT_THAT(output[0], IsTensor<float>({3}, {1.1, 1.2, 1.3}));
-  EXPECT_THAT(output[1], IsTensor<string_view>({3}, {"abc", "de", "fghi"}));
+  Tensor t1({1.1f, 1.2f, 1.3f});
+  Tensor t2({"abc", "de", "fghi"});
+  EXPECT_THAT(combiner.Accumulate(InputTensorList({&t1, &t2})),
+              IsOkAndHolds(IsTensor<int64_t>({0, 1, 2})));
+  EXPECT_THAT(combiner.GetOutputKeys(),
+              ElementsAre(IsTensor<float>({1.1, 1.2, 1.3}),
+                          IsTensor<string_view>({"abc", "de", "fghi"})));
 }
 
 TEST(DPCompositeKeyCombinerTest,
@@ -146,24 +125,13 @@ TEST(DPCompositeKeyCombinerTest,
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT, DT_STRING},
                                   3);
 
-  std::initializer_list<float> column1 = {1.1, 1.2, 1.3};
-  std::initializer_list<string_view> column2 = {"abc", "de", "fghi"};
-
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor t1, Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>(column1)));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor t2,
-      Tensor::Create(DT_STRING, {3}, CreateTestData<string_view>(column2)));
-
-  StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
-  ASSERT_OK(result);
-
-  EXPECT_THAT(result.value(), IsTensor<int64_t>({3}, {0, 1, 2}));
-
-  OutputTensorList output = combiner.GetOutputKeys();
-  EXPECT_THAT(output.size(), Eq(2));
-  EXPECT_THAT(output[0], IsTensor<float>({3}, {1.1, 1.2, 1.3}));
-  EXPECT_THAT(output[1], IsTensor<string_view>({3}, {"abc", "de", "fghi"}));
+  Tensor t1({1.1f, 1.2f, 1.3f});
+  Tensor t2({"abc", "de", "fghi"});
+  ASSERT_THAT(combiner.Accumulate(InputTensorList({&t1, &t2})),
+              IsOkAndHolds(IsTensor<int64_t>({0, 1, 2})));
+  ASSERT_THAT(combiner.GetOutputKeys(),
+              ElementsAre(IsTensor<float>({1.1, 1.2, 1.3}),
+                          IsTensor<string_view>({"abc", "de", "fghi"})));
 }
 
 TEST(DPCompositeKeyCombinerTest, AccumulateAndOutput_L0BoundIs1) {
@@ -185,14 +153,9 @@ TEST(DPCompositeKeyCombinerTest, AccumulateAndOutput_L0BoundIs1) {
   for (int r = 0; r < NUM_REPETITIONS; r++) {
     DPCompositeKeyCombiner combiner(
         std::vector<DataType>{DT_FLOAT, DT_STRING, DT_STRING}, 1);
-    Tensor t1 =
-        Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>(column1)).value();
-    Tensor t2 =
-        Tensor::Create(DT_STRING, {3}, CreateTestData<string_view>(column2))
-            .value();
-    Tensor t3 =
-        Tensor::Create(DT_STRING, {3}, CreateTestData<string_view>(column3))
-            .value();
+    Tensor t1(column1);
+    Tensor t2(column2);
+    Tensor t3(column3);
 
     // Loop through the space of possible combinations: one of them should match
     StatusOr<Tensor> result =
@@ -201,7 +164,7 @@ TEST(DPCompositeKeyCombinerTest, AccumulateAndOutput_L0BoundIs1) {
 
     bool valid_ordinals = false;
     for (auto possible_result : possible_results) {
-      auto matcher = IsTensor<int64_t>({3}, possible_result);
+      auto matcher = IsTensor<int64_t>(possible_result);
       auto callable_matcher = MakePredicateFormatterFromMatcher(matcher);
       if (callable_matcher("result.value()", result.value())) {
         valid_ordinals = true;
@@ -247,14 +210,9 @@ TEST(DPCompositeKeyCombinerTest, AccumulateAndOutput_L0BoundIs2) {
   for (int r = 0; r < NUM_REPETITIONS; r++) {
     DPCompositeKeyCombiner combiner(
         std::vector<DataType>{DT_FLOAT, DT_STRING, DT_STRING}, 2);
-    Tensor t1 =
-        Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>(column1)).value();
-    Tensor t2 =
-        Tensor::Create(DT_STRING, {3}, CreateTestData<string_view>(column2))
-            .value();
-    Tensor t3 =
-        Tensor::Create(DT_STRING, {3}, CreateTestData<string_view>(column3))
-            .value();
+    Tensor t1(column1);
+    Tensor t2(column2);
+    Tensor t3(column3);
 
     StatusOr<Tensor> result =
         combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
@@ -262,7 +220,7 @@ TEST(DPCompositeKeyCombinerTest, AccumulateAndOutput_L0BoundIs2) {
 
     bool valid_ordinals = false;
     for (auto possible_result : possible_results) {
-      auto matcher = IsTensor<int64_t>({3}, possible_result);
+      auto matcher = IsTensor<int64_t>(possible_result);
       auto callable_matcher = MakePredicateFormatterFromMatcher(matcher);
       if (callable_matcher("result.value()", result.value())) {
         valid_ordinals = true;
@@ -309,36 +267,24 @@ TEST(DPCompositeKeyCombinerTest, EmptyInput_Invalid) {
 
 TEST(DPCompositeKeyCombinerTest, InputWithWrongShapeTensor_Invalid) {
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT, DT_INT32});
-  Tensor t1 =
-      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({1, 2, 3, 4}))
-          .value();
+  Tensor t1({1.1f, 1.2f, 1.3f});
+  Tensor t2({1, 2, 3, 4});
   StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
   ASSERT_THAT(result, StatusIs(INVALID_ARGUMENT));
 }
 
 TEST(DPCompositeKeyCombinerTest, InputWithTooFewTensorsInvalid) {
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT, DT_INT32});
-  Tensor t1 =
-      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({1, 2, 3})).value();
+  Tensor t1({1.1f, 1.2f, 1.3f});
   StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1}));
   ASSERT_THAT(result, StatusIs(INVALID_ARGUMENT));
 }
 
 TEST(DPCompositeKeyCombinerTest, InputWithTooManyTensors_Invalid) {
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT, DT_INT32});
-  Tensor t1 =
-      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({1, 2, 3})).value();
-  Tensor t3 =
-      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({4, 5, 6})).value();
+  Tensor t1({1.1f, 1.2f, 1.3f});
+  Tensor t2({1, 2, 3});
+  Tensor t3({4, 5, 6});
   StatusOr<Tensor> result =
       combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
   ASSERT_THAT(result, StatusIs(INVALID_ARGUMENT));
@@ -346,11 +292,8 @@ TEST(DPCompositeKeyCombinerTest, InputWithTooManyTensors_Invalid) {
 
 TEST(DPCompositeKeyCombinerTest, InputWithWrongTypes_Invalid) {
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT, DT_STRING});
-  Tensor t1 =
-      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({1, 2, 3})).value();
+  Tensor t1({1.1f, 1.2f, 1.3f});
+  Tensor t2({1, 2, 3});
   StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
   ASSERT_THAT(result, StatusIs(INVALID_ARGUMENT));
 }
@@ -359,113 +302,67 @@ TEST(DPCompositeKeyCombinerTest, OutputBeforeAccumulateOutputsEmptyTensor) {
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT});
   OutputTensorList output = combiner.GetOutputKeys();
   EXPECT_THAT(output.size(), Eq(1));
-  EXPECT_THAT(output[0], IsTensor<float>({0}, {}));
+  EXPECT_THAT(output[0], IsTensor<float>({}));
 }
 
 TEST(DPCompositeKeyCombinerTest, AccumulateAndOutput_SingleElement) {
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT});
-  Tensor t1 =
-      Tensor::Create(DT_FLOAT, {1}, CreateTestData<float>({1.3})).value();
-  StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1}));
-  ASSERT_OK(result);
-  EXPECT_THAT(result.value(), IsTensor<int64_t>({1}, {0}));
-
-  OutputTensorList output = combiner.GetOutputKeys();
-  EXPECT_THAT(output.size(), Eq(1));
-  EXPECT_THAT(output[0], IsTensor<float>({1}, {1.3}));
+  Tensor t1({1.3f});
+  EXPECT_THAT(combiner.Accumulate(InputTensorList({&t1})),
+              IsOkAndHolds(IsTensor<int64_t>({0})));
+  EXPECT_THAT(combiner.GetOutputKeys(), ElementsAre(IsTensor<float>({1.3})));
 }
 
 TEST(DPCompositeKeyCombinerTest, AccumulateAndOutput_NumericTypes) {
   DPCompositeKeyCombiner combiner(
       std::vector<DataType>{DT_FLOAT, DT_INT32, DT_INT64});
-  Tensor t1 =
-      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({1, 2, 3})).value();
-  Tensor t3 =
-      Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({4, 5, 6})).value();
-  StatusOr<Tensor> result =
-      combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
-  ASSERT_OK(result);
-  EXPECT_THAT(result.value(), IsTensor<int64_t>({3}, {0, 1, 2}));
-
-  OutputTensorList output = combiner.GetOutputKeys();
-  EXPECT_THAT(output.size(), Eq(3));
-  EXPECT_THAT(output[0], IsTensor<float>({3}, {1.1, 1.2, 1.3}));
-  EXPECT_THAT(output[1], IsTensor<int32_t>({3}, {1, 2, 3}));
-  EXPECT_THAT(output[2], IsTensor<int64_t>({3}, {4, 5, 6}));
+  Tensor t1({1.1f, 1.2f, 1.3f});
+  Tensor t2({1, 2, 3});
+  Tensor t3({INT64_C(4), INT64_C(5), INT64_C(6)});
+  EXPECT_THAT(combiner.Accumulate(InputTensorList({&t1, &t2, &t3})),
+              IsOkAndHolds(IsTensor<int64_t>({0, 1, 2})));
+  EXPECT_THAT(
+      combiner.GetOutputKeys(),
+      ElementsAre(IsTensor<float>({1.1, 1.2, 1.3}),
+                  IsTensor<int32_t>({1, 2, 3}), IsTensor<int64_t>({4, 5, 6})));
 }
 
 TEST(DPCompositeKeyCombinerTest, AccumulateAndOutput_StringTypes) {
   DPCompositeKeyCombiner combiner(
       std::vector<DataType>{DT_FLOAT, DT_STRING, DT_STRING});
-  Tensor t1 =
-      Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
-          .value();
-  Tensor t2 = Tensor::Create(DT_STRING, {3},
-                             CreateTestData<string_view>({"abc", "de", ""}))
-                  .value();
-  Tensor t3 =
-      Tensor::Create(DT_STRING, {3},
-                     CreateTestData<string_view>({"fghi", "jklmn", "o"}))
-          .value();
-  StatusOr<Tensor> result =
-      combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
-  ASSERT_OK(result);
-  EXPECT_THAT(result.value(), IsTensor<int64_t>({3}, {0, 1, 2}));
-
-  OutputTensorList output = combiner.GetOutputKeys();
-  EXPECT_THAT(output.size(), Eq(3));
-  EXPECT_THAT(output[0], IsTensor<float>({3}, {1.1, 1.2, 1.3}));
-  EXPECT_THAT(output[1], IsTensor<string_view>({3}, {"abc", "de", ""}));
-  EXPECT_THAT(output[2], IsTensor<string_view>({3}, {"fghi", "jklmn", "o"}));
+  Tensor t1({1.1f, 1.2f, 1.3f});
+  Tensor t2({"abc", "de", ""});
+  Tensor t3({"fghi", "jklmn", "o"});
+  EXPECT_THAT(combiner.Accumulate(InputTensorList({&t1, &t2, &t3})),
+              IsOkAndHolds(IsTensor<int64_t>({0, 1, 2})));
+  EXPECT_THAT(combiner.GetOutputKeys(),
+              ElementsAre(IsTensor<float>({1.1, 1.2, 1.3}),
+                          IsTensor<string_view>({"abc", "de", ""}),
+                          IsTensor<string_view>({"fghi", "jklmn", "o"})));
 }
 
 TEST(DPCompositeKeyCombinerTest,
      StringTypes_SameCompositeKeysResultInSameOrdinalsAcrossAccumulateCalls) {
   DPCompositeKeyCombiner combiner(
       std::vector<DataType>{DT_FLOAT, DT_STRING, DT_STRING});
-  Tensor t1 =
-      Tensor::Create(DT_FLOAT, {4}, CreateTestData<float>({1.1, 1.2, 1.2, 1.3}))
-          .value();
-  Tensor t2 =
-      Tensor::Create(DT_STRING, {4},
-                     CreateTestData<string_view>({"abc", "de", "de", ""}))
-          .value();
-  Tensor t3 = Tensor::Create(
-                  DT_STRING, {4},
-                  CreateTestData<string_view>({"fghi", "jklmn", "jklmn", "o"}))
-                  .value();
-  StatusOr<Tensor> result1 =
-      combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
-  ASSERT_OK(result1);
-  EXPECT_THAT(result1.value(), IsTensor<int64_t>({4}, {0, 1, 1, 2}));
+  Tensor t1({1.1f, 1.2f, 1.2f, 1.3f});
+  Tensor t2({"abc", "de", "de", ""});
+  Tensor t3({"fghi", "jklmn", "jklmn", "o"});
+  ASSERT_THAT(combiner.Accumulate(InputTensorList({&t1, &t2, &t3})),
+              IsOkAndHolds(IsTensor<int64_t>({0, 1, 1, 2})));
 
   // Across different calls to Accumulate, tensors can have different shape.
-  Tensor t4 = Tensor::Create(DT_FLOAT, {5},
-                             CreateTestData<float>({1.3, 1.4, 1.1, 1.2, 1.1}))
-                  .value();
-  Tensor t5 = Tensor::Create(
-                  DT_STRING, {5},
-                  CreateTestData<string_view>({"", "abc", "abc", "de", "abc"}))
-                  .value();
-  Tensor t6 =
-      Tensor::Create(
-          DT_STRING, {5},
-          CreateTestData<string_view>({"o", "pqrs", "fghi", "jklmn", "fghi"}))
-          .value();
-  StatusOr<Tensor> result2 =
-      combiner.Accumulate(InputTensorList({&t4, &t5, &t6}));
-  ASSERT_OK(result2);
-  EXPECT_THAT(result2.value(), IsTensor<int64_t>({5}, {2, 3, 0, 1, 0}));
+  Tensor t4({1.3f, 1.4f, 1.1f, 1.2f, 1.1f});
+  Tensor t5({"", "abc", "abc", "de", "abc"});
+  Tensor t6({"o", "pqrs", "fghi", "jklmn", "fghi"});
+  ASSERT_THAT(combiner.Accumulate(InputTensorList({&t4, &t5, &t6})),
+              IsOkAndHolds(IsTensor<int64_t>({2, 3, 0, 1, 0})));
 
-  OutputTensorList output = combiner.GetOutputKeys();
-  EXPECT_THAT(output.size(), Eq(3));
-  EXPECT_THAT(output[0], IsTensor<float>({4}, {1.1, 1.2, 1.3, 1.4}));
-  EXPECT_THAT(output[1], IsTensor<string_view>({4}, {"abc", "de", "", "abc"}));
-  EXPECT_THAT(output[2],
-              IsTensor<string_view>({4}, {"fghi", "jklmn", "o", "pqrs"}));
+  ASSERT_THAT(
+      combiner.GetOutputKeys(),
+      ElementsAre(IsTensor<float>({1.1, 1.2, 1.3, 1.4}),
+                  IsTensor<string_view>({"abc", "de", "", "abc"}),
+                  IsTensor<string_view>({"fghi", "jklmn", "o", "pqrs"})));
 }
 
 // Test that the ordinal returned by GetOrdinalFromDomainTensors is consistent
@@ -477,32 +374,19 @@ TEST(DPCompositeKeyCombinerTest, AccumulateAndGetOrdinal_NumericTypes) {
         std::vector<DataType>{DT_FLOAT, DT_INT32, DT_INT64}, 2);
 
     // Create tensors that we will use to call Accumulate.
-    Tensor t1 =
-        Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
-            .value();
-    Tensor t2 =
-        Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({1, 2, 3}))
-            .value();
-    Tensor t3 =
-        Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({4, 5, 6}))
-            .value();
-    StatusOr<Tensor> result =
-        combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
+    Tensor t1({1.1f, 1.2f, 1.3f});
+    Tensor t2({1, 2, 3});
+    Tensor t3({INT64_C(4), INT64_C(5), INT64_C(6)});
+    ASSERT_OK(combiner.Accumulate(InputTensorList({&t1, &t2, &t3})));
 
     // Create 3 tensors which describe the domain of each key.
     // An extra tensor has an unused value. This is to show that GetOrdinal can
     // operate on a slice of intrinsic.parameters (ignore DP parameters).
     OutputTensorList domain_tensor_list;
-    domain_tensor_list.push_back(
-        Tensor::Create(DT_STRING, {1},
-                       CreateTestData<string_view>({"to be skipped"}))
-            .value());
-    domain_tensor_list.push_back(
-        Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({0, 1.2})).value());
-    domain_tensor_list.push_back(
-        Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({2})).value());
-    domain_tensor_list.push_back(
-        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({5})).value());
+    domain_tensor_list.push_back(Tensor({"to be skipped"}));
+    domain_tensor_list.push_back(Tensor({0.0f, 1.2f}));
+    domain_tensor_list.push_back(Tensor({2}));
+    domain_tensor_list.push_back(Tensor({INT64_C(5)}));
 
     Tensor* ptr = &(domain_tensor_list[1]);
     TensorSpan domain_tensors(ptr, 3);
@@ -535,35 +419,19 @@ TEST(DPCompositeKeyCombinerTest, AccumulateAndGetOrdinal_StringTypes) {
   for (int i = 0; i < NUM_REPETITIONS; i++) {
     DPCompositeKeyCombiner combiner(
         std::vector<DataType>{DT_FLOAT, DT_STRING, DT_STRING}, 2);
-    Tensor t1 =
-        Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
-            .value();
-    Tensor t2 = Tensor::Create(DT_STRING, {3},
-                               CreateTestData<string_view>({"abc", "de", ""}))
-                    .value();
-    Tensor t3 =
-        Tensor::Create(DT_STRING, {3},
-                       CreateTestData<string_view>({"fghi", "jklmn", "o"}))
-            .value();
-    StatusOr<Tensor> result =
-        combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
+    Tensor t1({1.1f, 1.2f, 1.3f});
+    Tensor t2({"abc", "de", ""});
+    Tensor t3({"fghi", "jklmn", "o"});
+    ASSERT_OK(combiner.Accumulate(InputTensorList({&t1, &t2, &t3})));
 
     // Create 3 tensors which describe the domain of each key.
     // An extra tensor has an unused value. This is to show that GetOrdinal can
     // operate on a slice of intrinsic.parameters (ignore DP parameters).
     OutputTensorList domain_tensor_list;
-    domain_tensor_list.push_back(
-        Tensor::Create(DT_STRING, {1},
-                       CreateTestData<string_view>({"to be skipped"}))
-            .value());
-    domain_tensor_list.push_back(
-        Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({0, 1.2})).value());
-    domain_tensor_list.push_back(
-        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"de"}))
-            .value());
-    domain_tensor_list.push_back(
-        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"jklmn"}))
-            .value());
+    domain_tensor_list.push_back(Tensor({"to be skipped"}));
+    domain_tensor_list.push_back(Tensor({0.0f, 1.2f}));
+    domain_tensor_list.push_back(Tensor({"de"}));
+    domain_tensor_list.push_back(Tensor({"jklmn"}));
 
     Tensor* ptr = &(domain_tensor_list[1]);
     TensorSpan domain_tensors(ptr, 3);
@@ -593,67 +461,37 @@ TEST(DPCompositeKeyCombinerTest, AccumulateAndGetOrdinal_StringTypes) {
 }
 
 TEST(DPCompositeKeyCombinerTest, AccumulateWithDomainSpec_FiltersOutElements) {
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor domain1,
-      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"ripe"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor domain2,
-      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"tomato"})));
   std::vector<Tensor> domain_tensors;
-  domain_tensors.push_back(std::move(domain1));
-  domain_tensors.push_back(std::move(domain2));
+  domain_tensors.push_back(Tensor({"ripe"}));
+  domain_tensors.push_back(Tensor({"tomato"}));
   DomainSpec domain_spec(domain_tensors);
 
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_STRING, DT_STRING},
                                   kDefaultL0Bound, std::move(domain_spec));
 
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor t1,
-      Tensor::Create(DT_STRING, {3},
-                     CreateTestData<string_view>({"ripe", "old", "ripe"})));
-  TFF_ASSERT_OK_AND_ASSIGN(Tensor t2,
-                           Tensor::Create(DT_STRING, {3},
-                                          CreateTestData<string_view>(
-                                              {"tomato", "apple", "apple"})));
+  Tensor t1({"ripe", "old", "ripe"});
+  Tensor t2({"tomato", "apple", "apple"});
+  ASSERT_THAT(combiner.Accumulate(InputTensorList({&t1, &t2})),
+              IsOkAndHolds(IsTensor<int64_t>({0, -1, -1})));
 
-  StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
-  ASSERT_OK(result);
-
-  EXPECT_THAT(result.value(), IsTensor<int64_t>({3}, {0, -1, -1}));
-
-  OutputTensorList output = combiner.GetOutputKeys();
-  EXPECT_THAT(output.size(), Eq(2));
-  EXPECT_THAT(output[0], IsTensor<string_view>({1}, {"ripe"}));
-  EXPECT_THAT(output[1], IsTensor<string_view>({1}, {"tomato"}));
+  ASSERT_THAT(combiner.GetOutputKeys(),
+              ElementsAre(IsTensor<string_view>({"ripe"}),
+                          IsTensor<string_view>({"tomato"})));
 }
 
 TEST(DPCompositeKeyCombinerTest,
      AccumulateWithBoundAndDomainSpec_FiltersAndBounds) {
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor domain1,
-      Tensor::Create(DT_STRING, {2},
-                     CreateTestData<string_view>({"ripe", "old"})));
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor domain2,
-      Tensor::Create(DT_STRING, {2},
-                     CreateTestData<string_view>({"tomato", "apple"})));
   std::vector<Tensor> domain_tensors;
-  domain_tensors.push_back(std::move(domain1));
-  domain_tensors.push_back(std::move(domain2));
+  domain_tensors.push_back(Tensor({"ripe", "old"}));
+  domain_tensors.push_back(Tensor({"tomato", "apple"}));
   DomainSpec domain_spec(domain_tensors);
 
   // L0 bound of 1 means we prevent contributing to more than one group.
   DPCompositeKeyCombiner combiner(std::vector<DataType>{DT_STRING, DT_STRING},
                                   /*l0_bound=*/1, std::move(domain_spec));
 
-  TFF_ASSERT_OK_AND_ASSIGN(
-      Tensor t1,
-      Tensor::Create(DT_STRING, {3},
-                     CreateTestData<string_view>({"ripe", "old", "unseen"})));
-  TFF_ASSERT_OK_AND_ASSIGN(Tensor t2,
-                           Tensor::Create(DT_STRING, {3},
-                                          CreateTestData<string_view>(
-                                              {"tomato", "apple", "unseen"})));
+  Tensor t1({"ripe", "old", "unseen"});
+  Tensor t2({"tomato", "apple", "unseen"});
 
   StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({&t1, &t2}));
   ASSERT_OK(result);
