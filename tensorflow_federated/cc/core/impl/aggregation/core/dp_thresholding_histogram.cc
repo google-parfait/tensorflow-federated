@@ -230,10 +230,21 @@ StatusOr<std::string> DPThresholdingHistogram::GetNoiseDescription() const {
 
   absl::StrAppend(&noise_description, "Any group with fewer than ",
                   min_contributors_to_group().value(),
-                  " contributors was dropped.\n");
+                  " contributors will NOT be included in the output. "
+                  "Membership probability is 0.\n");
   absl::StrAppend(&noise_description, "Any group with more than ",
                   max_contributors_to_group().value(),
-                  " contributors was kept.\n");
+                  " contributors will ALWAYS be included in the output. "
+                  "Membership probability is 1.\n");
+  absl::StrAppend(&noise_description,
+                  "For any other group, a biased coin flip "
+                  "decides membership. Membership probability will be "
+                  "large when the number of contributors is large.\n");
+  absl::StrAppend(&noise_description,
+                  "\tMembership randomization is needed "
+                  "to achieve differential privacy; ",
+                  max_contributors_to_group().value(),
+                  " depends on epsilon, delta.\n");
 
   return noise_description;
 }

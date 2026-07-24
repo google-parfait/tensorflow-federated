@@ -91,7 +91,7 @@ StatusOr<std::string> DPGroupByAggregator::GetNoiseDescription() const {
              << "DPGroupByAggregator::GetNoiseDescription: a mechanism was not "
                 "set.";
     }
-    absl::StrAppend(&noise_description, "Aggregation ", i, ": \n");
+    absl::StrAppend(&noise_description, "Aggregation ", i, ":\n");
 
     // Report the error magnitude of the noised values.
     TFF_ASSIGN_OR_RETURN(auto confidence_interval,
