@@ -24,7 +24,7 @@ py_library(
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
     deps = [
         ":compiler",
-        ":execution_contexts",
+        ":cpp_execution_contexts",
     ],
 )
 
@@ -68,8 +68,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//portpicker",
     ],
 )
 
@@ -78,36 +76,9 @@ py_test(
     srcs = ["cpp_execution_contexts_test.py"],
     deps = [
         ":cpp_execution_contexts",
-        ":execution_contexts",
         "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
         "@federated_language//federated_language",
         "@pypi//absl_py",
-        "@pypi//dm_tree",
-        "@pypi//numpy",
-    ],
-)
-
-py_library(
-    name = "execution_contexts",
-    srcs = ["execution_contexts.py"],
-    deps = [
-        ":compiler",
-        "//tensorflow_federated/python/core/backends/native:compiler",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
-        "@federated_language//federated_language",
-    ],
-)
-
-py_test(
-    name = "execution_contexts_test",
-    srcs = ["execution_contexts_test.py"],
-    deps = [
-        ":execution_contexts",
-        "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
-        "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//grpcio",
         "@pypi//numpy",
     ],
 )

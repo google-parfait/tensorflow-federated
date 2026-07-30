@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-#include "tensorflow_federated/examples/custom_data_backend/data_backend_example.h"
+#include "examples/custom_data_backend/data_backend_example.h"
 
 #include <string>
 #include <utility>

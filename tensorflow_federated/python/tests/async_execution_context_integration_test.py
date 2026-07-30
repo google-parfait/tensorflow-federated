@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Integration tests for AsyncExecutionContext."""
 
 import unittest
 
@@ -25,8 +26,7 @@ class AsyncContextInstallationTest(
 ):
 
   async def test_install_and_execute_in_context(self):
-    factory = tff.framework.local_cpp_executor_factory()
-    context = federated_language.framework.AsyncExecutionContext(factory)
+    context = tff.backends.native.create_async_local_cpp_execution_context()
 
     @federated_language.federated_computation(np.int32)
     def identity(x):
@@ -39,8 +39,7 @@ class AsyncContextInstallationTest(
   async def test_install_and_execute_computations_with_different_cardinalities(
       self,
   ):
-    factory = tff.framework.local_cpp_executor_factory()
-    context = federated_language.framework.AsyncExecutionContext(factory)
+    context = tff.backends.native.create_async_local_cpp_execution_context()
 
     @federated_language.federated_computation(
         federated_language.FederatedType(np.int32, federated_language.CLIENTS)
@@ -55,9 +54,8 @@ class AsyncContextInstallationTest(
       self.assertEqual(second_value, [[1, 2], [1, 2]])
 
   async def test_runs_cardinality_free(self):
-    factory = tff.framework.local_cpp_executor_factory()
-    context = federated_language.framework.AsyncExecutionContext(
-        factory, cardinality_inference_fn=(lambda x, y: {})
+    context = tff.backends.native.create_async_local_cpp_execution_context(
+        cardinality_inference_fn=(lambda x, y: {})
     )
 
     @federated_language.federated_computation(np.int32)
@@ -71,14 +69,13 @@ class AsyncContextInstallationTest(
       self.assertEqual(value, 0)
 
   async def test_raises_exception(self):
-    factory = tff.framework.local_cpp_executor_factory()
 
     def _cardinality_fn(x, y):
       del x, y  # Unused
       return {federated_language.CLIENTS: 1}
 
-    context = federated_language.framework.AsyncExecutionContext(
-        factory, cardinality_inference_fn=_cardinality_fn
+    context = tff.backends.native.create_async_local_cpp_execution_context(
+        cardinality_inference_fn=_cardinality_fn
     )
 
     arg_type = federated_language.FederatedType(

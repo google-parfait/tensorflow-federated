@@ -61,7 +61,12 @@ py_library(
     deps = [
         ":graph_spec",
         "@pypi//absl_py",
-    ],
+    ] + select({
+        "//third_party/tensorflow:tff_pip_build": [],
+        "//conditions:default": [
+            "@org_tensorflow//tensorflow/python/grappler:tf_optimizer",
+        ],
+    }),
 )
 
 py_test(
@@ -231,7 +236,8 @@ py_library(
     name = "tensorflow_executor_bindings",
     srcs = ["tensorflow_executor_bindings.py"],
     deps = [
-        "//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings",
+        "//tensorflow_federated/cc/core/impl:tff_bindings",  # buildcleaner: keep
+        "//tensorflow_federated/cc/core/impl/executors:cc_executors_init",
         "@pypi//tensorflow",
     ],
 )

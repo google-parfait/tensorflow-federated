@@ -144,6 +144,7 @@ jobs:
     - name: Build Python package
       run: |
         bazelisk run //tools/python_package:build_python_package \
+            --define=tff_pip_build=true \
             --build_tag_filters="-nokokoro,-nopresubmit,-requires-gpu-nvidia" \
             --google_credentials="${{ steps.auth.outputs.credentials_file_path }}" \
             --remote_cache="https://storage.googleapis.com/tensorflow-federated-bazel-cache/${{ github.job }}" \

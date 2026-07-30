@@ -18,7 +18,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from examplespersonalization import p13n_utils
+from examples.personalization import p13n_utils
 
 _INPUT_DIM = 2
 _OUTPUT_DIM = 1

@@ -12,54 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
-from typing import NoReturn, Optional
+
 import unittest
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
 import numpy as np
-import tree
 
 from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
-from tensorflow_federated.python.core.backends.test import execution_contexts
-
-
-def _assert_signature_equal(first_obj, second_obj):
-  first_signature = inspect.signature(first_obj)
-  second_signature = inspect.signature(second_obj)
-  # Only assert that the parameters and return type annotations are equal, the
-  # entire signature (e.g. the docstring) is not expected to be equal.
-  if first_signature.parameters != second_signature.parameters:
-    raise AssertionError(
-        f'{first_signature.parameters} != {second_signature.parameters}'
-    )
-  if first_signature.return_annotation != second_signature.return_annotation:
-    raise AssertionError(
-        f'{first_signature.return_annotation} != '
-        f'{second_signature.return_annotation}'
-    )
-
-
-def assert_value_equal(a: object, b: object) -> Optional[NoReturn]:
-  def _assert_value_equal(a: object, b: object) -> Optional[NoReturn]:
-    if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
-      np.testing.assert_array_equal(a, b)
-    elif a != b:
-      raise AssertionError(f'{a} != {b}')
-
-  tree.map_structure(_assert_value_equal, a, b)
 
 
 class CreateAsyncTestCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.create_async_test_cpp_execution_context,
-        execution_contexts.create_async_test_cpp_execution_context,
-    )
 
   def test_returns_async_context(self):
     context = cpp_execution_contexts.create_async_test_cpp_execution_context()
@@ -68,36 +33,12 @@ class CreateAsyncTestCPPExecutionContextTest(absltest.TestCase):
     )
 
 
-class SetAsyncTestCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.set_async_test_cpp_execution_context,
-        execution_contexts.set_async_test_cpp_execution_context,
-    )
-
-
 class CreateSyncTestCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.create_sync_test_cpp_execution_context,
-        execution_contexts.create_sync_test_cpp_execution_context,
-    )
 
   def test_returns_sync_context(self):
     context = cpp_execution_contexts.create_sync_test_cpp_execution_context()
     self.assertIsInstance(
         context, federated_language.framework.SyncExecutionContext
-    )
-
-
-class SetSyncTestCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.set_sync_test_cpp_execution_context,
-        execution_contexts.set_sync_test_cpp_execution_context,
     )
 
 

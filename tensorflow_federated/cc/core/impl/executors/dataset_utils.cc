@@ -23,6 +23,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/cc/framework/scope.h"
@@ -59,6 +60,16 @@ absl::StatusOr<tensorflow::Tensor> GraphDefTensorFromSequence(
   return DatasetFromTensorStructures(tensor_structures);
 }
 
+const tensorflow::AttrValue* FindAttr(const tensorflow::NodeDef& node,
+                                      absl::string_view name) {
+  for (const auto& attr : node.attr()) {
+    if (attr.first == name) {
+      return &attr.second;
+    }
+  }
+  return nullptr;
+}
+
 absl::StatusOr<std::pair<tensorflow::DataTypeVector,
                          std::vector<tensorflow::PartialTensorShape>>>
 ExtractOutputTypesAndShapesFromGraphDef(
@@ -77,21 +88,27 @@ ExtractOutputTypesAndShapesFromGraphDef(
   std::vector<tensorflow::PartialTensorShape> output_shapes;
   bool found = false;
   for (const auto& node : graph_def.node()) {
-    auto it_types = node.attr().find("output_types");
-    if (it_types == node.attr().end()) {
-      it_types = node.attr().find("Toutput_types");
+    const tensorflow::AttrValue* output_types_attr = nullptr;
+    const tensorflow::AttrValue* output_shapes_attr = nullptr;
+    for (const auto& attr : node.attr()) {
+      if (attr.first == "output_types" || attr.first == "Toutput_types") {
+        output_types_attr = &attr.second;
+      } else if (attr.first == "output_shapes") {
+        output_shapes_attr = &attr.second;
+      }
     }
-    auto it_shapes = node.attr().find("output_shapes");
-    if (it_types != node.attr().end() && it_shapes != node.attr().end()) {
+    if (output_types_attr != nullptr && output_shapes_attr != nullptr) {
       output_types.clear();
-      for (auto dtype : it_types->second.list().type()) {
+      for (int dtype : output_types_attr->list().type()) {
         output_types.push_back(static_cast<tensorflow::DataType>(dtype));
       }
       output_shapes.clear();
-      for (const auto& shape_proto : it_shapes->second.list().shape()) {
+      for (const tensorflow::TensorShapeProto& shape_proto :
+           output_shapes_attr->list().shape()) {
         tensorflow::PartialTensorShape shape;
-        auto status = tensorflow::PartialTensorShape::BuildPartialTensorShape(
-            shape_proto, &shape);
+        absl::Status status =
+            tensorflow::PartialTensorShape::BuildPartialTensorShape(shape_proto,
+                                                                    &shape);
         if (!status.ok()) {
           return absl::InternalError(absl::StrCat(
               "Failed to parse shape from GraphDef: ", status.message()));

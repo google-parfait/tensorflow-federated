@@ -37,6 +37,14 @@ def get_model_weights(
     return model.weights
 
 
+def get_optimizer_variables(optimizer):
+  """Gets the variables of the optimizer in a backward-compatible way."""
+  variables = optimizer.variables
+  if callable(variables):
+    return variables()
+  return variables
+
+
 class KerasModelWrapper:
   """A standalone keras wrapper to be used in TFF."""
 
@@ -90,7 +98,10 @@ class KerasModelWrapper:
 
 
 def keras_evaluate(model, test_data, metric):
-  metric.reset_states()
+  if hasattr(metric, 'reset_state'):
+    metric.reset_state()
+  else:
+    metric.reset_states()
   for batch in test_data:
     preds = model(batch['x'], training=False)
     metric.update_state(y_true=batch['y'], y_pred=preds)
@@ -188,20 +199,20 @@ def server_update(
   )
   tf.nest.map_structure(
       lambda v, t: v.assign(t),
-      server_optimizer.variables(),
+      get_optimizer_variables(server_optimizer),
       server_state.optimizer_state,
   )
 
   # Apply the update to the model.
   neg_weights_delta = [-1.0 * x for x in weights_delta]
   server_optimizer.apply_gradients(
-      zip(neg_weights_delta, model_weights.trainable), name='server_update'
+      zip(neg_weights_delta, model_weights.trainable)
   )
 
   # Create a new state based on the updated model.
   return ServerState(
       model_weights=model_weights,
-      optimizer_state=server_optimizer.variables(),
+      optimizer_state=get_optimizer_variables(server_optimizer),
       round_num=server_state.round_num + 1,
       total_iters_count=total_iters_count,
   )

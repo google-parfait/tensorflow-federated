@@ -62,4 +62,6 @@ version = {attr = "tensorflow_federated.version.__version__"}
 include = ["tensorflow_federated*"]
 
 [tool.setuptools.package-data]
-"tensorflow_federated.data" = ["worker_binary"]
+tensorflow_federated = ["cc/**/*.so"]
+
+

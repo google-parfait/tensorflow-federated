@@ -1,11 +1,13 @@
-load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("@org_tensorflow//third_party/xla/third_party/py/rules_pywrap:pywrap.impl.bzl", "pybind_extension")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
         ":executor_stacks_packages",
+        "//tensorflow_federated/cc/core/impl:__pkg__",
         "//tensorflow_federated/cc/core/impl:impl_users",
     ],
 )
@@ -23,12 +25,13 @@ licenses(["notice"])
 pybind_extension(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.cc"],
+    common_lib_packages = ["tensorflow_federated/cc/core/impl"],
     deps = [
         ":remote_stacks",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
+        "//tensorflow_federated/cc/core/impl/executors:status_casters",
         "@com_github_grpc_grpc//:grpc++",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
-        "@pybind11_abseil//pybind11_abseil:status_casters",
     ],
 )
 
@@ -102,4 +105,10 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],
+)
+
+py_library(
+    name = "cc_executor_stacks_init",
+    srcs = ["__init__.py"],
+    visibility = ["//visibility:public"],
 )

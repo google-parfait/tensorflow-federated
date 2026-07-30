@@ -30,7 +30,6 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "include/grpcpp/support/status.h"
 
 namespace tensorflow_federated {
 namespace internal_status {
@@ -421,54 +420,6 @@ internal_status::CanonicalStatusIsMatcher CanonicalStatusIs(
 // Returns a gMock matcher that matches a Status or StatusOr<> which is OK.
 inline internal_status::IsOkMatcher IsOk() {
   return internal_status::IsOkMatcher();
-}
-
-// Separate matcher for `grpc::Status`, since it and `absl::Status` are not
-// interconvertible in OSS.
-class GrpcStatusMatcher {
- public:
-  explicit GrpcStatusMatcher(grpc::StatusCode code,
-                             std::optional<std::string> message)
-      : expected_code_(code), expected_message_(std::move(message)) {}
-
-  using is_gtest_matcher = void;
-  bool MatchAndExplain(grpc::Status status,
-                       ::testing::MatchResultListener* os) const {
-    if (status.error_code() != expected_code_) {
-      *os << "the status code is " << status.error_code();
-      return false;
-    }
-    if (expected_message_.has_value() &&
-        status.error_message().find(expected_message_.value()) ==
-            std::string::npos) {
-      *os << "the error message is " << status.error_message();
-      return false;
-    }
-    return true;
-  }
-
-  void DescribeTo(std::ostream* os) const {
-    *os << " has status code " << expected_code_;
-    if (expected_message_.has_value()) {
-      *os << " and a message containing: " << expected_message_.value();
-    }
-  }
-
-  void DescribeNegationTo(std::ostream* os) const {
-    *os << " does not have status code " << expected_code_;
-    if (expected_message_.has_value()) {
-      *os << " and a message containing: " << expected_message_.value();
-    }
-  }
-
- private:
-  grpc::StatusCode expected_code_;
-  std::optional<std::string> expected_message_;
-};
-
-inline ::testing::Matcher<grpc::Status> GrpcStatusIs(
-    grpc::StatusCode code, std::optional<std::string> message = std::nullopt) {
-  return GrpcStatusMatcher(code, message);
 }
 
 }  // namespace tensorflow_federated

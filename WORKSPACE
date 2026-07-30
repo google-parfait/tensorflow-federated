@@ -120,7 +120,8 @@ http_archive(
     patch_args = ["-p1"],
     patches = [
         "//third_party/tensorflow:internal_visibility.patch",
-        "//third_party/tensorflow:numpy_headers.patch",
+        "//third_party/tensorflow:fix_pywrap_win_def.patch",
+        "//third_party/tensorflow:exports.patch",
     ],
     sha256 = "ef3568bb4865d6c1b2564fb5689c19b6b9a5311572cd1f2ff9198636a8520921",
     strip_prefix = "tensorflow-2.21.0",
@@ -215,9 +216,11 @@ load("@rules_python//python:pip.bzl", "package_annotation", "pip_parse")
 
 # Create Bazel cc_library targets for NumPy headers.
 # https://github.com/bazel-contrib/rules_python/issues/259
-numpy_annotations = {
+pip_annotations = {
     "numpy": package_annotation(
         additive_build_content = """\
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 cc_library(
     name = "numpy_headers_2",
     hdrs = glob(["site-packages/numpy/_core/include/**/*.h"]),
@@ -238,11 +241,47 @@ cc_library(
 )
 """,
     ),
+    "tensorflow": package_annotation(
+        additive_build_content = """\
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+cc_library(
+    name = "headers_lib",
+    hdrs = glob(
+        [
+            "site-packages/tensorflow/include/**/*",
+        ],
+    ),
+    strip_include_prefix = "site-packages/tensorflow/include/"
+)
+
+cc_library(
+    name = "libtensorflow_framework",
+    srcs = select({
+        "@platforms//os:linux": ["site-packages/tensorflow/libtensorflow_framework.so.2"],
+        "@platforms//os:macos": ["site-packages/tensorflow/libtensorflow_framework.2.dylib"]
+    }),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "libtensorflow_cc",
+    srcs = select({
+        "@platforms//os:linux": ["site-packages/tensorflow/libtensorflow_cc.so.2"],
+        "@platforms//os:macos": ["site-packages/tensorflow/libtensorflow_cc.2.dylib"]
+    }),
+    visibility = ["//visibility:public"],
+)
+""",
+    ),
 }
 
 pip_parse(
     name = "pypi",
-    annotations = numpy_annotations,
+    annotations = pip_annotations,
+    extra_hub_aliases = {
+        "numpy": ["numpy_headers"],
+    },
     extra_pip_args = [
         "--index-url",
         "https://pypi.org/simple",
