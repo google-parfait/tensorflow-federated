@@ -26,6 +26,7 @@ py_library(
         ":dataset_data_source",
         ":file_program_state_manager",
         ":file_release_manager",
+        ":min_sep_data_source",
         ":tensorboard_release_manager",
     ],
 )
@@ -145,6 +146,23 @@ py_test(
         "@pypi//absl_py",
         "@pypi//numpy",
         "@pypi//tensorflow",
+    ],
+)
+
+py_library(
+    name = "min_sep_data_source",
+    srcs = ["min_sep_data_source.py"],
+    deps = [
+        "@federated_language//federated_language",
+    ],
+)
+
+py_test(
+    name = "min_sep_data_source_test",
+    srcs = ["min_sep_data_source_test.py"],
+    deps = [
+        ":min_sep_data_source",
+        "@federated_language//federated_language",
     ],
 )
 
