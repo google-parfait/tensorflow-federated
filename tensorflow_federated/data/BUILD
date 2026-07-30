@@ -1,5 +1,3 @@
-load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
-
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
@@ -22,9 +20,3 @@ package_group(
 )
 
 licenses(["notice"])
-
-copy_file(
-    name = "_worker_binary",
-    src = "//tensorflow_federated/cc/simulation:worker_binary",
-    out = "worker_binary",
-)

@@ -14,7 +14,6 @@
 
 import asyncio
 import collections
-import inspect
 import time
 
 from absl.testing import absltest
@@ -23,34 +22,11 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
-from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
-def _assert_signature_equal(first_obj, second_obj):
-  first_signature = inspect.signature(first_obj)
-  second_signature = inspect.signature(second_obj)
-  # Only assert that the parameters and return type annotations are equal, the
-  # entire signature (e.g. the docstring) is not expected to be equal.
-  if first_signature.parameters != second_signature.parameters:
-    raise AssertionError(
-        f'{first_signature.parameters} != {second_signature.parameters}'
-    )
-  if first_signature.return_annotation != second_signature.return_annotation:
-    raise AssertionError(
-        f'{first_signature.return_annotation} != '
-        f'{second_signature.return_annotation}'
-    )
-
-
 class CreateAsyncLocalCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.create_async_local_cpp_execution_context,
-        execution_contexts.create_async_local_cpp_execution_context,
-    )
 
   def test_returns_async_context(self):
     context = cpp_execution_contexts.create_async_local_cpp_execution_context()
@@ -90,36 +66,12 @@ class CreateAsyncLocalCPPExecutionContextTest(absltest.TestCase):
       )
 
 
-class SetAsyncLocalCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.set_async_local_cpp_execution_context,
-        execution_contexts.set_async_local_cpp_execution_context,
-    )
-
-
 class CreateSyncLocalCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.create_sync_local_cpp_execution_context,
-        execution_contexts.create_sync_local_cpp_execution_context,
-    )
 
   def test_returns_sync_context(self):
     context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
     self.assertIsInstance(
         context, federated_language.framework.SyncExecutionContext
-    )
-
-
-class SetSyncLocalCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.set_sync_local_cpp_execution_context,
-        execution_contexts.set_sync_local_cpp_execution_context,
     )
 
 

@@ -61,5 +61,4 @@ version = {attr = "tensorflow_federated.version.__version__"}
 [tool.setuptools.packages.find]
 include = ["tensorflow_federated*"]
 
-[tool.setuptools.package-data]
-"tensorflow_federated.data" = ["worker_binary"]
+

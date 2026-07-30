@@ -22,7 +22,6 @@ sh_binary(
         "//:README.md",
         "//:pyproject_toml",
         "//tensorflow_federated",
-        "//tensorflow_federated/data:worker_binary",
         "//tensorflow_federated/proto",
         "//tensorflow_federated/proto/v0",
         "//tensorflow_federated/python",
