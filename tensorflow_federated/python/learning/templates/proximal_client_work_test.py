@@ -89,7 +89,9 @@ class ProximalClientWorkComputationTest(
     expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             train=collections.OrderedDict(
-                loss=np.float32, num_examples=np.int32
+                loss=np.float32,
+                num_examples=np.int32,
+                num_non_finite_clients=np.int32,
             )
         ),
         federated_language.SERVER,

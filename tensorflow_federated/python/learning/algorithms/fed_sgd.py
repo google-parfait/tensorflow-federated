@@ -49,6 +49,7 @@ from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
+from tensorflow_federated.python.learning.templates import model_delta_client_work
 
 
 def _build_client_update(
@@ -123,6 +124,11 @@ def _build_client_update(
     else:
       client_weight = num_examples_sum
 
+    model_output = collections.OrderedDict(model_output)
+    model_output[model_delta_client_work.NUM_NON_FINITE_CLIENTS_KEY] = tf.cast(
+        has_non_finite_delta, tf.int32
+    )
+
     return (
         client_works.ClientResult(
             update=average_gradient, update_weight=client_weight
@@ -164,7 +170,9 @@ def _build_fed_sgd_client_work(
     # with variables created for this model.
     model = model_fn()
     metrics_aggregation_fn = metrics_aggregator(
-        model.metric_finalizers(),
+        model_delta_client_work.augment_metric_finalizers(
+            model.metric_finalizers()
+        ),
     )
   element_type = tensorflow_types.to_type(model.input_spec)
   data_type = federated_language.SequenceType(element_type)
@@ -297,11 +305,15 @@ def _build_functional_client_update(
       client_weight = tf.constant(0.0)
     else:
       client_weight = num_examples_sum
+    final_unfinalized_metrics = collections.OrderedDict(metrics_state)
+    final_unfinalized_metrics[
+        model_delta_client_work.NUM_NON_FINITE_CLIENTS_KEY
+    ] = tf.cast(has_non_finite_delta, tf.int32)
     return (
         client_works.ClientResult(
             update=average_gradient, update_weight=client_weight
         ),
-        metrics_state,
+        final_unfinalized_metrics,
     )
 
   return client_update
@@ -371,7 +383,10 @@ def _build_functional_fed_sgd_client_work(
         client_update_computation, (model_weights, client_data)
     )
     metrics_aggregation_fn = metrics_aggregator(
-        model.finalize_metrics, unfinalized_metrics.type_signature.member
+        model_delta_client_work.augment_metric_finalizers(
+            model.finalize_metrics
+        ),
+        unfinalized_metrics.type_signature.member,
     )
     train_metrics = metrics_aggregation_fn(unfinalized_metrics)
     measurements = federated_language.federated_zip(

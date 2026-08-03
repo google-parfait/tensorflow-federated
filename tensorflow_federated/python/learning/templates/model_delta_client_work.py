@@ -41,6 +41,47 @@ from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
 
+# System metric name for tracking non-finite client deltas.
+NUM_NON_FINITE_CLIENTS_KEY = 'num_non_finite_clients'
+
+
+def augment_metric_finalizers(metric_finalizers):
+  """Augments metric finalizers with system-level metrics.
+
+  The client update functions add system metrics (e.g.,
+  `num_non_finite_clients`) to the unfinalized metrics. This function ensures
+  the corresponding finalizers are also present, maintaining consistency for
+  the metrics aggregation pipeline.
+
+  Args:
+    metric_finalizers: Either an `OrderedDict` of metric name to finalizer (for
+      `VariableModel`) or a callable `finalize_metrics` function (for
+      `FunctionalModel`).
+
+  Returns:
+    Augmented metric finalizers with system metric entries added.
+  """
+  if callable(metric_finalizers):
+    original_finalize_fn = metric_finalizers
+
+    @tf.function
+    def augmented_finalize_fn(unfinalized_metrics):
+      model_metrics = collections.OrderedDict(
+          (k, v)
+          for k, v in unfinalized_metrics.items()
+          if k != NUM_NON_FINITE_CLIENTS_KEY
+      )
+      finalized = original_finalize_fn(model_metrics)
+      finalized[NUM_NON_FINITE_CLIENTS_KEY] = unfinalized_metrics[
+          NUM_NON_FINITE_CLIENTS_KEY
+      ]
+      return finalized
+
+    return augmented_finalize_fn
+  else:
+    metric_finalizers[NUM_NON_FINITE_CLIENTS_KEY] = tf.function(lambda x: x)
+    return metric_finalizers
+
 
 # TODO: b/213433744 - Make this method private.
 def build_model_delta_update_with_tff_optimizer(
@@ -131,14 +172,15 @@ def build_model_delta_update_with_tff_optimizer(
     # aggregated model deltas at the server. We also reset the client local
     # metrics via `model.reset_metrics()`, so that these non-finite training
     # metrics are excluded from the aggregated metrics at the server.
-    # TODO: b/327051011 - Add a metric to count the number of clients with
-    # non-finite model deltas.
     client_weight = _choose_client_weight(
         weighting, has_non_finite_delta, num_examples
     )
     if has_non_finite_delta > 0:
       model.reset_metrics()
     model_output = model.report_local_unfinalized_metrics()
+    model_output[NUM_NON_FINITE_CLIENTS_KEY] = tf.cast(
+        has_non_finite_delta, tf.int32
+    )
     return (
         client_works.ClientResult(
             update=client_update, update_weight=client_weight
@@ -198,7 +240,8 @@ def build_model_delta_client_work(
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
     model = model_fn()
-    metrics_aggregation_fn = metrics_aggregator(model.metric_finalizers())
+    finalizers = augment_metric_finalizers(model.metric_finalizers())
+    metrics_aggregation_fn = metrics_aggregator(finalizers)
   element_type = tensorflow_types.to_type(model.input_spec)
   data_type = federated_language.SequenceType(element_type)
   weights_type = model_weights_lib.weights_type_from_model(model)
@@ -375,6 +418,11 @@ def build_functional_model_delta_update(
         if has_non_finite_delta > 0
         else metrics_state
     )
+    unfinalized_metrics = collections.OrderedDict(unfinalized_metrics)
+    unfinalized_metrics[NUM_NON_FINITE_CLIENTS_KEY] = tf.cast(
+        has_non_finite_delta, tf.int32
+    )
+
     return (
         client_works.ClientResult(
             update=client_model_update, update_weight=client_weight
@@ -466,7 +514,9 @@ def build_functional_model_delta_client_work(
     client_result, unfinalized_metrics = federated_language.federated_map(
         client_update_computation, (weights, client_data)
     )
-    metrics_aggregation_fn = metrics_aggregator(model.finalize_metrics)
+    metrics_aggregation_fn = metrics_aggregator(
+        augment_metric_finalizers(model.finalize_metrics)
+    )
     finalized_training_metrics = metrics_aggregation_fn(unfinalized_metrics)
     measurements = federated_language.federated_zip(
         collections.OrderedDict(train=finalized_training_metrics)

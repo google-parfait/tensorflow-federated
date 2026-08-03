@@ -98,12 +98,18 @@ def build_scheduled_client_work(
           ),
           model_weights.ModelWeights(*whimsy_model.initial_weights),
       )
-      metrics_aggregation_fn = metrics_aggregator(whimsy_model.finalize_metrics)
+      metrics_aggregation_fn = metrics_aggregator(
+          model_delta_client_work.augment_metric_finalizers(
+              whimsy_model.finalize_metrics
+          )
+      )
     else:
       whimsy_model = model_fn()
       weights_type = model_weights.weights_type_from_model(whimsy_model)
       metrics_aggregation_fn = metrics_aggregator(
-          whimsy_model.metric_finalizers(),
+          model_delta_client_work.augment_metric_finalizers(
+              whimsy_model.metric_finalizers()
+          ),
       )
 
     whimsy_optimizer = optimizer_fn(1.0)

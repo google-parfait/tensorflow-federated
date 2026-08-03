@@ -108,7 +108,9 @@ class ModelDeltaClientWorkComputationTest(
     expected_measurements_type = federated_language.FederatedType(
         collections.OrderedDict(
             train=collections.OrderedDict(
-                loss=np.float32, num_examples=np.int32
+                loss=np.float32,
+                num_examples=np.int32,
+                num_non_finite_clients=np.int32,
             )
         ),
         federated_language.SERVER,
@@ -297,7 +299,9 @@ class ModelDeltaClientWorkExecutionTest(
     tf.nest.map_structure(
         self.assertAllEqual,
         client_outputs[1],
-        collections.OrderedDict(loss=[0.0, 0.0], num_examples=0),
+        collections.OrderedDict(
+            loss=[0.0, 0.0], num_examples=0, num_non_finite_clients=1
+        ),
     )
 
   def test_correct_update_weight_with_traced_function(self):
@@ -650,6 +654,9 @@ class FunctionalModelDeltaClientWorkExecutionTest(
     # Since all clients have non-finite model weights update, we reset their
     # local metrics. The resulting aggregated metric at server is zero.
     self.assertEqual(output.measurements['train']['num_examples'], 0)
+    self.assertEqual(
+        output.measurements['train']['num_non_finite_clients'], num_clients
+    )
 
 
 if __name__ == '__main__':

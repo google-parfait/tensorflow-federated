@@ -312,6 +312,7 @@ py_library(
     srcs = ["proximal_client_work.py"],
     deps = [
         ":client_works",
+        ":model_delta_client_work",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",

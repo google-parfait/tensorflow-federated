@@ -53,6 +53,7 @@ from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
+from tensorflow_federated.python.learning.templates import model_delta_client_work
 
 
 def _choose_client_weight(weighting, has_non_finite_delta, num_examples):
@@ -167,6 +168,9 @@ def _build_client_update_fn_for_mime_lite(
       client_weight = _choose_client_weight(
           client_weighting, has_non_finite_delta, num_examples
       )
+      model_output[model_delta_client_work.NUM_NON_FINITE_CLIENTS_KEY] = (
+          tf.cast(has_non_finite_delta, tf.int32)
+      )
       return (
           client_works.ClientResult(
               update=client_weights_delta, update_weight=client_weight
@@ -236,7 +240,9 @@ def _build_mime_lite_client_work(
     # with variables created for this model.
     model = model_fn()
     metrics_aggregation_fn = metrics_aggregator(
-        model.metric_finalizers(),
+        model_delta_client_work.augment_metric_finalizers(
+            model.metric_finalizers()
+        ),
     )
   element_type = tensorflow_types.to_type(model.input_spec)
   data_type = federated_language.SequenceType(element_type)
@@ -456,11 +462,15 @@ def _build_functional_client_update_fn_for_mime_lite(
       client_weight = _choose_client_weight(
           client_weighting, has_non_finite_delta, num_examples
       )
+      final_unfinalized_metrics = collections.OrderedDict(unfinalized_metrics)
+      final_unfinalized_metrics[
+          model_delta_client_work.NUM_NON_FINITE_CLIENTS_KEY
+      ] = tf.cast(has_non_finite_delta, tf.int32)
       return (
           client_works.ClientResult(
               update=client_weights_delta, update_weight=client_weight
           ),
-          unfinalized_metrics,
+          final_unfinalized_metrics,
           full_gradient,
       )
 
@@ -605,7 +615,10 @@ def _build_mime_lite_functional_client_work(
     )
 
     metrics_aggregation_fn = metrics_aggregator(
-        model.finalize_metrics, unfinalized_metrics.type_signature.member
+        model_delta_client_work.augment_metric_finalizers(
+            model.finalize_metrics
+        ),
+        unfinalized_metrics.type_signature.member,
     )
     train_metrics = metrics_aggregation_fn(unfinalized_metrics)
     measurements = federated_language.federated_zip(

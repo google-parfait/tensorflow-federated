@@ -41,9 +41,9 @@ from tensorflow_federated.python.learning.models import model_weights as model_w
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
+from tensorflow_federated.python.learning.templates import model_delta_client_work
 
 
-# TODO: b/213433744 - Make this method private.
 def build_model_delta_update_with_tff_optimizer(
     model_fn: Callable[[], variable.VariableModel],
     *,
@@ -51,6 +51,7 @@ def build_model_delta_update_with_tff_optimizer(
     delta_l2_regularizer: float,
     loop_implementation: loop_builder.LoopImplementation,
 ):
+  # TODO: b/213433744 - Make this method private.
   """Creates client update logic in FedProx using a TFF optimizer.
 
   Args:
@@ -136,6 +137,9 @@ def build_model_delta_update_with_tff_optimizer(
     )
     client_weight = _choose_client_weight(
         weighting, has_non_finite_delta, num_examples
+    )
+    model_output[model_delta_client_work.NUM_NON_FINITE_CLIENTS_KEY] = tf.cast(
+        has_non_finite_delta, tf.int32
     )
 
     return (
@@ -256,12 +260,15 @@ def _build_functional_model_delta_update(
         weighting, has_non_finite_delta, num_examples
     )
 
-    unfinalized_metrics = metrics_state
+    final_unfinalized_metrics = collections.OrderedDict(metrics_state)
+    final_unfinalized_metrics[
+        model_delta_client_work.NUM_NON_FINITE_CLIENTS_KEY
+    ] = tf.cast(has_non_finite_delta, tf.int32)
     return (
         client_works.ClientResult(
             update=client_update, update_weight=client_weight
         ),
-        unfinalized_metrics,
+        final_unfinalized_metrics,
     )
 
   return client_update
@@ -340,7 +347,9 @@ def build_model_delta_client_work(
     # with variables created for this model.
     model = model_fn()
     metrics_aggregation_fn = metrics_aggregator(
-        model.metric_finalizers(),
+        model_delta_client_work.augment_metric_finalizers(
+            model.metric_finalizers()
+        ),
     )
   element_type = tensorflow_types.to_type(model.input_spec)
   data_type = federated_language.SequenceType(element_type)
@@ -476,7 +485,10 @@ def build_functional_model_delta_client_work(
         client_update_computation, (weights, client_data)
     )
     metrics_aggregation_fn = metrics_aggregator(
-        model.finalize_metrics, unfinalized_metrics.type_signature.member
+        model_delta_client_work.augment_metric_finalizers(
+            model.finalize_metrics
+        ),
+        unfinalized_metrics.type_signature.member,
     )
     train_metrics = metrics_aggregation_fn(unfinalized_metrics)
     measurements = federated_language.federated_zip(
