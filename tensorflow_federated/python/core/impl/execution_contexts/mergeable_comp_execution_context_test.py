@@ -132,6 +132,84 @@ class PartitionValueTest(absltest.TestCase):
     )
     self.assertEqual(partitioned_value, expected_partitioning)
 
+  def test_partitions_clients_server_struct_into_subrounds(self):
+    value = (list(range(10)), 0)
+    clients_placed_name = 'a'
+    server_placed_name = 'b'
+    type_signature = federated_language.StructType([
+        (
+            clients_placed_name,
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
+        ),
+        (
+            server_placed_name,
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+        ),
+    ])
+    num_desired_subrounds = 2
+    partitioned_value = (
+        mergeable_comp_execution_context._split_value_into_subrounds(
+            value, type_signature, num_desired_subrounds
+        )
+    )
+    expected_partitioning = [
+        structure.Struct([
+            (clients_placed_name, [0, 1, 2, 3, 4]),
+            (server_placed_name, 0),
+        ]),
+        structure.Struct([
+            (clients_placed_name, [5, 6, 7, 8, 9]),
+            (server_placed_name, 0),
+        ]),
+    ]
+    self.assertEqual(partitioned_value, expected_partitioning)
+
+  def test_partitions_clients_server_clients_struct_into_subrounds(self):
+    value = (list(range(10)), 99, list(range(100, 110)))
+    type_signature = federated_language.StructType([
+        (
+            'c1',
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
+        ),
+        (
+            's',
+            federated_language.FederatedType(
+                np.int32, federated_language.SERVER
+            ),
+        ),
+        (
+            'c2',
+            federated_language.FederatedType(
+                np.int32, federated_language.CLIENTS
+            ),
+        ),
+    ])
+    num_desired_subrounds = 2
+    partitioned_value = (
+        mergeable_comp_execution_context._split_value_into_subrounds(
+            value, type_signature, num_desired_subrounds
+        )
+    )
+    expected_partitioning = [
+        structure.Struct([
+            ('c1', [0, 1, 2, 3, 4]),
+            ('s', 99),
+            ('c2', [100, 101, 102, 103, 104]),
+        ]),
+        structure.Struct([
+            ('c1', [5, 6, 7, 8, 9]),
+            ('s', 99),
+            ('c2', [105, 106, 107, 108, 109]),
+        ]),
+    ]
+    self.assertEqual(partitioned_value, expected_partitioning)
+
   def test_partitions_fewer_clients_than_rounds_into_nonempty_rounds(self):
     value = [0, 1]
     type_signature = federated_language.FederatedType(

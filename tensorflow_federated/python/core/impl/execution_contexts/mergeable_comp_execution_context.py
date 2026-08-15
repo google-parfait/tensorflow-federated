@@ -263,6 +263,9 @@ def _partition_value(
   if isinstance(type_signature, federated_language.StructType):
     struct_val = structure._from_container(val.payload)  # pylint: disable=protected-access
     partition_result: Optional[_PartitioningValue] = None
+    new_num_remaining_clients = val.num_remaining_clients
+    new_num_remaining_partitions = val.num_remaining_partitions
+    new_last_client_index = val.last_client_index
     result_container = []
     for (_, val_elem), (name, type_elem) in zip(
         structure._to_elements(struct_val),  # pylint: disable=protected-access
@@ -276,13 +279,25 @@ def _partition_value(
       )
       partition_result = _partition_value(partitioning_val_elem, type_elem)
       result_container.append((name, partition_result.payload))
+      # All elements in a struct are partitioned synchronously using the initial
+      # client indices. If `val_elem` (or any deeply nested element within it)
+      # contained non-all-equal CLIENTS-placed values, its `last_client_index`
+      # will have advanced. We check `partition_result.last_client_index >
+      # new_last_client_index` to detect when partitioning occurred without
+      # needing to inspect `type_elem` for arbitrarily nested CLIENTS-placed
+      # types (e.g., in a structure like `<<<i32@C>, i32@S>, i32@S>`), allowing
+      # us to capture the updated partitioning statistics for the struct.
+      if partition_result.last_client_index > new_last_client_index:
+        new_num_remaining_clients = partition_result.num_remaining_clients
+        new_num_remaining_partitions = partition_result.num_remaining_partitions
+        new_last_client_index = partition_result.last_client_index
     if partition_result is None:
       raise ValueError(f'Expected the value to not be empty, found {val}.')
     return _PartitioningValue(
         structure.Struct(result_container),
-        partition_result.num_remaining_clients,
-        partition_result.num_remaining_partitions,
-        partition_result.last_client_index,
+        new_num_remaining_clients,
+        new_num_remaining_partitions,
+        new_last_client_index,
     )
   elif (
       isinstance(type_signature, federated_language.FederatedType)
