@@ -1603,6 +1603,21 @@ TEST_P(GroupByAggregatorTest, AddOneContributor_HandlesEmptyTensor) {
   EXPECT_TRUE(peer.GetContributors().empty());
 }
 
+TEST_P(GroupByAggregatorTest, AddOneContributor_HandlesNegativeOrdinals) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(5);
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+  GroupByAggregatorPeer peer(std::move(aggregator));
+
+  Tensor negative_ordinals(std::vector<int64_t>{-1, -2});
+  EXPECT_THAT(peer.AddOneContributor(std::move(negative_ordinals)), IsOk());
+
+  if (GetParam()) {
+    EXPECT_THAT(peer.SerializeAndDeserialize(intrinsic), IsOk());
+  }
+
+  EXPECT_TRUE(peer.GetContributors().empty());
+}
+
 TEST(GroupByAggregatorTest, AddOneContributor_FailsWithInvalidDtype) {
   Intrinsic intrinsic = CreateIntrinsicWithMinContributors(5);
   auto aggregator = CreateTensorAggregator(intrinsic).value();
@@ -1757,6 +1772,25 @@ TEST(GroupByAggregatorTest, AddMultipleContributors_HandlesEmptyInputs) {
   EXPECT_THAT(peer.AddMultipleContributors(std::move(empty_ordinals),
                                            empty_num_contributors),
               IsOk());
+  EXPECT_TRUE(peer.GetContributors().empty());
+}
+
+TEST_P(GroupByAggregatorTest, AddMultipleContributors_HandlesNegativeOrdinals) {
+  Intrinsic intrinsic = CreateIntrinsicWithMinContributors(5);
+  TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
+  GroupByAggregatorPeer peer(std::move(aggregator));
+
+  Tensor negative_ordinals(std::vector<int64_t>{-1, -2});
+  std::vector<int> num_contributors = {3, 5};
+
+  EXPECT_THAT(peer.AddMultipleContributors(std::move(negative_ordinals),
+                                           num_contributors),
+              IsOk());
+
+  if (GetParam()) {
+    EXPECT_THAT(peer.SerializeAndDeserialize(intrinsic), IsOk());
+  }
+
   EXPECT_TRUE(peer.GetContributors().empty());
 }
 

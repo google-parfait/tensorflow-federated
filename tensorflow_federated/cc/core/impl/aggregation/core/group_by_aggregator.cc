@@ -253,10 +253,14 @@ Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
     return absl::OkStatus();
   }
   int64_t max_ordinal = *absl::c_max_element(ordinals_span);
-  contributors_to_groups_.ExtendTo(max_ordinal);
+  // TODO: b/546244879 - Ordinals should not be negative. We handle them as a
+  // temporary solution, because currently the derived class can pass down
+  // negative ordinals.
+  if (max_ordinal >= 0) {
+    contributors_to_groups_.ExtendTo(max_ordinal + 1);
+  }
   for (auto& ordinal : ordinals_span) {
-    // A derived class may call this function on negative ordinals, which should
-    // be ignored.
+    // TODO: b/546244879 - Ordinals should not be negative.
     if (ordinal < 0) {
       continue;
     }
@@ -297,9 +301,19 @@ Status GroupByAggregator::AddMultipleContributors(
     return absl::OkStatus();
   }
   auto ordinals_span = ordinals.AsSpan<int64_t>();
-  contributors_to_groups_.ExtendTo(*absl::c_max_element(ordinals_span));
+  int64_t max_ordinal = *absl::c_max_element(ordinals_span);
+  // TODO: b/546244879 - Ordinals should not be negative. We handle them as a
+  // temporary solution, because currently the derived class can pass down
+  // negative ordinals.
+  if (max_ordinal >= 0) {
+    contributors_to_groups_.ExtendTo(max_ordinal + 1);
+  }
   for (int i = 0; i < num_ordinals; ++i) {
     int64_t ordinal = ordinals_span[i];
+    // TODO: b/546244879 - Ordinals should not be negative.
+    if (ordinal < 0) {
+      continue;
+    }
     TFF_RETURN_IF_ERROR(contributors_to_groups_.AddCountToContributors(
         ordinal, other_contributors[i]));
   }
