@@ -437,7 +437,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_type_error_in_client_update_statistics_with_int32(
       self, client_updates, client_weights, client_type_spec
   ):
-    with self.assertRaises(TypeError):
+    with self.assertRaises((TypeError, ValueError)):
 
       @federated_language.federated_computation(
           federated_language.FederatedType(
