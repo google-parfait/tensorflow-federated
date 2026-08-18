@@ -939,7 +939,13 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
     switch (value.type()) {
       case ExecutorValue::ValueType::TENSOR: {
         return tasks.add_task([&value, value_pb]() {
-          *value_pb->mutable_array() = TFF_TRY(ArrayFromTensor(value.tensor()));
+          if (tensorflow::DataTypeCanUseMemcpy(value.tensor().dtype())) {
+            *value_pb->mutable_array() =
+                TFF_TRY(ArrayContentFromTensor(value.tensor()));
+          } else {
+            *value_pb->mutable_array() =
+                TFF_TRY(ArrayFromTensor(value.tensor()));
+          }
           return absl::OkStatus();
         });
       }
@@ -952,8 +958,10 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
             output_types = seq.output_types();
             output_shapes = seq.output_shapes();
           } else {
-            auto types_and_shapes = TFF_TRY(
-                ExtractOutputTypesAndShapesFromGraphDef(seq.as_tensor()));
+            std::pair<tensorflow::DataTypeVector,
+                      std::vector<tensorflow::PartialTensorShape>>
+                types_and_shapes = TFF_TRY(
+                    ExtractOutputTypesAndShapesFromGraphDef(seq.as_tensor()));
             output_types = std::move(types_and_shapes.first);
             output_shapes = std::move(types_and_shapes.second);
           }
@@ -961,11 +969,17 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
               TFF_TRY(IterateDatasetFromGraphDef(seq.as_tensor(), output_types,
                                                  output_shapes));
           v0::Value::Sequence* sequence_pb = value_pb->mutable_sequence();
-          for (const auto& element_tensors : elements) {
+          for (const std::vector<tensorflow::Tensor>& element_tensors :
+               elements) {
             v0::Value::Sequence::Element* element_pb =
                 sequence_pb->add_element();
-            for (const auto& t : element_tensors) {
-              *element_pb->add_flat_value() = TFF_TRY(ArrayFromTensor(t));
+            for (const tensorflow::Tensor& t : element_tensors) {
+              if (tensorflow::DataTypeCanUseMemcpy(t.dtype())) {
+                *element_pb->add_flat_value() =
+                    TFF_TRY(ArrayContentFromTensor(t));
+              } else {
+                *element_pb->add_flat_value() = TFF_TRY(ArrayFromTensor(t));
+              }
             }
           }
           return absl::OkStatus();
