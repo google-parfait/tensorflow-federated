@@ -154,7 +154,7 @@ class _AdafactorOptimizer(
             regulated_gradient_squared, axis=-2
         )
         new_v = tf.expand_dims(
-            new_r / tf.reduce_mean(new_r, axis=-1, keepdims=1), axis=-1
+            new_r / tf.reduce_mean(new_r, axis=-1, keepdims=True), axis=-1
         ) * tf.expand_dims(new_c, axis=-2)
       new_moment = _AdaFactorMoment(r=new_r, c=new_c, v=new_v)
       u_t = gradient * tf.math.rsqrt(new_moment.v)
