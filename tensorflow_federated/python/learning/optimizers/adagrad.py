@@ -64,22 +64,22 @@ class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         * tf.cast(self._initial_precond, s.dtype),
         specs,
     )
-    return collections.OrderedDict([
+    return collections.OrderedDict([  # pyrefly: ignore[bad-return]
         (optimizer.LEARNING_RATE_KEY, self._lr),
         (_EPSILON_KEY, self._epsilon),
         (_PRECONDITIONER_KEY, initial_preconditioner),
     ])
 
-  def next(
+  def next(  # pyrefly: ignore[bad-override]
       self, state: State, weights: optimizer.Weights, gradients: Any
   ) -> tuple[State, optimizer.Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
-    optimizer.check_weights_gradients_match(weights, gradients)
+    optimizer.check_weights_gradients_match(weights, gradients)  # pyrefly: ignore[bad-argument-type]
     lr = state[optimizer.LEARNING_RATE_KEY]
     epsilon = state[_EPSILON_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
     optimizer.check_weights_state_match(
-        weights, preconditioner, 'preconditioner'
+        weights, preconditioner, 'preconditioner'  # pyrefly: ignore[bad-argument-type]
     )
 
     def _adagrad_update(w, p, g):
@@ -105,10 +105,10 @@ class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         (_EPSILON_KEY, epsilon),
         (_PRECONDITIONER_KEY, updated_preconditioner),
     ])
-    return updated_state, updated_weights
+    return updated_state, updated_weights  # pyrefly: ignore[bad-return]
 
   def get_hparams(self, state: State) -> Hparams:
-    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])
+    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])  # pyrefly: ignore[bad-return]
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
     return structure._update_struct(state, **hparams)  # pylint: disable=protected-access

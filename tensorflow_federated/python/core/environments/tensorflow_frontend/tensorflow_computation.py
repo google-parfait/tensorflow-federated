@@ -85,7 +85,7 @@ def _tf_wrapper_fn(
 tf_computation = federated_language.framework.ComputationWrapper(
     _tf_wrapper_fn,
     tensorflow_types.to_type,
-    type_conversions.tensorflow_infer_type,
+    type_conversions.tensorflow_infer_type,  # pyrefly: ignore[bad-argument-type]
 )
 tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 

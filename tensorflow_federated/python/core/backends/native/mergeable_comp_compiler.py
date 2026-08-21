@@ -185,7 +185,7 @@ def compile_to_mergeable_comp_form(
   )
 
   # Construct a report function which accepts the result of merge.
-  merge_fn_type = before_agg.type_signature.result['federated_aggregate_param'][
+  merge_fn_type = before_agg.type_signature.result['federated_aggregate_param'][  # pyrefly: ignore[bad-index]
       3
   ]  # pytype: disable=unsupported-operands
   report_proto, report_type = tensorflow_computation_factory.create_identity(

@@ -98,7 +98,7 @@ def build_reservoir_type(
   def add_unknown_dimension(t):
     if isinstance(t, federated_language.TensorType):
       return (
-          federated_language.TensorType(dtype=t.dtype, shape=(None,) + t.shape),
+          federated_language.TensorType(dtype=t.dtype, shape=(None,) + t.shape),  # pyrefly: ignore[unsupported-operation]
           True,
       )
     return t, False

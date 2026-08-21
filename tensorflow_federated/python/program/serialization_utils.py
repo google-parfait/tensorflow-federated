@@ -109,7 +109,7 @@ def pack_sequence(fn: PackFn[_T], sequence: Sequence[_T]) -> bytes:
   for item in sequence:
     item_bytes = fn(item)
     sequence_bytes.extend(item_bytes)
-  length_bytes = _pack_length(sequence_bytes)
+  length_bytes = _pack_length(sequence_bytes)  # pyrefly: ignore[bad-argument-type]
   return length_bytes + sequence_bytes
 
 

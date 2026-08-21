@@ -298,7 +298,7 @@ def _get_secure_intrinsic_reductions() -> dict[
           federated_secure_select,
       ),
   ])
-  return secure_intrinsic_bodies_by_uri
+  return secure_intrinsic_bodies_by_uri  # pyrefly: ignore[bad-return]
 
 
 def _replace_secure_intrinsics_with_insecure_bodies(comp):

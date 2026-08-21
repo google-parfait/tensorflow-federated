@@ -94,13 +94,13 @@ class _AdamW(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         (_PRECONDITIONER_KEY, initial_preconditioner),
         (_WEIGHT_DECAY_KEY, self._weight_decay),
     ])
-    return state
+    return state  # pyrefly: ignore[bad-return]
 
-  def next(
+  def next(  # pyrefly: ignore[bad-override]
       self, state: State, weights: optimizer.Weights, gradients: Any
   ) -> tuple[State, optimizer.Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
-    optimizer.check_weights_gradients_match(weights, gradients)
+    optimizer.check_weights_gradients_match(weights, gradients)  # pyrefly: ignore[bad-argument-type]
     lr = state[optimizer.LEARNING_RATE_KEY]
     beta_1 = state[_BETA_1_KEY]
     beta_2 = state[_BETA_2_KEY]
@@ -109,9 +109,9 @@ class _AdamW(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     accumulator = state[_ACCUMULATOR_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
     weight_decay = state[_WEIGHT_DECAY_KEY]
-    optimizer.check_weights_state_match(weights, accumulator, 'accumulator')
+    optimizer.check_weights_state_match(weights, accumulator, 'accumulator')  # pyrefly: ignore[bad-argument-type]
     optimizer.check_weights_state_match(
-        weights, preconditioner, 'preconditioner'
+        weights, preconditioner, 'preconditioner'  # pyrefly: ignore[bad-argument-type]
     )
 
     if tf.is_tensor(beta_1):
@@ -159,10 +159,10 @@ class _AdamW(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         (_PRECONDITIONER_KEY, updated_preconditioner),
         (_WEIGHT_DECAY_KEY, weight_decay),
     ])
-    return updated_state, updated_weights
+    return updated_state, updated_weights  # pyrefly: ignore[bad-return]
 
   def get_hparams(self, state: State) -> Hparams:
-    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])
+    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])  # pyrefly: ignore[bad-return]
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
     # TODO: b/245962555 - Find an alternative to `update_struct` if it

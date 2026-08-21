@@ -141,7 +141,7 @@ def build_or_verify_tff_optimizer(
     return optimizer_fn
   elif callable(optimizer_fn):
     return KerasOptimizer(
-        optimizer_fn, trainable_weights, disjoint_init_and_next
+        optimizer_fn, trainable_weights, disjoint_init_and_next  # pyrefly: ignore[bad-argument-type]
     )
   else:
     raise TypeError(

@@ -107,7 +107,7 @@ def create_preprocess_fn(
   """
   if not isinstance(crop_shape, Iterable):
     raise TypeError('Argument crop_shape must be an iterable.')
-  crop_shape = tuple(crop_shape)
+  crop_shape = tuple(crop_shape)  # pyrefly: ignore[bad-assignment]
   if len(crop_shape) != 3:
     raise ValueError(
         'The crop_shape must have length 3, corresponding to a '

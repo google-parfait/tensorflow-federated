@@ -179,9 +179,9 @@ def _type_to_tf_dtypes_and_shapes(type_spec: federated_language.Type):
         if isinstance(
             container_type, py_typecheck.SupportsNamedTuple
         ) or attrs.has(container_type):
-          return container_type(**dict(elements))
+          return container_type(**dict(elements))  # pyrefly: ignore[not-callable]
         else:
-          return container_type(elements)  # pylint: disable=too-many-function-args
+          return container_type(elements)  # pylint: disable=too-many-function-args  # pyrefly: ignore[bad-argument-count]
 
       output_dtypes = build_py_container(output_dtypes)
       output_shapes = build_py_container(output_shapes)
@@ -256,12 +256,12 @@ def type_to_tf_structure(type_spec: federated_language.Type):
       if isinstance(
           container_type, py_typecheck.SupportsNamedTuple
       ) or attrs.has(container_type):
-        return container_type(**dict(element_outputs))
+        return container_type(**dict(element_outputs))  # pyrefly: ignore[not-callable]
       elif named:
-        return container_type(element_outputs)  # pylint: disable=too-many-function-args
+        return container_type(element_outputs)  # pylint: disable=too-many-function-args  # pyrefly: ignore[bad-argument-count]
       else:
         return container_type(
-            e if e[0] is not None else e[1] for e in element_outputs  # pylint: disable=too-many-function-args
+            e if e[0] is not None else e[1] for e in element_outputs  # pylint: disable=too-many-function-args  # pyrefly: ignore[bad-argument-count]
         )
   else:
     raise ValueError(

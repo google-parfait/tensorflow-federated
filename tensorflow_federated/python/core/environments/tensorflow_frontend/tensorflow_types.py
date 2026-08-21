@@ -26,10 +26,10 @@ def _tensorflow_dtype_to_numpy_dtype(
   # TensorFlow converts a dtype of `tf.string` into a dtype of `np.object_`.
   # However, this is not a valid dtype for TFF, instead use `np.str_`.
   if dtype.base_dtype == tf.string:
-    dtype = np.str_
+    dtype = np.str_  # pyrefly: ignore[bad-assignment]
   else:
     dtype = dtype.base_dtype.as_numpy_dtype
-  return dtype
+  return dtype  # pyrefly: ignore[bad-return]
 
 
 def _tensor_shape_to_array_shape(

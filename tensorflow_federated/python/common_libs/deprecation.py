@@ -95,7 +95,7 @@ def deprecated(
           return original_new(cls)
 
       arg.__new__ = staticmethod(wrapped_new)
-      arg.__deprecated__ = wrapped_new.__deprecated__ = msg
+      arg.__deprecated__ = wrapped_new.__deprecated__ = msg  # pyrefly: ignore[missing-attribute]
       return arg
     elif callable(arg):
 
@@ -104,7 +104,7 @@ def deprecated(
         warnings.warn(msg, category=category, stacklevel=stacklevel + 1)
         return arg(*args, **kwargs)
 
-      arg.__deprecated__ = wrapper.__deprecated__ = msg
+      arg.__deprecated__ = wrapper.__deprecated__ = msg  # pyrefly: ignore[missing-attribute]
       return wrapper
     else:
       raise TypeError(

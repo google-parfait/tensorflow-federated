@@ -153,28 +153,31 @@ class AggregationProcess(measured_process.MeasuredProcess):
 
     next_fn_param = next_fn.type_signature.parameter
     next_fn_result = next_fn.type_signature.result
-    if len(next_fn_param) < 2:
+    if len(next_fn_param) < 2:  # pyrefly: ignore[bad-argument-type]
       raise errors.TemplateNextFnNumArgsError(
           'The `next_fn` must have at least two input arguments, but found '
           f'the following input type: {next_fn_param}.'
       )
 
     if (
-        next_fn_param[_INPUT_PARAM_INDEX].placement
+        next_fn_param[_INPUT_PARAM_INDEX].placement  # pyrefly: ignore[bad-index, unsupported-operation]
         != federated_language.CLIENTS
     ):
       raise AggregationPlacementError(
+          # pyrefly: ignore[bad-index, unsupported-operation]
           'The second input argument of `next_fn` must be placed at CLIENTS '
           f'but found {next_fn_param[_INPUT_PARAM_INDEX]}.'
       )
 
-    if next_fn_result.result.placement != federated_language.SERVER:
+    if next_fn_result.result.placement != federated_language.SERVER:  # pyrefly: ignore[missing-attribute]
       raise AggregationPlacementError(
+          # pyrefly: ignore[missing-attribute]
           'The "result" attribute of return type of `next_fn` must be placed '
           f'at SERVER, but found {next_fn_result.result}.'
       )
-    if next_fn_result.measurements.placement != federated_language.SERVER:
+    if next_fn_result.measurements.placement != federated_language.SERVER:  # pyrefly: ignore[missing-attribute]
       raise AggregationPlacementError(
+          # pyrefly: ignore[missing-attribute]
           'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.'
       )

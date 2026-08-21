@@ -218,7 +218,7 @@ class FunctionalModel:
       batch_output: variable.BatchOutput,
       sample_weight: Optional[Any] = None,
   ) -> GenericMetricsState:
-    return self._update_metrics_state(
+    return self._update_metrics_state(  # pyrefly: ignore[bad-return]
         state, labels, batch_output, sample_weight
     )
 
@@ -335,7 +335,7 @@ class _ModelFromFunctional(variable.VariableModel):
     )
     for metric in self._metrics:
       outputs[metric.name] = [tf.identity(v) for v in metric.variables]
-    return outputs
+    return outputs  # pyrefly: ignore[bad-return]
 
   def metric_finalizers(
       self,

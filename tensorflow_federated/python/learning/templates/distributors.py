@@ -64,7 +64,7 @@ class DistributionProcess(measured_process.MeasuredProcess):
     if not all(
         [isinstance(t, federated_language.FederatedType) for t in next_types]
     ):
-      offending_types = '\n- '.join([
+      offending_types = '\n- '.join([  # pyrefly: ignore[no-matching-overload]
           t
           for t in next_types
           if not isinstance(t, federated_language.FederatedType)

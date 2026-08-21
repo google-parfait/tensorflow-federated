@@ -184,7 +184,7 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
         results.comp
     )
     return federated_language.Value(
-        federated_language.framework.get_context_stack().current.bind_computation_to_reference(
+        federated_language.framework.get_context_stack().current.bind_computation_to_reference(  # pyrefly: ignore[missing-attribute]
             unzipped_results
         )
     )
@@ -404,7 +404,7 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
         results.comp
     )
     client_update = federated_language.Value(
-        federated_language.framework.get_context_stack().current.bind_computation_to_reference(
+        federated_language.framework.get_context_stack().current.bind_computation_to_reference(  # pyrefly: ignore[missing-attribute]
             unzipped_results
         )
     )

@@ -249,7 +249,7 @@ def build_weighted_fed_avg(
         model_delta_client_work.build_functional_model_delta_client_work(
             model=model_fn,
             optimizer=client_optimizer_fn,
-            client_weighting=client_weighting,
+            client_weighting=client_weighting,  # pyrefly: ignore[bad-argument-type]
             metrics_aggregator=metrics_aggregator,
             loop_implementation=loop_implementation,
         )
@@ -258,7 +258,7 @@ def build_weighted_fed_avg(
     client_work = model_delta_client_work.build_model_delta_client_work(
         model_fn=model_fn,
         optimizer=client_optimizer_fn,
-        client_weighting=client_weighting,
+        client_weighting=client_weighting,  # pyrefly: ignore[bad-argument-type]
         metrics_aggregator=metrics_aggregator,
         loop_implementation=loop_implementation,
     )

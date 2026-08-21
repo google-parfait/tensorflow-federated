@@ -140,7 +140,7 @@ def create_hierarchical_histogram_aggregation_factory(
   # `dp_mechanism`.
   if dp_mechanism == 'central-gaussian':
     query = tree_query.TreeRangeSumQuery.build_central_gaussian_query(
-        l2_norm_bound, noise_multiplier * l2_norm_bound, arity
+        l2_norm_bound, noise_multiplier * l2_norm_bound, arity  # pyrefly: ignore[unbound-name]
     )
     # If the inner `DifferentiallyPrivateFactory` uses `GaussianSumQuery`, then
     # the record is cast to a float32 before feeding to the DP factory.

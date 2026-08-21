@@ -468,7 +468,7 @@ def create_resnet(
   )(x)
 
   model = tf.keras.models.Model(img_input, x)
-  return model
+  return model  # pyrefly: ignore[bad-return]
 
 
 def create_resnet18(

@@ -134,7 +134,7 @@ def build_scheduled_client_work(
     )
   else:
     build_client_update_fn = functools.partial(
-        model_delta_client_work.build_model_delta_update_with_keras_optimizer,
+        model_delta_client_work.build_model_delta_update_with_keras_optimizer,  # pyrefly: ignore[missing-attribute]
         loop_implementation=loop_implementation,
     )
 
@@ -143,7 +143,7 @@ def build_scheduled_client_work(
     learning_rate = learning_rate_fn(round_num)
     optimizer = optimizer_fn(learning_rate)
     client_update = build_client_update_fn(
-        model_fn,
+        model_fn,  # pyrefly: ignore[bad-argument-type]
         weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
         loop_implementation=loop_implementation,
     )

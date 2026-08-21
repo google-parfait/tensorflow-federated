@@ -74,7 +74,7 @@ class _AdafactorOptimizer(
     self._clip_threshold = clip_threshold
     self._relative_step = relative_step
 
-  def initialize(self, specs: _NestedTensorSpecs) -> optimizer.State:
+  def initialize(self, specs: _NestedTensorSpecs) -> optimizer.State:  # pyrefly: ignore[invalid-type-var]
     def initialize_moment(tensor_spec: tf.TensorSpec):
       # Only factor moments for tensors with 2 or more dimensions.
       if tensor_spec.shape.rank < 2:
@@ -88,7 +88,7 @@ class _AdafactorOptimizer(
       v = tf.zeros(shape=tensor_spec.shape, dtype=tensor_spec.dtype)
       return _AdaFactorMoment(r, c, v)
 
-    return {
+    return {  # pyrefly: ignore[bad-return]
         'steps': 0,
         'moments': tuple(
             initialize_moment(spec) for spec in tf.nest.flatten(specs)
@@ -105,11 +105,11 @@ class _AdafactorOptimizer(
 
   def next(
       self,
-      state: optimizer.State,
-      weights: optimizer.Weights,
+      state: optimizer.State,  # pyrefly: ignore[invalid-type-var]
+      weights: optimizer.Weights,  # pyrefly: ignore[invalid-type-var]
       gradients: _NestedTensors,
-  ) -> tuple[optimizer.State, optimizer.Weights]:
-    local_step = tf.cast(state['steps'] + 1, dtype=tf.float32)
+  ) -> tuple[optimizer.State, optimizer.Weights]:  # pyrefly: ignore[invalid-type-var]
+    local_step = tf.cast(state['steps'] + 1, dtype=tf.float32)  # pyrefly: ignore[unsupported-operation]
     hparams = self.get_hparams(state)
     lr = hparams[optimizer.LEARNING_RATE_KEY]
     beta_2_decay = hparams[_BETA_2_DECAY_KEY]
@@ -163,14 +163,14 @@ class _AdafactorOptimizer(
       return new_moment, new_weight
 
     if not tf.nest.flatten(weights):
-      new_moments = state['moments']
+      new_moments = state['moments']  # pyrefly: ignore[unsupported-operation]
       new_weights = weights
     else:
       new_moments, new_weights = zip(
           *tuple(
               update(moment, weight, gradient)
               for moment, weight, gradient in zip(
-                  state['moments'],
+                  state['moments'],  # pyrefly: ignore[unsupported-operation]
                   tf.nest.flatten(weights),
                   tf.nest.flatten(gradients),
               )
@@ -178,22 +178,22 @@ class _AdafactorOptimizer(
       )
       new_weights = tf.nest.pack_sequence_as(weights, new_weights)
 
-    return {
+    return {  # pyrefly: ignore[bad-return]
         'steps': local_step,
         'moments': new_moments,
         'hparams': hparams,
     }, new_weights
 
-  def get_hparams(self, state: optimizer.State) -> optimizer.Hparams:
-    return state['hparams']
+  def get_hparams(self, state: optimizer.State) -> optimizer.Hparams:  # pyrefly: ignore[bad-override, invalid-type-var]
+    return state['hparams']  # pyrefly: ignore[unsupported-operation]
 
-  def set_hparams(
-      self, state: optimizer.State, hparams: dict[str, optimizer.Float]
-  ) -> optimizer.State:
+  def set_hparams(  # pyrefly: ignore[bad-override]
+      self, state: optimizer.State, hparams: dict[str, optimizer.Float]  # pyrefly: ignore[invalid-type-var]
+  ) -> optimizer.State:  # pyrefly: ignore[invalid-type-var]
     # We use `structure._update_struct` (rather than something like
     # `copy.deepcopy`) to ensure that this can be called within a
     # `federated_language.Computation`.
-    return structure._update_struct(state['hparams'], **hparams)  # pylint: disable=protected-access
+    return structure._update_struct(state['hparams'], **hparams)  # pylint: disable=protected-access  # pyrefly: ignore[unsupported-operation]
 
 
 def build_adafactor(

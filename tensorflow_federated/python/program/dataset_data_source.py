@@ -90,7 +90,7 @@ class DatasetDataSourceIterator(
   def to_bytes(self) -> bytes:
     """Serializes the object to bytes."""
     datasets_bytes = serialization_utils.pack_sequence(
-        serialization_utils.pack_dataset, self._datasets
+        serialization_utils.pack_dataset, self._datasets  # pyrefly: ignore[bad-argument-type]
     )
     federated_type_bytes = serialization_utils.pack_type_spec(
         self._federated_type

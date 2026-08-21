@@ -70,9 +70,9 @@ def build_training_loop(
   # TODO: b/162683412 - remove `Iterable` after pytype fix.
   """Returns a reduce loop function on input dataset."""
   if loop_implementation == LoopImplementation.DATASET_ITERATOR:
-    return _for_iter_dataset_fn
+    return _for_iter_dataset_fn  # pyrefly: ignore[bad-return]
   elif loop_implementation == LoopImplementation.DATASET_REDUCE:
-    return _dataset_reduce_fn
+    return _dataset_reduce_fn  # pyrefly: ignore[bad-return]
   else:
     raise NotImplementedError(
         f"Unknown implementation requested: {loop_implementation}"

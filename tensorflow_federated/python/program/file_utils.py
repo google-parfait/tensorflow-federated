@@ -36,7 +36,7 @@ def _create_async_def(fn: Callable[..., _T]) -> Callable[..., _T]:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, fn, *args, **kwargs)
 
-  return wrapper
+  return wrapper  # pyrefly: ignore[bad-return]
 
 
 exists = _create_async_def(tf.io.gfile.exists)

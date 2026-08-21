@@ -322,7 +322,7 @@ def _normalize_secure_quantized_sum_args(
   if isinstance(
       client_value.type_signature.member, federated_language.StructType
   ):
-    dtypes = [v.dtype for v in structure.flatten(client_value_member)]
+    dtypes = [v.dtype for v in structure.flatten(client_value_member)]  # pyrefly: ignore[missing-attribute]
     for dtype in dtypes:
       _check_secure_quantized_sum_dtype(dtype)
   else:

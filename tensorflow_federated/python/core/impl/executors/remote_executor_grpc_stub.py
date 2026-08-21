@@ -35,7 +35,7 @@ def _request(rpc_func, request):
           and e.code() in executors_errors.get_grpc_retryable_error_codes()
       ):
         logging.info('Received retryable gRPC error: %s', e)
-        raise executors_errors.RetryableGRPCError(e)
+        raise executors_errors.RetryableGRPCError(e)  # pyrefly: ignore[bad-instantiation]
       else:
         raise e
 

@@ -417,7 +417,7 @@ def create_default_secure_sum_quantization_ranges(
           f'{type_spec.dtype}. Only floating or integer types are supported.'
       )
 
-  return type_conversions.structure_from_tensor_type_tree(
+  return type_conversions.structure_from_tensor_type_tree(  # pyrefly: ignore[bad-return]
       create_default_range, local_unfinalized_metrics_type
   )
 
@@ -444,30 +444,30 @@ def fill_missing_values_with_defaults(
   """
   if isinstance(default_values, Mapping):
     if user_values is None:
-      user_values = {}
+      user_values = {}  # pyrefly: ignore[bad-assignment]
     filled_with_defaults_values = []
     for key, default_value in default_values.items():
       filled_with_defaults_values.append((
           key,
           fill_missing_values_with_defaults(
-              default_value, user_values.get(key)
+              default_value, user_values.get(key)  # pyrefly: ignore[bad-argument-type]
           ),
       ))
     return type(default_values)(filled_with_defaults_values)
   elif isinstance(default_values, list):
     if user_values is None:
-      user_values = [None] * len(default_values)
-    return [
-        fill_missing_values_with_defaults(default_value, user_values[idx])
+      user_values = [None] * len(default_values)  # pyrefly: ignore[bad-assignment]
+    return [  # pyrefly: ignore[bad-return]
+        fill_missing_values_with_defaults(default_value, user_values[idx])  # pyrefly: ignore[bad-argument-type, bad-index]
         for idx, default_value in enumerate(default_values)
     ]
   elif user_values is None:
-    return _MetricRange(*default_values)
+    return _MetricRange(*default_values)  # pyrefly: ignore[bad-return]
   else:
     if isinstance(user_values, _MetricRange):
-      return user_values
-    _check_user_metric_value_range(user_values)
-    return _MetricRange(*user_values)
+      return user_values  # pyrefly: ignore[bad-return]
+    _check_user_metric_value_range(user_values)  # pyrefly: ignore[bad-argument-type]
+    return _MetricRange(*user_values)  # pyrefly: ignore[bad-argument-type, bad-return]
 
 
 # Define a delimiter that is used to generate a string key of a inner secure
@@ -491,7 +491,7 @@ def create_factory_key(
   # The `tff.templates.EstimationProcess` are only used as the default upper
   # bound for float values, so replace it as a fixed string.
   if isinstance(upper, estimation_process.EstimationProcess):
-    upper = 'default_estimation_process'
+    upper = 'default_estimation_process'  # pyrefly: ignore[bad-assignment]
   return _DELIMITER.join(
       str(item) for item in [lower, upper, tensor_dtype.name]
   )
@@ -603,7 +603,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     # and fill in any missing ranges using the defaults.
     try:
       metric_value_ranges = fill_missing_values_with_defaults(
-          default_metric_value_ranges, self._metric_value_ranges
+          default_metric_value_ranges, self._metric_value_ranges  # pyrefly: ignore[bad-argument-type]
       )
     except TypeError as e:
       raise TypeError(
@@ -691,11 +691,11 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     for (
         factory_key,
         tensor_type_list,
-    ) in tensor_type_list_by_factory_key.items():
+    ) in tensor_type_list_by_factory_key.items():  # pyrefly: ignore[missing-attribute]
       value_range = value_range_by_factory_key[factory_key]
       aggregation_process_by_factory_key[
           factory_key
-      ] = aggregator_factories.get(value_range).create(
+      ] = aggregator_factories.get(value_range).create(  # pyrefly: ignore[missing-attribute]
           federated_language.to_type(tensor_type_list)
       )  # pytype: disable=attribute-error,wrong-arg-types
 

@@ -852,7 +852,7 @@ class UTF8Chunker(Chunker):
     self._utf8_size_bits = 8
     self._max_chunk_value = max_chunk_value
     if self._max_chunk_value is not None:
-      if max_chunk_value < 1:
+      if max_chunk_value < 1:  # pyrefly: ignore[unsupported-operation]
         raise ValueError('If set, max_chunk_value must be at least 1.')
       if self._max_chunk_value > self._dtype.max:
         raise ValueError(
@@ -998,7 +998,7 @@ class UTF8Chunker(Chunker):
         encoded_chunks_bytes
     )
     decoded_chars_reshaped = decoded_chars.reshape(-1, self._max_length)
-    decoded_strings = np.apply_along_axis(
+    decoded_strings = np.apply_along_axis(  # pyrefly: ignore[no-matching-overload]
         lambda r: r.tobytes(), arr=decoded_chars_reshaped, axis=1
     )
 

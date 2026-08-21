@@ -72,7 +72,7 @@ def augment_metric_finalizers(metric_finalizers):
           if k != NUM_NON_FINITE_CLIENTS_KEY
       )
       finalized = original_finalize_fn(model_metrics)
-      finalized[NUM_NON_FINITE_CLIENTS_KEY] = unfinalized_metrics[
+      finalized[NUM_NON_FINITE_CLIENTS_KEY] = unfinalized_metrics[  # pyrefly: ignore[unsupported-operation]
           NUM_NON_FINITE_CLIENTS_KEY
       ]
       return finalized

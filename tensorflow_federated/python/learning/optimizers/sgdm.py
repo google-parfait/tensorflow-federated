@@ -71,13 +71,13 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       state[_ACCUMULATOR_KEY] = tf.nest.map_structure(
           lambda s: tf.zeros(s.shape, s.dtype), specs
       )
-    return state
+    return state  # pyrefly: ignore[bad-return]
 
-  def next(
+  def next(  # pyrefly: ignore[bad-override]
       self, state: State, weights: optimizer.Weights, gradients: Any
   ) -> tuple[State, optimizer.Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
-    optimizer.check_weights_gradients_match(weights, gradients)
+    optimizer.check_weights_gradients_match(weights, gradients)  # pyrefly: ignore[bad-argument-type]
     lr = state[optimizer.LEARNING_RATE_KEY]
 
     if _MOMENTUM_KEY not in state:
@@ -98,7 +98,7 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     else:
       momentum = state[_MOMENTUM_KEY]
       accumulator = state[_ACCUMULATOR_KEY]
-      optimizer.check_weights_state_match(weights, accumulator, 'accumulator')
+      optimizer.check_weights_state_match(weights, accumulator, 'accumulator')  # pyrefly: ignore[bad-argument-type]
 
       def _sgdm_update(w, a, g):
         if g is None:
@@ -124,10 +124,10 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
           (_MOMENTUM_KEY, momentum),
           (_ACCUMULATOR_KEY, updated_accumulator),
       ])
-    return updated_state, updated_weights
+    return updated_state, updated_weights  # pyrefly: ignore[bad-return]
 
   def get_hparams(self, state: State) -> Hparams:
-    return collections.OrderedDict([(k, state[k]) for k in self._hparams_keys])
+    return collections.OrderedDict([(k, state[k]) for k in self._hparams_keys])  # pyrefly: ignore[bad-return]
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
     return structure._update_struct(state, **hparams)  # pylint: disable=protected-access

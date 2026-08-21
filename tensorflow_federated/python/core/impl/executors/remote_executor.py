@@ -64,7 +64,7 @@ class RemoteValue(federated_language.framework.ExecutorValue):
     f = weakref.finalize(
         self, finalizer, value_ref, executor, executor._executor_id
     )
-    f.atexit = dispose_at_exit
+    f.atexit = dispose_at_exit  # pyrefly: ignore[missing-attribute]
 
   @property
   def type_signature(self):

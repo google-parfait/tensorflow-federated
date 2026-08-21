@@ -1245,17 +1245,17 @@ def get_distribute_aggregate_form_for_computation(
         aggregation_args = inner_comp.argument
       else:
         aggregation_args = [inner_comp.argument]
-      unbound_ref_names_for_intrinsic = unbound_refs[inner_comp.argument]
+      unbound_ref_names_for_intrinsic = unbound_refs[inner_comp.argument]  # pyrefly: ignore[bad-index]
 
       for aggregation_arg in aggregation_args:
-        if unbound_refs[aggregation_arg].issubset(
+        if unbound_refs[aggregation_arg].issubset(  # pyrefly: ignore[bad-index]
             unbound_ref_names_for_intrinsic
         ):
           # If the arg is non-placed or server-placed, prepare to create a
           # federated broadcast that depends on it by normalizing it to a
           # server-placed value.
           if not isinstance(
-              aggregation_arg.type_signature, federated_language.FederatedType
+              aggregation_arg.type_signature, federated_language.FederatedType  # pyrefly: ignore[missing-attribute]
           ):
 
             def _has_placement(type_spec):
@@ -1265,7 +1265,7 @@ def get_distribute_aggregate_form_for_computation(
 
             if (
                 federated_language.framework.computation_count(
-                    aggregation_arg, _has_placement
+                    aggregation_arg, _has_placement  # pyrefly: ignore[bad-argument-type]
                 )
                 > 0
             ):
@@ -1275,7 +1275,7 @@ def get_distribute_aggregate_form_for_computation(
               )
             args_needing_broadcast_dependency.append(
                 federated_language.framework.create_federated_value(
-                    aggregation_arg, federated_language.SERVER
+                    aggregation_arg, federated_language.SERVER  # pyrefly: ignore[bad-argument-type]
                 )
             )
           elif (
@@ -1312,7 +1312,7 @@ def get_distribute_aggregate_form_for_computation(
         federated_language.framework.create_federated_apply(
             federated_language.framework.Lambda(
                 'ignored_param',
-                zipped_args_needing_broadcast_dependency.type_signature.member,
+                zipped_args_needing_broadcast_dependency.type_signature.member,  # pyrefly: ignore[missing-attribute]
                 federated_language.framework.Struct([]),
             ),
             zipped_args_needing_broadcast_dependency,
@@ -1379,7 +1379,7 @@ def get_distribute_aggregate_form_for_computation(
         new_param_name, comp.parameter_type[0]
     )
     modified_comp_body = tree_transformations.replace_selections(
-        comp.result, comp.parameter_name, {(0,): replacement_ref}
+        comp.result, comp.parameter_name, {(0,): replacement_ref}  # pyrefly: ignore[bad-argument-type]
     )
     modified_comp = federated_language.framework.Lambda(
         replacement_ref.name, replacement_ref.type_signature, modified_comp_body
@@ -1418,7 +1418,7 @@ def get_distribute_aggregate_form_for_computation(
   # split.
   if args_needing_broadcast_dependency:
     assert isinstance(
-        after_broadcast.result.result, federated_language.framework.Struct
+        after_broadcast.result.result, federated_language.framework.Struct  # pyrefly: ignore[missing-attribute]
     )
     # Check that the last element of the result is the expected empty struct
     # associated with the injected broadcast call.
@@ -1433,7 +1433,7 @@ def get_distribute_aggregate_form_for_computation(
         after_broadcast.parameter_name,
         after_broadcast.parameter_type,
         federated_language.framework.Block(
-            after_broadcast.result.locals,
+            after_broadcast.result.locals,  # pyrefly: ignore[missing-attribute]
             federated_language.framework.Struct(
                 list(after_broadcast.result.result.items())[:-1]
             ),

@@ -76,7 +76,7 @@ class _Adam(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     initial_preconditioner = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype), specs
     )
-    return collections.OrderedDict([
+    return collections.OrderedDict([  # pyrefly: ignore[bad-return]
         (optimizer.LEARNING_RATE_KEY, self._lr),
         (_BETA_1_KEY, self._beta_1),
         (_BETA_2_KEY, self._beta_2),
@@ -86,11 +86,11 @@ class _Adam(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         (_PRECONDITIONER_KEY, initial_preconditioner),
     ])
 
-  def next(
+  def next(  # pyrefly: ignore[bad-override]
       self, state: State, weights: optimizer.Weights, gradients: Any
   ) -> tuple[State, optimizer.Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
-    optimizer.check_weights_gradients_match(weights, gradients)
+    optimizer.check_weights_gradients_match(weights, gradients)  # pyrefly: ignore[bad-argument-type]
     lr = state[optimizer.LEARNING_RATE_KEY]
     beta_1 = state[_BETA_1_KEY]
     beta_2 = state[_BETA_2_KEY]
@@ -98,9 +98,9 @@ class _Adam(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     step = state[_STEP_KEY] + 1
     accumulator = state[_ACCUMULATOR_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
-    optimizer.check_weights_state_match(weights, accumulator, 'accumulator')
+    optimizer.check_weights_state_match(weights, accumulator, 'accumulator')  # pyrefly: ignore[bad-argument-type]
     optimizer.check_weights_state_match(
-        weights, preconditioner, 'preconditioner'
+        weights, preconditioner, 'preconditioner'  # pyrefly: ignore[bad-argument-type]
     )
     if tf.is_tensor(beta_1):
       casted_step = tf.cast(step, beta_1.dtype)
@@ -144,10 +144,10 @@ class _Adam(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         (_ACCUMULATOR_KEY, updated_accumulator),
         (_PRECONDITIONER_KEY, updated_preconditioner),
     ])
-    return updated_state, updated_weights
+    return updated_state, updated_weights  # pyrefly: ignore[bad-return]
 
   def get_hparams(self, state: State) -> Hparams:
-    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])
+    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])  # pyrefly: ignore[bad-return]
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
     return structure._update_struct(state, **hparams)  # pylint: disable=protected-access

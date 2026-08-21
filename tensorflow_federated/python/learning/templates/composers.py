@@ -218,7 +218,7 @@ def compose_learning_process(
         finalizer=finalizer_output.measurements)
 
     if measure_timing:
-      client_work_metrics_type = client_work.next.type_signature.result.measurements.member
+      client_work_metrics_type = client_work.next.type_signature.result.measurements.member  # pyrefly: ignore[missing-attribute]
       new_client_work_metrics_dict = collections.OrderedDict(
           (name, client_work_output.measurements[name])
           for name, _ in client_work_metrics_type.items()
@@ -226,9 +226,9 @@ def compose_learning_process(
 
       # Add timing metrics as a nested dict
       new_client_work_metrics_dict['timing'] = collections.OrderedDict(
-          min=min_duration,
-          max=max_duration,
-          mean=mean_duration)
+          min=min_duration,  # pyrefly: ignore[unbound-name]
+          max=max_duration,  # pyrefly: ignore[unbound-name]
+          mean=mean_duration)  # pyrefly: ignore[unbound-name]
       metrics_dict['client_work'] = federated_language.federated_zip(
           new_client_work_metrics_dict
       )

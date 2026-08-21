@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.templates import errors
 
 def _is_nonempty_struct(type_signature) -> bool:
   return (
-      isinstance(type_signature, federated_language.StructType)
+      isinstance(type_signature, federated_language.StructType)  # pyrefly: ignore[bad-return]
       and type_signature
   )
 

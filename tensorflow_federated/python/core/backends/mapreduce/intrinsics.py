@@ -55,7 +55,7 @@ def _cast(
       return tf.cast(element, type_signature.dtype)
 
     if isinstance(comp.type_signature, federated_language.StructType):
-      return structure._map_structure(cast_element, value, type_signature)  # pylint: disable=protected-access
+      return structure._map_structure(cast_element, value, type_signature)  # pylint: disable=protected-access  # pyrefly: ignore[bad-argument-type]
     return cast_element(value, type_signature)
 
   cast_proto, cast_type = tensorflow_computation_factory.create_unary_operator(

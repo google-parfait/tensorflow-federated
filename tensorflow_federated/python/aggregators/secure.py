@@ -330,7 +330,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       self._config_mode = _Config.INT
       if lower_bound_threshold is None:
         _check_positive(upper_bound_threshold)
-        lower_bound_threshold = -1 * upper_bound_threshold
+        lower_bound_threshold = -1 * upper_bound_threshold  # pyrefly: ignore[unsupported-operation]
       else:
         _check_upper_larger_than_lower(
             upper_bound_threshold, lower_bound_threshold
@@ -340,7 +340,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       # We must add one because the size of inclusive range [0, threshold_range]
       # is threshold_range + 1. We ensure that threshold_range > 0 above.
       self._secagg_bitwidth = math.ceil(
-          math.log2(upper_bound_threshold - lower_bound_threshold + 1)
+          math.log2(upper_bound_threshold - lower_bound_threshold + 1)  # pyrefly: ignore[unsupported-operation]
       )
 
     # Configuration specific for aggregating floating point types.
@@ -358,7 +358,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         self._update_state = lambda _, __, ___: _empty_state()
       else:
         # Bounds specified as an EstimationProcess.
-        _check_bound_process(upper_bound_threshold, 'upper_bound_threshold')
+        _check_bound_process(upper_bound_threshold, 'upper_bound_threshold')  # pyrefly: ignore[bad-argument-type]
         upper_bound_threshold = typing.cast(
             estimation_process.EstimationProcess, upper_bound_threshold
         )
@@ -368,7 +368,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
               upper_bound_threshold
           )
         else:
-          _check_bound_process(lower_bound_threshold, 'lower_bound_threshold')
+          _check_bound_process(lower_bound_threshold, 'lower_bound_threshold')  # pyrefly: ignore[bad-argument-type]
           lower_bound_threshold = typing.cast(
               estimation_process.EstimationProcess, lower_bound_threshold
           )
@@ -476,7 +476,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       if self._lower_bound_threshold is not None:
         bounds_fn = _create_get_bounds_two_processes(
             self._upper_bound_threshold,
-            self._lower_bound_threshold,
+            self._lower_bound_threshold,  # pyrefly: ignore[bad-argument-type]
             bound_dtype,
         )
       else:

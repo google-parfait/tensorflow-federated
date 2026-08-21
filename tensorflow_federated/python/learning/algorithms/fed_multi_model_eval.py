@@ -215,7 +215,7 @@ def _build_fed_eval_client_work(
     # TODO: b/319261270 - Avoid the need for inferring types here, if possible.
     metrics_finalizers = model.metric_finalizers()
     unfinalized_metrics_type = federated_language.StructWithPythonType(
-        unfinalized_metrics_spec, collections.OrderedDict
+        unfinalized_metrics_spec, collections.OrderedDict  # pyrefly: ignore[unbound-name]
     )
     factory = sum_aggregation_factory.SumThenFinalizeFactory(metrics_finalizers)
     metrics_aggregation_process = factory.create(unfinalized_metrics_type)
@@ -297,7 +297,7 @@ def _build_functional_fed_eval_client_work(
   local_eval = _build_functional_local_evaluation(
       model,
       tuple_weights_type,  # pytype: disable=wrong-arg-types
-      batch_type,
+      batch_type,  # pyrefly: ignore[bad-argument-type]
   )
 
   if metrics_aggregation_process is None:
@@ -305,7 +305,7 @@ def _build_functional_fed_eval_client_work(
     metrics_aggregation_process = (
         sum_aggregation_factory.SumThenFinalizeFactory(
             model.finalize_metrics
-        ).create(unfinalized_metrics_type)
+        ).create(unfinalized_metrics_type)  # pyrefly: ignore[bad-argument-type]
     )
 
   @federated_language.federated_computation
@@ -492,7 +492,7 @@ def build_fed_multi_model_eval(
     )
 
   if metrics_aggregation_processes is None:
-    metrics_aggregation_processes = [None] * len(model_fns)
+    metrics_aggregation_processes = [None] * len(model_fns)  # pyrefly: ignore[bad-assignment]
   else:
     if len(metrics_aggregation_processes) != len(model_fns):
       raise ValueError(
@@ -512,7 +512,7 @@ def build_fed_multi_model_eval(
       string.ascii_lowercase,
       model_fns,
       multi_model_weights_type,
-      metrics_aggregation_processes,
+      metrics_aggregation_processes,  # pyrefly: ignore[bad-argument-type]
   ):
     if not callable(model_fn):
       client_work_processes[model_id] = _build_functional_fed_eval_client_work(
@@ -537,7 +537,7 @@ def build_fed_multi_model_eval(
 
   # Get the type of the client data from the first ClientWorkProcess. It is
   # required that all models have the same input spec.
-  client_data_type = client_work_processes['a'].next.type_signature.parameter[2]
+  client_data_type = client_work_processes['a'].next.type_signature.parameter[2]  # pyrefly: ignore[bad-index, unsupported-operation]
 
   @federated_language.federated_computation(
       multi_init.type_signature.result,
@@ -713,7 +713,7 @@ def build_fed_multi_model_eval_from_processes(
             string.ascii_letters, eval_processes
         )
     }
-    return _combine_multi_state(multi_state)
+    return _combine_multi_state(multi_state)  # pyrefly: ignore[bad-argument-type]
 
   state_type = init_fn.type_signature.result
 

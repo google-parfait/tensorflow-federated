@@ -138,7 +138,7 @@ class MergeableCompForm:
         (None, up_to_merge.type_signature.result.member),  # pytype: disable=attribute-error
         (None, up_to_merge.type_signature.result.member),  # pytype: disable=attribute-error
     ])
-    if not merge.type_signature.parameter.is_assignable_from(
+    if not merge.type_signature.parameter.is_assignable_from(  # pyrefly: ignore[missing-attribute]
         expected_merge_param_type
     ):  # pytype: disable=attribute-error
       raise MergeTypeNotAssignableError(
@@ -149,10 +149,10 @@ class MergeableCompForm:
       )
 
     if not (
-        merge.type_signature.parameter[0].is_assignable_from(
+        merge.type_signature.parameter[0].is_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
             merge.type_signature.result
         )  # pytype: disable=unsupported-operands
-        and merge.type_signature.parameter[1].is_assignable_from(
+        and merge.type_signature.parameter[1].is_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
             merge.type_signature.result
         )  # pytype: disable=unsupported-operands
     ):
@@ -180,7 +180,7 @@ class MergeableCompForm:
           merge.type_signature.result, federated_language.SERVER
       )
 
-    after_merge.type_signature.parameter.check_assignable_from(
+    after_merge.type_signature.parameter.check_assignable_from(  # pyrefly: ignore[missing-attribute]
         expected_after_merge_arg_type
     )  # pytype: disable=attribute-error
 
@@ -313,7 +313,7 @@ def _partition_value(
     )
     num_remaining_clients = val.num_remaining_clients - num_clients_for_subround
     num_remaining_partitions = val.num_remaining_partitions - 1
-    values_to_return = val.payload[
+    values_to_return = val.payload[  # pyrefly: ignore[bad-index]
         val.last_client_index : val.last_client_index + num_clients_for_subround
     ]
     last_client_index = val.last_client_index + num_clients_for_subround
@@ -411,7 +411,7 @@ def _repackage_partitioned_values(
               [x[idx] for x in after_merge_structs], elem_type
           ),
       ))
-    return structure.Struct(result_container)
+    return structure.Struct(result_container)  # pyrefly: ignore[bad-return]
   elif (
       isinstance(result_type_spec, federated_language.FederatedType)
       and result_type_spec.placement is federated_language.CLIENTS
@@ -546,7 +546,7 @@ async def _run_in_async_context_pool(
         contexts_by_task[task] = context
         arg_list_index += 1
 
-  return result, context
+  return result, context  # pyrefly: ignore[bad-return]
 
 
 async def _invoke_merge_in_async_pool(

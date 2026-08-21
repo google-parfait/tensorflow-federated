@@ -110,26 +110,26 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
           f'Found {type(inner_agg_factory)}.'
       )
 
-    if not isinstance(scale_factor, numbers.Number) or scale_factor <= 0:
+    if not isinstance(scale_factor, numbers.Number) or scale_factor <= 0:  # pyrefly: ignore[unsupported-operation]
       raise ValueError(
           f'`scale_factor` should be a positive number. Found {scale_factor}.'
       )
     if not isinstance(stochastic, bool):
       raise ValueError(f'`stochastic` should be a boolean. Found {stochastic}.')
-    if not isinstance(beta, numbers.Number) or not 0 <= beta < 1:
+    if not isinstance(beta, numbers.Number) or not 0 <= beta < 1:  # pyrefly: ignore[unsupported-operation]
       raise ValueError(f'`beta` should be a number in [0, 1). Found {beta}.')
     if prior_norm_bound is not None and (
         not isinstance(prior_norm_bound, numbers.Number)
-        or prior_norm_bound <= 0
+        or prior_norm_bound <= 0  # pyrefly: ignore[unsupported-operation]
     ):
       raise ValueError(
           'If specified, `prior_norm_bound` should be a positive '
           f'number. Found {prior_norm_bound}.'
       )
 
-    self._scale_factor = float(scale_factor)
+    self._scale_factor = float(scale_factor)  # pyrefly: ignore[bad-argument-type]
     self._stochastic = stochastic
-    self._beta = float(beta)
+    self._beta = float(beta)  # pyrefly: ignore[bad-argument-type]
     # Use value 0 to denote no prior norm bounds for easier typing.
     self._prior_norm_bound = prior_norm_bound or 0.0
     self._inner_agg_factory = inner_agg_factory

@@ -106,7 +106,7 @@ def create_concat_fns(
 
 def _check_component_dtypes(value_type):
   """Checks the component tensor dtypes of the input `value_type`."""
-  component_dtypes = set([v.dtype for v in structure.flatten(value_type)])
+  component_dtypes = set([v.dtype for v in structure.flatten(value_type)])  # pyrefly: ignore[missing-attribute]
   # Check that all component tensors have the same dtype.
   if len(component_dtypes) != 1:
     raise TypeError(

@@ -153,7 +153,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     self._repetitions = repetitions
     self._seed = seed
 
-  def create(
+  def create(  # pyrefly: ignore[bad-override]
       self, value_type: federated_language.SequenceType
   ) -> aggregation_process.AggregationProcess:  # pytype: disable=signature-mismatch
     """Creates an AggregationProcess using IBLT to aggregate strings.

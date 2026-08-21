@@ -93,7 +93,7 @@ class TransformingClientData(client_data.ClientData):
     return self._client_ids
 
   def _create_dataset(self, client_id: str) -> tf.data.Dataset:
-    orig_client_id = self._reduce_client_id(client_id)
+    orig_client_id = self._reduce_client_id(client_id)  # pyrefly: ignore[not-callable]
     orig_dataset = self._base_client_data.serializable_dataset_fn(
         orig_client_id
     )

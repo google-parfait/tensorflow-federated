@@ -62,7 +62,7 @@ def create_chained_calls(functions, arg):
       )
     call = federated_language.framework.Call(fn, arg)
     arg = call
-  return call
+  return call  # pyrefly: ignore[unbound-name]
 
 
 def create_whimsy_block(
@@ -269,16 +269,16 @@ def create_whimsy_called_federated_mean(
 ):
   """Returns a called federated mean."""
   value = value_type(1)
-  value_type = federated_language.TensorType(value_type)
+  value_type = federated_language.TensorType(value_type)  # pyrefly: ignore[bad-assignment]
   values = federated_language.framework.create_federated_value(
-      federated_language.framework.Literal(value, value_type),
+      federated_language.framework.Literal(value, value_type),  # pyrefly: ignore[bad-argument-type]
       placement=federated_language.CLIENTS,
   )
   if weights_type is not None:
     weights_value = weights_type(1)
-    weights_type = federated_language.TensorType(weights_type)
+    weights_type = federated_language.TensorType(weights_type)  # pyrefly: ignore[bad-assignment]
     weights = federated_language.framework.create_federated_value(
-        federated_language.framework.Literal(weights_value, weights_type),
+        federated_language.framework.Literal(weights_value, weights_type),  # pyrefly: ignore[bad-argument-type]
         placement=federated_language.CLIENTS,
     )
   else:

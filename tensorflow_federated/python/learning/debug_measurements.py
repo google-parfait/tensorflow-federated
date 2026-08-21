@@ -308,7 +308,7 @@ def add_debug_measurements(
       )
   )
 
-  return measurements.add_measurements(
+  return measurements.add_measurements(  # pyrefly: ignore[bad-return]
       aggregation_factory,
       client_measurement_fn=client_measurement_fn,
       server_measurement_fn=server_measurement_fn,
@@ -378,7 +378,7 @@ def add_debug_measurements_with_mixed_dtype(
       )
   )
 
-  return measurements.add_measurements(
+  return measurements.add_measurements(  # pyrefly: ignore[bad-return]
       aggregation_factory,
       client_measurement_fn=client_measurement_fn,
       server_measurement_fn=server_measurement_fn,

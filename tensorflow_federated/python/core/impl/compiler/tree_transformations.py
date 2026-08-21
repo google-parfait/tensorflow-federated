@@ -69,7 +69,7 @@ def remove_mapped_or_applied_identity(comp):
             federated_language.framework.SEQUENCE_MAP.uri,
         )
     ):
-      called_function = comp.argument[0]
+      called_function = comp.argument[0]  # pyrefly: ignore[bad-index, unsupported-operation]
       return federated_language.framework.is_identity_function(called_function)
     return False
 

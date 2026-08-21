@@ -368,7 +368,7 @@ def _get_intrinsic_reductions() -> dict[
       (federated_language.framework.GENERIC_MULTIPLY.uri, generic_multiply),
       (federated_language.framework.GENERIC_PLUS.uri, generic_plus),
   ])
-  return intrinsic_bodies_by_uri
+  return intrinsic_bodies_by_uri  # pyrefly: ignore[bad-return]
 
 
 def replace_intrinsics_with_bodies(comp):

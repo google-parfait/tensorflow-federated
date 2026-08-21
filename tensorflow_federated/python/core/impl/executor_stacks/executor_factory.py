@@ -131,9 +131,9 @@ def local_cpp_executor_factory(
           return self._stub
         # Stub is not ready; since we block below, this must imply that the
         # service is down. Kill the process and restart below.
-        os.kill(self._process.pid, signal.SIGINT)
+        os.kill(self._process.pid, signal.SIGINT)  # pyrefly: ignore[missing-attribute]
         logging.debug('Waiting for existing processes to complete')
-        self._process.wait()
+        self._process.wait()  # pyrefly: ignore[missing-attribute]
       # Start a process and block til the associated stub is ready.
       process, port = start_process()
       target = f'localhost:{port}'

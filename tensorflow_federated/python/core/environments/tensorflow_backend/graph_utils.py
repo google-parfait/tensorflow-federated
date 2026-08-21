@@ -55,7 +55,7 @@ def add_control_dep_mappings(
   Returns:
     A new new `dict` with potentially additional keys for control dependencies.
   """
-  return dict(
+  return dict(  # pyrefly: ignore[bad-return]
       **input_map,
       **{
           make_control_dependency(k): make_control_dependency(v.name)

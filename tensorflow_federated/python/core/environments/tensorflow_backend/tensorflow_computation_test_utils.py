@@ -45,7 +45,7 @@ def _stamp_value_into_graph(
     return None
   if isinstance(type_signature, federated_language.TensorType):
     if isinstance(value, np.ndarray) or tf.is_tensor(value):
-      value_type = federated_language.TensorType(value.dtype, value.shape)
+      value_type = federated_language.TensorType(value.dtype, value.shape)  # pyrefly: ignore[missing-attribute]
       type_signature.check_assignable_from(value_type)
       with graph.as_default():
         return tf.constant(value)
@@ -60,7 +60,7 @@ def _stamp_value_into_graph(
     if isinstance(value, (list, dict)):
       value = structure._from_container(value)  # pylint: disable=protected-access
     stamped_elements = []
-    for (name, type_signature), element in zip(type_signature.items(), value):
+    for (name, type_signature), element in zip(type_signature.items(), value):  # pyrefly: ignore[bad-argument-type]
       stamped_element = _stamp_value_into_graph(element, type_signature, graph)
       stamped_elements.append((name, stamped_element))
     return structure.Struct(stamped_elements)

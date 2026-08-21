@@ -152,7 +152,7 @@ def run_training_process(
   else:
     program_state = None
   if program_state is not None:
-    logging.info('Loaded program state at version %d', previous_saved_version)
+    logging.info('Loaded program state at version %d', previous_saved_version)  # pyrefly: ignore[unbound-name]
     state = program_state
     start_round = previous_saved_version + 1
   else:

@@ -105,7 +105,7 @@ class Optimizer(abc.ABC, Generic[State, Weights, Hparams]):
       An ordered dictionary representing the hyperparameters in the given state.
     """
     del state
-    return collections.OrderedDict()
+    return collections.OrderedDict()  # pyrefly: ignore[bad-return]
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
     """Returns an optimizer state with updated hyperparameters.

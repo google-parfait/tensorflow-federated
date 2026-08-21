@@ -353,7 +353,7 @@ def build_fed_kmeans(
   weighted_aggregator = factory_utils.as_weighted_aggregator(sum_aggregator)
   value_type = federated_language.to_type((centroids_type, weights_type))
   aggregator = weighted_aggregator.create(
-      value_type,
+      value_type,  # pyrefly: ignore[bad-argument-type]
       federated_language.to_type(()),  # pytype: disable=wrong-arg-types
   )
 

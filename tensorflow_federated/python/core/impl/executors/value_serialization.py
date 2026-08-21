@@ -282,7 +282,7 @@ def serialize_value(
   elif isinstance(value, federated_language.framework.ConcreteComputation):
     return _serialize_computation_value(
         value.to_proto(),
-        executor_utils.reconcile_value_with_type_spec(value, type_spec),
+        executor_utils.reconcile_value_with_type_spec(value, type_spec),  # pyrefly: ignore[bad-argument-type]
     )
   elif isinstance(value, array_pb2.Array):
     return _serialize_array_value(value, type_spec)

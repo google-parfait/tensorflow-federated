@@ -249,7 +249,7 @@ def _build_mime_lite_client_work(
   weights_type = model_weights_lib.weights_type_from_model(model)
   weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
 
-  full_gradient_aggregator = full_gradient_aggregator.create(
+  full_gradient_aggregator = full_gradient_aggregator.create(  # pyrefly: ignore[bad-assignment]
       weights_type.trainable, federated_language.TensorType(np.float32)
   )
 
@@ -262,7 +262,7 @@ def _build_mime_lite_client_work(
         ),
         federated_language.SERVER,
     )
-    aggregator_state = full_gradient_aggregator.initialize()
+    aggregator_state = full_gradient_aggregator.initialize()  # pyrefly: ignore[missing-attribute]
     return federated_language.federated_zip((optimizer_state, aggregator_state))
 
   client_update_fn = _build_client_update_fn_for_mime_lite(
@@ -299,7 +299,7 @@ def _build_mime_lite_client_work(
             client_update_fn, (optimizer_state_at_clients, weights, client_data)
         )
     )
-    full_gradient_agg_output = full_gradient_aggregator.next(
+    full_gradient_agg_output = full_gradient_aggregator.next(  # pyrefly: ignore[missing-attribute]
         aggregator_state, full_gradient, client_result.update_weight
     )
     updated_optimizer_state = federated_language.federated_map(
@@ -549,7 +549,7 @@ def _build_mime_lite_functional_client_work(
   weights_type = tensorflow_types.to_type(weights_spec)
   weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
 
-  full_gradient_aggregator = full_gradient_aggregator.create(
+  full_gradient_aggregator = full_gradient_aggregator.create(  # pyrefly: ignore[bad-assignment]
       weights_type.trainable,  # pytype: disable=attribute-error
       federated_language.TensorType(np.float32),
   )
@@ -562,7 +562,7 @@ def _build_mime_lite_functional_client_work(
         ),
         federated_language.SERVER,
     )
-    aggregator_state = full_gradient_aggregator.initialize()
+    aggregator_state = full_gradient_aggregator.initialize()  # pyrefly: ignore[missing-attribute]
     return federated_language.federated_zip((optimizer_state, aggregator_state))
 
   client_update_fn = _build_functional_client_update_fn_for_mime_lite(
@@ -602,7 +602,7 @@ def _build_mime_lite_functional_client_work(
             client_update_fn, (optimizer_state_at_clients, weights, client_data)
         )
     )
-    full_gradient_agg_output = full_gradient_aggregator.next(
+    full_gradient_agg_output = full_gradient_aggregator.next(  # pyrefly: ignore[missing-attribute]
         aggregator_state, full_gradient, client_result.update_weight
     )
     updated_optimizer_state = federated_language.federated_map(
@@ -704,7 +704,7 @@ def _build_scheduled_mime_lite_client_work(
         f'{type(model_fn)}'
     )
 
-  federated_mime_state_type, federated_weights_type, federated_data_type = (
+  federated_mime_state_type, federated_weights_type, federated_data_type = (  # pyrefly: ignore[not-iterable]
       client_work.next.type_signature.parameter
   )  # pytype: disable=attribute-error
   data_type = federated_data_type.member
@@ -913,7 +913,7 @@ def build_weighted_mime_lite(
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
   model_update_type = model_weights_type.trainable
-  model_aggregator = model_aggregator.create(
+  model_aggregator = model_aggregator.create(  # pyrefly: ignore[bad-assignment]
       model_update_type, federated_language.TensorType(np.float32)
   )
   if full_gradient_aggregator is None:
@@ -926,7 +926,7 @@ def build_weighted_mime_lite(
     client_work = _build_mime_lite_client_work(
         model_fn=model_fn,
         optimizer=base_optimizer,
-        client_weighting=client_weighting,
+        client_weighting=client_weighting,  # pyrefly: ignore[bad-argument-type]
         full_gradient_aggregator=full_gradient_aggregator,
         metrics_aggregator=metrics_aggregator,
         loop_implementation=loop_implementation,
@@ -935,7 +935,7 @@ def build_weighted_mime_lite(
     client_work = _build_mime_lite_functional_client_work(
         model=model_fn,
         optimizer=base_optimizer,
-        client_weighting=client_weighting,
+        client_weighting=client_weighting,  # pyrefly: ignore[bad-argument-type]
         full_gradient_aggregator=full_gradient_aggregator,
         metrics_aggregator=metrics_aggregator,
         loop_implementation=loop_implementation,
@@ -953,7 +953,7 @@ def build_weighted_mime_lite(
       initial_model_weights_fn,
       model_distributor,
       client_work,
-      model_aggregator,
+      model_aggregator,  # pyrefly: ignore[bad-argument-type]
       finalizer,
   )
 
@@ -1244,7 +1244,7 @@ def build_mime_lite_with_optimizer_schedule(
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
   model_update_type = model_weights_type.trainable
-  model_aggregator = model_aggregator.create(
+  model_aggregator = model_aggregator.create(  # pyrefly: ignore[bad-assignment]
       model_update_type, federated_language.TensorType(np.float32)
   )
   if full_gradient_aggregator is None:
@@ -1257,7 +1257,7 @@ def build_mime_lite_with_optimizer_schedule(
       model_fn=model_fn,
       learning_rate_fn=learning_rate_fn,
       optimizer=base_optimizer,
-      client_weighting=client_weighting,
+      client_weighting=client_weighting,  # pyrefly: ignore[bad-argument-type]
       full_gradient_aggregator=full_gradient_aggregator,
       metrics_aggregator=metrics_aggregator,
       loop_implementation=loop_implementation,
@@ -1269,6 +1269,6 @@ def build_mime_lite_with_optimizer_schedule(
       initial_model_weights_fn,
       model_distributor,
       client_work,
-      model_aggregator,
+      model_aggregator,  # pyrefly: ignore[bad-argument-type]
       finalizer,
   )

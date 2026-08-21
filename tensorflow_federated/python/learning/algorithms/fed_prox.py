@@ -232,7 +232,7 @@ def build_weighted_fed_prox(
     client_work = proximal_client_work.build_functional_model_delta_client_work(
         model=model_fn,
         optimizer=client_optimizer_fn,
-        client_weighting=client_weighting,
+        client_weighting=client_weighting,  # pyrefly: ignore[bad-argument-type]
         delta_l2_regularizer=proximal_strength,
         metrics_aggregator=metrics_aggregator,
     )
@@ -240,7 +240,7 @@ def build_weighted_fed_prox(
     client_work = proximal_client_work.build_model_delta_client_work(
         model_fn=model_fn,
         optimizer=client_optimizer_fn,
-        client_weighting=client_weighting,
+        client_weighting=client_weighting,  # pyrefly: ignore[bad-argument-type]
         delta_l2_regularizer=proximal_strength,
         metrics_aggregator=metrics_aggregator,
         loop_implementation=loop_implementation,

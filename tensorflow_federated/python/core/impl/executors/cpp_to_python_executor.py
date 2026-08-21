@@ -145,12 +145,12 @@ class CppToPythonExecutorBridge(federated_language.framework.Executor):
       self, elements: Sequence[CppToPythonExecutorValue]
   ) -> CppToPythonExecutorValue:
     if isinstance(elements, py_typecheck.SupportsNamedTuple):
-      elements = elements._asdict().items()
+      elements = elements._asdict().items()  # pyrefly: ignore[bad-assignment]
     else:
-      elements = [(None, x) for x in elements]
+      elements = [(None, x) for x in elements]  # pyrefly: ignore[bad-assignment]
     id_list = []
     type_list = []
-    for name, value in elements:
+    for name, value in elements:  # pyrefly: ignore[not-iterable]
       id_list.append(value.reference)
       type_list.append((name, value.type_signature))
     try:

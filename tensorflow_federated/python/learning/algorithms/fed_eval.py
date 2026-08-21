@@ -212,7 +212,7 @@ def _build_fed_eval_client_work(
     # TODO: b/319261270 - Avoid the need for inferring types here, if possible.
     metrics_finalizers = model.metric_finalizers()
     unfinalized_metrics_type = federated_language.StructWithPythonType(
-        unfinalized_metrics_spec, collections.OrderedDict
+        unfinalized_metrics_spec, collections.OrderedDict  # pyrefly: ignore[unbound-name]
     )
     factory = sum_aggregation_factory.SumThenFinalizeFactory(metrics_finalizers)
     metrics_aggregation_process = factory.create(unfinalized_metrics_type)
@@ -294,7 +294,7 @@ def _build_functional_fed_eval_client_work(
   local_eval = _build_functional_local_evaluation(
       model,
       tuple_weights_type,  # pytype: disable=wrong-arg-types
-      batch_type,
+      batch_type,  # pyrefly: ignore[bad-argument-type]
   )
 
   if metrics_aggregation_process is None:
@@ -302,7 +302,7 @@ def _build_functional_fed_eval_client_work(
     metrics_aggregation_process = (
         sum_aggregation_factory.SumThenFinalizeFactory(
             model.finalize_metrics
-        ).create(unfinalized_metrics_type)
+        ).create(unfinalized_metrics_type)  # pyrefly: ignore[bad-argument-type]
     )
 
   @federated_language.federated_computation

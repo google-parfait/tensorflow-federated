@@ -416,7 +416,7 @@ def _make_wrapper(
 
         return aggregation_process.AggregationProcess(init_fn, next_fn)
 
-    return WeightedRobustFactory()
+    return WeightedRobustFactory()  # pyrefly: ignore[bad-return]
   elif isinstance(inner_agg_factory, factory.UnweightedAggregationFactory):
 
     class UnweightedRobustFactory(factory.UnweightedAggregationFactory):
@@ -445,7 +445,7 @@ def _make_wrapper(
 
         return aggregation_process.AggregationProcess(init_fn, next_fn)
 
-    return UnweightedRobustFactory()
+    return UnweightedRobustFactory()  # pyrefly: ignore[bad-return]
   else:
     raise NotImplementedError(f'Unexpected factory found: {inner_agg_factory}.')
 

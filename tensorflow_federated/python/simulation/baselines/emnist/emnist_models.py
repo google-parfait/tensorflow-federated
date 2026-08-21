@@ -85,7 +85,7 @@ def create_conv_dropout_model(
   """
   data_format = 'channels_last'
   glorot_uniform = _DeterministicInitializer(
-      tf.keras.initializers.GlorotUniform, base_seed=debug_seed
+      tf.keras.initializers.GlorotUniform, base_seed=debug_seed  # pyrefly: ignore[bad-argument-type]
   )
   model = tf.keras.models.Sequential([
       tf.keras.layers.Conv2D(
@@ -175,7 +175,7 @@ def create_original_fedavg_cnn_model(
   )
 
   glorot_uniform = _DeterministicInitializer(
-      tf.keras.initializers.GlorotUniform, base_seed=debug_seed
+      tf.keras.initializers.GlorotUniform, base_seed=debug_seed  # pyrefly: ignore[bad-argument-type]
   )
 
   def conv2d(**kwargs):
@@ -250,7 +250,7 @@ def create_two_hidden_layer_model(
     raise ValueError('hidden_units must be a positive integer.')
 
   glorot_uniform = _DeterministicInitializer(
-      tf.keras.initializers.GlorotUniform, base_seed=debug_seed
+      tf.keras.initializers.GlorotUniform, base_seed=debug_seed  # pyrefly: ignore[bad-argument-type]
   )
 
   model = tf.keras.models.Sequential([
@@ -320,7 +320,7 @@ def create_autoencoder_model(
   """
 
   glorot_uniform = _DeterministicInitializer(
-      tf.keras.initializers.GlorotUniform, base_seed=debug_seed
+      tf.keras.initializers.GlorotUniform, base_seed=debug_seed  # pyrefly: ignore[bad-argument-type]
   )
 
   model = tf.keras.models.Sequential([

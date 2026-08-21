@@ -115,7 +115,7 @@ class LinearRegression(variable.VariableModel):
       method can be used together to build a cross-client metrics aggregator
       when defining the federated training processes or evaluation computations.
     """
-    return collections.OrderedDict(
+    return collections.OrderedDict(  # pyrefly: ignore[bad-return]
         loss=[self._loss_sum, tf.cast(self._num_examples, tf.float32)],
         num_examples=self._num_examples,
     )

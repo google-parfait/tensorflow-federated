@@ -91,7 +91,7 @@ def _check_next_fn_is_federated(
   if not all(
       [isinstance(t, federated_language.FederatedType) for t in next_types]
   ):
-    offending_types = '\n- '.join([
+    offending_types = '\n- '.join([  # pyrefly: ignore[no-matching-overload]
         t
         for t in next_types
         if not isinstance(t, federated_language.FederatedType)
@@ -260,7 +260,7 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
     _type_check_next_fn_parameters(next_fn)
     _type_check_next_fn_result(next_fn)
 
-    state_type = initialize_fn.type_signature.result.member
+    state_type = initialize_fn.type_signature.result.member  # pyrefly: ignore[missing-attribute]
     if get_hparams_fn is not None:
       hparams_base.type_check_get_hparams_fn(get_hparams_fn, state_type)
     else:

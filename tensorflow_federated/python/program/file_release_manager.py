@@ -125,7 +125,7 @@ class CSVFileReleaseManager(
     if not key_fieldname:
       raise ValueError('Expected `key_fieldname` to not be an empty string.')
 
-    file_dir = os.path.dirname(file_path)
+    file_dir = os.path.dirname(file_path)  # pyrefly: ignore[no-matching-overload]
     if not tf.io.gfile.exists(file_dir):
       tf.io.gfile.makedirs(file_dir)
     self._file_path = file_path
@@ -163,7 +163,7 @@ class CSVFileReleaseManager(
       ],
   ) -> None:
     """Writes `fieldnames` and `values` to the managed CSV."""
-    path = os.fspath(self._file_path)
+    path = os.fspath(self._file_path)  # pyrefly: ignore[no-matching-overload]
 
     # Create a temporary file.
     temp_path = f'{path}_temp{random.randint(1000, 9999)}'
@@ -186,8 +186,8 @@ class CSVFileReleaseManager(
     loop = asyncio.get_running_loop()
     fieldnames, values = await loop.run_in_executor(None, self._read_values)
     fieldnames.extend([x for x in value.keys() if x not in fieldnames])
-    values.append(value)
-    await loop.run_in_executor(None, self._write_values, fieldnames, values)
+    values.append(value)  # pyrefly: ignore[bad-argument-type]
+    await loop.run_in_executor(None, self._write_values, fieldnames, values)  # pyrefly: ignore[bad-argument-type]
 
   async def _append_value(
       self, value: Mapping[str, federated_language.program.ReleasableStructure]
@@ -253,7 +253,7 @@ class CSVFileReleaseManager(
       )
       self._latest_key = key
 
-  async def release(
+  async def release(  # pyrefly: ignore[bad-override]
       self, value: federated_language.program.ReleasableStructure, key: int
   ) -> None:
     """Releases `value` from a federated program.
@@ -269,7 +269,7 @@ class CSVFileReleaseManager(
     """
     _, materialized_value = await asyncio.gather(
         self._remove_values_greater_than_key(key - 1),
-        federated_language.program.materialize_value(value),
+        federated_language.program.materialize_value(value),  # pyrefly: ignore[bad-argument-type]
     )
 
     flattened_value = structure_utils.flatten_with_name(materialized_value)
@@ -285,9 +285,9 @@ class CSVFileReleaseManager(
     normalized_value.insert(0, (self._key_fieldname, key))
     normalized_value = collections.OrderedDict(normalized_value)
     if self._save_mode == CSVSaveMode.APPEND:
-      await self._append_value(normalized_value)
+      await self._append_value(normalized_value)  # pyrefly: ignore[bad-argument-type]
     elif self._save_mode == CSVSaveMode.WRITE:
-      await self._write_value(normalized_value)
+      await self._write_value(normalized_value)  # pyrefly: ignore[bad-argument-type]
     self._latest_key = key
 
 
@@ -350,9 +350,9 @@ class SavedModelFileReleaseManager(
     basename = f'{self._prefix}{str(key)}'
     return os.path.join(self._root_dir, basename)
 
-  async def release(
+  async def release(  # pyrefly: ignore[bad-override]
       self,
-      value: federated_language.program.ReleasableStructure,
+      value: federated_language.program.ReleasableStructure,  # pyrefly: ignore[invalid-type-var]
       key: federated_language.program.Key,
   ) -> None:
     """Releases `value` from a federated program.
@@ -363,14 +363,14 @@ class SavedModelFileReleaseManager(
     """
     path = self._get_path_for_key(key)
     materialized_value = await federated_language.program.materialize_value(
-        value
+        value  # pyrefly: ignore[bad-argument-type]
     )
     await file_utils.write_saved_model(materialized_value, path, overwrite=True)
 
   async def get_value(
       self,
       key: federated_language.program.Key,
-  ) -> federated_language.program.ReleasableStructure:
+  ) -> federated_language.program.ReleasableStructure:  # pyrefly: ignore[invalid-type-var]
     """Returns the value for the given `key`.
 
     The SavedModel format flattens and deterministicly orders keys. This
@@ -412,4 +412,4 @@ class SavedModelFileReleaseManager(
       else:
         return value
 
-    return structure_utils.map_structure(_normalize, value)
+    return structure_utils.map_structure(_normalize, value)  # pyrefly: ignore[bad-return]

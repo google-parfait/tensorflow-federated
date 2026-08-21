@@ -242,7 +242,7 @@ def secure_sum_then_finalize(
     try:
       metric_value_ranges = (
           sum_aggregation_factory.fill_missing_values_with_defaults(
-              default_metric_value_ranges, metric_value_ranges
+              default_metric_value_ranges, metric_value_ranges  # pyrefly: ignore[bad-argument-type]
           )
       )
     except TypeError as e:
@@ -254,7 +254,7 @@ def secure_sum_then_finalize(
     # This is an optimization for computation tracing and compiling, which can
     # be slow when there are a large number of independent aggregations.
     secure_sum_factory = sum_aggregation_factory.SecureSumFactory(
-        metric_value_ranges
+        metric_value_ranges  # pyrefly: ignore[bad-argument-type]
     )
     secure_sum_process = secure_sum_factory.create(
         local_unfinalized_metrics_type

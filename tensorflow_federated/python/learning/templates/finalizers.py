@@ -120,7 +120,7 @@ class FinalizerProcess(measured_process.MeasuredProcess):
     if not all(
         [isinstance(t, federated_language.FederatedType) for t in next_types]
     ):
-      offending_types = '\n- '.join([
+      offending_types = '\n- '.join([  # pyrefly: ignore[no-matching-overload]
           t
           for t in next_types
           if not isinstance(t, federated_language.FederatedType)
@@ -170,22 +170,25 @@ class FinalizerProcess(measured_process.MeasuredProcess):
       )
 
     next_fn_result = next_fn.type_signature.result
-    if next_fn_result.result.placement != federated_language.SERVER:
+    if next_fn_result.result.placement != federated_language.SERVER:  # pyrefly: ignore[missing-attribute]
       raise errors.TemplatePlacementError(
+          # pyrefly: ignore[missing-attribute]
           'The "result" attribute of the return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.result}.'
       )
     if not model_weights_param.member.is_assignable_from(
-        next_fn_result.result.member
+        next_fn_result.result.member  # pyrefly: ignore[missing-attribute]
     ):
       raise FinalizerResultTypeError(
+          # pyrefly: ignore[missing-attribute]
           'The second input argument of `next_fn` must match the "result" '
           'attribute of the return type of `next_fn`. Found:\n'
           f'Second input argument: {next_fn_param[1].member}\n'
           f'Result attribute: {next_fn_result.result.member}.'
       )
-    if next_fn_result.measurements.placement != federated_language.SERVER:
+    if next_fn_result.measurements.placement != federated_language.SERVER:  # pyrefly: ignore[missing-attribute]
       raise errors.TemplatePlacementError(
+          # pyrefly: ignore[missing-attribute]
           'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.'
       )

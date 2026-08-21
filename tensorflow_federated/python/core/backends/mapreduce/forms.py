@@ -106,7 +106,7 @@ def _check_accepts_tuple(
     label: str, comp: federated_language.framework.Computation, length: int
 ):
   param_type = comp.type_signature.parameter
-  if not _is_tuple(param_type, length):
+  if not _is_tuple(param_type, length):  # pyrefly: ignore[bad-argument-type]
     raise TypeError(
         f'The `{label}` computation accepts a parameter of type\n{param_type}\n'
         f'that is not a tuple of length {length}.'
@@ -370,7 +370,7 @@ class MapReduceForm(federated_language.TypedObject):
           f' {len(accumulate.type_signature.parameter)}.'
       )
 
-    accumulate.type_signature.parameter[0].check_assignable_from(
+    accumulate.type_signature.parameter[0].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         zero.type_signature.result
     )  # pytype: disable=unsupported-operands
     accumulate_2nd_arg_type = accumulate.type_signature.parameter[1]  # pytype: disable=unsupported-operands
@@ -385,7 +385,7 @@ class MapReduceForm(federated_language.TypedObject):
               accumulate_2nd_arg_type, work_client_update_type
           )
       )
-    accumulate.type_signature.parameter[0].check_assignable_from(
+    accumulate.type_signature.parameter[0].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         accumulate.type_signature.result
     )  # pytype: disable=unsupported-operands
 
@@ -401,17 +401,17 @@ class MapReduceForm(federated_language.TypedObject):
           f' {len(merge.type_signature.parameter)}.'
       )
 
-    merge.type_signature.parameter[0].check_assignable_from(
+    merge.type_signature.parameter[0].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         accumulate.type_signature.result
     )  # pytype: disable=unsupported-operands
-    merge.type_signature.parameter[1].check_assignable_from(
+    merge.type_signature.parameter[1].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         accumulate.type_signature.result
     )  # pytype: disable=unsupported-operands
-    merge.type_signature.parameter[0].check_assignable_from(
+    merge.type_signature.parameter[0].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         merge.type_signature.result
     )  # pytype: disable=unsupported-operands
 
-    report.type_signature.parameter.check_assignable_from(
+    report.type_signature.parameter.check_assignable_from(  # pyrefly: ignore[missing-attribute]
         merge.type_signature.result
     )  # pytype: disable=attribute-error
 
@@ -534,7 +534,7 @@ class MapReduceForm(federated_language.TypedObject):
     """Whether the `MapReduceForm` uses secure aggregation."""
     # Tensors aggregated over `federated_secure_...` are the last three outputs
     # of `work`.
-    _, secagg_bitwidth_type, secagg_max_input_type, secagg_modulus_type = (
+    _, secagg_bitwidth_type, secagg_max_input_type, secagg_modulus_type = (  # pyrefly: ignore[not-iterable]
         self.work.type_signature.result
     )  # pytype: disable=attribute-error
     for secagg_type in [
@@ -678,7 +678,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
             )
         )
       _check_flattened_intrinsic_args_are_selections_or_literals(
-          local_value.argument,
+          local_value.argument,  # pyrefly: ignore[bad-argument-type]
           server_to_client_broadcast.to_building_block().parameter_name,  # pytype: disable=attribute-error
       )
       expected_return_references.append(local_name)
@@ -739,7 +739,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
             )
         )
       _check_flattened_intrinsic_args_are_selections_or_literals(
-          local_value.argument,
+          local_value.argument,  # pyrefly: ignore[bad-argument-type]
           client_to_server_aggregation.to_building_block().parameter_name,  # pytype: disable=attribute-error
       )
       expected_return_references.append(local_name)

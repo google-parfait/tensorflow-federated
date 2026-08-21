@@ -137,9 +137,9 @@ class AutoVersionAdvanceingStateManager:
         user-defined classes in the structure.
     """
     async with self._lock:
-      state, version = await self._state_manager.load_latest(structure)
+      state, version = await self._state_manager.load_latest(structure)  # pyrefly: ignore[bad-argument-type]
       self._next_version = version + 1
-      return state
+      return state  # pyrefly: ignore[bad-return]
 
   async def save(
       self,
@@ -233,9 +233,9 @@ class EvaluationManager:
       duration: The `datetime.timedelta` duration to run each evaluation loop.
     """
     self._data_source = data_source
-    self._aggregated_metrics_manager = aggregated_metrics_manager
+    self._aggregated_metrics_manager = aggregated_metrics_manager  # pyrefly: ignore[invalid-type-var]
     self._create_state_manager_fn = create_state_manager_fn
-    self._create_evaluation_process_fn = create_process_fn
+    self._create_evaluation_process_fn = create_process_fn  # pyrefly: ignore[invalid-type-var]
     self._cohort_size = cohort_size
     self._duration = duration
     self._state_manager = AutoVersionAdvanceingStateManager(
@@ -551,7 +551,7 @@ def extract_and_rewrap_metrics(
         '`path` is empty, must be a sequence of at least one element'
     )
   current_structure = typing.cast(
-      MutableMapping[str, Any], metrics_structure.copy()
+      MutableMapping[str, Any], metrics_structure.copy()  # pyrefly: ignore[missing-attribute]
   )
   structure_copy = current_structure
   *path_parts, last_part = path
@@ -627,7 +627,7 @@ def _extract_and_rewrap_metrics_for_multi_model_evaluation(
       sequence does not exist in the `metrics_structure`.
   """
   current_structure = typing.cast(
-      MutableMapping[str, Any], metrics_structure.copy()
+      MutableMapping[str, Any], metrics_structure.copy()  # pyrefly: ignore[missing-attribute]
   )
   structure_copy = current_structure
   for model_id in model_ids:
@@ -785,7 +785,7 @@ async def _run_evaluation(
             path=_EVAL_METRICS_PATH_COMPONENTS + ('current_round_metrics',),
         )
       await per_round_metrics_manager.release(
-          current_round_eval_metrics,
+          current_round_eval_metrics,  # pyrefly: ignore[bad-argument-type]
           key=eval_round_num,
       )
     elapsed_round_seconds = time.monotonic() - round_start
@@ -800,7 +800,7 @@ async def _run_evaluation(
   # Read the initial state from the manager. If this is the first evaluation,
   # the zeroth version should contain the initial state.
   evaluation_state, version = await state_manager.load_latest(
-      await federated_language.program.materialize_value(
+      await federated_language.program.materialize_value(  # pyrefly: ignore[bad-argument-type]
           evaluation_process.initialize()
       )
   )
@@ -850,6 +850,6 @@ async def _run_evaluation(
           path=_EVAL_METRICS_PATH_COMPONENTS + ('total_rounds_metrics',),
       )
     await aggregated_metrics_manager.release(
-        total_rounds_eval_metrics,
+        total_rounds_eval_metrics,  # pyrefly: ignore[bad-argument-type]
         key=train_round_num,
     )

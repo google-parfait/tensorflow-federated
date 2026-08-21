@@ -176,13 +176,13 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
       )
     # Checks that we have enough elements to estimate standard deviation.
     if self._estimate_stddev:
-      if client_dim <= 1:
+      if client_dim <= 1:  # pyrefly: ignore[unsupported-operation]
         raise ValueError(
             'The stddev estimation procedure expects more than '
             '1 element from `value_type`. Found `value_type` of '
             f'{value_type} with {client_dim} elements.'
         )
-      elif client_dim <= 100:
+      elif client_dim <= 100:  # pyrefly: ignore[unsupported-operation]
         warnings.warn(
             f'`value_type` has only {client_dim} elements. The '
             'estimated standard deviation may be noisy. Consider '

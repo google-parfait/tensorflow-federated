@@ -105,7 +105,7 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
       raise ValueError('sample_size must be positive.')
     self._sample_size = sample_size
 
-  def create(
+  def create(  # pyrefly: ignore[bad-override]
       self,
       metric_finalizers: Union[
           types.MetricFinalizersType,

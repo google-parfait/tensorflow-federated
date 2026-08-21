@@ -320,7 +320,7 @@ def capture_result_from_graph(
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(
-        structure._to_elements(result),  # pylint: disable=protected-access
+        structure._to_elements(result),  # pylint: disable=protected-access  # pyrefly: ignore[bad-argument-type]
         graph,
         None,
     )
@@ -534,7 +534,7 @@ def _assemble_result_from_graph(type_spec, binding, output_map):
       tensor_name = binding.tensor.tensor_name
       tensor = output_map[tensor_name]
       inferred_type = type_conversions.tensorflow_infer_type(tensor)
-      if not type_spec.is_assignable_from(inferred_type):
+      if not type_spec.is_assignable_from(inferred_type):  # pyrefly: ignore[bad-argument-type]
         raise ValueError(
             f'Type mismatch loading graph result tensor {tensor} '
             f'(named "{tensor_name}").\n'
@@ -569,8 +569,8 @@ def _assemble_result_from_graph(type_spec, binding, output_map):
       if isinstance(
           container_type, py_typecheck.SupportsNamedTuple
       ) or attrs.has(container_type):
-        return container_type(**dict(result_elements))
-      return container_type(result_elements)  # pylint: disable=too-many-function-args
+        return container_type(**dict(result_elements))  # pyrefly: ignore[not-callable]
+      return container_type(result_elements)  # pylint: disable=too-many-function-args  # pyrefly: ignore[bad-argument-count]
   elif isinstance(type_spec, federated_language.SequenceType):
     if binding_oneof != 'sequence':
       raise ValueError(
@@ -694,7 +694,7 @@ def _make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     return x
 
   if isinstance(type_spec, federated_language.TensorType):
-    whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]
+    whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]  # pyrefly: ignore[not-iterable]
     if type_spec.dtype == np.str_:
       return np.empty(whimsy_shape, dtype=np.str_)
     return np.zeros(whimsy_shape, type_spec.dtype)
@@ -1079,15 +1079,15 @@ def coerce_dataset_elements_to_tff_type_spec(
             (name, _to_representative_value(field_type, elements[name]))
             for name, field_type in field_types
         )
-        return py_type(**values)
+        return py_type(**values)  # pyrefly: ignore[bad-unpacking]
       else:
         values = [
             _to_representative_value(field_type, e)
             for (_, field_type), e in zip(field_types, elements)
         ]
         if isinstance(py_type, py_typecheck.SupportsNamedTuple):
-          return py_type(*values)
-        return py_type(values)  # pylint: disable=too-many-function-args
+          return py_type(*values)  # pyrefly: ignore[not-callable]
+        return py_type(values)  # pylint: disable=too-many-function-args  # pyrefly: ignore[bad-argument-count]
     elif isinstance(type_spec, federated_language.StructType):
       field_types = list(type_spec.items())
       is_all_named = all([name is not None for name, _ in field_types])
@@ -1095,9 +1095,9 @@ def coerce_dataset_elements_to_tff_type_spec(
         if isinstance(elements, py_typecheck.SupportsNamedTuple):
           values = collections.OrderedDict(
               (name, _to_representative_value(field_type, e))
-              for (name, field_type), e in zip(field_types, elements)
+              for (name, field_type), e in zip(field_types, elements)  # pyrefly: ignore[bad-argument-type]
           )
-          return type(elements)(**values)
+          return type(elements)(**values)  # pyrefly: ignore[bad-instantiation, bad-unpacking]
         else:
           values = [
               (name, _to_representative_value(field_type, elements[name]))

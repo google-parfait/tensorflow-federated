@@ -272,7 +272,7 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
     super().__init__(*args, **kwargs)
     self.value_shape = value_shape or ()
     self.num_values = int(np.prod(self.value_shape))
-    self.iblt_values_shape = (
+    self.iblt_values_shape = (  # pyrefly: ignore[unsupported-operation]
         self.repetitions,
         self.table_size,
     ) + self.value_shape
@@ -347,7 +347,7 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
 
     tf.debugging.assert_equal(
         tf.shape(input_values),
-        (tf.shape(input_strings)[0],) + self.value_shape
+        (tf.shape(input_strings)[0],) + self.value_shape  # pyrefly: ignore[unsupported-operation]
         if self.value_shape
         else tf.constant([], dtype=tf.int32),
     )

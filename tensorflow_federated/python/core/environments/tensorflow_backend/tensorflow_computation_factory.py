@@ -364,7 +364,7 @@ def create_binary_operator_with_upcast(
       ])
     elif isinstance(type_spec, federated_language.TensorType):
       value_tensor_type = type_conversions.tensorflow_infer_type(to_pack)
-      if type_spec.is_assignable_from(value_tensor_type):
+      if type_spec.is_assignable_from(value_tensor_type):  # pyrefly: ignore[bad-argument-type]
         return to_pack
       elif not federated_language.array_shape_is_fully_defined(type_spec.shape):
         raise TypeError(
@@ -428,7 +428,7 @@ def create_binary_operator_with_upcast(
       result_value, graph
   )
 
-  type_signature = federated_language.FunctionType(type_signature, result_type)
+  type_signature = federated_language.FunctionType(type_signature, result_type)  # pyrefly: ignore[bad-assignment]
   parameter_binding = computation_pb2.TensorFlow.Binding(
       struct=computation_pb2.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]

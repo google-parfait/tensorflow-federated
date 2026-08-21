@@ -142,7 +142,7 @@ class FileProgramStateManager(
     else:
       version = None
     try:
-      return int(version)
+      return int(version)  # pyrefly: ignore[bad-argument-type]
     except (TypeError, ValueError):
       return None
 
@@ -158,7 +158,7 @@ class FileProgramStateManager(
     basename = f'{self._prefix}{version}'
     return os.path.join(self._root_dir, basename)
 
-  async def load(
+  async def load(  # pyrefly: ignore[bad-override]
       self,
       version: int,
       structure: federated_language.program.ProgramStateStructure,
@@ -215,7 +215,7 @@ class FileProgramStateManager(
     )
 
     logging.info('Program state loaded: %s', path)
-    return deserialized_state
+    return deserialized_state  # pyrefly: ignore[bad-return]
 
   async def _remove(self, version: int) -> None:
     """Removes program state for the given `version`."""
@@ -254,7 +254,7 @@ class FileProgramStateManager(
     if versions is not None:
       await asyncio.gather(*[self._remove(v) for v in versions])
 
-  async def save(
+  async def save(  # pyrefly: ignore[bad-override]
       self,
       program_state: federated_language.program.ProgramStateStructure,
       version: int,
@@ -274,10 +274,10 @@ class FileProgramStateManager(
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):
       raise federated_language.program.ProgramStateExistsError(
-          version=version, path=self._root_dir
+          version=version, path=self._root_dir  # pyrefly: ignore[bad-argument-type]
       )
     materialized_state = await federated_language.program.materialize_value(
-        program_state
+        program_state  # pyrefly: ignore[bad-argument-type]
     )
 
     def _serialize(value):

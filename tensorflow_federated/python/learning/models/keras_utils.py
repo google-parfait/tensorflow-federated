@@ -217,7 +217,7 @@ def from_keras_model(
   return _KerasModel(
       keras_model,
       input_spec=input_spec,
-      loss_fns=loss,
+      loss_fns=loss,  # pyrefly: ignore[bad-argument-type]
       loss_weights=loss_weights,
       metrics=metrics,
   )
@@ -305,7 +305,7 @@ def federated_aggregate_keras_metric(
       # Otherwise map over all the metrics.
       return collections.OrderedDict([
           (name, finalize_metric(metric, values))
-          for metric, (name, values) in zip(metrics, accumulators.items())
+          for metric, (name, values) in zip(metrics, accumulators.items())  # pyrefly: ignore[bad-argument-type]
       ])
 
   return federated_language.federated_aggregate(
@@ -403,10 +403,10 @@ class _KerasModel(variable.VariableModel):
     extra_metrics_constructors = [_WeightedMeanLossMetric]
     if 'num_examples' not in metric_names:
       logging.info('Adding default num_examples metric to model')
-      extra_metrics_constructors.append(counters.NumExamplesCounter)
+      extra_metrics_constructors.append(counters.NumExamplesCounter)  # pyrefly: ignore[bad-argument-type]
     if 'num_batches' not in metric_names:
       logging.info('Adding default num_batches metric to model')
-      extra_metrics_constructors.append(counters.NumBatchesCounter)
+      extra_metrics_constructors.append(counters.NumBatchesCounter)  # pyrefly: ignore[bad-argument-type]
     self._metrics.extend(m() for m in extra_metrics_constructors)
     if not metrics or self._metric_constructors:
       for m in extra_metrics_constructors:

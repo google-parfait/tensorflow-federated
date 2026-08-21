@@ -71,7 +71,7 @@ def build_uniform_sampling_fn(
     else:
       random_state = np.random.RandomState()
     try:
-      return random_state.choice(
+      return random_state.choice(  # pyrefly: ignore[no-matching-overload]
           sample_range, size=size, replace=replace
       ).tolist()
     except ValueError as e:

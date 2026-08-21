@@ -272,7 +272,7 @@ def build_iblt_computation(
 
   def secure_sum(x):
     return federated_language.federated_secure_sum(
-        x, max_input=2**secure_sum_bitwidth - 1
+        x, max_input=2**secure_sum_bitwidth - 1  # pyrefly: ignore[unsupported-operation]
     )
 
   def secure_modular_sum(x):

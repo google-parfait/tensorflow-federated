@@ -207,7 +207,7 @@ def main(argv):
   print(f'Running FedAvg for {num_total_rounds} training rounds...')
   for _ in range(1, num_total_rounds + 1):
     sampled_train_data = list(
-        np.random.choice(
+        np.random.choice(  # pyrefly: ignore[no-matching-overload]
             federated_train_data, num_clients_per_round, replace=False
         )
     )
@@ -220,7 +220,7 @@ def main(argv):
   # evaluation metrics from 50 clients.
   num_clients_do_p13n_eval = 50
   sampled_p13n_data = list(
-      np.random.choice(
+      np.random.choice(  # pyrefly: ignore[no-matching-overload]
           federated_p13n_data, num_clients_do_p13n_eval, replace=False
       )
   )

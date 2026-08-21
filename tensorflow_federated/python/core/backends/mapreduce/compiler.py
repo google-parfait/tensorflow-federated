@@ -344,7 +344,7 @@ def _evaluate_to_tensorflow(
         )
         result = concrete(*args)
         if isinstance(
-            comp.type_signature.result, federated_language.StructType
+            comp.type_signature.result, federated_language.StructType  # pyrefly: ignore[missing-attribute]
         ):
           return structure._from_container(result, recursive=True)  # pylint: disable=protected-access
         return result
@@ -358,23 +358,23 @@ def _evaluate_to_tensorflow(
   if isinstance(comp, federated_language.framework.Call):
     function = _evaluate_to_tensorflow(comp.function, bindings)
     if comp.argument is None:
-      return function()
+      return function()  # pyrefly: ignore[not-callable]
     else:
-      return function(_evaluate_to_tensorflow(comp.argument, bindings))
+      return function(_evaluate_to_tensorflow(comp.argument, bindings))  # pyrefly: ignore[not-callable]
   if isinstance(comp, federated_language.framework.Lambda):
     if comp.parameter_type is None:
       return lambda: _evaluate_to_tensorflow(comp.result, bindings)
     else:
 
       def lambda_function(arg):
-        bindings[comp.parameter_name] = arg
+        bindings[comp.parameter_name] = arg  # pyrefly: ignore[unsupported-operation]
         return _evaluate_to_tensorflow(comp.result, bindings)
 
       return lambda_function
   if isinstance(comp, federated_language.framework.Reference):
     return bindings[comp.name]
   if isinstance(comp, federated_language.framework.Selection):
-    return _evaluate_to_tensorflow(comp.source, bindings)[comp.as_index()]
+    return _evaluate_to_tensorflow(comp.source, bindings)[comp.as_index()]  # pyrefly: ignore[bad-index]
   if isinstance(comp, federated_language.framework.Struct):
     elements = []
     for name, element in comp.items():

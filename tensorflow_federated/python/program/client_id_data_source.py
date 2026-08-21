@@ -65,7 +65,7 @@ class ClientIdDataSourceIterator(
   def to_bytes(self) -> bytes:
     """Serializes the object to bytes."""
     client_ids_bytes = serialization_utils.pack_sequence(
-        serialization_utils.pack_str, self._client_ids
+        serialization_utils.pack_str, self._client_ids  # pyrefly: ignore[bad-argument-type]
     )
     return client_ids_bytes
 

@@ -149,7 +149,7 @@ def create_keras_metric(
   """
   keras_metric = None
   if isinstance(metric, (tf.keras.metrics.Metric, keras.metrics.Metric)):
-    _check_keras_metric_config_constructable(metric)
+    _check_keras_metric_config_constructable(metric)  # pyrefly: ignore[bad-argument-type]
     keras_metric = type(metric).from_config(metric.get_config())  # type: ignore[attribute-error]
   elif callable(metric):
     keras_metric = metric()

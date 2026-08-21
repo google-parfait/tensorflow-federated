@@ -267,7 +267,7 @@ def _remove_batch_dim(
     else:
       raise ValueError('Provided shape must have rank 1 or higher.')
 
-  return structure._map_structure(  # pylint: disable=protected-access
+  return structure._map_structure(  # pylint: disable=protected-access  # pyrefly: ignore[bad-return]
       _remove_first_dim_in_tensortype,
       type_spec,  # pytype: disable=wrong-arg-types
   )

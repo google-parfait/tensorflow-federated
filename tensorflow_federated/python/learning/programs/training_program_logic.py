@@ -104,7 +104,7 @@ def _add_program_metrics(
   metrics_with_program_metrics[_PROGRAM_METRICS_KEY] = {
       _NUM_RETRIES_KEY: num_retries,
   }
-  return metrics_with_program_metrics
+  return metrics_with_program_metrics  # pyrefly: ignore[bad-return]
 
 
 # TODO: b/284509457 - Revisit this API when `initialize` is changed to be a
@@ -206,7 +206,7 @@ async def train_model(
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
   if initial_train_state is None:
-    initial_train_state = await federated_language.program.materialize_value(
+    initial_train_state = await federated_language.program.materialize_value(  # pyrefly: ignore[bad-assignment]
         train_process.initialize()
     )
   train_state = initial_train_state
@@ -250,7 +250,7 @@ async def train_model(
     logging.info('Releasing initial training checkpoint')
     task_manager.add_task(
         model_output_manager.release(
-            train_state,
+            train_state,  # pyrefly: ignore[bad-argument-type]
             key=f'training_checkpoint_round_{start_round}',
         )
     )
@@ -322,7 +322,7 @@ async def train_model(
     train_result = await federated_language.program.materialize_value(
         train_process.next(train_state, round_participants_data)
     )
-    if should_retry_round is not None and should_retry_round(train_result):
+    if should_retry_round is not None and should_retry_round(train_result):  # pyrefly: ignore[bad-argument-type]
       num_retries += 1
       logging.info(
           'The training round %d should be retried.',

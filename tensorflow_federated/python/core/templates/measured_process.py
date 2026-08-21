@@ -110,7 +110,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
     # MeasuredProcess, this explicitly needs to be in the state attribute. See
     # `test_measured_process_output_as_state_raises` for an example.
     state_type = self.state_type
-    if not state_type.is_assignable_from(next_fn.type_signature.result.state):
+    if not state_type.is_assignable_from(next_fn.type_signature.result.state):  # pyrefly: ignore[missing-attribute]
       raise errors.TemplateStateNotAssignableError(
           'The state attrubute of returned MeasuredProcessOutput must be '
           'assignable to its first input argument, but found\n'

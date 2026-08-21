@@ -69,7 +69,7 @@ class TestMaterializableValueReference(
     if self._type_signature != other._type_signature:
       return False
     if isinstance(self._type_signature, federated_language.SequenceType):
-      return list(self._value) == list(other._value)
+      return list(self._value) == list(other._value)  # pyrefly: ignore[bad-argument-type]
     else:
       return self._value == other._value
 
@@ -154,7 +154,7 @@ def assert_not_warns(
   # information.
   for v in list(sys.modules.values()):
     if getattr(v, '__warningregistry__', None):
-      v.__warningregistry__ = {}
+      v.__warningregistry__ = {}  # pyrefly: ignore[missing-attribute]
 
   with warnings.catch_warnings(record=True) as w:
     warnings.simplefilter('always', category=category)
@@ -171,13 +171,13 @@ def assert_same_key_order(a: object, b: object) -> None:
       structure: Union[Sequence[T], Mapping[str, T]], key: Union[str, int]
   ) -> T:
     if isinstance(structure, py_typecheck.SupportsNamedTuple):
-      return getattr(structure, key)
+      return getattr(structure, key)  # pyrefly: ignore[bad-argument-type]
     else:
-      return structure[key]
+      return structure[key]  # pyrefly: ignore[bad-index]
 
   def _fn(path: tuple[Union[str, int], ...], obj: object) -> None:
     if isinstance(obj, Mapping):
-      other = functools.reduce(_get_item, path, b)
+      other = functools.reduce(_get_item, path, b)  # pyrefly: ignore[bad-argument-type]
       if not isinstance(other, Mapping):
         raise AssertionError(
             f'Expected `other` to be a `Mapping` type, found {type(other)}.'

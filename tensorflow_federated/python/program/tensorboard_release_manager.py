@@ -67,7 +67,7 @@ class TensorBoardReleaseManager(
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
-  async def release(
+  async def release(  # pyrefly: ignore[bad-override]
       self, value: federated_language.program.ReleasableStructure, key: int
   ) -> None:
     """Releases `value` from a federated program.
@@ -78,7 +78,7 @@ class TensorBoardReleaseManager(
         step in a federated program.
     """
     materialized_value = await federated_language.program.materialize_value(
-        value
+        value  # pyrefly: ignore[bad-argument-type]
     )
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
@@ -90,8 +90,8 @@ class TensorBoardReleaseManager(
       return value
 
     with self._summary_writer.as_default():
-      for name, value in flattened_value:
-        normalized_value = _normalize(value)
+      for name, value in flattened_value:  # pyrefly: ignore[bad-assignment]
+        normalized_value = _normalize(value)  # pyrefly: ignore[bad-argument-type]
 
         # Summary data can only contain booleans, integers, unsigned integers,
         # and floats, releasing any other values will be silently ignored.

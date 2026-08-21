@@ -95,7 +95,7 @@ def to_call_dominant(
     def create_binding(self, value):
       """Add a binding to the nearest binding scope."""
       if self._newly_bound_values is None:
-        return self._parent.create_binding(value)
+        return self._parent.create_binding(value)  # pyrefly: ignore[missing-attribute]
       else:
         name = next(name_generator)
         self._newly_bound_values.append((name, value))
@@ -228,7 +228,7 @@ def get_normalized_call_dominant_lambda(
   # Flatten `comp` to call-dominant form so that we're working with just a
   # linear list of intrinsic calls with no indirection via tupling, selection,
   # blocks, called lambdas, or references.
-  comp = to_call_dominant(comp)
+  comp = to_call_dominant(comp)  # pyrefly: ignore[bad-assignment]
 
   # CDF can potentially return blocks if there are variables not dependent on
   # the top-level parameter. We normalize these away.
@@ -326,7 +326,7 @@ def _compute_intrinsic_dependencies(
         # computation. Note that we're not careful about saving and then
         # restoring old variables here: this is okay because call-dominant form
         # guarantees unique variable names.
-        intrinsic_dependencies_for_ref[subvalue.parameter_name] = set()
+        intrinsic_dependencies_for_ref[subvalue.parameter_name] = set()  # pyrefly: ignore[unsupported-operation]
       elif isinstance(subvalue, federated_language.framework.Block):
         # Since we're in CDF, the only blocks inside the bodies of arguments
         # are within lambda arguments to intrinsics. We don't need to record
@@ -414,7 +414,7 @@ def _compute_merged_intrinsics(
       results.append(
           _MergedIntrinsic(
               uri=uri,
-              args=default_call.argument,
+              args=default_call.argument,  # pyrefly: ignore[bad-argument-type]
               return_type=default_call.type_signature,
               unpack_to_locals=[],
           )
@@ -447,7 +447,7 @@ def _compute_merged_intrinsics(
               uri=uri,
               args=_merge_args(
                   abstract_parameter_type,
-                  [call.argument for call in calls],
+                  [call.argument for call in calls],  # pyrefly: ignore[bad-argument-type]
                   name_generator,
               ),
               return_type=return_type,
@@ -574,7 +574,7 @@ def _merge_args(
           for ref in arg_refs
       ]
       merged_args.append(
-          _merge_args(abstract_parameter_type[i], ith_args, name_generator)
+          _merge_args(abstract_parameter_type[i], ith_args, name_generator)  # pyrefly: ignore[bad-argument-type]
       )
     return federated_language.framework.Block(
         arg_locals,
@@ -685,7 +685,7 @@ def force_align_and_split_by_intrinsics(
   # Flatten `comp` to call-dominant form so that we're working with just a
   # linear list of intrinsic calls with no indirection via tupling, selection,
   # blocks, called lambdas, or references.
-  comp = to_call_dominant(comp)
+  comp = to_call_dominant(comp)  # pyrefly: ignore[bad-assignment]
 
   # CDF can potentially return blocks if there are variables not dependent on
   # the top-level parameter. We normalize these away.
@@ -727,9 +727,9 @@ def force_align_and_split_by_intrinsics(
 
   name_generator = federated_language.framework.unique_name_generator(comp)
 
-  intrinsic_uris = set(call.function.uri for call in intrinsic_defaults)
+  intrinsic_uris = set(call.function.uri for call in intrinsic_defaults)  # pyrefly: ignore[missing-attribute]
   deps = _compute_intrinsic_dependencies(
-      intrinsic_uris, comp.parameter_name, comp.result.locals, comp_repr
+      intrinsic_uris, comp.parameter_name, comp.result.locals, comp_repr  # pyrefly: ignore[bad-argument-type, missing-attribute]
   )
   merged_intrinsics = _compute_merged_intrinsics(
       intrinsic_defaults, deps.uri_to_locals, name_generator
@@ -795,7 +795,7 @@ def force_align_and_split_by_intrinsics(
           ),
           name=f'{merged.uri}_result',
       )
-      select_param_type = intrinsic_result.type_signature.member
+      select_param_type = intrinsic_result.type_signature.member  # pyrefly: ignore[missing-attribute]
       for i, binding_name in enumerate(merged.unpack_to_locals):
         select_param_name = next(name_generator)
         select_param_ref = federated_language.framework.Reference(
@@ -816,7 +816,7 @@ def force_align_and_split_by_intrinsics(
       after_param_name,
       after_param_type,
       federated_language.framework.Block(
-          original_arg_bindings +
+          original_arg_bindings +  # pyrefly: ignore[bad-argument-type]
           # Note that we must duplicate `locals_not_dependent_on_intrinsics`
           # across both the `before` and `after` computations since both can
           # rely on them, and there's no way to plumb results from `before`
@@ -826,7 +826,7 @@ def force_align_and_split_by_intrinsics(
           deps.locals_not_dependent_on_intrinsics
           + unzip_bindings
           + deps.locals_dependent_on_intrinsics,
-          comp.result.result,
+          comp.result.result,  # pyrefly: ignore[missing-attribute]
       ),
   )
   try:
@@ -992,7 +992,7 @@ def _augment_lambda_with_parameter_for_unbound_references(
       new_comp = federated_language.framework.Selection(
           federated_language.framework.Selection(
               federated_language.framework.Reference(
-                  comp_parameter_name, new_parameter_type
+                  comp_parameter_name, new_parameter_type  # pyrefly: ignore[bad-argument-type]
               ),
               # The input param extension will be added at the end.
               index=len(new_parameter_type) - 1,
@@ -1006,12 +1006,12 @@ def _augment_lambda_with_parameter_for_unbound_references(
     if (
         isinstance(inner_comp, federated_language.framework.Selection)
         and isinstance(inner_comp, federated_language.framework.Reference)
-        and inner_comp.source.name == comp_parameter_name
+        and inner_comp.source.name == comp_parameter_name  # pyrefly: ignore[missing-attribute]
     ):
       return (
           federated_language.framework.Selection(
               federated_language.framework.Reference(
-                  comp_parameter_name, new_parameter_type
+                  comp_parameter_name, new_parameter_type  # pyrefly: ignore[bad-argument-type]
               ),
               # Use the same index as before.
               index=inner_comp.as_index(),
@@ -1227,8 +1227,8 @@ def divisive_force_align_and_split_by_intrinsics(
     )
   deps = _compute_intrinsic_dependencies(
       intrinsic_uris,
-      comp.parameter_name,
-      comp.result.locals,
+      comp.parameter_name,  # pyrefly: ignore[bad-argument-type]
+      comp.result.locals,  # pyrefly: ignore[bad-argument-type]
       comp.compact_representation(),
   )
 
@@ -1275,8 +1275,8 @@ def divisive_force_align_and_split_by_intrinsics(
   # There should be an additional element in the input of the resulting
   # intrinsic comp, which should also have no unbound references.
   assert (
-      len(intrinsic_comp.parameter_type)
-      == len(preliminary_intrinsic_comp.parameter_type) + 1
+      len(intrinsic_comp.parameter_type)  # pyrefly: ignore[bad-argument-type]
+      == len(preliminary_intrinsic_comp.parameter_type) + 1  # pyrefly: ignore[bad-argument-type]
   )
   federated_language.framework.check_contains_no_unbound_references(
       intrinsic_comp
@@ -1321,7 +1321,7 @@ def divisive_force_align_and_split_by_intrinsics(
               + deps.locals_dependent_on_intrinsics,
               comp.result.result,
           ),
-          comp.parameter_name,
+          comp.parameter_name,  # pyrefly: ignore[bad-argument-type]
           federated_language.framework.Selection(
               federated_language.framework.Reference(
                   after_param_name, after_param_type
@@ -1361,14 +1361,14 @@ def divisive_force_align_and_split_by_intrinsics(
       after_param_name,
       {
           (0,): federated_language.framework.Reference(
-              comp.parameter_name, comp.parameter_type
+              comp.parameter_name, comp.parameter_type  # pyrefly: ignore[bad-argument-type]
           )
       },
   )
 
   preliminary_after_comp, intermediate_state = (
       _augment_lambda_with_parameter_for_unbound_references(
-          preliminary_after_comp,
+          preliminary_after_comp,  # pyrefly: ignore[bad-argument-type]
           lambda_parameter_extension_name='intermediate_state',
       )
   )
@@ -1433,16 +1433,16 @@ def divisive_force_align_and_split_by_intrinsics(
   # transformations applied in the previous steps must not have modified the
   # original local names.
   after_local_names = [
-      local_name for local_name, _ in preliminary_after_comp.result.locals
+      local_name for local_name, _ in preliminary_after_comp.result.locals  # pyrefly: ignore[missing-attribute]
   ]
   duplicated_locals = [
       (local_name, local_value)
-      for local_name, local_value in preliminary_before_comp.result.locals
+      for local_name, local_value in preliminary_before_comp.result.locals  # pyrefly: ignore[missing-attribute]
       if local_name in set(after_local_names)
   ]
 
   # Update the before comp result to produce the extended intermediate state.
-  before_result_elements = list(preliminary_before_comp.result.result.items())
+  before_result_elements = list(preliminary_before_comp.result.result.items())  # pyrefly: ignore[missing-attribute]
   intermediate_state_index_in_before_result = 1
   intermediate_state_name, intermediate_state_vals = before_result_elements[
       intermediate_state_index_in_before_result
@@ -1471,7 +1471,7 @@ def divisive_force_align_and_split_by_intrinsics(
       preliminary_before_comp.parameter_name,
       preliminary_before_comp.parameter_type,
       federated_language.framework.Block(
-          preliminary_before_comp.result.locals,
+          preliminary_before_comp.result.locals,  # pyrefly: ignore[missing-attribute]
           federated_language.framework.Struct(before_result_elements),
       ),
   )
@@ -1501,9 +1501,9 @@ def divisive_force_align_and_split_by_intrinsics(
       after_param_type_signature,
       _replace_references(
           preliminary_after_comp.result,
-          preliminary_after_comp.parameter_name,
+          preliminary_after_comp.parameter_name,  # pyrefly: ignore[bad-argument-type]
           federated_language.framework.Reference(
-              preliminary_after_comp.parameter_name, after_param_type_signature
+              preliminary_after_comp.parameter_name, after_param_type_signature  # pyrefly: ignore[bad-argument-type]
           ),
       ),
   )
@@ -1517,17 +1517,17 @@ def divisive_force_align_and_split_by_intrinsics(
   ] = []
   duplicated_local_names = [local_name for local_name, _ in duplicated_locals]
   intermediate_state_index = (
-      len(preliminary_after_comp.type_signature.parameter) - 1
+      len(preliminary_after_comp.type_signature.parameter) - 1  # pyrefly: ignore[bad-argument-type]
   )
   duplicated_local_index = len(intermediate_state)
-  for local_name, local_value in preliminary_after_comp.result.locals:
+  for local_name, local_value in preliminary_after_comp.result.locals:  # pyrefly: ignore[missing-attribute]
     if local_name in duplicated_local_names:
       block_locals.append((
           local_name,
           federated_language.framework.Selection(
               federated_language.framework.Selection(
                   federated_language.framework.Reference(
-                      preliminary_after_comp.parameter_name,
+                      preliminary_after_comp.parameter_name,  # pyrefly: ignore[bad-argument-type]
                       preliminary_after_comp.parameter_type,
                   ),
                   index=intermediate_state_index,
@@ -1544,7 +1544,7 @@ def divisive_force_align_and_split_by_intrinsics(
       preliminary_after_comp.parameter_name,
       preliminary_after_comp.parameter_type,
       federated_language.framework.Block(
-          block_locals, preliminary_after_comp.result.result
+          block_locals, preliminary_after_comp.result.result  # pyrefly: ignore[missing-attribute]
       ),
   )
   federated_language.framework.check_contains_no_unbound_references(after_comp)
@@ -1565,7 +1565,7 @@ def divisive_force_align_and_split_by_intrinsics(
   # exclusively calls for the allowed intrinsics and that the results are
   # returned in the same order they are computed.
   expected_intrinsic_comp_result_names: list[str] = []
-  for intrinsic_local, intrinsic_call in intrinsic_comp.result.locals:
+  for intrinsic_local, intrinsic_call in intrinsic_comp.result.locals:  # pyrefly: ignore[missing-attribute]
     assert isinstance(intrinsic_call, federated_language.framework.Call)
     assert isinstance(
         intrinsic_call.function, federated_language.framework.Intrinsic
@@ -1573,7 +1573,7 @@ def divisive_force_align_and_split_by_intrinsics(
     assert intrinsic_call.function.uri in intrinsic_uris
     expected_intrinsic_comp_result_names.append(intrinsic_local)
   actual_intrinsic_comp_result_names = [
-      ref.name for ref in intrinsic_comp.result.result
+      ref.name for ref in intrinsic_comp.result.result  # pyrefly: ignore[missing-attribute]
   ]
   assert (
       expected_intrinsic_comp_result_names == actual_intrinsic_comp_result_names
