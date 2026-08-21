@@ -187,11 +187,12 @@ absl::Status RemoteExecutor::EnsureInitialized() {
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateExecutorValue(
     const v0::Value& value_pb) {
   TFF_TRY(EnsureInitialized());
-  return ThreadRun([value_pb, this, this_keepalive = shared_from_this()]()
+  v0::CreateValueRequest request;
+  *request.mutable_executor() = executor_pb_;
+  *request.mutable_value() = value_pb;
+  return ThreadRun([request = std::move(request), this,
+                    this_keepalive = shared_from_this()]()
                        -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-    v0::CreateValueRequest request;
-    *request.mutable_executor() = executor_pb_;
-    *request.mutable_value() = value_pb;
     v0::CreateValueResponse response;
     grpc::ClientContext client_context;
     grpc::Status status =

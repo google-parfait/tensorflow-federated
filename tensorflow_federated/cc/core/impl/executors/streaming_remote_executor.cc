@@ -730,7 +730,8 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
       }
       // We need to convert from the materialized struct-of-federated-values
       // back to a federated-struct-of-values.
-      const v0::Value::Struct struct_value_pb = intermediate_value_pb.struct_();
+      const v0::Value::Struct& struct_value_pb =
+          intermediate_value_pb.struct_();
       v0::Value::Federated* federated_pb = value_pb->mutable_federated();
       for (int32_t placement_index = 0; placement_index < cardinality;
            ++placement_index) {

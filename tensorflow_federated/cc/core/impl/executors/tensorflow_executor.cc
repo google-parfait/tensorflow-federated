@@ -53,7 +53,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -801,8 +800,10 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   // Setting max_concurrent_computation_calls to a positive value limits the
   // concurrent invocations of session.run to that number. Zero or negative
   // provides effectively unlimited concurrency.
-  explicit TensorFlowExecutor(int32_t max_concurrent_computation_calls)
-      : thread_pool_(
+  explicit TensorFlowExecutor(int32_t max_concurrent_computation_calls,
+                              bool synchronous_value_creation = false)
+      : synchronous_value_creation_(synchronous_value_creation),
+        thread_pool_(
             // Use a threadpool with CPU * 4 or the user specified
             // maximum.
             ((max_concurrent_computation_calls > 0)
@@ -816,6 +817,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   }
 
  private:
+  const bool synchronous_value_creation_;
   // A hash map of compiler generated TensorFlow function ids to already
   // construction Computation objects.
   absl::flat_hash_map<uint64_t, std::shared_ptr<Computation>> function_cache_
@@ -997,11 +999,15 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
-    return ThreadRun(
-        [value_pb, this]() -> absl::StatusOr<ExecutorValue> {
-          return TFF_TRY(CreateValueAny(value_pb));
-        },
-        &thread_pool_);
+    if (synchronous_value_creation_) {
+      return ReadyFuture(TFF_TRY(CreateValueAny(value_pb)));
+    } else {
+      return ThreadRun(
+          [value_pb, this]() -> absl::StatusOr<ExecutorValue> {
+            return TFF_TRY(CreateValueAny(value_pb));
+          },
+          &thread_pool_);
+    }
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
@@ -1071,8 +1077,9 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 }  // namespace
 
 std::shared_ptr<Executor> CreateTensorFlowExecutor(
-    int32_t max_concurrent_computation_calls) {
-  return std::make_shared<TensorFlowExecutor>(max_concurrent_computation_calls);
+    int32_t max_concurrent_computation_calls, bool synchronous_value_creation) {
+  return std::make_shared<TensorFlowExecutor>(max_concurrent_computation_calls,
+                                              synchronous_value_creation);
 }
 
 }  // namespace tensorflow_federated

@@ -71,9 +71,16 @@ PYBIND11_MODULE(tensorflow_bindings, m) {
   m.doc() = "Bindings for the C++ ";
 
   // Executor construction methods.
-  m.def("create_tensorflow_executor", &CreateTensorFlowExecutor,
-        py::arg("max_concurrent_computation_calls") = -1,
-        "Creates a TensorFlowExecutor.");
+  m.def(
+      "create_tensorflow_executor",
+      [](int32_t max_concurrent_computation_calls,
+         bool synchronous_value_creation) {
+        return CreateTensorFlowExecutor(max_concurrent_computation_calls,
+                                        synchronous_value_creation);
+      },
+      py::arg("max_concurrent_computation_calls") = -1,
+      py::arg("synchronous_value_creation") = false,
+      "Creates a TensorFlowExecutor.");
 }
 
 }  // namespace

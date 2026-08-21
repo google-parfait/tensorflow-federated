@@ -26,9 +26,13 @@ namespace tensorflow_federated {
 // Returns an executor that can resolve TensorFlow computations and structures
 // of tensors. `max_concurrent_computation_calls` can be used to limit the
 // maximum number of TensorFlow sessions executing in parallel; non-positive
-// values indicate no max.
+// values indicate no max. If `synchronous_value_creation` is true, values
+// are parsed synchronously into `tensorflow::Tensor` and returned via
+// `ReadyFuture`, eliminating intermediate protobuf copying onto the heap at the
+// cost of caller thread blocking.
 std::shared_ptr<Executor> CreateTensorFlowExecutor(
-    int32_t max_concurrent_computation_calls = -1);
+    int32_t max_concurrent_computation_calls = -1,
+    bool synchronous_value_creation = false);
 
 }  // namespace tensorflow_federated
 

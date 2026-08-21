@@ -37,6 +37,8 @@ namespace tensorflow_federated {
 absl::StatusOr<std::shared_ptr<Executor>> CreateLocalExecutor(
     const CardinalityMap& cardinalities,
     std::function<absl::StatusOr<std::shared_ptr<Executor>>(int32_t)>
-        leaf_executor_fn = CreateTensorFlowExecutor);
+        leaf_executor_fn = [](int32_t max_concurrency) {
+          return CreateTensorFlowExecutor(max_concurrency);
+        });
 }  // namespace tensorflow_federated
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_LOCAL_STACKS_H_
