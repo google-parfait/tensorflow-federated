@@ -112,16 +112,6 @@ std::shared_ptr<Executor> CreateExecutor<TensorflowExecutor>(
   return CreateTensorFlowExecutor(/*max_concurrent_computation_calls=*/10);
 }
 
-// Enum for Parameterized typed tests.
-enum ExecutorId { kTensorFlowExecutor };
-
-template <class T>
-ExecutorId ExecutorType() {}
-
-template <>
-ExecutorId ExecutorType<TensorflowExecutor>() {
-  return kTensorFlowExecutor;
-}
 inline v0::Value ComputationV(
     std::optional<federated_language::TensorFlow::Binding> in_binding,
     federated_language::TensorFlow::Binding out_binding,
@@ -172,7 +162,6 @@ class TensorFlowBasedExecutorsTest : public ::testing::Test {
                                EqualsProto(input_pb)));
   }
 
-  ExecutorId Type() { return ExecutorType<T>(); }
 
   template <typename... Ts>
   void CheckTensorRoundTrip(Ts... tensor_constructor_args) {
@@ -344,9 +333,10 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripSequence) {
   // Compare elements without ordering, output_pb will not have an element_type
   // because ExecutorValue does not have a type.
   output_pb.mutable_sequence()->mutable_element_type()->Clear();
-  value_pb.mutable_sequence()->mutable_element_type()->Clear();
+  v0::Value expected_pb = testing::TensorSequenceV(0, 2, 1);
+  expected_pb.mutable_sequence()->mutable_element_type()->Clear();
   EXPECT_THAT(output_pb, testing::proto::IgnoringRepeatedFieldOrdering(
-                             EqualsProto(value_pb)));
+                             EqualsProto(expected_pb)));
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CreateStructOneElement) {
