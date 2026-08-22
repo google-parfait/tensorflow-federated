@@ -19,10 +19,12 @@ limitations under the License
 #include <complex>
 #include <cstdint>
 #include <initializer_list>
-#include <string>
+#include <utility>
 
+#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "Eigen/Core"
@@ -197,13 +199,70 @@ inline absl::StatusOr<federated_language::Array> CreateArray(
   return array_pb;
 }
 
-inline absl::StatusOr<federated_language::Array> CreateArrayContent(
+template <typename T>
+inline federated_language::Array CreateArrayOrDie(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
+    std::initializer_list<T> values) {
+  absl::StatusOr<federated_language::Array> array_or =
+      CreateArray(dtype, shape_pb, values);
+  CHECK_OK(array_or.status());
+  return *std::move(array_or);
+}
+
+inline federated_language::Array CreateArrayOrDie(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
+    std::initializer_list<const Eigen::half> values) {
+  absl::StatusOr<federated_language::Array> array_or =
+      CreateArray(dtype, shape_pb, values);
+  CHECK_OK(array_or.status());
+  return *std::move(array_or);
+}
+
+template <typename T>
+inline federated_language::Array CreateArrayOrDie(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
+    std::initializer_list<std::complex<T>> values) {
+  absl::StatusOr<federated_language::Array> array_or =
+      CreateArray(dtype, shape_pb, values);
+  CHECK_OK(array_or.status());
+  return *std::move(array_or);
+}
+
+inline federated_language::Array CreateArrayOrDie(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
+    std::initializer_list<const Eigen::bfloat16> values) {
+  absl::StatusOr<federated_language::Array> array_or =
+      CreateArray(dtype, shape_pb, values);
+  CHECK_OK(array_or.status());
+  return *std::move(array_or);
+}
+
+inline federated_language::Array CreateArrayOrDie(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
+    std::initializer_list<const char*> values) {
+  absl::StatusOr<federated_language::Array> array_or =
+      CreateArray(dtype, shape_pb, values);
+  CHECK_OK(array_or.status());
+  return *std::move(array_or);
+}
+
+inline federated_language::Array CreateArrayContent(
     federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
     absl::string_view content) {
   federated_language::Array array_pb;
   array_pb.set_dtype(dtype);
   array_pb.mutable_shape()->Swap(&shape_pb);
-  *array_pb.mutable_content() = content;
+  array_pb.set_content(content);
+  return array_pb;
+}
+
+inline federated_language::Array CreateArrayContent(
+    federated_language::DataType dtype, federated_language::ArrayShape shape_pb,
+    absl::Cord content) {
+  federated_language::Array array_pb;
+  array_pb.set_dtype(dtype);
+  array_pb.mutable_shape()->Swap(&shape_pb);
+  array_pb.set_content(std::move(content));
   return array_pb;
 }
 
