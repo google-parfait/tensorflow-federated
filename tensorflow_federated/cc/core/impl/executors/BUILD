@@ -41,11 +41,9 @@ cc_library(
     hdrs = ["array_test_utils.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
         "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",
@@ -405,7 +403,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
@@ -821,6 +818,25 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "tensor_serialization",
+    srcs = ["tensor_serialization.cc"],
+    hdrs = ["tensor_serialization.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":status_macros",
+        ":tensorflow_utils",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@federated_language//federated_language/proto:array_cc_proto",
+        "@federated_language//federated_language/proto:data_type_cc_proto",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+)
+
 pybind_extension(
     name = "tensorflow_bindings",
     srcs = ["tensorflow_bindings.cc"],
@@ -926,7 +942,6 @@ cc_library(
         ":tensorflow_utils",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -947,7 +962,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":status_macros",
-        "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -977,8 +991,6 @@ cc_test(
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/strings:cord_test_helpers",
         "@com_google_absl//absl/strings:string_view",
         "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",

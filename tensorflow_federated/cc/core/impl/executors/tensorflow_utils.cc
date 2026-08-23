@@ -18,10 +18,8 @@ limitations under the License
 #include <algorithm>
 #include <complex>
 #include <cstdint>
-#include <cstring>
 #include <string>
 
-#include "absl/algorithm/container.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -269,16 +267,16 @@ absl::StatusOr<federated_language::Array> ArrayFromTensor(
 template <typename T>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
                                   T* dest) {
-  absl::c_copy(src, dest);
+  std::copy(src.begin(), src.end(), dest);
 }
 
 // Overload for different SrcType and DestType.
 template <typename SrcType, typename DestType>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<SrcType>& src,
                                   DestType* dest) {
-  absl::c_transform(src, dest, [](const SrcType& x) -> DestType {
-    return static_cast<DestType>(x);
-  });
+  std::transform(
+      src.begin(), src.end(), dest,
+      [](const SrcType& x) -> DestType { return static_cast<DestType>(x); });
 }
 
 // Overload for Eigen::half.
@@ -288,7 +286,7 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   // field of type int32 using the following logic in order to maintain
   // compatibility with how other external environments (e.g. TensorFlow, Jax)
   // represent values of np.float16.
-  absl::c_transform(src, dest, [](int32_t x) -> Eigen::half {
+  std::transform(src.begin(), src.end(), dest, [](int32_t x) -> Eigen::half {
     return Eigen::numext::bit_cast<Eigen::half>(static_cast<uint16_t>(x));
   });
 }
@@ -297,7 +295,7 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
 template <typename T>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
                                   std::complex<T>* dest) {
-  absl::c_copy(src, reinterpret_cast<T*>(dest));
+  std::copy(src.begin(), src.end(), reinterpret_cast<T*>(dest));
 }
 
 // Overload for Eigen::bfloat16.
@@ -307,16 +305,18 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   // protobuf field of type int32 using the following logic in order to maintain
   // compatibility with how other external environments (e.g. TensorFlow, Jax)
   // represent values of ml_dtypes.bfloat16.
-  absl::c_transform(src, dest, [](int32_t x) -> Eigen::bfloat16 {
-    return Eigen::numext::bit_cast<Eigen::bfloat16>(static_cast<uint16_t>(x));
-  });
+  std::transform(src.begin(), src.end(), dest,
+                 [](int32_t x) -> Eigen::bfloat16 {
+                   return Eigen::numext::bit_cast<Eigen::bfloat16>(
+                       static_cast<uint16_t>(x));
+                 });
 }
 
 // Overload for string.
 static void CopyFromRepeatedField(
     const google::protobuf::RepeatedPtrField<std::string>& src,
     tensorflow::tstring* dest) {
-  absl::c_copy(src, dest);
+  std::copy(src.begin(), src.end(), dest);
 }
 
 absl::StatusOr<tensorflow::Tensor> TensorFromArray(
@@ -458,11 +458,6 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(
 
 absl::StatusOr<federated_language::Array> ArrayContentFromTensor(
     const tensorflow::Tensor& tensor) {
-  if (!tensorflow::DataTypeCanUseMemcpy(tensor.dtype())) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("DataType ", tensorflow::DataTypeString(tensor.dtype()),
-                     " cannot be serialized to raw Array content."));
-  }
   federated_language::Array array_pb;
   federated_language::DataType data_type =
       TFF_TRY(DataTypeFromTensorFlowDataType(tensor.dtype()));
@@ -470,8 +465,9 @@ absl::StatusOr<federated_language::Array> ArrayContentFromTensor(
   federated_language::ArrayShape shape_pb =
       TFF_TRY(ArrayShapeFromTensorShape(tensor.shape()));
   array_pb.mutable_shape()->Swap(&shape_pb);
-  array_pb.set_content(
-      absl::MakeCordFromExternal(tensor.tensor_data(), [tensor]() {}));
+  tensorflow::TensorProto tensor_pb;
+  tensor.AsProtoTensorContent(&tensor_pb);
+  *array_pb.mutable_content() = tensor_pb.tensor_content();
 
   return array_pb;
 }
@@ -482,50 +478,20 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArrayContent(
     return absl::InvalidArgumentError("Expected a content field, found none.");
   }
 
+  tensorflow::TensorProto tensor_pb;
   tensorflow::DataType data_type =
       TFF_TRY(TensorFlowDataTypeFromDataType(array_pb.dtype()));
-  if (!tensorflow::DataTypeCanUseMemcpy(data_type)) {
+  tensor_pb.set_dtype(data_type);
+  tensorflow::TensorShapeProto shape_pb =
+      TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())).AsProto();
+  tensor_pb.mutable_tensor_shape()->Swap(&shape_pb);
+  *tensor_pb.mutable_tensor_content() = array_pb.content();
+
+  tensorflow::Tensor tensor;
+  if (!tensor.FromProto(tensor_pb)) {
     return absl::InvalidArgumentError(
-        absl::StrCat("DataType ", tensorflow::DataTypeString(data_type),
-                     " cannot be deserialized from raw Array content."));
+        "Seriailzed tensor proto could not be parsed into Tensor.");
   }
-
-  tensorflow::TensorShape shape =
-      TFF_TRY(TensorShapeFromArrayShape(array_pb.shape()));
-
-  const int64_t expected_bytes =
-      shape.num_elements() * tensorflow::DataTypeSize(data_type);
-  if (expected_bytes != array_pb.content().size()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Serialized tensor content byte size (", array_pb.content().size(),
-        ") does not match expected tensor byte size (", expected_bytes, ")."));
-  }
-
-  tensorflow::Tensor tensor(data_type, shape);
-
-  if (expected_bytes > 0) {
-    char* dst = static_cast<char*>(tensor.data());
-    if (dst == nullptr) {
-      return absl::ResourceExhaustedError("Failed to allocate tensor buffer.");
-    }
-    for (absl::string_view chunk : array_pb.content().Chunks()) {
-      std::memcpy(dst, chunk.data(), chunk.size());
-      dst += chunk.size();
-    }
-
-    // In C++, bool value representations must be strictly 0 or 1. Any other
-    // byte representation creates trap representations that cause undefined
-    // behavior when read in downstream C++ expressions or compiler passes.
-    if (data_type == tensorflow::DT_BOOL) {
-      const uint8_t* byte_ptr = static_cast<const uint8_t*>(tensor.data());
-      const absl::Span<const uint8_t> bytes(byte_ptr, shape.num_elements());
-      if (absl::c_any_of(bytes, [](uint8_t b) { return b > 1; })) {
-        return absl::InvalidArgumentError(
-            "Invalid byte representation encountered for boolean tensor.");
-      }
-    }
-  }
-
   return tensor;
 }
 

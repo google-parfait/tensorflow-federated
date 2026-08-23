@@ -318,14 +318,7 @@ def _deserialize_computation_value(
   del type_hint  # Unused.
   which_value = computation_proto.WhichOneof('computation')
   if which_value == 'literal':
-    if computation_proto.literal.value.HasField('content'):
-      value = federated_language.array_from_proto_content(
-          computation_proto.literal.value
-      )
-    else:
-      value = federated_language.array_from_proto(
-          computation_proto.literal.value
-      )
+    value = federated_language.array_from_proto(computation_proto.literal.value)
   else:
     value = computation_proto
   type_spec = federated_language.Type.from_proto(computation_proto.type)

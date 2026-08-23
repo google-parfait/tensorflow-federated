@@ -29,7 +29,7 @@ dm-tree==0.1.9
     #   federated-language
 dp-accounting==0.6.0
     # via -r requirements.in
-federated-language==0.5.4
+federated-language==0.5.3
     # via -r requirements.in
 flatbuffers==25.12.19
     # via tensorflow

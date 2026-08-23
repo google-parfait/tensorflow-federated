@@ -41,7 +41,7 @@ wrapt==1.14.1  # https://github.com/tensorflow/tensorflow/issues/59869
 
 # The version of this dependency should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.
-federated_language~=0.5.4
+federated_language~=0.5.3
 
 # The version of this dependency should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.

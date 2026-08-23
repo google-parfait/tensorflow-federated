@@ -20,12 +20,12 @@ limitations under the License
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <utility>
 #include <vector>
 
 #include "google/protobuf/any.pb.h"
 #include "googlemock/include/gmock/gmock.h"
-#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -36,7 +36,6 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -51,17 +50,7 @@ template <typename... Ts>
 v0::Value TensorV(Ts... tensor_constructor_args) {
   tensorflow::Tensor tensor(tensor_constructor_args...);
   v0::Value value_proto;
-  if (tensorflow::DataTypeCanUseMemcpy(tensor.dtype())) {
-    absl::StatusOr<federated_language::Array> array_pb =
-        ArrayContentFromTensor(tensor);
-    CHECK_OK(array_pb.status());
-    *value_proto.mutable_array() = *std::move(array_pb);
-  } else {
-    absl::StatusOr<federated_language::Array> array_pb =
-        ArrayFromTensor(tensor);
-    CHECK_OK(array_pb.status());
-    *value_proto.mutable_array() = *std::move(array_pb);
-  }
+  *value_proto.mutable_array() = ArrayFromTensor(tensor).value();
   return value_proto;
 }
 
@@ -74,35 +63,6 @@ inline v0::Value TensorVFromIntList(absl::Span<const int32_t> elements) {
     flat(i) = elements[i];
   }
   return TensorV(tensor);
-}
-
-inline v0::Value TensorSequenceV(int64_t start, int64_t stop, int64_t step) {
-  v0::Value value_pb;
-  v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
-
-  for (int64_t i = start; i < stop; i += step) {
-    v0::Value::Sequence::Element* element_pb = sequence_pb->add_element();
-    tensorflow::Tensor tensor(i);
-    federated_language::Array* array_pb = element_pb->add_flat_value();
-    if (tensorflow::DataTypeCanUseMemcpy(tensor.dtype())) {
-      absl::StatusOr<federated_language::Array> content_array_pb =
-          ArrayContentFromTensor(tensor);
-      CHECK_OK(content_array_pb.status());
-      *array_pb = *std::move(content_array_pb);
-    } else {
-      absl::StatusOr<federated_language::Array> list_array_pb =
-          ArrayFromTensor(tensor);
-      CHECK_OK(list_array_pb.status());
-      *array_pb = *std::move(list_array_pb);
-    }
-  }
-
-  federated_language::TensorType* tensor_type_pb =
-      sequence_pb->mutable_element_type()->mutable_tensor();
-  tensor_type_pb->set_dtype(federated_language::DataType::DT_INT64);
-  tensor_type_pb->add_dims(1);
-
-  return value_pb;
 }
 
 // Iterates a dataset from a GraphDef string tensor and returns all elements.
