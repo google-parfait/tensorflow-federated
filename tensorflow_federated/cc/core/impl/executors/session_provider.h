@@ -128,6 +128,7 @@ class SessionProvider {
 
   absl::Mutex mutex_;
   std::vector<SessionWithResourceContainer> sessions_ ABSL_GUARDED_BY(mutex_);
+  const bool has_container_ops_;
   const tensorflow::GraphDef graph_;
   // A prefix for all containers used by sessions created by this provider.
   const uint32_t function_id_;

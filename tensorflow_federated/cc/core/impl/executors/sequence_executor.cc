@@ -198,7 +198,7 @@ class Sequence {
   explicit Sequence(SequenceVariant&& value, std::shared_ptr<Executor> executor)
       : value_(std::move(value)), executor_(executor) {}
 
-  inline SequenceValueType type() const {
+  SequenceValueType type() const {
     if (std::holds_alternative<v0::Value>(value_)) {
       return SequenceValueType::VALUE_PROTO;
     } else {
@@ -206,7 +206,7 @@ class Sequence {
     }
   }
 
-  inline v0::Value& proto() { return std::get<v0::Value>(value_); }
+  v0::Value& proto() { return std::get<v0::Value>(value_); }
 
   absl::StatusOr<Embedded> Embed(Executor& target_executor) {
     if (type() != SequenceValueType::VALUE_PROTO) {
@@ -241,7 +241,7 @@ class Sequence {
   }
 
  private:
-  inline IteratorFactory iterator_factory() {
+  IteratorFactory iterator_factory() {
     return std::get<IteratorFactory>(value_);
   }
   SequenceVariant value_;
@@ -260,24 +260,24 @@ using ValueVariant =
 class SequenceExecutorValue {
  public:
   enum class ValueType { EMBEDDED, INTRINSIC, SEQUENCE, STRUCT };
-  inline static SequenceExecutorValue CreateEmbedded(Embedded id) {
+  static SequenceExecutorValue CreateEmbedded(Embedded id) {
     return SequenceExecutorValue(id);
   }
-  inline static SequenceExecutorValue CreateIntrinsic(
-      SequenceIntrinsic intrinsic) {
+  static SequenceExecutorValue CreateIntrinsic(SequenceIntrinsic intrinsic) {
     return SequenceExecutorValue(std::move(intrinsic));
   }
-  inline static SequenceExecutorValue CreateSequence(
+  static SequenceExecutorValue CreateSequence(
       std::shared_ptr<Sequence> sequence) {
     return SequenceExecutorValue(sequence);
   }
-  inline static SequenceExecutorValue CreateStruct(
+  static SequenceExecutorValue CreateStruct(
       std::vector<SequenceExecutorValue>&& structure) {
     return SequenceExecutorValue(
-        std::make_shared<std::vector<SequenceExecutorValue>>(structure));
+        std::make_shared<std::vector<SequenceExecutorValue>>(
+            std::move(structure)));
   }
 
-  inline ValueType type() const {
+  ValueType type() const {
     if (std::holds_alternative<Embedded>(value_)) {
       return ValueType::EMBEDDED;
     } else if (std::holds_alternative<SequenceIntrinsic>(value_)) {
@@ -307,18 +307,16 @@ class SequenceExecutorValue {
     return absl::OkStatus();
   }
 
-  inline const Embedded& embedded() const { return std::get<Embedded>(value_); }
-  inline const std::shared_ptr<Sequence>& sequence_value() const {
+  const Embedded& embedded() const { return std::get<Embedded>(value_); }
+  const std::shared_ptr<Sequence>& sequence_value() const {
     return std::get<std::shared_ptr<Sequence>>(value_);
   }
-  inline const std::shared_ptr<std::vector<SequenceExecutorValue>>&
-  struct_value() const {
+  const std::shared_ptr<std::vector<SequenceExecutorValue>>& struct_value()
+      const {
     return std::get<std::shared_ptr<std::vector<SequenceExecutorValue>>>(
         value_);
   }
-  inline SequenceIntrinsic intrinsic() {
-    return std::get<SequenceIntrinsic>(value_);
-  }
+  SequenceIntrinsic intrinsic() { return std::get<SequenceIntrinsic>(value_); }
   explicit SequenceExecutorValue(ValueVariant value)
       : value_(std::move(value)) {}
 

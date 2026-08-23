@@ -201,6 +201,26 @@ const absl::flat_hash_set<std::string>& GetOpsWithContainerAttr() {
   return *op_names;
 }
 
+// Checks whether any op in the GraphDef or its function library has a
+// container attribute.
+bool GraphHasContainerOps(const tensorflow::GraphDef& graph) {
+  const auto& ops_with_container_attrs = GetOpsWithContainerAttr();
+  for (const tensorflow::NodeDef& node_pb : graph.node()) {
+    if (ops_with_container_attrs.contains(node_pb.op())) {
+      return true;
+    }
+  }
+  for (const tensorflow::FunctionDef& function_pb :
+       graph.library().function()) {
+    for (const tensorflow::NodeDef& node_pb : function_pb.node_def()) {
+      if (ops_with_container_attrs.contains(node_pb.op())) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Rewrites the `container` attr of any op that supports, creating a new
 // `GraphDef` with altered `NodeDef`s.
 tensorflow::GraphDef ReplaceContainers(
@@ -226,7 +246,9 @@ tensorflow::GraphDef ReplaceContainers(
 }
 
 SessionProvider::SessionProvider(tensorflow::GraphDef&& graph)
-    : graph_(graph), function_id_(GetNextFunctionId()) {}
+    : has_container_ops_(GraphHasContainerOps(graph)),
+      graph_(std::move(graph)),
+      function_id_(GetNextFunctionId()) {}
 
 absl::StatusOr<std::unique_ptr<tensorflow::Session>>
 SessionProvider::CreateSession(const int16_t session_id) {
@@ -242,13 +264,36 @@ SessionProvider::CreateSession(const int16_t session_id) {
     }
     session.reset(raw_session);
   }
-  tensorflow::GraphDef graph_def = ReplaceContainers(graph_, container);
   const AcceleratorDevices& devices = GetAcceleratorDevices();
 
   if (devices.num_gpus > 0 && devices.num_tpus > 0) {
     return absl::UnimplementedError(
         "Can't create a TensorFlow session for hardware with both GPUs and "
         "TPUs.");
+  }
+
+  const bool needs_device_pinning =
+      (devices.num_gpus > 0 || devices.num_tpus > 0);
+
+  // Fast path: by default, pass the persistent `graph_` directly by const
+  // reference into `session->Create(*graph_to_create)`. This avoids making an
+  // expensive deep copy of the GraphDef protobuf (which for large graphs can be
+  // megabytes and thousands of heap allocations).
+  const tensorflow::GraphDef* graph_to_create = &graph_;
+  tensorflow::GraphDef graph_def;
+
+  if (has_container_ops_) {
+    // If the graph contains ops that use isolated resource containers (e.g.
+    // lookup tables or variables), create a modified copy with rewritten
+    // container attributes specific to this session ID.
+    graph_def = ReplaceContainers(graph_, container);
+    graph_to_create = &graph_def;
+  } else if (needs_device_pinning) {
+    // If hardware accelerators (GPU/TPU) are present, make a mutable copy to
+    // explicitly pin kernel placement via `SetDevice`. In standard CPU-only
+    // environments, this branch is skipped and no GraphDef copy is made.
+    graph_def = graph_;
+    graph_to_create = &graph_def;
   }
 
   if (devices.num_gpus > 0) {
@@ -271,11 +316,11 @@ SessionProvider::CreateSession(const int16_t session_id) {
             << session_id << "] to device [" << device << "]";
     SetDevice(device, &graph_def, tensorflow::DEVICE_TPU);
   }
-  auto status = session->Create(graph_def);
+  absl::Status status = session->Create(*graph_to_create);
   if (!status.ok()) {
     LOG(ERROR) << status;
     for (absl::string_view line :
-         absl::StrSplit(graph_def.Utf8DebugString(), '\n')) {
+         absl::StrSplit(graph_to_create->Utf8DebugString(), '\n')) {
       LOG(ERROR) << line;
     }
     return absl::InternalError(

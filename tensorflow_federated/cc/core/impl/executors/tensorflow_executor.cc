@@ -818,10 +818,12 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
  private:
   const bool synchronous_value_creation_;
-  // A hash map of compiler generated TensorFlow function ids to already
-  // construction Computation objects.
-  absl::flat_hash_map<uint64_t, std::shared_ptr<Computation>> function_cache_
-      ABSL_GUARDED_BY(function_cache_mutex_);
+  // A hash map of compiler generated TensorFlow function ids to Computation
+  // futures (either in-flight or completed).
+  absl::flat_hash_map<
+      uint64_t,
+      std::shared_future<absl::StatusOr<std::shared_ptr<Computation>>>>
+      function_cache_ ABSL_GUARDED_BY(function_cache_mutex_);
   absl::Mutex function_cache_mutex_;
   ThreadPool thread_pool_;
 
@@ -866,29 +868,34 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
               TFF_TRY(Computation::FromProto(comp_pb.tensorflow())));
         }
         const uint64_t function_id = comp_pb.tensorflow().cache_key().id();
-        // Try the fast path first, reader locks are much cheaper.
+        std::shared_future<absl::StatusOr<std::shared_ptr<Computation>>> future;
+        bool is_creator = false;
+        std::promise<absl::StatusOr<std::shared_ptr<Computation>>> promise;
         {
-          absl::ReaderMutexLock reader_lock(function_cache_mutex_);
-          auto cache_iter = function_cache_.find(function_id);
-          if (cache_iter != function_cache_.end()) {
-            VLOG(2) << "Cache hit for function id: " << function_id;
-            return ExecutorValue(cache_iter->second);
+          absl::MutexLock lock(&function_cache_mutex_);
+          auto [iter, inserted] = function_cache_.try_emplace(function_id);
+          if (inserted) {
+            future = promise.get_future().share();
+            iter->second = future;
+            is_creator = true;
+          } else {
+            future = iter->second;
           }
         }
-        // Otherwise build the cached value and insert it into the cache.
+        if (!is_creator) {
+          VLOG(2) << "Cache hit for function id: " << function_id;
+          return ExecutorValue(TFF_TRY(future.get()));
+        }
+
         VLOG(2) << "Cache MISS for function id: " << function_id;
-        std::shared_ptr<Computation> computation =
-            TFF_TRY(Computation::FromProto(comp_pb.tensorflow()));
-        {
-          absl::WriterMutexLock writer_lock(function_cache_mutex_);
-          auto result = function_cache_.try_emplace(function_id, computation);
-          if (!result.second) {
-            // Another thread beat us to creating the cache value. We end up
-            // throwing away our value here, but this is fine because its cheap.
-            computation = result.first->second;
-          }
+        absl::StatusOr<std::shared_ptr<Computation>> computation_or =
+            Computation::FromProto(comp_pb.tensorflow());
+        if (!computation_or.ok()) {
+          absl::MutexLock lock(&function_cache_mutex_);
+          function_cache_.erase(function_id);
         }
-        return ExecutorValue(computation);
+        promise.set_value(computation_or);
+        return ExecutorValue(TFF_TRY(std::move(computation_or)));
       }
       case federated_language::Computation::kLiteral: {
         const tensorflow::Tensor tensor =
