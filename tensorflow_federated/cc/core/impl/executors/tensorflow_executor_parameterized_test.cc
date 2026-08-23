@@ -47,6 +47,7 @@ limitations under the License
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
+#include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -112,16 +113,6 @@ std::shared_ptr<Executor> CreateExecutor<TensorflowExecutor>(
   return CreateTensorFlowExecutor(/*max_concurrent_computation_calls=*/10);
 }
 
-// Enum for Parameterized typed tests.
-enum ExecutorId { kTensorFlowExecutor };
-
-template <class T>
-ExecutorId ExecutorType() {}
-
-template <>
-ExecutorId ExecutorType<TensorflowExecutor>() {
-  return kTensorFlowExecutor;
-}
 inline v0::Value ComputationV(
     std::optional<federated_language::TensorFlow::Binding> in_binding,
     federated_language::TensorFlow::Binding out_binding,
@@ -172,7 +163,6 @@ class TensorFlowBasedExecutorsTest : public ::testing::Test {
                                EqualsProto(input_pb)));
   }
 
-  ExecutorId Type() { return ExecutorType<T>(); }
 
   template <typename... Ts>
   void CheckTensorRoundTrip(Ts... tensor_constructor_args) {
@@ -344,9 +334,10 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripSequence) {
   // Compare elements without ordering, output_pb will not have an element_type
   // because ExecutorValue does not have a type.
   output_pb.mutable_sequence()->mutable_element_type()->Clear();
-  value_pb.mutable_sequence()->mutable_element_type()->Clear();
+  v0::Value expected_pb = testing::TensorSequenceV(0, 2, 1);
+  expected_pb.mutable_sequence()->mutable_element_type()->Clear();
   EXPECT_THAT(output_pb, testing::proto::IgnoringRepeatedFieldOrdering(
-                             EqualsProto(value_pb)));
+                             EqualsProto(expected_pb)));
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CreateStructOneElement) {
@@ -617,6 +608,48 @@ TEST_F(TensorFlowExecutorTest, CreateValueComputationLiteralReturnsResult) {
 
   const v0::Value& expected_pb = TensorV(1);
   CheckMaterializeEqual(embedded_fn, expected_pb);
+}
+
+TEST_F(TensorFlowExecutorTest,
+       CreateValueComputationLiteralStringReturnsResult) {
+  const federated_language::DataType dtype =
+      federated_language::DataType::DT_STRING;
+  federated_language::ArrayShape shape_pb = testing::CreateArrayShape({2});
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(dtype, shape_pb, {"foo", "bar"}));
+  federated_language::Computation computation_pb =
+      testing::LiteralComputation(array_pb);
+  v0::Value value_pb = testing::ComputationV(computation_pb);
+
+  const OwnedValueId& embedded_fn =
+      TFF_ASSERT_OK(test_executor_->CreateValue(value_pb));
+
+  tensorflow::Tensor expected_tensor(tensorflow::DT_STRING,
+                                     tensorflow::TensorShape({2}));
+  expected_tensor.flat<tensorflow::tstring>()(0) = "foo";
+  expected_tensor.flat<tensorflow::tstring>()(1) = "bar";
+  const v0::Value expected_pb = TensorV(expected_tensor);
+  CheckMaterializeEqual(embedded_fn, expected_pb);
+}
+
+TEST_F(TensorFlowExecutorTest, CreateValueArrayStringReturnsResult) {
+  const federated_language::DataType dtype =
+      federated_language::DataType::DT_STRING;
+  federated_language::ArrayShape shape_pb = testing::CreateArrayShape({2});
+  federated_language::Array array_pb =
+      TFF_ASSERT_OK(testing::CreateArray(dtype, shape_pb, {"foo", "bar"}));
+  v0::Value value_pb;
+  *value_pb.mutable_array() = array_pb;
+
+  const OwnedValueId& embedded_val =
+      TFF_ASSERT_OK(test_executor_->CreateValue(value_pb));
+
+  tensorflow::Tensor expected_tensor(tensorflow::DT_STRING,
+                                     tensorflow::TensorShape({2}));
+  expected_tensor.flat<tensorflow::tstring>()(0) = "foo";
+  expected_tensor.flat<tensorflow::tstring>()(1) = "bar";
+  const v0::Value expected_pb = TensorV(expected_tensor);
+  CheckMaterializeEqual(embedded_val, expected_pb);
 }
 
 }  // namespace

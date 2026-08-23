@@ -23,6 +23,7 @@ from federated_language.proto import computation_pb2
 from federated_language.proto import data_type_pb2
 import numpy as np
 
+from tensorflow_federated.cc.core.impl.executors import tensorflow_bindings
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -479,6 +480,14 @@ class ValueSerializationTest(parameterized.TestCase):
     y, type_spec = value_serialization.deserialize_value(value_proto)
     self.assertEqual(type_spec, x_type)
     self.assertEqual(y, 10)
+
+  def test_deserialize_numeric_tensor_with_content_field(self):
+    data = np.array([1.5, 2.5], dtype=np.float32)
+    array_pb = tensorflow_bindings.array_content_from_tensor(data)
+    value_proto = executor_pb2.Value(array=array_pb)
+    y, type_spec = value_serialization.deserialize_value(value_proto)
+    self.assertEqual(type_spec, TensorType(np.float32, [2]))
+    np.testing.assert_array_equal(y, data, strict=True)
 
 
 if __name__ == '__main__':

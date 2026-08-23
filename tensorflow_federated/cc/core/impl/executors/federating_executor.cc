@@ -17,6 +17,7 @@ limitations under the License
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -29,6 +30,7 @@ limitations under the License
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
@@ -100,8 +102,14 @@ class UnplacedInner {
         return ExtractProto();
       }
       // Materialize the value from the underlying executor into a proto.
-      auto proto_or_status =
-          server.Materialize(embedded_.value().value()->ref());
+      absl::StatusOr<std::shared_ptr<OwnedValueId>> embedded_id_or =
+          ExtractEmbedded();
+      if (!embedded_id_or.ok()) {
+        proto_ = embedded_id_or.status();
+        return ExtractProto();
+      }
+      absl::StatusOr<v0::Value> proto_or_status =
+          server.Materialize(embedded_id_or.value()->ref());
       if (proto_or_status.ok()) {
         proto_ =
             std::make_shared<v0::Value>(std::move(proto_or_status.value()));
@@ -130,7 +138,13 @@ class UnplacedInner {
         return ExtractEmbedded();
       }
       // Embed the proto into the underlying executor to get an ID.
-      auto id_or_status = server.CreateValue(*proto_.value().value());
+      absl::StatusOr<std::shared_ptr<v0::Value>> proto_or = ExtractProto();
+      if (!proto_or.ok()) {
+        embedded_ = proto_or.status();
+        return ExtractEmbedded();
+      }
+      absl::StatusOr<OwnedValueId> id_or_status =
+          server.CreateValue(**proto_or);
       if (id_or_status.ok()) {
         embedded_ = ShareValueId(std::move(id_or_status.value()));
       } else {
@@ -143,8 +157,8 @@ class UnplacedInner {
  private:
   absl::StatusOr<std::shared_ptr<v0::Value>> ExtractProto() const
       ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
-    if (proto_.value().ok()) {
-      return proto_.value().value();
+    if (proto_->ok()) {
+      return proto_->value();
     } else {
       return proto_->status();
     }
@@ -152,8 +166,8 @@ class UnplacedInner {
 
   absl::StatusOr<std::shared_ptr<OwnedValueId>> ExtractEmbedded() const
       ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
-    if (embedded_.value().ok()) {
-      return embedded_.value().value();
+    if (embedded_->ok()) {
+      return embedded_->value();
     } else {
       return embedded_->status();
     }
@@ -189,43 +203,41 @@ class ExecutorValue {
  public:
   enum class ValueType { UNPLACED, SERVER, CLIENTS, STRUCTURE, INTRINSIC };
 
-  inline static ExecutorValue CreateUnplaced(
-      ::tensorflow_federated::Unplaced id) {
+  static ExecutorValue CreateUnplaced(::tensorflow_federated::Unplaced id) {
     return ExecutorValue(std::move(id), ValueType::UNPLACED);
   }
-  inline const Unplaced& unplaced() const { return std::get<Unplaced>(value_); }
-  inline static ExecutorValue CreateServerPlaced(Server id) {
+  const Unplaced& unplaced() const { return std::get<Unplaced>(value_); }
+  static ExecutorValue CreateServerPlaced(Server id) {
     return ExecutorValue(std::move(id), ValueType::SERVER);
   }
-  inline const Server& server() const { return std::get<Server>(value_); }
-  inline const Clients& clients() const {
+  const Server& server() const { return std::get<Server>(value_); }
+  const Clients& clients() const {
     return std::get<::tensorflow_federated::Clients>(value_);
   }
-  inline static ExecutorValue CreateClientsPlaced(Clients client_values) {
+  static ExecutorValue CreateClientsPlaced(Clients client_values) {
     return ExecutorValue(std::move(client_values), ValueType::CLIENTS);
   }
   // Convenience constructor from an un-shared_ptr vector.
-  inline static ExecutorValue CreateClientsPlaced(
+  static ExecutorValue CreateClientsPlaced(
       std::vector<std::shared_ptr<OwnedValueId>>&& client_values) {
     return CreateClientsPlaced(
         std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>(
             std::move(client_values)));
   }
-  inline const Structure& structure() const {
+  const Structure& structure() const {
     return std::get<::tensorflow_federated::Structure>(value_);
   }
-  inline static ExecutorValue CreateStructure(Structure elements) {
+  static ExecutorValue CreateStructure(Structure elements) {
     return ExecutorValue(std::move(elements), ValueType::STRUCTURE);
   }
-  inline static ExecutorValue CreateFederatedIntrinsic(
-      FederatedIntrinsic intrinsic) {
+  static ExecutorValue CreateFederatedIntrinsic(FederatedIntrinsic intrinsic) {
     return ExecutorValue(intrinsic, ValueType::INTRINSIC);
   }
-  inline enum FederatedIntrinsic intrinsic() const {
+  enum FederatedIntrinsic intrinsic() const {
     return std::get<enum FederatedIntrinsic>(value_);
   }
 
-  inline ValueType type() const { return type_; }
+  ValueType type() const { return type_; }
 
   absl::Status CheckArgumentType(ValueType expected_type,
                                  absl::string_view argument_identifier) const {
@@ -414,8 +426,9 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         return absl::InvalidArgumentError("Cannot call a structure.");
       }
       case ExecutorValue::ValueType::UNPLACED: {
-        ValueId fn_id =
-            function.unplaced()->Embedded(*server_child_).value()->ref();
+        std::shared_ptr<OwnedValueId> fn_id_owner =
+            TFF_TRY(function.unplaced()->Embedded(*server_child_));
+        ValueId fn_id = fn_id_owner->ref();
         std::optional<std::shared_ptr<OwnedValueId>> arg_owner;
         std::optional<ValueId> arg_id = std::nullopt;
         if (argument.has_value()) {
@@ -532,11 +545,13 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         TFF_TRY(tasks.WaitAll());
 
         const auto& accumulate = arg.structure()->at(2);
-        auto accumulate_val_or = accumulate.unplaced()->GetProto();
+        std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>>
+            accumulate_val_or = accumulate.unplaced()->GetProto();
         if (!accumulate_val_or.has_value()) {
           return absl::InvalidArgumentError(
               "Failed to get accumulate function.");
         }
+        std::shared_ptr<v0::Value> accumulate_val = TFF_TRY(*accumulate_val_or);
         // `merge` is unused (argument four).
         const auto& report = arg.structure()->at(4);
         auto report_child_id = TFF_TRY(Embed(report, server_child_));
@@ -545,8 +560,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         std::optional<OwnedValueId> current_owner = std::nullopt;
         auto zero_val_id_owner = TFF_TRY(client_child_->CreateValue(zero_val));
         ValueId current = zero_val_id_owner.ref();
-        auto accumulate_child_id = TFF_TRY(
-            client_child_->CreateValue(*(accumulate_val_or.value()->get())));
+        auto accumulate_child_id =
+            TFF_TRY(client_child_->CreateValue(*accumulate_val));
         for (const auto& client_val_id : *value.clients()) {
           auto acc_arg = TFF_TRY(
               client_child_->CreateStruct({current, client_val_id->ref()}));
@@ -584,15 +599,16 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
                 "for MAP intrinsic must be unplaced. Found of type ",
                 fn.type()));
           }
-          auto child_fn_val = fn.unplaced()->GetProto();
+          std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>>
+              child_fn_val = fn.unplaced()->GetProto();
           if (!child_fn_val.has_value()) {
             return absl::InternalError(
                 "Unable to extract function proto to place on client. This "
                 "function has probably already been embedded in a child "
                 "executor for some reason.");
           }
-          auto child_fn = TFF_TRY(
-              client_child_->CreateValue(*(child_fn_val.value()->get())));
+          std::shared_ptr<v0::Value> child_fn_proto = TFF_TRY(*child_fn_val);
+          auto child_fn = TFF_TRY(client_child_->CreateValue(*child_fn_proto));
           Clients results = NewClients();
           for (int i = 0; i < num_clients_; i++) {
             auto client_arg = data.clients()->at(i)->ref();
@@ -629,8 +645,9 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         TFF_TRY(
             select_fn.CheckArgumentType(ExecutorValue::ValueType::UNPLACED,
                                         "`federated_select`'s `select_fn`"));
-        ValueId select_fn_child_id =
-            select_fn.unplaced()->Embedded(*server_child_).value()->ref();
+        std::shared_ptr<OwnedValueId> select_fn_child =
+            TFF_TRY(select_fn.unplaced()->Embedded(*server_child_));
+        ValueId select_fn_child_id = select_fn_child->ref();
         return CallFederatedSelect(keys_child_ids, server_val_child_id,
                                    select_fn_child_id);
       }
@@ -717,11 +734,33 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       int64_t num_keys = array_pb.shape().dim()[0];
       std::vector<int32_t> keys_for_client;
       keys_for_client.reserve(num_keys);
-      auto keys_for_client_eigen = array_pb.int32_list().value();
-      for (int64_t i = 0; i < num_keys; i++) {
-        int32_t key = keys_for_client_eigen[i];
-        keys_for_client.push_back(key);
-        keys.all.insert(key);
+      if (array_pb.has_content()) {
+        const absl::Cord& cord = array_pb.content();
+        if (cord.size() != num_keys * sizeof(int32_t)) {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "Unexpected content size for int32_t keys: ", cord.size(),
+              " vs expected ", num_keys * sizeof(int32_t)));
+        }
+        keys_for_client.resize(num_keys);
+        // Note: This chunk iteration is compatible across all Abseil releases
+        // and will be superseded by absl::CopyCordToSpan in a newer Abseil
+        // version.
+        char* dest = reinterpret_cast<char*>(keys_for_client.data());
+        for (absl::string_view chunk : cord.Chunks()) {
+          std::memcpy(dest, chunk.data(), chunk.size());
+          dest += chunk.size();
+        }
+        for (int32_t key : keys_for_client) {
+          keys.all.insert(key);
+        }
+      } else {
+        const google::protobuf::RepeatedField<int32_t>& keys_for_client_eigen =
+            array_pb.int32_list().value();
+        for (int64_t i = 0; i < num_keys; i++) {
+          int32_t key = keys_for_client_eigen[i];
+          keys_for_client.push_back(key);
+          keys.all.insert(key);
+        }
       }
       keys.for_clients.push_back(std::move(keys_for_client));
     }

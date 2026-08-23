@@ -13,78 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-// This file contains the pybind11 definitions for exposing the C++ Executor
-// interface in Python.
-//
-// General principles:
-//   - Python methods defined here (e.g. `.def_*()`) should not contain
-//     "business logic". That should be implemented on the underlying C++ class.
-//     The only logic that may exist here is parameter/result conversions (e.g.
-//     `OwnedValueId` -> `ValueId`, etc).
-
-#include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "federated_language/proto/computation.pb.h"
+#include "federated_language/proto/array.pb.h"
 #include "include/pybind11/cast.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
 #include "include/pybind11/pytypes.h"
-#include "include/pybind11/stl.h"
-#include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/native_proto_caster.h"
-#include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/safe_ptr.h"
 #include "tensorflow/c/tf_tensor.h"
+#include "tensorflow/c/tf_tensor_helper.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
-
-namespace tensorflow {
-absl::Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
-}  // namespace tensorflow
-
-namespace tensorflow_federated {
-
-namespace py = ::pybind11;
-
-namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-// The Python module definition `tensorflow_bindings`.
-//
-// This will be used with `import tensorflow_bindings` on the Python side. This
-// module should _not_ be directly imported into the public pip API. The methods
-// here will raise `NotOkStatus` errors from absl, which are not user friendly.
-////////////////////////////////////////////////////////////////////////////////
-PYBIND11_MODULE(tensorflow_bindings, m) {
-  py::google::ImportStatusModule();
-
-  // IMPORTANT: The binding defined in this module are dependent on the binding
-  // defined in the `executor_bindings` module.
-  py::module::import(
-      "tensorflow_federated.cc.core.impl.executors.executor_bindings"
-  );
-
-  m.doc() = "Bindings for the C++ ";
-
-  // Executor construction methods.
-  m.def(
-      "create_tensorflow_executor",
-      [](int32_t max_concurrent_computation_calls,
-         bool synchronous_value_creation) {
-        return CreateTensorFlowExecutor(max_concurrent_computation_calls,
-                                        synchronous_value_creation);
-      },
-      py::arg("max_concurrent_computation_calls") = -1,
-      py::arg("synchronous_value_creation") = false,
-      "Creates a TensorFlowExecutor.");
-}
-
-}  // namespace
-}  // namespace tensorflow_federated
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 
 namespace pybind11 {
 namespace detail {
@@ -92,41 +35,62 @@ namespace detail {
 template <>
 struct type_caster<tensorflow::Tensor> {
  public:
-  // Macro to create `value` variable which is used in `load` to store the
-  // result of the conversion.
   PYBIND11_TYPE_CASTER(tensorflow::Tensor, const_name("Tensor"));
 
-  // Pybind11 caster for PyArray (Python) -> tensorflow::Tensor (C++).
   bool load(handle src, bool) {
-    {
-      tensorflow::Safe_TF_TensorPtr tf_tensor_ptr;
-      absl::Status status = tensorflow::NdarrayToTensor(
-          /*ctx=*/nullptr, src.ptr(), &tf_tensor_ptr);
-      if (!status.ok()) {
-        LOG(ERROR) << status;
-        return false;
-      }
-      status = TF_TensorToTensor(tf_tensor_ptr.get(), &value);
-      if (!status.ok()) {
-        LOG(ERROR) << status;
-        return false;
-      }
+    tensorflow::Safe_TF_TensorPtr tf_tensor_ptr;
+    absl::Status status =
+        tensorflow::NdarrayToTensor(/*ctx=*/nullptr, src.ptr(), &tf_tensor_ptr);
+    if (!status.ok()) {
+      return false;
     }
-    tensorflow::ClearDecrefCache();
+    status = TF_TensorToTensor(tf_tensor_ptr.get(), &value);
+    if (!status.ok()) {
+      return false;
+    }
     return !PyErr_Occurred();
   }
 
-  // Convert tensorflow::Tensor (C++) back to a PyArray (Python).
-  static handle cast(const tensorflow::Tensor tensor, return_value_policy,
+  static handle cast(const tensorflow::Tensor& tensor, return_value_policy,
                      handle) {
     PyObject* result = nullptr;
     absl::Status status = tensorflow::TensorToNdarray(tensor, &result);
     if (!status.ok()) {
-      PyErr_SetString(PyExc_ValueError, "Failed to create np.ndarray");
       return nullptr;
     }
     return result;
   }
 };
+
 }  // namespace detail
 }  // namespace pybind11
+
+namespace tensorflow_federated {
+
+namespace py = ::pybind11;
+
+namespace {
+
+PYBIND11_MODULE(tensorflow_bindings, m) {
+  tsl::ImportNumpy();
+  py::google::ImportStatusModule();
+  pybind11_protobuf::ImportNativeProtoCasters();
+
+  m.doc() = "Bindings for the C++ TensorFlow serialization";
+
+  // Serialization methods.
+  m.def("tensor_from_array_content", &TensorFromArrayContent,
+        py::arg("array_pb"),
+        "Deserializes a tensorflow::Tensor from a federated_language::Array"
+        " content.");
+  m.def("array_content_from_tensor", &ArrayContentFromTensor, py::arg("tensor"),
+        "Serializes a tensorflow::Tensor to a federated_language::Array "
+        "content.");
+  m.def("tensor_from_array", &TensorFromArray, py::arg("array_pb"),
+        "Deserializes a tensorflow::Tensor from a federated_language::Array.");
+  m.def("array_from_tensor", &ArrayFromTensor, py::arg("tensor"),
+        "Serializes a tensorflow::Tensor to a federated_language::Array.");
+}
+
+}  // namespace
+}  // namespace tensorflow_federated
