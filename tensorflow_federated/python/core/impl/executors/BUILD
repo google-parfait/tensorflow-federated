@@ -229,6 +229,7 @@ py_library(
     srcs = ["value_serialization.py"],
     deps = [
         ":executor_utils",
+        "//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
@@ -246,6 +247,7 @@ py_test(
     srcs = ["value_serialization_test.py"],
     deps = [
         ":value_serialization",
+        "//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",

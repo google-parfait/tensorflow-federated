@@ -82,6 +82,19 @@ main() {
   pip install --upgrade "pip"
   pip --version
 
+  # Strip binaries to minimize package size.
+  for binary in $(find -L tensorflow_federated -type f \( -name "*.so" -o -name "worker_binary" \) 2>/dev/null); do
+    target="$(readlink -f "${binary}")"
+    rm -f "${binary}"
+    cp "${target}" "${binary}"
+    chmod u+w "${binary}"
+    if [[ "${binary}" == *.so ]]; then
+      strip --strip-unneeded "${binary}"
+    else
+      strip --strip-all "${binary}"
+    fi
+  done
+
   # Build the Python package.
   pip install --upgrade "build"
   pip freeze

@@ -231,7 +231,7 @@ py_library(
     name = "tensorflow_executor_bindings",
     srcs = ["tensorflow_executor_bindings.py"],
     deps = [
-        "//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings",
+        "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
         "@pypi//tensorflow",
     ],
 )

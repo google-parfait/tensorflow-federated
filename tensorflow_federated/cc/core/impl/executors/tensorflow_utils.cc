@@ -15,18 +15,19 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 
-#include <algorithm>
 #include <complex>
 #include <cstdint>
+#include <cstring>
 #include <string>
+#include <vector>
 
+#include "absl/algorithm/container.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "Eigen/Core"
 #include "google/protobuf/repeated_ptr_field.h"
 #include "federated_language/proto/array.pb.h"
@@ -41,6 +42,7 @@ limitations under the License
 #include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/platform/coding.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 
@@ -267,16 +269,16 @@ absl::StatusOr<federated_language::Array> ArrayFromTensor(
 template <typename T>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
                                   T* dest) {
-  std::copy(src.begin(), src.end(), dest);
+  absl::c_copy(src, dest);
 }
 
 // Overload for different SrcType and DestType.
 template <typename SrcType, typename DestType>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<SrcType>& src,
                                   DestType* dest) {
-  std::transform(
-      src.begin(), src.end(), dest,
-      [](const SrcType& x) -> DestType { return static_cast<DestType>(x); });
+  absl::c_transform(src, dest, [](const SrcType& x) -> DestType {
+    return static_cast<DestType>(x);
+  });
 }
 
 // Overload for Eigen::half.
@@ -286,7 +288,7 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   // field of type int32 using the following logic in order to maintain
   // compatibility with how other external environments (e.g. TensorFlow, Jax)
   // represent values of np.float16.
-  std::transform(src.begin(), src.end(), dest, [](int32_t x) -> Eigen::half {
+  absl::c_transform(src, dest, [](int32_t x) -> Eigen::half {
     return Eigen::numext::bit_cast<Eigen::half>(static_cast<uint16_t>(x));
   });
 }
@@ -295,7 +297,7 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
 template <typename T>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
                                   std::complex<T>* dest) {
-  std::copy(src.begin(), src.end(), reinterpret_cast<T*>(dest));
+  absl::c_copy(src, reinterpret_cast<T*>(dest));
 }
 
 // Overload for Eigen::bfloat16.
@@ -305,18 +307,16 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   // protobuf field of type int32 using the following logic in order to maintain
   // compatibility with how other external environments (e.g. TensorFlow, Jax)
   // represent values of ml_dtypes.bfloat16.
-  std::transform(src.begin(), src.end(), dest,
-                 [](int32_t x) -> Eigen::bfloat16 {
-                   return Eigen::numext::bit_cast<Eigen::bfloat16>(
-                       static_cast<uint16_t>(x));
-                 });
+  absl::c_transform(src, dest, [](int32_t x) -> Eigen::bfloat16 {
+    return Eigen::numext::bit_cast<Eigen::bfloat16>(static_cast<uint16_t>(x));
+  });
 }
 
 // Overload for string.
 static void CopyFromRepeatedField(
     const google::protobuf::RepeatedPtrField<std::string>& src,
     tensorflow::tstring* dest) {
-  std::copy(src.begin(), src.end(), dest);
+  absl::c_copy(src, dest);
 }
 
 absl::StatusOr<tensorflow::Tensor> TensorFromArray(
@@ -450,48 +450,135 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(
                             tensor.flat<tensorflow::tstring>().data());
       return tensor;
     }
-    default:
+    default: {
+      tensorflow::TensorShape shape =
+          TFF_TRY(TensorShapeFromArrayShape(array_pb.shape()));
+      if (shape.num_elements() == 0) {
+        tensorflow::DataType data_type =
+            TFF_TRY(TensorFlowDataTypeFromDataType(array_pb.dtype()));
+        return tensorflow::Tensor(data_type, shape);
+      }
       return absl::UnimplementedError(
           absl::StrCat("Unexpected DataType found:", array_pb.kind_case()));
+    }
   }
 }
 
 absl::StatusOr<federated_language::Array> ArrayContentFromTensor(
     const tensorflow::Tensor& tensor) {
+  if (!tensorflow::DataTypeCanUseMemcpy(tensor.dtype())) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("DataType ", tensorflow::DataTypeString(tensor.dtype()),
+                     " cannot be serialized to raw Array content."));
+  }
   federated_language::Array array_pb;
-  federated_language::DataType data_type =
-      TFF_TRY(DataTypeFromTensorFlowDataType(tensor.dtype()));
-  array_pb.set_dtype(data_type);
+  array_pb.set_dtype(TFF_TRY(DataTypeFromTensorFlowDataType(tensor.dtype())));
   federated_language::ArrayShape shape_pb =
       TFF_TRY(ArrayShapeFromTensorShape(tensor.shape()));
   array_pb.mutable_shape()->Swap(&shape_pb);
-  tensorflow::TensorProto tensor_pb;
-  tensor.AsProtoTensorContent(&tensor_pb);
-  *array_pb.mutable_content() = tensor_pb.tensor_content();
+
+  array_pb.set_content(tensor.tensor_data());
 
   return array_pb;
 }
 
+// Deserializes a `tensorflow::Tensor` directly from an Array proto containing
+// raw `content`.
+//
+// Direct buffer construction via chunk streaming is used rather than
+// converting to `tensorflow::TensorProto` and invoking `FromProto`. This design
+// achieves several key goals:
+// 1. Single-copy deserialization: Avoids allocating an intermediate
+//    `std::string` or `TensorProto` buffer, copying bytes directly from the
+//    `absl::Cord` chunks into the newly allocated `TensorBuffer`.
+// 2. Cross-platform Protobuf compatibility: Open-source Protobuf does not
+//    generate `mutable_<field>()` pointer accessors for `[ctype = CORD]`
+//    fields, and `TensorProto.tensor_content` uses `std::string` in open-source
+//    TensorFlow builds but `absl::Cord` in internal environments.
+// 3. Abseil portability: Chunk-based iteration with `std::memcpy` provides
+//    universal compatibility across all Abseil releases (including versions
+//    prior to `absl::CopyCordToSpan` and environments where `CopyToArray` is
+//    unavailable).
 absl::StatusOr<tensorflow::Tensor> TensorFromArrayContent(
     const federated_language::Array& array_pb) {
   if (!array_pb.has_content()) {
     return absl::InvalidArgumentError("Expected a content field, found none.");
   }
+  if (array_pb.kind_case() != federated_language::Array::KIND_NOT_SET) {
+    return TensorFromArray(array_pb);
+  }
 
-  tensorflow::TensorProto tensor_pb;
   tensorflow::DataType data_type =
       TFF_TRY(TensorFlowDataTypeFromDataType(array_pb.dtype()));
-  tensor_pb.set_dtype(data_type);
-  tensorflow::TensorShapeProto shape_pb =
-      TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())).AsProto();
-  tensor_pb.mutable_tensor_shape()->Swap(&shape_pb);
-  *tensor_pb.mutable_tensor_content() = array_pb.content();
+  tensorflow::TensorShape shape =
+      TFF_TRY(TensorShapeFromArrayShape(array_pb.shape()));
 
-  tensorflow::Tensor tensor;
-  if (!tensor.FromProto(tensor_pb)) {
-    return absl::InvalidArgumentError(
-        "Seriailzed tensor proto could not be parsed into Tensor.");
+  if (shape.num_elements() == 0) {
+    return tensorflow::Tensor(data_type, shape);
   }
+
+  if (data_type == tensorflow::DT_STRING) {
+    tensorflow::Tensor tensor(data_type, shape);
+    if (array_pb.content().empty()) {
+      return tensor;
+    }
+    tensorflow::tstring* strings = tensor.flat<tensorflow::tstring>().data();
+    absl::Cord flat_cord = array_pb.content();
+    absl::string_view reader = flat_cord.Flatten();
+    std::vector<uint32_t> sizes(shape.num_elements());
+    int64_t total_size = 0;
+    for (uint32_t& size : sizes) {
+      if (!tensorflow::core::GetVarint32(&reader, &size)) {
+        return absl::InvalidArgumentError(
+            "Failed to parse varint in serialized string tensor content.");
+      }
+      total_size += size;
+    }
+    if (total_size != static_cast<int64_t>(reader.size())) {
+      return absl::InvalidArgumentError(
+          "Serialized string tensor sizes do not match content size.");
+    }
+    for (int64_t i = 0; i < shape.num_elements(); ++i) {
+      uint32_t size = sizes[i];
+      strings[i].assign(reader.data(), size);
+      reader.remove_prefix(size);
+    }
+    return tensor;
+  }
+
+  if (!tensorflow::DataTypeCanUseMemcpy(data_type)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("DataType ", tensorflow::DataTypeString(data_type),
+                     " cannot be deserialized from raw Array content."));
+  }
+
+  int64_t expected_bytes =
+      shape.num_elements() * tensorflow::DataTypeSize(data_type);
+  if (array_pb.content().size() != expected_bytes) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Serialized tensor content size (", array_pb.content().size(),
+        ") does not match expected (", expected_bytes, ") for shape ",
+        shape.DebugString(), " and DataType ",
+        tensorflow::DataTypeString(data_type), "."));
+  }
+
+  tensorflow::Tensor tensor(data_type, shape);
+  char* dest = const_cast<char*>(tensor.tensor_data().data());
+  for (absl::string_view chunk : array_pb.content().Chunks()) {
+    std::memcpy(dest, chunk.data(), chunk.size());
+    dest += chunk.size();
+  }
+
+  if (data_type == tensorflow::DT_BOOL) {
+    const char* data = tensor.tensor_data().data();
+    for (int64_t i = 0; i < shape.num_elements(); ++i) {
+      if (data[i] != 0 && data[i] != 1) {
+        return absl::InvalidArgumentError(
+            "Invalid boolean byte found in serialized content.");
+      }
+    }
+  }
+
   return tensor;
 }
 

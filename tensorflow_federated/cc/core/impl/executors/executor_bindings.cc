@@ -13,15 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-// This file contains the pybind11 definitions for exposing the C++ Executor
-// interface in Python.
-//
-// General principles:
-//   - Python methods defined here (e.g. `.def_*()`) should not contain
-//     "business logic". That should be implemented on the underlying C++ class.
-//     The only logic that may exist here is parameter/result conversions (e.g.
-//     `OwnedValueId` -> `ValueId`, etc).
-
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -51,6 +42,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -59,17 +51,11 @@ namespace py = ::pybind11;
 
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-// The Python module definition `executor_bindings`.
-//
-// This will be used with `import executor_bindings` on the Python side. This
-// module should _not_ be directly imported into the public pip API. The methods
-// here will raise `NotOkStatus` errors from absl, which are not user friendly.
-////////////////////////////////////////////////////////////////////////////////
 PYBIND11_MODULE(executor_bindings, m) {
   py::google::ImportStatusModule();
+  pybind11_protobuf::ImportNativeProtoCasters();
 
-  m.doc() = "Bindings for the C++ ";
+  m.doc() = "Bindings for the C++ executor implementations.";
 
   // Provide an `OwnedValueId` class to handle return values from the
   // `Executor` interface.
@@ -152,14 +138,24 @@ PYBIND11_MODULE(executor_bindings, m) {
       "Creates a StreamingRemoteExecutor.");
   m.def("create_sequence_executor", &CreateSequenceExecutor,
         py::arg("target_executor"), "Creates a SequenceExecutor.");
+  m.def(
+      "create_tensorflow_executor",
+      [](int32_t max_concurrent_computation_calls,
+         bool synchronous_value_creation) {
+        return CreateTensorFlowExecutor(max_concurrent_computation_calls,
+                                        synchronous_value_creation);
+      },
+      py::arg("max_concurrent_computation_calls") = -1,
+      py::arg("synchronous_value_creation") = false,
+      "Creates a TensorFlowExecutor.");
 
-  py::class_<grpc::ChannelInterface, std::shared_ptr<grpc::ChannelInterface>>(
-      m, "GRPCChannelInterface");
+  py::class_<grpc::ChannelInterface, std::shared_ptr<grpc::ChannelInterface>>
+      grpc_channel_interface(m, "GRPCChannelInterface");
 
   m.def(
       "create_insecure_grpc_channel",
       [](const std::string& target) -> std::shared_ptr<grpc::ChannelInterface> {
-        auto channel_options = grpc::ChannelArguments();
+        grpc::ChannelArguments channel_options;
         channel_options.SetMaxSendMessageSize(
             std::numeric_limits<int32_t>::max());
         channel_options.SetMaxReceiveMessageSize(

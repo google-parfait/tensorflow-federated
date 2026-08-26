@@ -21,10 +21,20 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "federated_language/proto/array.pb.h"
+#include "federated_language/proto/data_type.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/framework/types.h"
 
 namespace tensorflow_federated {
+
+// Converts a tensorflow::DataType to a federated_language::DataType.
+absl::StatusOr<federated_language::DataType> DataTypeFromTensorFlowDataType(
+    tensorflow::DataType data_type_pb);
+
+// Converts a federated_language::DataType to a tensorflow::DataType.
+absl::StatusOr<tensorflow::DataType> TensorFlowDataTypeFromDataType(
+    federated_language::DataType data_type_pb);
 
 // Creates a tensorflow::TensorShape from a federated_language::ArrayShape.
 absl::StatusOr<tensorflow::TensorShape> TensorShapeFromArrayShape(

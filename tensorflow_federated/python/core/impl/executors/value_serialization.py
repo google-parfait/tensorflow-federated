@@ -23,6 +23,7 @@ from federated_language.proto import computation_pb2
 import numpy as np
 import tree
 
+from tensorflow_federated.cc.core.impl.executors import tensorflow_bindings
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import executor_utils
@@ -132,9 +133,14 @@ def _serialize_tensor_value(
         f' {type_spec.dtype.type}.'
     )
 
-  array_pb = federated_language.array_to_proto(
-      value, dtype_hint=type_spec.dtype.type
-  )
+  try:
+    array_pb = federated_language.array_to_proto_content(
+        value, dtype_hint=type_spec.dtype.type
+    )
+  except NotImplementedError:
+    array_pb = federated_language.array_to_proto(
+        value, dtype_hint=type_spec.dtype.type
+    )
   value_pb = executor_pb2.Value(array=array_pb)
   return value_pb, type_spec
 
@@ -309,6 +315,21 @@ def serialize_value(
     )
 
 
+def _normalize_deserialized_tensor(
+    value: object,
+    dtype: type[np.generic],
+    shape: federated_language.ArrayShape,
+) -> object:
+  """Normalizes deserialized numpy array to match TFF scalar/array conventions."""
+  del shape  # Unused.
+  if isinstance(value, np.ndarray) and not value.shape:
+    if dtype is np.str_:
+      return value.item()
+    else:
+      return dtype(value.item())
+  return value
+
+
 @federated_language.framework.trace
 def _deserialize_computation_value(
     computation_proto: computation_pb2.Computation,
@@ -318,7 +339,17 @@ def _deserialize_computation_value(
   del type_hint  # Unused.
   which_value = computation_proto.WhichOneof('computation')
   if which_value == 'literal':
-    value = federated_language.array_from_proto(computation_proto.literal.value)
+    array_pb = computation_proto.literal.value
+    if array_pb.HasField('content'):
+      try:
+        value = federated_language.array_from_proto_content(array_pb)
+      except NotImplementedError:
+        value = tensorflow_bindings.tensor_from_array_content(array_pb)
+    else:
+      value = tensorflow_bindings.tensor_from_array(array_pb)
+    dtype = federated_language.dtype_from_proto(array_pb.dtype)
+    shape = federated_language.array_shape_from_proto(array_pb.shape)
+    value = _normalize_deserialized_tensor(value, dtype, shape)
   else:
     value = computation_proto
   type_spec = federated_language.Type.from_proto(computation_proto.type)
@@ -350,13 +381,17 @@ def _deserialize_tensor_value(
     shape = federated_language.array_shape_from_proto(array_proto.shape)
     type_spec = federated_language.TensorType(dtype, shape)
 
-  # Repeated fields are used for strings and constants to maintain compatibility
-  # with other external environments.
   if array_proto.HasField('content'):
-    value = federated_language.array_from_proto_content(array_proto)
+    try:
+      value = federated_language.array_from_proto_content(array_proto)
+    except NotImplementedError:
+      value = tensorflow_bindings.tensor_from_array_content(array_proto)
   else:
-    value = federated_language.array_from_proto(array_proto)
+    value = tensorflow_bindings.tensor_from_array(array_proto)
 
+  value = _normalize_deserialized_tensor(
+      value, type_spec.dtype.type, type_spec.shape
+  )
   return value, type_spec
 
 

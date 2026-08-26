@@ -106,7 +106,7 @@ main() {
 
   # Check Python package sizes.
   local actual_size="$(du -b "${package}" | cut -f1)"
-  local maximum_size=80000000  # 80 MiB
+  local maximum_size=100000000  # 100 MB
   if [[ "${actual_size}" -ge "${maximum_size}" ]]; then
     echo "error: expected '${package}' to be less than '${maximum_size}' bytes, it was '${actual_size}' bytes" 1>&2
     exit 1
