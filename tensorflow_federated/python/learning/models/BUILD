@@ -13,7 +13,10 @@ package(
 
 package_group(
     name = "models_packages",
-    packages = ["//tensorflow_federated/python/learning/models/..."],
+    packages = [
+        "//inputmethod/keyboard/tensorflow/federated/fedrecon/...",
+        "//tensorflow_federated/python/learning/models/...",
+    ],
 )
 
 licenses(["notice"])
