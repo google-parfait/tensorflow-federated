@@ -203,7 +203,7 @@ inline absl::StatusOr<federated_language::Array> CreateArrayContent(
   federated_language::Array array_pb;
   array_pb.set_dtype(dtype);
   array_pb.mutable_shape()->Swap(&shape_pb);
-  *array_pb.mutable_content() = content;
+  array_pb.set_content(content);
   return array_pb;
 }
 

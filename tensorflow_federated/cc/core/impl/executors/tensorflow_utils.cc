@@ -15,11 +15,13 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 
-#include <algorithm>
 #include <complex>
 #include <cstdint>
+#include <cstring>
 #include <string>
+#include <utility>
 
+#include "absl/algorithm/container.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -36,11 +38,11 @@ limitations under the License
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/numeric_types.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/tensor_shape.pb.h"
+#include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/platform/tensor_coding.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 
@@ -172,93 +174,81 @@ absl::StatusOr<federated_language::Array> ArrayFromTensor(
       TFF_TRY(ArrayShapeFromTensorShape(tensor.shape()));
   array_pb.mutable_shape()->Swap(&shape_pb);
 
-  tensorflow::TensorProto tensor_pb;
-  tensor.AsProtoField(&tensor_pb);
+#define TFF_ASSIGN_ARRAY_CASE(DTYPE, TYPE, FIELD)                         \
+  case tensorflow::DataType::DTYPE: {                                     \
+    const tensorflow::TTypes<TYPE>::ConstFlat flat = tensor.flat<TYPE>(); \
+    array_pb.mutable_##FIELD()->mutable_value()->Assign(                  \
+        flat.data(), flat.data() + flat.size());                          \
+    break;                                                                \
+  }
 
-  switch (tensor_pb.dtype()) {
-    case tensorflow::DataType::DT_BOOL: {
-      array_pb.mutable_bool_list()->mutable_value()->Assign(
-          tensor_pb.bool_val().begin(), tensor_pb.bool_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_INT8: {
-      array_pb.mutable_int8_list()->mutable_value()->Assign(
-          tensor_pb.int_val().begin(), tensor_pb.int_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_INT16: {
-      array_pb.mutable_int16_list()->mutable_value()->Assign(
-          tensor_pb.int_val().begin(), tensor_pb.int_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_INT32: {
-      array_pb.mutable_int32_list()->mutable_value()->Assign(
-          tensor_pb.int_val().begin(), tensor_pb.int_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_INT64: {
-      array_pb.mutable_int64_list()->mutable_value()->Assign(
-          tensor_pb.int64_val().begin(), tensor_pb.int64_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_UINT8: {
-      array_pb.mutable_uint8_list()->mutable_value()->Assign(
-          tensor_pb.int_val().begin(), tensor_pb.int_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_UINT16: {
-      array_pb.mutable_uint16_list()->mutable_value()->Assign(
-          tensor_pb.int_val().begin(), tensor_pb.int_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_UINT32: {
-      array_pb.mutable_uint32_list()->mutable_value()->Assign(
-          tensor_pb.uint32_val().begin(), tensor_pb.uint32_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_UINT64: {
-      array_pb.mutable_uint64_list()->mutable_value()->Assign(
-          tensor_pb.uint64_val().begin(), tensor_pb.uint64_val().end());
-      break;
-    }
+  switch (tensor.dtype()) {
+    TFF_ASSIGN_ARRAY_CASE(DT_BOOL, bool, bool_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_INT8, int8_t, int8_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_INT16, int16_t, int16_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_INT32, int32_t, int32_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_INT64, int64_t, int64_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_UINT8, uint8_t, uint8_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_UINT16, uint16_t, uint16_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_UINT32, uint32_t, uint32_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_UINT64, uint64_t, uint64_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_FLOAT, float, float32_list);
+    TFF_ASSIGN_ARRAY_CASE(DT_DOUBLE, double, float64_list);
+#undef TFF_ASSIGN_ARRAY_CASE
     case tensorflow::DataType::DT_HALF: {
-      array_pb.mutable_float16_list()->mutable_value()->Assign(
-          tensor_pb.half_val().begin(), tensor_pb.half_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_FLOAT: {
-      array_pb.mutable_float32_list()->mutable_value()->Assign(
-          tensor_pb.float_val().begin(), tensor_pb.float_val().end());
-      break;
-    }
-    case tensorflow::DataType::DT_DOUBLE: {
-      array_pb.mutable_float64_list()->mutable_value()->Assign(
-          tensor_pb.double_val().begin(), tensor_pb.double_val().end());
+      const tensorflow::TTypes<Eigen::half>::ConstFlat flat =
+          tensor.flat<Eigen::half>();
+      google::protobuf::RepeatedField<int32_t>* list =
+          array_pb.mutable_float16_list()->mutable_value();
+      list->Reserve(flat.size());
+      for (int64_t i = 0; i < flat.size(); ++i) {
+        list->AddAlreadyReserved(static_cast<int32_t>(
+            Eigen::numext::bit_cast<uint16_t>(flat.data()[i])));
+      }
       break;
     }
     case tensorflow::DataType::DT_COMPLEX64: {
+      const tensorflow::TTypes<tensorflow::complex64>::ConstFlat flat =
+          tensor.flat<tensorflow::complex64>();
+      const float* data = reinterpret_cast<const float*>(flat.data());
       array_pb.mutable_complex64_list()->mutable_value()->Assign(
-          tensor_pb.scomplex_val().begin(), tensor_pb.scomplex_val().end());
+          data, data + 2 * flat.size());
       break;
     }
     case tensorflow::DataType::DT_COMPLEX128: {
+      const tensorflow::TTypes<tensorflow::complex128>::ConstFlat flat =
+          tensor.flat<tensorflow::complex128>();
+      const double* data = reinterpret_cast<const double*>(flat.data());
       array_pb.mutable_complex128_list()->mutable_value()->Assign(
-          tensor_pb.dcomplex_val().begin(), tensor_pb.dcomplex_val().end());
+          data, data + 2 * flat.size());
       break;
     }
     case tensorflow::DataType::DT_BFLOAT16: {
-      array_pb.mutable_bfloat16_list()->mutable_value()->Assign(
-          tensor_pb.half_val().begin(), tensor_pb.half_val().end());
+      const tensorflow::TTypes<Eigen::bfloat16>::ConstFlat flat =
+          tensor.flat<Eigen::bfloat16>();
+      google::protobuf::RepeatedField<int32_t>* list =
+          array_pb.mutable_bfloat16_list()->mutable_value();
+      list->Reserve(flat.size());
+      for (int64_t i = 0; i < flat.size(); ++i) {
+        list->AddAlreadyReserved(static_cast<int32_t>(
+            Eigen::numext::bit_cast<uint16_t>(flat.data()[i])));
+      }
       break;
     }
     case tensorflow::DataType::DT_STRING: {
-      array_pb.mutable_string_list()->mutable_value()->Assign(
-          tensor_pb.string_val().begin(), tensor_pb.string_val().end());
+      const tensorflow::TTypes<tensorflow::tstring>::ConstFlat flat =
+          tensor.flat<tensorflow::tstring>();
+      google::protobuf::RepeatedPtrField<std::string>* list =
+          array_pb.mutable_string_list()->mutable_value();
+      list->Reserve(flat.size());
+      for (int64_t i = 0; i < flat.size(); ++i) {
+        list->Add(std::string(flat.data()[i]));
+      }
       break;
     }
     default:
       return absl::UnimplementedError(
-          absl::StrCat("Unexpected DataType found:", tensor_pb.dtype()));
+          absl::StrCat("Unexpected DataType found:", tensor.dtype()));
   }
 
   return array_pb;
@@ -267,16 +257,16 @@ absl::StatusOr<federated_language::Array> ArrayFromTensor(
 template <typename T>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
                                   T* dest) {
-  std::copy(src.begin(), src.end(), dest);
+  absl::c_copy(src, dest);
 }
 
 // Overload for different SrcType and DestType.
 template <typename SrcType, typename DestType>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<SrcType>& src,
                                   DestType* dest) {
-  std::transform(
-      src.begin(), src.end(), dest,
-      [](const SrcType& x) -> DestType { return static_cast<DestType>(x); });
+  absl::c_transform(src, dest, [](const SrcType& x) -> DestType {
+    return static_cast<DestType>(x);
+  });
 }
 
 // Overload for Eigen::half.
@@ -286,7 +276,7 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   // field of type int32 using the following logic in order to maintain
   // compatibility with how other external environments (e.g. TensorFlow, Jax)
   // represent values of np.float16.
-  std::transform(src.begin(), src.end(), dest, [](int32_t x) -> Eigen::half {
+  absl::c_transform(src, dest, [](int32_t x) -> Eigen::half {
     return Eigen::numext::bit_cast<Eigen::half>(static_cast<uint16_t>(x));
   });
 }
@@ -295,7 +285,7 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
 template <typename T>
 static void CopyFromRepeatedField(const google::protobuf::RepeatedField<T>& src,
                                   std::complex<T>* dest) {
-  std::copy(src.begin(), src.end(), reinterpret_cast<T*>(dest));
+  absl::c_copy(src, reinterpret_cast<T*>(dest));
 }
 
 // Overload for Eigen::bfloat16.
@@ -305,18 +295,16 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   // protobuf field of type int32 using the following logic in order to maintain
   // compatibility with how other external environments (e.g. TensorFlow, Jax)
   // represent values of ml_dtypes.bfloat16.
-  std::transform(src.begin(), src.end(), dest,
-                 [](int32_t x) -> Eigen::bfloat16 {
-                   return Eigen::numext::bit_cast<Eigen::bfloat16>(
-                       static_cast<uint16_t>(x));
-                 });
+  absl::c_transform(src, dest, [](int32_t x) -> Eigen::bfloat16 {
+    return Eigen::numext::bit_cast<Eigen::bfloat16>(static_cast<uint16_t>(x));
+  });
 }
 
 // Overload for string.
 static void CopyFromRepeatedField(
     const google::protobuf::RepeatedPtrField<std::string>& src,
     tensorflow::tstring* dest) {
-  std::copy(src.begin(), src.end(), dest);
+  absl::c_copy(src, dest);
 }
 
 absl::StatusOr<tensorflow::Tensor> TensorFromArray(
@@ -456,6 +444,14 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(
   }
 }
 
+static absl::Cord TensorDataToCord(const tensorflow::Tensor& tensor) {
+  if (tensor.TotalBytes() == 0) {
+    return absl::Cord();
+  }
+  return absl::MakeCordFromExternal(tensor.tensor_data(),
+                                    [t = tensor](absl::string_view) {});
+}
+
 absl::StatusOr<federated_language::Array> ArrayContentFromTensor(
     const tensorflow::Tensor& tensor) {
   federated_language::Array array_pb;
@@ -465,9 +461,25 @@ absl::StatusOr<federated_language::Array> ArrayContentFromTensor(
   federated_language::ArrayShape shape_pb =
       TFF_TRY(ArrayShapeFromTensorShape(tensor.shape()));
   array_pb.mutable_shape()->Swap(&shape_pb);
-  tensorflow::TensorProto tensor_pb;
-  tensor.AsProtoTensorContent(&tensor_pb);
-  *array_pb.mutable_content() = tensor_pb.tensor_content();
+
+  if (tensorflow::DataTypeCanUseMemcpy(tensor.dtype())) {
+    array_pb.set_content(TensorDataToCord(tensor));
+  } else if (tensor.dtype() == tensorflow::DT_STRING) {
+#if defined(TENSORFLOW_PROTOBUF_USES_CORD)
+    absl::Cord cord;
+    tensorflow::port::EncodeStringList(
+        tensor.flat<tensorflow::tstring>().data(), tensor.NumElements(), &cord);
+    array_pb.set_content(std::move(cord));
+#else
+    std::string str;
+    tensorflow::port::EncodeStringList(
+        tensor.flat<tensorflow::tstring>().data(), tensor.NumElements(), &str);
+    array_pb.set_content(std::move(str));
+#endif
+  } else {
+    return absl::UnimplementedError(absl::StrCat(
+        "ArrayContentFromTensor does not support DataType: ", tensor.dtype()));
+  }
 
   return array_pb;
 }
@@ -478,20 +490,49 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArrayContent(
     return absl::InvalidArgumentError("Expected a content field, found none.");
   }
 
-  tensorflow::TensorProto tensor_pb;
   tensorflow::DataType data_type =
       TFF_TRY(TensorFlowDataTypeFromDataType(array_pb.dtype()));
-  tensor_pb.set_dtype(data_type);
-  tensorflow::TensorShapeProto shape_pb =
-      TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())).AsProto();
-  tensor_pb.mutable_tensor_shape()->Swap(&shape_pb);
-  *tensor_pb.mutable_tensor_content() = array_pb.content();
+  tensorflow::TensorShape shape =
+      TFF_TRY(TensorShapeFromArrayShape(array_pb.shape()));
 
-  tensorflow::Tensor tensor;
-  if (!tensor.FromProto(tensor_pb)) {
-    return absl::InvalidArgumentError(
-        "Seriailzed tensor proto could not be parsed into Tensor.");
+  tensorflow::Tensor tensor(data_type, shape);
+  if (tensorflow::DataTypeCanUseMemcpy(data_type)) {
+    if (array_pb.content().size() != tensor.TotalBytes()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Unexpected content size for tensor: expected ", tensor.TotalBytes(),
+          ", found ", array_pb.content().size()));
+    }
+    if (tensor.TotalBytes() > 0) {
+      char* dst = static_cast<char*>(tensor.data());
+      for (absl::string_view chunk : array_pb.content().Chunks()) {
+        std::memcpy(dst, chunk.data(), chunk.size());
+        dst += chunk.size();
+      }
+    }
+  } else if (data_type == tensorflow::DT_STRING) {
+    if (array_pb.content().empty()) {
+      return tensor;
+    }
+#if defined(TENSORFLOW_PROTOBUF_USES_CORD)
+    if (!tensorflow::port::DecodeStringList(
+            array_pb.content(), tensor.flat<tensorflow::tstring>().data(),
+            tensor.NumElements())) {
+      return absl::InvalidArgumentError(
+          "Serialized string tensor could not be decoded.");
+    }
+#else
+    if (!tensorflow::port::DecodeStringList(
+            std::string(array_pb.content()),
+            tensor.flat<tensorflow::tstring>().data(), tensor.NumElements())) {
+      return absl::InvalidArgumentError(
+          "Serialized string tensor could not be decoded.");
+    }
+#endif
+  } else {
+    return absl::UnimplementedError(absl::StrCat(
+        "TensorFromArrayContent does not support DataType: ", data_type));
   }
+
   return tensor;
 }
 
