@@ -16,11 +16,11 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 
 #include <cstdint>
-#include <functional>
 #include <thread>  // NOLINT
 #include <utility>
 
 #include "absl/base/thread_annotations.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
@@ -43,7 +43,7 @@ ThreadPool::ThreadPool(int32_t num_threads, absl::string_view name)
           pool_mutex_.Unlock();
           return;
         }
-        const std::function<void()> f = std::move(work_queue_.front());
+        absl::AnyInvocable<void()> f = std::move(work_queue_.front());
         work_queue_.pop_front();
         pool_mutex_.Unlock();
         f();
@@ -59,7 +59,7 @@ ThreadPool::~ThreadPool() {
   }
 }
 
-absl::Status ThreadPool::Schedule(std::function<void()> task) {
+absl::Status ThreadPool::Schedule(absl::AnyInvocable<void()> task) {
   absl::MutexLock lock(pool_mutex_);
   if (closed_) {
     return absl::FailedPreconditionError(
@@ -82,12 +82,13 @@ bool ParallelTasksInner_::AllDone_() ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
   return remaining_tasks_ == 0;
 }
 
-absl::Status ParallelTasks::add_task(std::function<absl::Status()> task) {
+absl::Status ParallelTasks::add_task(absl::AnyInvocable<absl::Status()> task) {
   {
     absl::WriterMutexLock lock(shared_inner_->mutex_);
     shared_inner_->remaining_tasks_ += 1;
   }
-  auto void_task = [inner = shared_inner_, task = std::move(task)]() {
+  absl::AnyInvocable<void()> void_task = [inner = shared_inner_,
+                                          task = std::move(task)]() mutable {
     absl::Status result = task();
     absl::WriterMutexLock lock(inner->mutex_);
     inner->status_.Update(std::move(result));

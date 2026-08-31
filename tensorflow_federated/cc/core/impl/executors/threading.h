@@ -29,6 +29,7 @@ limitations under the License
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -60,7 +61,7 @@ class ThreadPool {
   // Adds a task to the work queue to be picked up for a thread in pool when it
   // is free. Will return FailedPrecondition error if the pool is closed (e.g.
   // being destructed).
-  absl::Status Schedule(std::function<void()> task);
+  absl::Status Schedule(absl::AnyInvocable<void()> task);
 
   // Returns true iff the work_queue_ has items to process, or the ThreadPool
   // is closed. Intended to be used in a `absl::Condition`.
@@ -75,7 +76,8 @@ class ThreadPool {
   absl::Mutex pool_mutex_;
   bool closed_ ABSL_GUARDED_BY(pool_mutex_) = false;
   std::vector<std::thread> threads_ ABSL_GUARDED_BY(pool_mutex_);
-  std::deque<std::function<void()>> work_queue_ ABSL_GUARDED_BY(pool_mutex_);
+  std::deque<absl::AnyInvocable<void()>> work_queue_
+      ABSL_GUARDED_BY(pool_mutex_);
 };
 
 // Runs the provided provided no-arg function on another thread, returning a
@@ -97,15 +99,9 @@ std::shared_future<ReturnValue> ThreadRun(Func lambda,
                                           ThreadPool* thread_pool = nullptr) {
   using TaskT = std::packaged_task<ReturnValue()>;
   TaskT task(std::move(lambda));
-  auto future_ptr = std::shared_future<ReturnValue>(task.get_future());
+  std::shared_future<ReturnValue> future_ptr(task.get_future());
   if (thread_pool != nullptr) {
-    // Attempting to directly move the task results in a compiler error,
-    // possibly when trying to construct the `std::function<void()>` which may
-    // be trying to make a _copy_ of the lambda capture values which are not
-    // always copy constructable (especially in the case of ExecutorValue).
-    // Wrapping in a `shared_ptr` makes this possible.
-    thread_pool
-        ->Schedule([t = std::make_shared<TaskT>(std::move(task))]() { (*t)(); })
+    thread_pool->Schedule([task = std::move(task)]() mutable { task(); })
         .IgnoreError();
   } else {
     std::thread th(std::move(task));
@@ -278,7 +274,7 @@ class ParallelTasks {
   }
 
   // Spawns a thread to run a function and adds it to the parallel task group.
-  absl::Status add_task(std::function<absl::Status()> task);
+  absl::Status add_task(absl::AnyInvocable<absl::Status()> task);
 
   // Waits until all tasks passed to `add_task` have successfully completed.
   //

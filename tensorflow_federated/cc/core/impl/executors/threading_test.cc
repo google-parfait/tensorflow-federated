@@ -17,6 +17,10 @@ limitations under the License
 
 #include <atomic>
 #include <cstdint>
+#include <future>  // NOLINT
+#include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -116,6 +120,29 @@ TEST_F(ThreadPoolTest, ShuttingDownPoolErrorsOnSchedule) {
                        testing::HasSubstr("closed")));
 }
 
+TEST_F(ThreadPoolTest, MoveOnlyTaskInSchedule) {
+  ThreadPool pool(/*num_threads=*/1, /*name=*/"test");
+  auto val = std::make_unique<int32_t>(42);
+  int32_t result = 0;
+  absl::Notification done;
+  TFF_ASSERT_OK(pool.Schedule([val = std::move(val), &result, &done]() {
+    result = *val;
+    done.Notify();
+  }));
+  done.WaitForNotification();
+  EXPECT_EQ(result, 42);
+}
+
+TEST_F(ThreadPoolTest, ThreadRunWithThreadPoolMoveOnly) {
+  ThreadPool pool(/*num_threads=*/2, /*name=*/"test");
+  auto val = std::make_unique<std::string>("hello world");
+  std::shared_future<std::string> future = ThreadRun(
+      [val = std::move(val)]() -> std::string { return *val + " from pool"; },
+      &pool);
+  future.wait();
+  EXPECT_EQ(future.get(), "hello world from pool");
+}
+
 class ParallelTasksTest : public ::testing::Test {};
 
 TEST_F(ParallelTasksTest, EmptyIsOk) {
@@ -179,6 +206,19 @@ TEST_F(ParallelTasksTest, WithThreadPool) {
   event.Notify();
   EXPECT_THAT(tasks.WaitAll(), IsOk());
   EXPECT_EQ(counter.load(), NUM_THREADS * 2);
+}
+
+TEST_F(ParallelTasksTest, MoveOnlyTask) {
+  ThreadPool pool(/*num_threads=*/2, /*name=*/"test");
+  ParallelTasks tasks(&pool);
+  auto val = std::make_unique<int32_t>(100);
+  int32_t result = 0;
+  TFF_ASSERT_OK(tasks.add_task([val = std::move(val), &result]() {
+    result = *val;
+    return absl::OkStatus();
+  }));
+  EXPECT_THAT(tasks.WaitAll(), IsOk());
+  EXPECT_EQ(result, 100);
 }
 
 }  // namespace
