@@ -19,7 +19,6 @@ limitations under the License
 #include <complex>
 #include <cstdint>
 #include <initializer_list>
-#include <string>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"

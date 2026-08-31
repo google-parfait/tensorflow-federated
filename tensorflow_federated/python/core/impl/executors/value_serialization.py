@@ -20,6 +20,7 @@ from typing import Optional
 import federated_language
 from federated_language.proto import array_pb2
 from federated_language.proto import computation_pb2
+from google.protobuf.internal import decoder as protobuf_decoder
 import numpy as np
 import tree
 
@@ -325,6 +326,68 @@ def _deserialize_computation_value(
   return value, type_spec
 
 
+def _deserialize_string_tensor_from_content(
+    array_proto: array_pb2.Array,
+) -> object:
+  """Deserializes a DT_STRING Array from an EncodeStringList content buffer.
+
+  `ArrayContentFromTensor` in C++ serializes string tensors using TensorFlow's
+  `tensorflow::port::EncodeStringList` layout into `array_proto.content`.
+  The layout consists of:
+    - N varint32 values representing the byte length of each string, where
+      N = prod(shape) (or 1 for scalar tensors).
+    - The raw string bytes appended back-to-back immediately after the lengths.
+
+  `federated_language.array_from_proto_content` explicitly raises
+  `NotImplementedError` for `np.str_` because NumPy has no fixed-stride buffer
+  representation for variable-length strings and expects strings in repeated
+  fields (`string_list`). This method decodes the `EncodeStringList` wire
+  format directly in Python, returning `np.array(..., dtype=np.object_)` of
+  bytes (or a `bytes` scalar) matching the format expected by TFF executors.
+
+  Args:
+    array_proto: An `array_pb2.Array` protobuf with `content` populated for
+      `DT_STRING`.
+
+  Returns:
+    A `bytes` instance if `shape` is scalar, or an `np.ndarray` of
+    `np.object_` containing `bytes` elements shaped according to
+    `array_proto.shape`.
+  """
+  content = array_proto.content
+  shape = federated_language.array_shape_from_proto(array_proto.shape)
+  if shape is None:
+    num_elements = 1
+  else:
+    num_elements = 1
+    for dim in shape:
+      if dim is None:
+        raise ValueError(
+            'Expected fully-defined dimensions in `ArrayShape`, found'
+            f' `{shape}`.'
+        )
+      num_elements *= dim
+
+  if num_elements == 0:
+    return np.empty(shape, dtype=np.object_)  # pyrefly: ignore[no-matching-overload]
+
+  pos = 0
+  sizes = []
+  for _ in range(num_elements):
+    size, pos = protobuf_decoder._DecodeVarint32(content, pos)  # pylint: disable=protected-access
+    sizes.append(size)
+
+  strings = []
+  for size in sizes:
+    strings.append(content[pos : pos + size])
+    pos += size
+
+  if shape:
+    return np.array(strings, dtype=np.object_).reshape(shape)  # pyrefly: ignore[no-matching-overload]
+  else:
+    return strings[0]
+
+
 @federated_language.framework.trace
 def _deserialize_tensor_value(
     array_proto: array_pb2.Array,
@@ -350,10 +413,11 @@ def _deserialize_tensor_value(
     shape = federated_language.array_shape_from_proto(array_proto.shape)
     type_spec = federated_language.TensorType(dtype, shape)
 
-  # Repeated fields are used for strings and constants to maintain compatibility
-  # with other external environments.
   if array_proto.HasField('content'):
-    value = federated_language.array_from_proto_content(array_proto)
+    if np.issubdtype(type_spec.dtype, np.str_):
+      value = _deserialize_string_tensor_from_content(array_proto)
+    else:
+      value = federated_language.array_from_proto_content(array_proto)
   else:
     value = federated_language.array_from_proto(array_proto)
 

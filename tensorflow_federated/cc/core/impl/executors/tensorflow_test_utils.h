@@ -20,7 +20,6 @@ limitations under the License
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <utility>
 #include <vector>
 
@@ -50,7 +49,11 @@ template <typename... Ts>
 v0::Value TensorV(Ts... tensor_constructor_args) {
   tensorflow::Tensor tensor(tensor_constructor_args...);
   v0::Value value_proto;
-  *value_proto.mutable_array() = ArrayFromTensor(tensor).value();
+  absl::StatusOr<federated_language::Array> array_pb =
+      ArrayContentFromTensor(tensor);
+  if (array_pb.ok()) {
+    *value_proto.mutable_array() = *std::move(array_pb);
+  }
   return value_proto;
 }
 

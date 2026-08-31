@@ -946,7 +946,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
     switch (value.type()) {
       case ExecutorValue::ValueType::TENSOR: {
         return tasks.add_task([&value, value_pb]() {
-          *value_pb->mutable_array() = TFF_TRY(ArrayFromTensor(value.tensor()));
+          *value_pb->mutable_array() =
+              TFF_TRY(ArrayContentFromTensor(value.tensor()));
           return absl::OkStatus();
         });
       }

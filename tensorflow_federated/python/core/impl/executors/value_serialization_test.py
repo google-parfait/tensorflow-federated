@@ -163,6 +163,61 @@ class ValueSerializationTest(parameterized.TestCase):
     else:
       self.assertEqual(result, expected_value)
 
+  @parameterized.named_parameters(
+      (
+          'scalar',
+          b'\x03abc',
+          [],
+          b'abc',
+      ),
+      (
+          'scalar_null_character',
+          b'\x07abc\x00def',
+          [],
+          b'abc\x00def',
+      ),
+      (
+          '1d',
+          b'\x03\x03abcdef',
+          [2],
+          np.array([b'abc', b'def'], dtype=np.object_),
+      ),
+      (
+          '1d_null_character',
+          b'\x05\x05abc\x00\x00def\x00\x00',
+          [2],
+          np.array([b'abc\x00\x00', b'def\x00\x00'], dtype=np.object_),
+      ),
+      (
+          '2d',
+          b'\x01\x01\x01\x01abcd',
+          [2, 2],
+          np.array([[b'a', b'b'], [b'c', b'd']], dtype=np.object_),
+      ),
+      (
+          'empty',
+          b'',
+          [0],
+          np.empty([0], dtype=np.object_),
+      ),
+  )
+  def test_deserialize_string_tensor_from_content(
+      self, content, shape, expected_value
+  ):
+    dtype_pb = data_type_pb2.DataType.DT_STRING
+    shape_pb = federated_language.array_shape_to_proto(shape)
+    array_pb = array_pb2.Array(dtype=dtype_pb, shape=shape_pb, content=content)
+    value_proto = executor_pb2.Value(array=array_pb)
+
+    result, result_type = value_serialization.deserialize_value(
+        value_proto, federated_language.TensorType(np.str_, shape)
+    )
+    self.assertEqual(result_type, federated_language.TensorType(np.str_, shape))
+    if isinstance(result, (np.ndarray, np.generic)):
+      np.testing.assert_array_equal(result, expected_value, strict=True)
+    else:
+      self.assertEqual(result, expected_value)
+
   def test_serialize_raises_on_incompatible_dtype_float_to_int(self):
     x = np.float32(10.0)
     with self.assertRaisesRegex(TypeError, 'Failed to serialize the value'):

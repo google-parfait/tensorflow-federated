@@ -17,6 +17,7 @@ limitations under the License
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -29,6 +30,7 @@ limitations under the License
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
@@ -717,11 +719,30 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       int64_t num_keys = array_pb.shape().dim()[0];
       std::vector<int32_t> keys_for_client;
       keys_for_client.reserve(num_keys);
-      auto keys_for_client_eigen = array_pb.int32_list().value();
-      for (int64_t i = 0; i < num_keys; i++) {
-        int32_t key = keys_for_client_eigen[i];
-        keys_for_client.push_back(key);
-        keys.all.insert(key);
+      if (array_pb.has_content()) {
+        const absl::Cord& content = array_pb.content();
+        if (content.size() != num_keys * sizeof(int32_t)) {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "Expected key tensor content to have size ",
+              num_keys * sizeof(int32_t), ", but found size ", content.size()));
+        }
+        keys_for_client.resize(num_keys);
+        int64_t offset = 0;
+        for (absl::string_view chunk : content.Chunks()) {
+          std::memcpy(reinterpret_cast<char*>(keys_for_client.data()) + offset,
+                      chunk.data(), chunk.size());
+          offset += chunk.size();
+        }
+        for (int32_t key : keys_for_client) {
+          keys.all.insert(key);
+        }
+      } else {
+        const auto& keys_for_client_list = array_pb.int32_list().value();
+        for (int64_t i = 0; i < num_keys; i++) {
+          int32_t key = keys_for_client_list[i];
+          keys_for_client.push_back(key);
+          keys.all.insert(key);
+        }
       }
       keys.for_clients.push_back(std::move(keys_for_client));
     }
