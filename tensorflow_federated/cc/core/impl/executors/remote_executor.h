@@ -28,10 +28,10 @@ namespace tensorflow_federated {
 // Returns an executor which communicates with a remote executor service.
 std::shared_ptr<Executor> CreateRemoteExecutor(
     std::shared_ptr<grpc::ChannelInterface> channel,
-    const CardinalityMap& cardinalities);
+    const CardinalityMap& cardinalities, bool buffered_dispose = false);
 std::shared_ptr<Executor> CreateRemoteExecutor(
     std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
-    const CardinalityMap& cardinalities);
+    const CardinalityMap& cardinalities, bool buffered_dispose = false);
 }  // namespace tensorflow_federated
 
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_REMOTE_EXECUTOR_H_

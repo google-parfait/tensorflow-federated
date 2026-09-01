@@ -565,12 +565,48 @@ cc_test(
 )
 
 cc_library(
+    name = "disposal_queue",
+    srcs = ["disposal_queue.cc"],
+    hdrs = ["disposal_queue.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":status_conversion",
+        ":threading",
+        "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_test(
+    name = "disposal_queue_test",
+    size = "small",
+    srcs = ["disposal_queue_test.cc"],
+    deps = [
+        ":disposal_queue",
+        ":mock_grpc",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
     name = "remote_executor",
     srcs = ["remote_executor.cc"],
     hdrs = ["remote_executor.h"],
     visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
+        ":disposal_queue",
         ":executor",
         ":status_conversion",
         ":status_macros",
@@ -739,6 +775,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
+        ":disposal_queue",
         ":executor",
         ":federated_intrinsics",
         ":status_conversion",

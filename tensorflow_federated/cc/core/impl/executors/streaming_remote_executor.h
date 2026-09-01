@@ -32,10 +32,10 @@ namespace tensorflow_federated {
 // buffers for very large Struct values with many intermediate sized tensors.
 std::shared_ptr<Executor> CreateStreamingRemoteExecutor(
     std::shared_ptr<grpc::ChannelInterface> channel,
-    const CardinalityMap& cardinalities);
+    const CardinalityMap& cardinalities, bool buffered_dispose = false);
 std::shared_ptr<Executor> CreateStreamingRemoteExecutor(
     std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
-    const CardinalityMap& cardinalities);
+    const CardinalityMap& cardinalities, bool buffered_dispose = false);
 }  // namespace tensorflow_federated
 
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_STREAMING_REMOTE_EXECUTOR_H_

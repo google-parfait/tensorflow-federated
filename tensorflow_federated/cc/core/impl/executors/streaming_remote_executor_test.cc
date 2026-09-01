@@ -256,6 +256,56 @@ TEST_F(StreamingRemoteExecutorTest, CreateValueTensor) {
   WaitForDisposeExecutor(dispose_notification);
 }
 
+TEST_F(StreamingRemoteExecutorTest,
+       ConstructStreamingRemoteExecutorWithBufferedDispose) {
+  absl::Notification dispose_executor_notification;
+  ExpectGetAndDisposeExecutor(dispose_executor_notification);
+
+  std::unique_ptr<v0::ExecutorGroup::Stub> stub_ptr(mock_executor_.NewStub());
+  CardinalityMap cardinalities = {{"clients", 1}};
+  test_executor_ = CreateStreamingRemoteExecutor(
+      std::move(stub_ptr), cardinalities, /*buffered_dispose=*/true);
+  ASSERT_NE(test_executor_, nullptr);
+
+  v0::Value tensor_two = TensorV(2.0f);
+  EXPECT_CALL(
+      *mock_executor_service_,
+      CreateValue(_, EqualsProto(CreateValueRequestForValue(tensor_two)), _))
+      .WillOnce(ReturnOkWithResponseId<v0::CreateValueResponse>("value_ref"));
+
+  absl::Notification dispose_notification;
+  v0::DisposeRequest expected_dispose_request;
+  expected_dispose_request.mutable_executor()->set_id(kExecutorId);
+  expected_dispose_request.mutable_value_ref()->Add()->set_id("value_ref");
+  EXPECT_CALL(*mock_executor_service_,
+              Dispose(_, EqualsProto(expected_dispose_request), _))
+      .WillOnce(NotifyAndReturnOk(dispose_notification));
+
+  v0::Value materialized_value;
+  EXPECT_CALL(*mock_executor_service_, Compute(_, _, _))
+      .WillOnce(ReturnOkWithComputeResponse(tensor_two));
+  {
+    OwnedValueId value_ref =
+        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
+    // Materialize forces synchronization of the asynchronous CreateValue call
+    // so that the value is tracked before value_ref is destroyed.
+    TFF_ASSERT_OK(test_executor_->Materialize(value_ref, &materialized_value));
+    // value_ref goes out of scope here. Because buffered_dispose is true and
+    // max_batch_size (256) is not reached, the disposal is queued in
+    // DisposalQueue and not yet sent via RPC.
+  }
+  EXPECT_THAT(materialized_value, EqualsProto(tensor_two));
+
+  EXPECT_FALSE(dispose_notification.HasBeenNotified());
+
+  // Destroying test_executor_ triggers ~StreamingRemoteExecutor(), which must
+  // call Flush() on the DisposalQueue to dispatch pending disposals before
+  // shutdown.
+  WaitForDisposeExecutor(dispose_executor_notification);
+
+  EXPECT_TRUE(dispose_notification.HasBeenNotified());
+}
+
 TEST_F(StreamingRemoteExecutorTest, CreateValueNestedStruct) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
