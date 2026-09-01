@@ -662,9 +662,14 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
           metrics=[tf.keras.metrics.MeanAbsoluteError()],
       )
       # Ensure we can get warning of Batch Normalization.
-      self.assertLen(warning, 1)
-      self.assertIsSubClass(warning[-1].category, UserWarning)
-      self.assertRegex(str(warning[-1].message), 'Batch Normalization')
+      batch_norm_warnings = [
+          w for w in warning if 'Batch Normalization' in str(w.message)
+      ]
+      self.assertLen(batch_norm_warnings, 1)
+      self.assertIsSubClass(batch_norm_warnings[0].category, UserWarning)
+      self.assertRegex(
+          str(batch_norm_warnings[0].message), 'Batch Normalization'
+      )
 
     batch_size = 2
     batch = collections.OrderedDict(

@@ -208,5 +208,20 @@ py_library(
     deps = [
         "//tensorflow_federated/python/learning/metrics:types",
         "@pypi//tensorflow",
+        "@pypi//typing_extensions",
+    ],
+)
+
+py_test(
+    name = "variable_test",
+    srcs = ["variable_test.py"],
+    deps = [
+        ":variable",
+        "@pypi//absl_py",
+        "@pypi//attrs",
+        "@pypi//dm_tree",
+        "@pypi//ml_dtypes",
+        "@pypi//tensorflow",
+        "@pypi//typing_extensions",
     ],
 )

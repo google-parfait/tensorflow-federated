@@ -17,8 +17,10 @@ import abc
 import collections
 from collections.abc import Sequence
 from typing import Any
+import warnings
 
 import tensorflow as tf
+import typing_extensions
 
 from tensorflow_federated.python.learning.metrics import types
 
@@ -43,8 +45,15 @@ BatchOutput.__doc__ = """A structure that holds the output of a `tff.learning.mo
   """
 
 
+@typing_extensions.deprecated(
+    'tff.learning.models.VariableModel is deprecated, use'
+    ' tff.learning.models.FunctionalModel instead.'
+)
 class VariableModel(metaclass=abc.ABCMeta):
   """Represents a variable-based model for use in TensorFlow Federated.
+
+  Deprecated: `tff.learning.models.VariableModel` is deprecated, use
+  `tff.learning.models.FunctionalModel` instead.
 
   Each `VariableModel` will work on a set of `tf.Variables`, and each method
   should be a computation that can be implemented as a `tf.function`; this
@@ -77,6 +86,14 @@ class VariableModel(metaclass=abc.ABCMeta):
   https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer) in
   the future.
   """
+
+  def __init__(self):
+    warnings.warn(
+        'tff.learning.models.VariableModel is deprecated, use'
+        ' tff.learning.models.FunctionalModel instead.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
   @property
   @abc.abstractmethod
@@ -114,9 +131,7 @@ class VariableModel(metaclass=abc.ABCMeta):
     labels.
 
     Similar in spirit to `tf.keras.models.Model.input_spec`.
-    """.format(
-        MODEL_ARG_NAME, MODEL_LABEL_NAME
-    )
+    """.format(MODEL_ARG_NAME, MODEL_LABEL_NAME)
     pass
 
   @abc.abstractmethod
@@ -193,9 +208,7 @@ class VariableModel(metaclass=abc.ABCMeta):
       be the logits or probabilities of the last layer in the model, however
       writers are not restricted to these, the only requirement is their loss
       function understands the result.
-    """.format(
-        MODEL_ARG_NAME
-    )
+    """.format(MODEL_ARG_NAME)
 
   @abc.abstractmethod
   def report_local_unfinalized_metrics(
