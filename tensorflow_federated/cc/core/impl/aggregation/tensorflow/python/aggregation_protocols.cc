@@ -34,6 +34,8 @@
 
 using ::tensorflow_federated::aggregation::AggregationProtocol;
 using ::tensorflow_federated::aggregation::Configuration;
+using ::tensorflow_federated::aggregation::
+    FederatedComputeCheckpointParserFactory;
 using ::tensorflow_federated::aggregation::ResourceResolver;
 using ::tensorflow_federated::aggregation::tensorflow::
     TensorflowCheckpointBuilderFactory;
