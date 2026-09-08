@@ -856,25 +856,6 @@ cc_test(
     ],
 )
 
-cc_library(
-    name = "tensor_serialization",
-    srcs = ["tensor_serialization.cc"],
-    hdrs = ["tensor_serialization.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":status_macros",
-        ":tensorflow_utils",
-        "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@federated_language//federated_language/proto:array_cc_proto",
-        "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
-)
-
 pybind_extension(
     name = "tensorflow_bindings",
     srcs = ["tensorflow_bindings.cc"],
