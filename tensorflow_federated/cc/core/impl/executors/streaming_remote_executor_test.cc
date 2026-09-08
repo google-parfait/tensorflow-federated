@@ -1221,12 +1221,13 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
   ExpectGetAndDisposeExecutor(dispose_notification);
 
   const FederatedStructTestCase& test_case = GetParam();
-  // Constructs a <<float32>>@P.
+  // Constructs a <<<float32>>>@P.
   const v0::Value tensor_two = TensorV(2.0f);
-  const v0::Value inner_struct_value = StructV({tensor_two});
-  const v0::Value outer_struct_value = StructV({inner_struct_value});
+  const v0::Value innermost_struct_value = StructV({tensor_two});
+  const v0::Value middle_struct_value = StructV({innermost_struct_value});
+  const v0::Value outermost_struct_value = StructV({middle_struct_value});
   const v0::Value federated_struct_value =
-      test_case.FederatedV({outer_struct_value});
+      test_case.FederatedV({outermost_struct_value});
 
   v0::Value materialized_value;
   absl::Status materialize_status;
@@ -1237,8 +1238,9 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
     {
       absl::flat_hash_map<absl::string_view, absl::string_view>
           struct_ref_by_struct_elem_ref = {
-              {"inner_federated_struct", "federated_elem"},
-              {"outer_federated_struct", "zipped_inner_federated_struct"},
+              {"innermost_federated_struct", "federated_elem"},
+              {"middle_federated_struct", "zipped_innermost_federated_struct"},
+              {"outermost_federated_struct", "zipped_middle_federated_struct"},
           };
       EXPECT_CALL(*mock_executor_service_,
                   CreateValue(_,
@@ -1248,8 +1250,6 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
           .WillOnce(ReturnOkWithResponseId<v0::CreateValueResponse>(
               "federated_elem"));
 
-      // We expect two create struct, and two zip calls, as the executor
-      // traverse the nested structure.
       for (const auto& item : struct_ref_by_struct_elem_ref) {
         absl::string_view struct_ref = item.first;
         absl::string_view elem_ref = item.second;
@@ -1269,34 +1269,52 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                 ->mutable_federated();
         param_federated_type->set_all_equal(test_case.all_equal);
         param_federated_type->mutable_placement()->mutable_value()->set_uri(
-            std::string(test_case.placement_uri));
+            test_case.placement_uri);
         federated_language::Type* param_value_type =
             param_federated_type->mutable_member();
-        if (absl::EndsWith(elem_ref, "struct")) {
-          // Nested struct needs another layer.
-          param_value_type = param_value_type->mutable_struct_()
-                                 ->add_element()
-                                 ->mutable_value();
-        }
-        param_value_type->mutable_tensor()->set_dtype(
-            federated_language::DataType::DT_FLOAT);
         federated_language::FederatedType* result_federated_type =
             zip_at_placement_type_pb.mutable_result()->mutable_federated();
         result_federated_type->set_all_equal(test_case.all_equal);
         result_federated_type->mutable_placement()->mutable_value()->set_uri(
-            std::string(test_case.placement_uri));
+            test_case.placement_uri);
         federated_language::StructType* result_struct_type =
             result_federated_type->mutable_member()->mutable_struct_();
         federated_language::Type* result_value_type =
             result_struct_type->add_element()->mutable_value();
-        if (absl::EndsWith(elem_ref, "struct")) {
-          // Nested struct needs another layer.
+
+        // Descend into the nested struct hierarchy to configure the innermost
+        // float tensor leaf for both parameter and result types:
+        // - "zipped_middle_federated_struct": 2 nested struct layers
+        // (<<float32>>)
+        // - "zipped_innermost_federated_struct": 1 nested struct layer
+        // (<float32>)
+        // - "federated_elem": 0 struct layers (float32 directly)
+        if (elem_ref == "zipped_middle_federated_struct") {
+          param_value_type = param_value_type->mutable_struct_()
+                                 ->add_element()
+                                 ->mutable_value()
+                                 ->mutable_struct_()
+                                 ->add_element()
+                                 ->mutable_value();
+          result_value_type = result_value_type->mutable_struct_()
+                                  ->add_element()
+                                  ->mutable_value()
+                                  ->mutable_struct_()
+                                  ->add_element()
+                                  ->mutable_value();
+        } else if (elem_ref == "zipped_innermost_federated_struct") {
+          param_value_type = param_value_type->mutable_struct_()
+                                 ->add_element()
+                                 ->mutable_value();
           result_value_type = result_value_type->mutable_struct_()
                                   ->add_element()
                                   ->mutable_value();
         }
+        param_value_type->mutable_tensor()->set_dtype(
+            federated_language::DataType::DT_FLOAT);
         result_value_type->mutable_tensor()->set_dtype(
             federated_language::DataType::DT_FLOAT);
+
         EXPECT_CALL(*mock_executor_service_,
                     CreateValue(_,
                                 EqualsProto(CreateValueRequestForValue(
@@ -1310,8 +1328,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
         zip_call_request.mutable_executor()->set_id(kExecutorId);
         zip_call_request.mutable_function_ref()->set_id(
             absl::StrCat("federated_zip_", elem_ref));
-        zip_call_request.mutable_argument_ref()->set_id(
-            std::string(struct_ref));
+        zip_call_request.mutable_argument_ref()->set_id(struct_ref);
         EXPECT_CALL(*mock_executor_service_,
                     CreateCall(_, EqualsProto(zip_call_request), _))
             .WillOnce(ReturnOkWithResponseId<v0::CreateCallResponse>(
@@ -1342,7 +1359,13 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                                 value {
                                   struct {
                                     element {
-                                      value { tensor { dtype: DT_FLOAT } }
+                                      value {
+                                        struct {
+                                          element {
+                                            value { tensor { dtype: DT_FLOAT } }
+                                          }
+                                        }
+                                      }
                                     }
                                   }
                                 }
@@ -1358,9 +1381,17 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                               struct {
                                 element {
                                   value {
-                                    federated {
-                                      placement { value { uri: "$0" } }
-                                      member { tensor { dtype: DT_FLOAT } } $1
+                                    struct {
+                                      element {
+                                        value {
+                                          federated {
+                                            placement { value { uri: "$0" } }
+                                            member {
+                                              tensor { dtype: DT_FLOAT }
+                                            } $1
+                                          }
+                                        }
+                                      }
                                     }
                                   }
                                 }
@@ -1411,7 +1442,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                           value {
                             block {
                               local {
-                                name: "elem_0"
+                                name: "nested_struct_1"
                                 value {
                                   call {
                                     function { intrinsic { uri: "$2" } }
@@ -1439,6 +1470,55 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                                               name: "nested_struct_0"
                                             }
                                           }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              local {
+                                name: "elem_0"
+                                value {
+                                  block {
+                                    local {
+                                      name: "elem_0"
+                                      value {
+                                        call {
+                                          function { intrinsic { uri: "$2" } }
+                                          argument {
+                                            struct {
+                                              element {
+                                                value {
+                                                  lambda {
+                                                    parameter_name: "map_arg"
+                                                    result {
+                                                      selection {
+                                                        source {
+                                                          reference {
+                                                            name: "map_arg"
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                              element {
+                                                value {
+                                                  reference {
+                                                    name: "nested_struct_1"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                    result {
+                                      struct {
+                                        element {
+                                          value { reference { name: "elem_0" } }
                                         }
                                       }
                                     }
@@ -1478,17 +1558,24 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
       call_map_request.mutable_function_ref()->set_id(
           absl::StrCat(intrinsic_name, "_selection_comp"));
       call_map_request.mutable_argument_ref()->set_id(
-          "zipped_outer_federated_struct");
+          "zipped_outermost_federated_struct");
       EXPECT_CALL(*mock_executor_service_,
                   CreateCall(_, EqualsProto(call_map_request), _))
           .WillOnce(ReturnOkWithResponseId<v0::CreateCallResponse>(
-              "struct_of_struct_of_federated_elem"));
+              "struct_of_struct_of_struct_of_federated_elem"));
 
       v0::CreateSelectionRequest create_selection_request;
       create_selection_request.mutable_executor()->set_id(kExecutorId);
       create_selection_request.mutable_source_ref()->set_id(
-          "struct_of_struct_of_federated_elem");
+          "struct_of_struct_of_struct_of_federated_elem");
       create_selection_request.set_index(0);
+      EXPECT_CALL(*mock_executor_service_,
+                  CreateSelection(_, EqualsProto(create_selection_request), _))
+          .WillOnce(ReturnOkWithResponseId<v0::CreateSelectionResponse>(
+              "struct_of_struct_of_federated_elem"));
+
+      create_selection_request.mutable_source_ref()->set_id(
+          "struct_of_struct_of_federated_elem");
       EXPECT_CALL(*mock_executor_service_,
                   CreateSelection(_, EqualsProto(create_selection_request), _))
           .WillOnce(ReturnOkWithResponseId<v0::CreateSelectionResponse>(

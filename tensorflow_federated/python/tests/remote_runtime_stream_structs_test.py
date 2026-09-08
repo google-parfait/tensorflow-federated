@@ -209,6 +209,46 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
       federated_identity = _make_federated(identity)
       federated_identity([small_struct])
 
+  @test_contexts.with_contexts(*_CONTEXTS)
+  def test_deeply_nested_struct_identity(self):
+    c_expected = np.arange(10, dtype=np.int32)
+    d_expected = np.ones(shape=(2, 3), dtype=np.float32) * 5.0
+    deeply_nested_struct = {
+        'a': {
+            'b': {
+                'c': tf.constant(c_expected),
+            },
+            'd': tf.constant(d_expected),
+        },
+    }
+
+    @tff.tensorflow.computation(
+        federated_language.to_type({
+            'a': {
+                'b': {
+                    'c': federated_language.TensorType(np.int32, (10,)),
+                },
+                'd': federated_language.TensorType(np.float32, (2, 3)),
+            },
+        })
+    )
+    def identity(s):
+      return federated_language.common_libs.structure.map_structure(
+          tf.identity, s
+      )
+
+    with self.subTest('local'):
+      local_result = identity(deeply_nested_struct)
+      np.testing.assert_array_equal(local_result['a']['b']['c'], c_expected)
+      np.testing.assert_array_equal(local_result['a']['d'], d_expected)
+
+    with self.subTest('federated'):
+      federated_identity = _make_federated(identity)
+      result = federated_identity([deeply_nested_struct])
+      self.assertLen(result, 1)
+      np.testing.assert_array_equal(result[0]['a']['b']['c'], c_expected)
+      np.testing.assert_array_equal(result[0]['a']['d'], d_expected)
+
 
 if __name__ == '__main__':
   absltest.main()

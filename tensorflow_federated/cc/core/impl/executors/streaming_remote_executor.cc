@@ -225,6 +225,7 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
           &result_type_pb,
       }};
 
+  int32_t nested_struct_id = 0;
   while (!structs_to_process.empty()) {
     auto [block_pb, parent_ref_name, parent_struct_type_pb,
           output_struct_type_pb] = structs_to_process.front();
@@ -250,10 +251,10 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
           break;
         }
         case federated_language::Type::kStruct: {
-          // Add a local to select the nested structure, and give it a name with
-          // the selection path.
+          // Add a local to select the nested structure, and give it a unique
+          // name with an incrementing id.
           std::string nested_struct_ref_name =
-              absl::StrCat("nested_struct_", i);
+              absl::StrCat("nested_struct_", nested_struct_id++);
           federated_language::Block::Local* nested_struct_local_pb =
               block_pb->add_local();
           nested_struct_local_pb->set_name(nested_struct_ref_name);
