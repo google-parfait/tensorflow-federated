@@ -507,9 +507,16 @@ TEST(TensorTest, FromProtoNoDataMismatchShape) {
   tensor_proto.set_dtype(DT_STRING);
   tensor_proto.mutable_shape()->add_dim_sizes(2);
   Status s = Tensor::FromProto(tensor_proto).status();
-  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(s.message(), HasSubstr("Tensor proto contains no data but the "
-                                     "shape indicates it is non-empty"));
+  EXPECT_THAT(s, StatusIs(FAILED_PRECONDITION));
+  EXPECT_THAT(s.message(), HasSubstr("TensorData byte_size is inconsistent "
+                                     "with the Tensor dtype and shape"));
+}
+
+TEST(TensorTest, FromProtoInvalidDtype) {
+  TensorProto tensor_proto;
+  tensor_proto.set_dtype(DT_INVALID);
+  tensor_proto.mutable_shape()->add_dim_sizes(0);
+  EXPECT_THAT(Tensor::FromProto(tensor_proto), StatusIs(INVALID_ARGUMENT));
 }
 
 TEST(TensorTest, FromProtoInvalidStringContent) {

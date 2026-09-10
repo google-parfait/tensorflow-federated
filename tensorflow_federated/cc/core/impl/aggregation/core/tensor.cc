@@ -24,6 +24,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "google/protobuf/io/coded_stream.h"
@@ -38,7 +40,7 @@
 namespace tensorflow_federated {
 namespace aggregation {
 
-Status Tensor::CheckValid() const {
+absl::Status Tensor::CheckValid() const {
   if (dtype_ == DT_INVALID) {
     return TFF_STATUS(FAILED_PRECONDITION) << "Invalid Tensor dtype.";
   }
@@ -60,19 +62,19 @@ Status Tensor::CheckValid() const {
               "shape.";
   }
 
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
-Status Tensor::set_name(absl::string_view name) {
+absl::Status Tensor::set_name(absl::string_view name) {
   name_ = name;
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 // Note that name has a default value of empty string specified in the
 // declaration.
-StatusOr<Tensor> Tensor::Create(DataType dtype, TensorShape shape,
-                                std::unique_ptr<TensorData> data,
-                                std::string name) {
+absl::StatusOr<Tensor> Tensor::Create(DataType dtype, TensorShape shape,
+                                      std::unique_ptr<TensorData> data,
+                                      std::string name) {
   TFF_RETURN_IF_ERROR(shape.NumElements().status());
   Tensor tensor(dtype, std::move(shape), std::move(data), std::move(name));
   TFF_RETURN_IF_ERROR(tensor.CheckValid());
@@ -160,8 +162,8 @@ inline std::string MakeAligned(std::string&& content) {
 // instance of TensorData.   The `num` argument is needed in case the number of
 // values can't be derived from the content size.
 template <typename T>
-StatusOr<std::unique_ptr<TensorData>> DecodeContent(std::string content,
-                                                    size_t num) {
+absl::StatusOr<std::unique_ptr<TensorData>> DecodeContent(std::string content,
+                                                          size_t num) {
   // Default decoding of tensor data, valid only for numeric data types.
   return std::make_unique<SerializedContentNumericData>(std::move(content));
 }
@@ -182,7 +184,7 @@ class SerializedContentStringData : public TensorData {
 
   // Initializes the string_view values to point to the strings embedded in the
   // content.
-  Status Initialize(std::string content, size_t num) {
+  absl::Status Initialize(std::string content, size_t num) {
     content_ = std::move(content);
     google::protobuf::io::ArrayInputStream input(content_.data(),
                                        static_cast<int>(content_.size()));
@@ -234,7 +236,7 @@ class SerializedContentStringData : public TensorData {
                                      string_views_[i].size());
     }
 
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
  private:
@@ -250,6 +252,28 @@ StatusOr<std::unique_ptr<TensorData>> DecodeContent<string_view>(
   return tensor_data;
 }
 
+absl::StatusOr<std::unique_ptr<TensorData>> DecodeContent(
+    const std::string& content, DataType dtype, size_t num_values) {
+  std::unique_ptr<TensorData> data;
+  std::string aligned_content = AlignedCopyOf(content);
+  DTYPE_CASES(
+      dtype, T,
+      TFF_ASSIGN_OR_RETURN(
+          data, DecodeContent<T>(std::move(aligned_content), num_values)));
+  return data;
+}
+
+absl::StatusOr<std::unique_ptr<TensorData>> DecodeContent(std::string&& content,
+                                                          DataType dtype,
+                                                          size_t num_values) {
+  std::unique_ptr<TensorData> data;
+  DTYPE_CASES(dtype, T,
+              TFF_ASSIGN_OR_RETURN(
+                  data, DecodeContent<T>(MakeAligned<T>(std::move(content)),
+                                         num_values)));
+  return data;
+}
+
 class ZeroTensorData : public TensorData {
  public:
   const void* data() const override { return this; }
@@ -257,7 +281,7 @@ class ZeroTensorData : public TensorData {
 };
 
 template <typename T>
-StatusOr<std::unique_ptr<TensorData>> CreateDataFromNumericVector(
+absl::StatusOr<std::unique_ptr<TensorData>> CreateDataFromNumericVector(
     DataType datatype_from_proto, absl::Span<const T> values,
     std::unique_ptr<TensorData>& data) {
   if (internal::TypeTraits<T>::kDataType != datatype_from_proto) {
@@ -272,7 +296,7 @@ StatusOr<std::unique_ptr<TensorData>> CreateDataFromNumericVector(
       std::vector<T>(values.begin(), values.end()));
 }
 
-StatusOr<std::unique_ptr<TensorData>> CreateDataFromStringVector(
+absl::StatusOr<std::unique_ptr<TensorData>> CreateDataFromStringVector(
     DataType datatype_from_proto, std::vector<std::string> values,
     std::unique_ptr<TensorData>& data) {
   if (internal::TypeTraits<string_view>::kDataType != datatype_from_proto) {
@@ -286,21 +310,9 @@ StatusOr<std::unique_ptr<TensorData>> CreateDataFromStringVector(
   return std::make_unique<VectorData<string_view>>(std::move(values));
 }
 
-StatusOr<Tensor> Tensor::FromProto(const TensorProto& tensor_proto) {
-  if (tensor_proto.dtype() == DT_INVALID) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "Invalid Tensor dtype.";
-  }
-  TFF_ASSIGN_OR_RETURN(TensorShape shape,
-                       TensorShape::FromProto(tensor_proto.shape()));
-  // TODO: b/266974165 - The num_values is valid only for dense tensors.
-  TFF_ASSIGN_OR_RETURN(size_t num_values, shape.NumElements());
-  std::unique_ptr<TensorData> data;
-  if (!tensor_proto.content().empty()) {
-    std::string content = AlignedCopyOf(tensor_proto.content());
-    DTYPE_CASES(tensor_proto.dtype(), T,
-                TFF_ASSIGN_OR_RETURN(
-                    data, DecodeContent<T>(std::move(content), num_values)));
-  }
+// Creates a TensorData instance from a vector of values other than content.
+absl::Status CreateDataFromVector(const TensorProto& tensor_proto,
+                                  std::unique_ptr<TensorData>& data) {
   if (tensor_proto.float_val_size() > 0) {
     TFF_ASSIGN_OR_RETURN(
         data, CreateDataFromNumericVector(
@@ -342,30 +354,39 @@ StatusOr<Tensor> Tensor::FromProto(const TensorProto& tensor_proto) {
                   data));
   }
   if (data == nullptr) {
-    if (shape.NumElements().value() != 0) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Tensor proto contains no data but the shape indicates it is "
-                "non-empty.";
-    }
     data = std::make_unique<ZeroTensorData>();
   }
-  return Create(tensor_proto.dtype(), std::move(shape), std::move(data),
-                tensor_proto.name());
+  return absl::OkStatus();
 }
 
-StatusOr<Tensor> Tensor::FromProto(TensorProto&& tensor_proto) {
+template <typename ContentType>
+absl::StatusOr<Tensor> FromProtoImpl(const TensorProto& tensor_proto,
+                                     ContentType&& content) {
+  if (tensor_proto.dtype() == DT_INVALID) {
+    return TFF_STATUS(INVALID_ARGUMENT) << "Invalid Tensor dtype.";
+  }
   TFF_ASSIGN_OR_RETURN(TensorShape shape,
                        TensorShape::FromProto(tensor_proto.shape()));
   // TODO: b/266974165 - The num_values is valid only for dense tensors.
   TFF_ASSIGN_OR_RETURN(size_t num_values, shape.NumElements());
-  std::string content = std::move(*tensor_proto.mutable_content());
-  StatusOr<std::unique_ptr<TensorData>> data;
-  DTYPE_CASES(
-      tensor_proto.dtype(), T,
-      data = DecodeContent<T>(MakeAligned<T>(std::move(content)), num_values));
-  TFF_RETURN_IF_ERROR(data);
-  return Create(tensor_proto.dtype(), std::move(shape), std::move(data).value(),
-                std::move(tensor_proto.name()));
+  std::unique_ptr<TensorData> data;
+  if (!content.empty()) {
+    TFF_ASSIGN_OR_RETURN(data, DecodeContent(std::forward<ContentType>(content),
+                                             tensor_proto.dtype(), num_values));
+  }
+  TFF_RETURN_IF_ERROR(CreateDataFromVector(tensor_proto, data));
+
+  return Tensor::Create(tensor_proto.dtype(), std::move(shape), std::move(data),
+                        tensor_proto.name());
+}
+
+absl::StatusOr<Tensor> Tensor::FromProto(const TensorProto& tensor_proto) {
+  return FromProtoImpl(tensor_proto, tensor_proto.content());
+}
+
+absl::StatusOr<Tensor> Tensor::FromProto(TensorProto&& tensor_proto) {
+  return FromProtoImpl(tensor_proto,
+                       std::move(*tensor_proto.mutable_content()));
 }
 
 TensorProto Tensor::ToProto() const {

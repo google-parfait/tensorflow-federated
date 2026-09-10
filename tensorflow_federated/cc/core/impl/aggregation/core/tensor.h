@@ -27,6 +27,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -130,21 +132,21 @@ class Tensor final {
                std::move(name)) {}
 
   // Validates parameters and creates a Tensor instance.
-  static StatusOr<Tensor> Create(DataType dtype, TensorShape shape,
-                                 std::unique_ptr<TensorData> data,
-                                 std::string name = "");
+  static absl::StatusOr<Tensor> Create(DataType dtype, TensorShape shape,
+                                       std::unique_ptr<TensorData> data,
+                                       std::string name = "");
 
   // Creates a Tensor instance from a TensorProto.
-  static StatusOr<Tensor> FromProto(const TensorProto& tensor_proto);
+  static absl::StatusOr<Tensor> FromProto(const TensorProto& tensor_proto);
 
   // Creates a Tensor instance from a TensorProto, consuming the proto.
-  static StatusOr<Tensor> FromProto(TensorProto&& tensor_proto);
+  static absl::StatusOr<Tensor> FromProto(TensorProto&& tensor_proto);
 
   // Converts Tensor to TensorProto
   TensorProto ToProto() const;
 
   // Validates the tensor.
-  Status CheckValid() const;
+  absl::Status CheckValid() const;
 
   // Gets the tensor value type.
   DataType dtype() const { return dtype_; }
@@ -234,7 +236,7 @@ class Tensor final {
   }
 
   // Updates the tensor name.
-  Status set_name(absl::string_view name);
+  absl::Status set_name(absl::string_view name);
 
   // TODO: b/222605809 - Add serialization functions.
 

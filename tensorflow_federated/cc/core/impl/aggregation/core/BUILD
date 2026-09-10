@@ -90,6 +90,8 @@ cc_library(
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
