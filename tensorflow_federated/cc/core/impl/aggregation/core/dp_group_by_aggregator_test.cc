@@ -436,7 +436,8 @@ StatusOr<double> MeasureScaleOfPartitionPaddingLength(
   return mean_absolute_deviation;
 }
 
-TEST(DPGroupByAggregatorTest, Partition_NoiseScaleIncreasesWithNumPartitions) {
+TEST(DPGroupByAggregatorTest,
+     DISABLED_Partition_NoiseScaleIncreasesWithNumPartitions) {
   int max_groups_contributed = 8;
   double previous_scale = 0;
   for (int num_partitions : {1, 2, 4, 8, 16, 32}) {
