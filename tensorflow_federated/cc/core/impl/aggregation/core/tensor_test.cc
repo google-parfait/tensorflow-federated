@@ -533,6 +533,56 @@ TEST(TensorTest, FromProtoInvalidStringContent) {
   EXPECT_THAT(Tensor::FromProto(tensor_proto), StatusIs(INVALID_ARGUMENT));
 }
 
+TEST(TensorTest, FromProtoStringContentNumExceedsMax) {
+  // The shape implies more than INT32_MAX string values.
+  // Use two dimensions whose product exceeds INT32_MAX but whose individual
+  // sizes are valid.
+  TensorProto tensor_proto;
+  tensor_proto.set_dtype(DT_STRING);
+  // 65536 * 32769 = 2147549184 > INT32_MAX (2147483647)
+  tensor_proto.mutable_shape()->add_dim_sizes(65536);
+  tensor_proto.mutable_shape()->add_dim_sizes(32769);
+  // A non-empty content is needed to trigger DecodeContent for strings.
+  tensor_proto.set_content("x");
+  Status s = Tensor::FromProto(tensor_proto).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(),
+              HasSubstr("more than the maximum allowed number of string "
+                        "values"));
+}
+
+TEST(TensorTest, FromProtoStringContentInvalidVarint) {
+  // Content with an incomplete/invalid varint so ReadVarint64 fails.
+  // 0x80 is a varint continuation byte with no terminating byte.
+  TensorProto tensor_proto;
+  tensor_proto.set_dtype(DT_STRING);
+  tensor_proto.mutable_shape()->add_dim_sizes(2);
+  tensor_proto.set_content(std::string(1, '\x80'));
+  Status s = Tensor::FromProto(tensor_proto).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), HasSubstr("doesn't contain a size for the"));
+}
+
+TEST(TensorTest, FromProtoStringContentStringSizeExceedsMax) {
+  // Content with a varint-encoded individual string size > INT32_MAX.
+  // Encode size = 2147483648 (INT32_MAX + 1) as a varint64.
+  // 2147483648 = 0x80000000
+  // Varint encoding: 0x80 0x80 0x80 0x80 0x08
+  TensorProto tensor_proto;
+  tensor_proto.set_dtype(DT_STRING);
+  tensor_proto.mutable_shape()->add_dim_sizes(1);
+  std::string content;
+  content.push_back('\x80');
+  content.push_back('\x80');
+  content.push_back('\x80');
+  content.push_back('\x80');
+  content.push_back('\x08');
+  tensor_proto.set_content(content);
+  Status s = Tensor::FromProto(tensor_proto).status();
+  EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(s.message(), HasSubstr("exceeds the maximum allowed size"));
+}
+
 TEST(TensorTest, RoundTripDataInt) {
   std::initializer_list<int32_t> values{1, 2, 3, 4};
   auto t = Tensor::Create(DT_INT32, {2, 2}, CreateTestData(values));

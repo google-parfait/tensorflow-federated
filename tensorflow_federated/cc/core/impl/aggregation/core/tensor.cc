@@ -185,7 +185,20 @@ class SerializedContentStringData : public TensorData {
   // Initializes the string_view values to point to the strings embedded in the
   // content.
   absl::Status Initialize(std::string content, size_t num) {
+    if (content.size() > INT32_MAX) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "Input tensor content size exceeds the maximum allowed size of "
+             << INT32_MAX << " bytes.";
+    }
+    if (num > INT32_MAX) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "Input tensor has more than the maximum allowed number of "
+                "string values: "
+             << num << " > " << INT32_MAX;
+    }
+
     content_ = std::move(content);
+
     google::protobuf::io::ArrayInputStream input(content_.data(),
                                        static_cast<int>(content_.size()));
     google::protobuf::io::CodedInputStream coded_input(&input);
@@ -211,7 +224,19 @@ class SerializedContentStringData : public TensorData {
                << i << "th string. The content size is " << content_.size()
                << " bytes.";
       }
+      // Ensure that size of any string does not exceed the maximum allowed size
+      // to avoid overflow when manipulating the offset.
+      if (size > INT32_MAX) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "Input tensor content contains a string value with size "
+               << size << " which exceeds the maximum allowed size of "
+               << INT32_MAX << " bytes.";
+      }
       string_views_[i] = string_view(content_.data() + cumulative_size, size);
+      // Double check that there is no overflow, although this should not be
+      // possible here since at most INT32_MAX strings can be present in a
+      // a tensor and the size of each string is at most INT32_MAX.
+      TFF_CHECK(cumulative_size <= cumulative_size + size);
       cumulative_size += size;
     }
 
@@ -220,7 +245,8 @@ class SerializedContentStringData : public TensorData {
     size_t offset = coded_input.CurrentPosition();
 
     // Verify that the content is large enough.
-    if (content_.size() < offset + cumulative_size) {
+    TFF_CHECK(offset <= content_.size());
+    if (content_.size() - offset < cumulative_size) {
       return TFF_STATUS(INVALID_ARGUMENT)
              << "Input tensor content has insufficient size to store " << num
              << " string values. The content size is " << content_.size()
