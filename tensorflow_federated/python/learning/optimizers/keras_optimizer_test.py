@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import typing
+from typing import Any
+
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -231,7 +234,7 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
         TypeError, '`optimizer_fn` must be a callable or '
     ):
       keras_optimizer.build_or_verify_tff_optimizer(
-          None, None, disjoint_init_and_next
+          typing.cast(Any, None), None, disjoint_init_and_next
       )
 
   @parameterized.named_parameters(
@@ -241,7 +244,7 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   def test_build_tff_optimizer_arg_callable(self, disjoint_init_and_next):
     with self.assertRaises(TypeError):
       keras_optimizer.build_or_verify_tff_optimizer(
-          optimizer_fn=lambda x: x,
+          optimizer_fn=typing.cast(Any, lambda x: x),
           trainable_weights=None,
           disjoint_init_and_next=disjoint_init_and_next,
       )

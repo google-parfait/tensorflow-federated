@@ -66,8 +66,10 @@ class MapAtLeavesTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_single_arg_numpy_array(self):
     f = lambda a: 2 * a
-    result = nest_utils.map_at_leaves(f, np.float32([1.0, 3.0, 5.0]))
-    self.assertAllEqual(result, np.float32([2.0, 6.0, 10.0]))
+    result = nest_utils.map_at_leaves(
+        f, np.array([1.0, 3.0, 5.0], dtype=np.float32)
+    )
+    self.assertAllEqual(result, np.array([2.0, 6.0, 10.0], dtype=np.float32))
 
   def test_scalar_single_arg_multi_out(self):
     f = lambda a: (2 * a, 3 * a)

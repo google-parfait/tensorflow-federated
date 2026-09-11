@@ -14,7 +14,7 @@
 """Utilities for releasing values from a federated program to TensorBoard."""
 
 import os
-from typing import Union
+from typing import Generic, TypeVar, Union
 
 import federated_language
 import numpy as np
@@ -22,11 +22,15 @@ import tensorflow as tf
 
 from tensorflow_federated.python.program import structure_utils
 
+_ReleasableStructure = TypeVar(
+    '_ReleasableStructure',
+    bound=structure_utils.Structure[federated_language.program.ReleasableValue],
+)
+
 
 class TensorBoardReleaseManager(
-    federated_language.program.ReleaseManager[
-        federated_language.program.ReleasableStructure, int
-    ]
+    federated_language.program.ReleaseManager[_ReleasableStructure, int],
+    Generic[_ReleasableStructure],
 ):
   """A `federated_language.program.ReleaseManager` that releases values to TensorBoard.
 
@@ -67,9 +71,7 @@ class TensorBoardReleaseManager(
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
-  async def release(  # pyrefly: ignore[bad-override]
-      self, value: federated_language.program.ReleasableStructure, key: int
-  ) -> None:
+  async def release(self, value: _ReleasableStructure, key: int) -> None:
     """Releases `value` from a federated program.
 
     Args:
@@ -78,7 +80,7 @@ class TensorBoardReleaseManager(
         step in a federated program.
     """
     materialized_value = await federated_language.program.materialize_value(
-        value  # pyrefly: ignore[bad-argument-type]
+        value
     )
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
@@ -90,8 +92,8 @@ class TensorBoardReleaseManager(
       return value
 
     with self._summary_writer.as_default():
-      for name, value in flattened_value:  # pyrefly: ignore[bad-assignment]
-        normalized_value = _normalize(value)  # pyrefly: ignore[bad-argument-type]
+      for name, leaf_value in flattened_value:
+        normalized_value = _normalize(leaf_value)
 
         # Summary data can only contain booleans, integers, unsigned integers,
         # and floats, releasing any other values will be silently ignored.

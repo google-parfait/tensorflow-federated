@@ -243,7 +243,7 @@ class EvaluationManager:
     )
     self._evaluating_training_checkpoints = np.zeros([0], np.int32)
     self._evaluation_start_timestamp_seconds = np.zeros([0], np.int32)
-    self._pending_tasks: set[asyncio.Task] = set()
+    self._pending_tasks: set[asyncio.Task[None]] = set()
 
   @property
   def data_source(self) -> federated_language.program.FederatedDataSource:
@@ -311,7 +311,7 @@ class EvaluationManager:
     for task in done_tasks:
       task.result()  # Trigger any potentially stored exceptions.
 
-  def _finalize_task(self, task: asyncio.Task):
+  def _finalize_task(self, task: asyncio.Task[None]):
     """Calls result() on tasks to ensure errors are propagated."""
     _logging.info('Finalizing task: %s', task)
     task.result()  # Trigger any potentially stored exceptions.
@@ -390,8 +390,7 @@ class EvaluationManager:
     """
 
     async def run_and_record_completion():
-      # TODO: b/150782658 - re-enable pytype when fixed.
-      await _run_evaluation(  # pytype: disable=bad-return-type
+      await _run_evaluation(
           train_round_num,
           state_manager,
           evaluation_process=eval_process,
@@ -800,7 +799,7 @@ async def _run_evaluation(
   # Read the initial state from the manager. If this is the first evaluation,
   # the zeroth version should contain the initial state.
   evaluation_state, version = await state_manager.load_latest(
-      await federated_language.program.materialize_value(  # pyrefly: ignore[bad-argument-type]
+      await federated_language.program.materialize_value(
           evaluation_process.initialize()
       )
   )

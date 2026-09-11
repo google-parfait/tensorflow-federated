@@ -28,7 +28,7 @@ import enum
 import os
 import os.path
 import random
-from typing import Union
+from typing import Generic, TypeVar, Union
 
 import federated_language
 import numpy as np
@@ -60,10 +60,16 @@ class CSVSaveMode(enum.Enum):
   WRITE = 'write'
 
 
+_ReleasableStructure = TypeVar(
+    '_ReleasableStructure',
+    bound=structure_utils.Structure[federated_language.program.ReleasableValue],
+)
+_Key = TypeVar('_Key')
+
+
 class CSVFileReleaseManager(
-    federated_language.program.ReleaseManager[
-        federated_language.program.ReleasableStructure, int
-    ]
+    federated_language.program.ReleaseManager[_ReleasableStructure, int],
+    Generic[_ReleasableStructure],
 ):
   """A `federated_language.program.ReleaseManager` that releases values to a CSV file.
 
@@ -158,9 +164,7 @@ class CSVFileReleaseManager(
   def _write_values(
       self,
       fieldnames: Sequence[str],
-      values: Iterable[
-          Mapping[str, federated_language.program.ReleasableStructure]
-      ],
+      values: Iterable[Mapping[str, object]],
   ) -> None:
     """Writes `fieldnames` and `values` to the managed CSV."""
     path = os.fspath(self._file_path)  # pyrefly: ignore[no-matching-overload]
@@ -179,9 +183,7 @@ class CSVFileReleaseManager(
     # Rename the temporary file to the final location atomically.
     tf.io.gfile.rename(temp_path, self._file_path, overwrite=True)
 
-  async def _write_value(
-      self, value: Mapping[str, federated_language.program.ReleasableStructure]
-  ) -> None:
+  async def _write_value(self, value: Mapping[str, object]) -> None:
     """Writes `value` to the managed CSV."""
     loop = asyncio.get_running_loop()
     fieldnames, values = await loop.run_in_executor(None, self._read_values)
@@ -189,9 +191,7 @@ class CSVFileReleaseManager(
     values.append(value)  # pyrefly: ignore[bad-argument-type]
     await loop.run_in_executor(None, self._write_values, fieldnames, values)  # pyrefly: ignore[bad-argument-type]
 
-  async def _append_value(
-      self, value: Mapping[str, federated_language.program.ReleasableStructure]
-  ) -> None:
+  async def _append_value(self, value: Mapping[str, object]) -> None:
     """Appends `value` to the managed CSV."""
 
     def _read_fieldnames_only() -> list[str]:
@@ -203,9 +203,9 @@ class CSVFileReleaseManager(
           fieldnames = []
       return fieldnames
 
-    def _append_value(
+    def _append_row_to_file(
         fieldnames: Sequence[str],
-        value: Mapping[str, federated_language.program.ReleasableStructure],
+        value: Mapping[str, object],
     ) -> None:
       try:
         with tf.io.gfile.GFile(self._file_path, 'a') as file:
@@ -222,7 +222,7 @@ class CSVFileReleaseManager(
     loop = asyncio.get_running_loop()
     fieldnames = await loop.run_in_executor(None, _read_fieldnames_only)
     if all(key in fieldnames for key in value.keys()):
-      await loop.run_in_executor(None, _append_value, fieldnames, value)
+      await loop.run_in_executor(None, _append_row_to_file, fieldnames, value)
     else:
       await self._write_value(value)
 
@@ -253,9 +253,7 @@ class CSVFileReleaseManager(
       )
       self._latest_key = key
 
-  async def release(  # pyrefly: ignore[bad-override]
-      self, value: federated_language.program.ReleasableStructure, key: int
-  ) -> None:
+  async def release(self, value: _ReleasableStructure, key: int) -> None:
     """Releases `value` from a federated program.
 
     This method will atomically update the managed CSV file by removing all
@@ -269,7 +267,7 @@ class CSVFileReleaseManager(
     """
     _, materialized_value = await asyncio.gather(
         self._remove_values_greater_than_key(key - 1),
-        federated_language.program.materialize_value(value),  # pyrefly: ignore[bad-argument-type]
+        federated_language.program.materialize_value(value),
     )
 
     flattened_value = structure_utils.flatten_with_name(materialized_value)
@@ -285,17 +283,15 @@ class CSVFileReleaseManager(
     normalized_value.insert(0, (self._key_fieldname, key))
     normalized_value = collections.OrderedDict(normalized_value)
     if self._save_mode == CSVSaveMode.APPEND:
-      await self._append_value(normalized_value)  # pyrefly: ignore[bad-argument-type]
+      await self._append_value(normalized_value)
     elif self._save_mode == CSVSaveMode.WRITE:
-      await self._write_value(normalized_value)  # pyrefly: ignore[bad-argument-type]
+      await self._write_value(normalized_value)
     self._latest_key = key
 
 
 class SavedModelFileReleaseManager(
-    federated_language.program.ReleaseManager[
-        federated_language.program.ReleasableStructure,
-        federated_language.program.Key,
-    ]
+    federated_language.program.ReleaseManager[_ReleasableStructure, _Key],
+    Generic[_ReleasableStructure, _Key],
 ):
   """A `federated_language.program.ReleaseManager` that releases values to a file system.
 
@@ -338,7 +334,7 @@ class SavedModelFileReleaseManager(
     self._root_dir = root_dir
     self._prefix = prefix
 
-  def _get_path_for_key(self, key: federated_language.program.Key) -> str:
+  def _get_path_for_key(self, key: _Key) -> str:
     """Returns the path for the given `key`.
 
     This method does not assert that the given `key` or the returned path
@@ -350,10 +346,10 @@ class SavedModelFileReleaseManager(
     basename = f'{self._prefix}{str(key)}'
     return os.path.join(self._root_dir, basename)
 
-  async def release(  # pyrefly: ignore[bad-override]
+  async def release(
       self,
-      value: federated_language.program.ReleasableStructure,  # pyrefly: ignore[invalid-type-var]
-      key: federated_language.program.Key,
+      value: _ReleasableStructure,
+      key: _Key,
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -363,14 +359,14 @@ class SavedModelFileReleaseManager(
     """
     path = self._get_path_for_key(key)
     materialized_value = await federated_language.program.materialize_value(
-        value  # pyrefly: ignore[bad-argument-type]
+        value
     )
     await file_utils.write_saved_model(materialized_value, path, overwrite=True)
 
   async def get_value(
       self,
-      key: federated_language.program.Key,
-  ) -> federated_language.program.ReleasableStructure:  # pyrefly: ignore[invalid-type-var]
+      key: _Key,
+  ) -> _ReleasableStructure:
     """Returns the value for the given `key`.
 
     The SavedModel format flattens and deterministicly orders keys. This
