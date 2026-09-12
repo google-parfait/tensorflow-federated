@@ -630,6 +630,16 @@ class GraphUtilsTest(tf.test.TestCase):
     correct_elem = np.zeros([1, 10, 1, 10, 10], np.float32)
     self.assertAllClose(elem, correct_elem)
 
+  def test_make_whimsy_element_unranked_tensor_type(self):
+    type_spec = federated_language.TensorType(np.float32, shape=None)
+    elem = tensorflow_utils._make_whimsy_element_for_type_spec(type_spec)
+    correct_elem = np.zeros([], np.float32)
+    self.assertAllClose(elem, correct_elem)
+
+    str_spec = federated_language.TensorType(np.str_, shape=None)
+    str_elem = tensorflow_utils._make_whimsy_element_for_type_spec(str_spec)
+    self.assertEqual(str_elem.shape, ())
+
   def test_make_whimsy_element_struct_type(self):
     tensor1 = federated_language.TensorType(
         np.float32, [None, 10, None, 10, 10]

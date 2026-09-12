@@ -192,7 +192,7 @@ def check_weights_state_match(
 
 def handle_indexed_slices_gradients(
     gradients: _Structure[T],
-) -> _Structure[Union[T, tf.IndexedSlices]]:
+) -> _Structure[Union[T, tf.Tensor]]:
   """Converts any `tf.IndexedSlices` to tensors.
 
   The `tf.IndexedSlices` class is used principally in the definition of
@@ -213,7 +213,7 @@ def handle_indexed_slices_gradients(
     The same collection with `tf.IndexedSlices` replaced by tensors.
   """
 
-  def slices_to_tensor(value: T) -> Union[T, tf.IndexedSlices]:
+  def slices_to_tensor(value: T) -> Union[T, tf.Tensor]:
     if isinstance(value, tf.IndexedSlices):
       return tf.convert_to_tensor(value)
     return value

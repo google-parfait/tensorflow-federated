@@ -14,7 +14,8 @@
 """RMSprop optimizer."""
 
 import collections
-from typing import Any, TypeVar
+import typing
+from typing import Any
 
 import tensorflow as tf
 
@@ -27,11 +28,12 @@ _PRECONDITIONER_KEY = 'preconditioner'
 _EPSILON_KEY = 'epsilon'
 _HPARAMS_KEYS = [optimizer.LEARNING_RATE_KEY, _DECAY_KEY, _EPSILON_KEY]
 
-State = TypeVar('State', bound=collections.OrderedDict[str, Any])
-Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, float])
+_State: typing.TypeAlias = collections.OrderedDict[str, Any]
+_Hparams: typing.TypeAlias = collections.OrderedDict[str, Any]
+_Weights: typing.TypeAlias = Any
 
 
-class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
+class _RmsProp(optimizer.Optimizer[_State, _Weights, _Hparams]):
   """RMSprop optimizer, see `build_rmsprop` for details."""
 
   def __init__(
@@ -57,7 +59,7 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     self._decay = decay
     self._epsilon = epsilon
 
-  def initialize(self, specs: Any) -> State:
+  def initialize(self, specs: Any) -> _State:
     initial_preconditioner = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype), specs
     )
@@ -67,19 +69,19 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         (_EPSILON_KEY, self._epsilon),
         (_PRECONDITIONER_KEY, initial_preconditioner),
     ])
-    return state  # pyrefly: ignore[bad-return]
+    return state
 
-  def next(  # pyrefly: ignore[bad-override]
-      self, state: State, weights: optimizer.Weights, gradients: Any
-  ) -> tuple[State, optimizer.Weights]:
+  def next(
+      self, state: _State, weights: _Weights, gradients: Any
+  ) -> tuple[_State, _Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
-    optimizer.check_weights_gradients_match(weights, gradients)  # pyrefly: ignore[bad-argument-type]
+    optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]
     decay = state[_DECAY_KEY]
     epsilon = state[_EPSILON_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
     optimizer.check_weights_state_match(
-        weights, preconditioner, 'preconditioner'  # pyrefly: ignore[bad-argument-type]
+        weights, preconditioner, 'preconditioner'
     )
 
     def _rmsprop_update(w, p, g):
@@ -104,12 +106,12 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         (_EPSILON_KEY, epsilon),
         (_PRECONDITIONER_KEY, updated_preconditioner),
     ])
-    return updated_state, updated_weights  # pyrefly: ignore[bad-return]
+    return updated_state, updated_weights
 
-  def get_hparams(self, state: State) -> Hparams:
-    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])  # pyrefly: ignore[bad-return]
+  def get_hparams(self, state: _State) -> _Hparams:
+    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])
 
-  def set_hparams(self, state: State, hparams: Hparams) -> State:
+  def set_hparams(self, state: _State, hparams: _Hparams) -> _State:
     # TODO: b/245962555 - Find an alternative to `update_struct` if it
     # interferes with typing guarantees.
     # We use `structure._update_struct` (rather than something like

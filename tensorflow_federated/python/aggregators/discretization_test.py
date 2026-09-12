@@ -154,10 +154,21 @@ class DiscretizationFactoryComputationTest(
       ('zero', 0),
       ('string', 'lol'),
       ('tensor', tf.constant(3)),
+      ('bool', True),
   )
   def test_raises_on_bad_scale_factor(self, scale_factor):
     with self.assertRaisesRegex(ValueError, '`scale_factor` should be a'):
       _discretization_sum(scale_factor=scale_factor)
+
+  @parameterized.named_parameters(
+      ('float32', np.float32(2.0)),
+      ('float64', np.float64(2.0)),
+      ('int32', np.int32(2)),
+      ('int64', np.int64(2)),
+  )
+  def test_numpy_scalar_scale_factor_succeeds(self, scale_factor):
+    factory = _discretization_sum(scale_factor=scale_factor)
+    self.assertIsInstance(factory, discretization.DiscretizationFactory)
 
   @parameterized.named_parameters(
       ('number', 3.14), ('string', 'lol'), ('tensor', tf.constant(True))
@@ -171,6 +182,7 @@ class DiscretizationFactoryComputationTest(
       ('too_large', 1),
       ('string', 'lol'),
       ('tensor', tf.constant(0.5)),
+      ('bool', True),
   )
   def test_raises_on_bad_beta(self, beta):
     with self.assertRaisesRegex(ValueError, '`beta` should be a'):
@@ -181,6 +193,7 @@ class DiscretizationFactoryComputationTest(
       ('zero', 0),
       ('string', 'lol'),
       ('tensor', tf.constant(1)),
+      ('bool', True),
   )
   def test_raises_on_bad_prior_norm_bound(self, prior_norm_bound):
     with self.assertRaisesRegex(ValueError, '`prior_norm_bound` should be a'):

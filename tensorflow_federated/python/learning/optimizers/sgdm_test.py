@@ -188,6 +188,8 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
   def test_build_sgdm(self, learning_rate, momentum, nesterov):
     optimizer = sgdm.build_sgdm(learning_rate, momentum, nesterov)
     self.assertIsInstance(optimizer, optimizer_base.Optimizer)
+    self.assertIsInstance(optimizer, sgdm._SGD)
+    assert isinstance(optimizer, sgdm._SGD)
     self.assertEqual(learning_rate, optimizer._lr)
     self.assertEqual(momentum, optimizer._momentum)
     self.assertEqual(nesterov, optimizer._nesterov)

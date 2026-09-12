@@ -23,7 +23,7 @@ means that this library:
 import asyncio
 import os
 import os.path
-from typing import Optional, Union
+from typing import Generic, Optional, TypeVar, Union
 
 from absl import logging
 import federated_language
@@ -32,11 +32,17 @@ import tensorflow as tf
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import structure_utils
 
+_ProgramStateStructure = TypeVar(
+    '_ProgramStateStructure',
+    bound=structure_utils.Structure[
+        federated_language.program.ProgramStateValue
+    ],
+)
+
 
 class FileProgramStateManager(
-    federated_language.program.ProgramStateManager[
-        federated_language.program.ProgramStateStructure
-    ]
+    federated_language.program.ProgramStateManager[_ProgramStateStructure],
+    Generic[_ProgramStateStructure],
 ):
   """A `federated_language.program.ProgramStateManager` that is backed by a file system.
 
@@ -158,15 +164,15 @@ class FileProgramStateManager(
     basename = f'{self._prefix}{version}'
     return os.path.join(self._root_dir, basename)
 
-  async def load(  # pyrefly: ignore[bad-override]
+  async def load(
       self,
       version: int,
-      structure: federated_language.program.ProgramStateStructure,
-  ) -> federated_language.program.ProgramStateStructure:
+      structure: _ProgramStateStructure,
+  ) -> _ProgramStateStructure:
     """Returns the program state for the given `version`.
 
     Args:
-      version: A integer representing the version of a saved program state.
+      version: An integer representing the version of a saved program state.
       structure: The structure of the saved program state for the given
         `version` used to support serialization and deserialization of
         user-defined classes in the structure.
@@ -254,9 +260,9 @@ class FileProgramStateManager(
     if versions is not None:
       await asyncio.gather(*[self._remove(v) for v in versions])
 
-  async def save(  # pyrefly: ignore[bad-override]
+  async def save(
       self,
-      program_state: federated_language.program.ProgramStateStructure,
+      program_state: _ProgramStateStructure,
       version: int,
   ) -> None:
     """Saves `program_state` for the given `version`.
@@ -274,10 +280,10 @@ class FileProgramStateManager(
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):
       raise federated_language.program.ProgramStateExistsError(
-          version=version, path=self._root_dir  # pyrefly: ignore[bad-argument-type]
+          version=version, path=path
       )
     materialized_state = await federated_language.program.materialize_value(
-        program_state  # pyrefly: ignore[bad-argument-type]
+        program_state
     )
 
     def _serialize(value):

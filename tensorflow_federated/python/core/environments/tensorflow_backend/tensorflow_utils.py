@@ -694,7 +694,10 @@ def _make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     return x
 
   if isinstance(type_spec, federated_language.TensorType):
-    whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]  # pyrefly: ignore[not-iterable]
+    if type_spec.shape is None:
+      whimsy_shape = []
+    else:
+      whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]
     if type_spec.dtype == np.str_:
       return np.empty(whimsy_shape, dtype=np.str_)
     return np.zeros(whimsy_shape, type_spec.dtype)
@@ -932,7 +935,7 @@ def make_data_set_from_elements(graph, elements, element_type):
           singleton_ds = _make(elements[i : i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
     ds_element_type = tensorflow_types.to_type(ds.element_spec)
-    if not element_type.is_assignable_from(ds_element_type):  # pytype: disable=attribute-error
+    if not element_type.is_assignable_from(ds_element_type):
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '
           'but the constructed data set has elements of type {}.'.format(
