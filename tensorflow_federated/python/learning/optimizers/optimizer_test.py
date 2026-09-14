@@ -101,6 +101,8 @@ class OptimizerChecksTest(tf.test.TestCase, parameterized.TestCase):
     )
     gradients = [tensor, slices]
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
+    self.assertIsInstance(gradients, list)
+    assert isinstance(gradients, list)
     self.assertIsInstance(gradients[0], tf.Tensor)
     self.assertIsInstance(gradients[1], tf.Tensor)
     self.assertAllClose(

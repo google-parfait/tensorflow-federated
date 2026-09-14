@@ -202,6 +202,21 @@ class AdafactorTest(parameterized.TestCase, tf.test.TestCase):
       keras_optimizer.apply_gradients([(gradient, keras_variable)])
       self.assertAllClose(tff_weights, keras_variable)
 
+  def test_get_hparams_and_set_hparams(self):
+    opt = adafactor.build_adafactor(learning_rate=0.01, beta_2_decay=-0.8)
+    weights = tf.constant([1.0, 2.0], dtype=tf.float32)
+    state = opt.initialize(tf.TensorSpec.from_tensor(weights))
+    hparams = opt.get_hparams(state)
+    self.assertEqual(hparams['learning_rate'], 0.01)
+
+    hparams['learning_rate'] = 0.05
+    updated_state = opt.set_hparams(state, hparams)
+    self.assertEqual(opt.get_hparams(updated_state)['learning_rate'], 0.05)
+    self.assertIn('steps', updated_state)
+    self.assertIn('moments', updated_state)
+    self.assertEqual(updated_state['steps'], state['steps'])
+    self.assertEqual(updated_state['moments'], state['moments'])
+
 
 if __name__ == '__main__':
   cpp_execution_contexts.set_sync_local_cpp_execution_context()

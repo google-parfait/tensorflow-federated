@@ -14,7 +14,8 @@
 """Yogi optimizer."""
 
 import collections
-from typing import Any, TypeVar
+import typing
+from typing import Any
 
 import tensorflow as tf
 
@@ -36,11 +37,12 @@ _HPARAMS_KEYS = [
     _EPSILON_KEY,
 ]
 
-State = TypeVar('State', bound=collections.OrderedDict[str, Any])
-Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, float])
+_State: typing.TypeAlias = collections.OrderedDict[str, Any]
+_Hparams: typing.TypeAlias = collections.OrderedDict[str, Any]
+_Weights: typing.TypeAlias = Any
 
 
-class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
+class _Yogi(optimizer.Optimizer[_State, _Weights, _Hparams]):
   """Yogi optimizer, see `build_yogi` for details."""
 
   def __init__(
@@ -77,7 +79,7 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     self._epsilon = epsilon
     self._initial_preconditioner_value = initial_preconditioner_value
 
-  def initialize(self, specs: Any) -> State:
+  def initialize(self, specs: Any) -> _State:
     initial_accumulator = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype), specs
     )
@@ -100,13 +102,13 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         (_ACCUMULATOR_KEY, initial_accumulator),
         (_PRECONDITIONER_KEY, initial_preconditioner),
     ])
-    return state  # pyrefly: ignore[bad-return]
+    return state
 
-  def next(  # pyrefly: ignore[bad-override]
-      self, state: State, weights: optimizer.Weights, gradients: Any
-  ) -> tuple[State, optimizer.Weights]:
+  def next(
+      self, state: _State, weights: _Weights, gradients: Any
+  ) -> tuple[_State, _Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
-    optimizer.check_weights_gradients_match(weights, gradients)  # pyrefly: ignore[bad-argument-type]
+    optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]
     beta_1 = state[_BETA_1_KEY]
     beta_2 = state[_BETA_2_KEY]
@@ -114,9 +116,9 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     step = state[_STEP_KEY] + 1
     accumulator = state[_ACCUMULATOR_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
-    optimizer.check_weights_state_match(weights, accumulator, 'accumulator')  # pyrefly: ignore[bad-argument-type]
+    optimizer.check_weights_state_match(weights, accumulator, 'accumulator')
     optimizer.check_weights_state_match(
-        weights, preconditioner, 'preconditioner'  # pyrefly: ignore[bad-argument-type]
+        weights, preconditioner, 'preconditioner'
     )
     normalized_lr = (
         lr
@@ -157,12 +159,12 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
         (_ACCUMULATOR_KEY, updated_accumulator),
         (_PRECONDITIONER_KEY, updated_preconditioner),
     ])
-    return updated_state, updated_weights  # pyrefly: ignore[bad-return]
+    return updated_state, updated_weights
 
-  def get_hparams(self, state: State) -> Hparams:
-    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])  # pyrefly: ignore[bad-return]
+  def get_hparams(self, state: _State) -> _Hparams:
+    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])
 
-  def set_hparams(self, state: State, hparams: Hparams) -> State:
+  def set_hparams(self, state: _State, hparams: _Hparams) -> _State:
     # TODO: b/245962555 - Find an alternative to `update_struct` if it
     # interferes with typing guarantees.
     # We use `structure._update_struct` (rather than something like

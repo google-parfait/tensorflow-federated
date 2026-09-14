@@ -213,10 +213,10 @@ def _check_bound_process(
   float_type_at_clients = federated_language.FederatedType(
       NORM_TYPE, federated_language.CLIENTS
   )
-  if not next_parameter_type[1].is_assignable_from(float_type_at_clients):  # pytype: disable=unsupported-operands
+  if not next_parameter_type[1].is_assignable_from(float_type_at_clients):
     raise TypeError(
         f'Second argument of `{name}.next` must be assignable from '
-        f'{float_type_at_clients} but found {next_parameter_type[1]}'  # pytype: disable=unsupported-operands
+        f'{float_type_at_clients} but found {next_parameter_type[1]}'
     )
 
   next_result_type = bound_process.next.type_signature.result
@@ -229,7 +229,7 @@ def _check_bound_process(
 
   report_type = bound_process.report.type_signature.result
   estimated_value_type_at_server = federated_language.FederatedType(
-      next_parameter_type[1].member,  # pytype: disable=unsupported-operands
+      next_parameter_type[1].member,
       federated_language.SERVER,
   )
   if not report_type.is_assignable_from(estimated_value_type_at_server):
@@ -328,19 +328,21 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     # Configuration specific for aggregating integer types.
     if _is_integer(upper_bound_threshold):
       self._config_mode = _Config.INT
+      upper_bound_threshold = typing.cast(int, upper_bound_threshold)
       if lower_bound_threshold is None:
         _check_positive(upper_bound_threshold)
-        lower_bound_threshold = -1 * upper_bound_threshold  # pyrefly: ignore[unsupported-operation]
+        lower_bound_threshold = -1 * upper_bound_threshold
       else:
         _check_upper_larger_than_lower(
             upper_bound_threshold, lower_bound_threshold
         )
+      lower_bound_threshold = typing.cast(int, lower_bound_threshold)
       self._init_fn = _empty_state
       self._update_state = lambda _, __, ___: _empty_state()
       # We must add one because the size of inclusive range [0, threshold_range]
       # is threshold_range + 1. We ensure that threshold_range > 0 above.
       self._secagg_bitwidth = math.ceil(
-          math.log2(upper_bound_threshold - lower_bound_threshold + 1)  # pyrefly: ignore[unsupported-operation]
+          math.log2(upper_bound_threshold - lower_bound_threshold + 1)
       )
 
     # Configuration specific for aggregating floating point types.
@@ -358,20 +360,20 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         self._update_state = lambda _, __, ___: _empty_state()
       else:
         # Bounds specified as an EstimationProcess.
-        _check_bound_process(upper_bound_threshold, 'upper_bound_threshold')  # pyrefly: ignore[bad-argument-type]
         upper_bound_threshold = typing.cast(
             estimation_process.EstimationProcess, upper_bound_threshold
         )
+        _check_bound_process(upper_bound_threshold, 'upper_bound_threshold')
         if lower_bound_threshold is None:
           self._init_fn = upper_bound_threshold.initialize
           self._update_state = _create_update_state_single_process(
               upper_bound_threshold
           )
         else:
-          _check_bound_process(lower_bound_threshold, 'lower_bound_threshold')  # pyrefly: ignore[bad-argument-type]
           lower_bound_threshold = typing.cast(
               estimation_process.EstimationProcess, lower_bound_threshold
           )
+          _check_bound_process(lower_bound_threshold, 'lower_bound_threshold')
           self._init_fn = _create_initial_state_two_processes(
               upper_bound_threshold, lower_bound_threshold
           )
@@ -395,7 +397,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       value_max = federated_language.federated_map(_reduce_nest_max, value)
       value_min = federated_language.federated_map(_reduce_nest_min, value)
       upper_bound, lower_bound = self._get_bounds_from_state(
-          state, value_max.type_signature.member.dtype  # pytype: disable=attribute-error
+          state, value_max.type_signature.member.dtype
       )
 
       new_state = self._update_state(state, value_min, value_max)
@@ -669,12 +671,34 @@ def _create_get_bounds_two_processes(
   return get_bounds
 
 
+def _get_member_dtype(
+    process: estimation_process.EstimationProcess,
+) -> Union[tf.DType, np.dtype]:
+  """Extracts tensor dtype from estimation process parameter."""
+  parameter = process.next.type_signature.parameter
+  if (
+      not isinstance(parameter, federated_language.StructType)
+      or len(parameter) < 2
+  ):
+    raise TypeError(
+        f'Expected parameter struct with >= 2 elements, found {parameter}'
+    )
+  target = parameter[1]
+  if not isinstance(target, federated_language.FederatedType) or not isinstance(
+      target.member, federated_language.TensorType
+  ):
+    raise TypeError(
+        f'Expected FederatedType with TensorType member, found {target}'
+    )
+  return target.member.dtype
+
+
 def _create_update_state_single_process(
     process: estimation_process.EstimationProcess,
 ):
   """Updates state when bounds specified as single estimation process."""
 
-  expected_dtype = process.next.type_signature.parameter[1].member.dtype  # pytype: disable=unsupported-operands
+  expected_dtype = _get_member_dtype(process)
 
   def update_state(state, value_min, value_max):
     abs_max_fn = tensorflow_computation.tf_computation(
@@ -694,8 +718,8 @@ def _create_update_state_two_processes(
 ):
   """Updates state when bounds specified as two estimation processes."""
 
-  max_dtype = upper_bound_process.next.type_signature.parameter[1].member.dtype  # pytype: disable=unsupported-operands
-  min_dtype = lower_bound_process.next.type_signature.parameter[1].member.dtype  # pytype: disable=unsupported-operands
+  max_dtype = _get_member_dtype(upper_bound_process)
+  min_dtype = _get_member_dtype(lower_bound_process)
 
   def update_state(state, value_min, value_max):
     value_min = federated_language.federated_map(

@@ -13,8 +13,10 @@
 # limitations under the License.
 """Adafactor optimizer."""
 
+import collections
 from collections.abc import Mapping, Sequence
-from typing import NamedTuple, Union
+import typing
+from typing import Any, NamedTuple, Union
 
 import tensorflow as tf
 
@@ -38,6 +40,10 @@ _NestedTensors = Union[
     tf.TensorSpec,
 ]
 
+_State: typing.TypeAlias = collections.OrderedDict[str, Any]
+_Hparams: typing.TypeAlias = collections.OrderedDict[str, Any]
+_Weights: typing.TypeAlias = Any
+
 
 class _AdaFactorMoment(NamedTuple):
   """An internal representation of factorized moment (state for optimizer)."""
@@ -47,9 +53,7 @@ class _AdaFactorMoment(NamedTuple):
   v: tf.Tensor
 
 
-class _AdafactorOptimizer(
-    optimizer.Optimizer[optimizer.State, optimizer.Weights, optimizer.Hparams]
-):
+class _AdafactorOptimizer(optimizer.Optimizer[_State, _Weights, _Hparams]):
   """Adafactor optimizer, see `build_adafactor` for details."""
 
   def __init__(
@@ -74,7 +78,8 @@ class _AdafactorOptimizer(
     self._clip_threshold = clip_threshold
     self._relative_step = relative_step
 
-  def initialize(self, specs: _NestedTensorSpecs) -> optimizer.State:  # pyrefly: ignore[invalid-type-var]
+  def initialize(self, specs: _NestedTensorSpecs) -> _State:
+    """See base class."""
     def initialize_moment(tensor_spec: tf.TensorSpec):
       # Only factor moments for tensors with 2 or more dimensions.
       if tensor_spec.shape.rank < 2:
@@ -88,28 +93,33 @@ class _AdafactorOptimizer(
       v = tf.zeros(shape=tensor_spec.shape, dtype=tensor_spec.dtype)
       return _AdaFactorMoment(r, c, v)
 
-    return {  # pyrefly: ignore[bad-return]
-        'steps': 0,
-        'moments': tuple(
-            initialize_moment(spec) for spec in tf.nest.flatten(specs)
+    return collections.OrderedDict([
+        ('steps', 0),
+        (
+            'moments',
+            tuple(initialize_moment(spec) for spec in tf.nest.flatten(specs)),
         ),
-        'hparams': {
-            optimizer.LEARNING_RATE_KEY: self._learning_rate,
-            _BETA_2_DECAY_KEY: self._beta_2_decay,
-            _EPSILON_1_KEY: self._epsilon_1,
-            _EPSILON_2_KEY: self._epsilon_2,
-            _CLIP_THRESHOLD_KEY: self._clip_threshold,
-            _RELATIVE_STEP_KEY: self._relative_step,
-        },
-    }
+        (
+            'hparams',
+            collections.OrderedDict([
+                (optimizer.LEARNING_RATE_KEY, self._learning_rate),
+                (_BETA_2_DECAY_KEY, self._beta_2_decay),
+                (_EPSILON_1_KEY, self._epsilon_1),
+                (_EPSILON_2_KEY, self._epsilon_2),
+                (_CLIP_THRESHOLD_KEY, self._clip_threshold),
+                (_RELATIVE_STEP_KEY, self._relative_step),
+            ]),
+        ),
+    ])
 
   def next(
       self,
-      state: optimizer.State,  # pyrefly: ignore[invalid-type-var]
-      weights: optimizer.Weights,  # pyrefly: ignore[invalid-type-var]
-      gradients: _NestedTensors,
-  ) -> tuple[optimizer.State, optimizer.Weights]:  # pyrefly: ignore[invalid-type-var]
-    local_step = tf.cast(state['steps'] + 1, dtype=tf.float32)  # pyrefly: ignore[unsupported-operation]
+      state: _State,
+      weights: _Weights,
+      gradients: Any,
+  ) -> tuple[_State, _Weights]:
+    """See base class."""
+    local_step = tf.cast(state['steps'] + 1, dtype=tf.float32)
     hparams = self.get_hparams(state)
     lr = hparams[optimizer.LEARNING_RATE_KEY]
     beta_2_decay = hparams[_BETA_2_DECAY_KEY]
@@ -163,14 +173,14 @@ class _AdafactorOptimizer(
       return new_moment, new_weight
 
     if not tf.nest.flatten(weights):
-      new_moments = state['moments']  # pyrefly: ignore[unsupported-operation]
+      new_moments = state['moments']
       new_weights = weights
     else:
       new_moments, new_weights = zip(
           *tuple(
               update(moment, weight, gradient)
               for moment, weight, gradient in zip(
-                  state['moments'],  # pyrefly: ignore[unsupported-operation]
+                  state['moments'],
                   tf.nest.flatten(weights),
                   tf.nest.flatten(gradients),
               )
@@ -178,22 +188,26 @@ class _AdafactorOptimizer(
       )
       new_weights = tf.nest.pack_sequence_as(weights, new_weights)
 
-    return {  # pyrefly: ignore[bad-return]
-        'steps': local_step,
-        'moments': new_moments,
-        'hparams': hparams,
-    }, new_weights
+    return (
+        collections.OrderedDict([
+            ('steps', local_step),
+            ('moments', new_moments),
+            ('hparams', hparams),
+        ]),
+        new_weights,
+    )
 
-  def get_hparams(self, state: optimizer.State) -> optimizer.Hparams:  # pyrefly: ignore[bad-override, invalid-type-var]
-    return state['hparams']  # pyrefly: ignore[unsupported-operation]
+  def get_hparams(self, state: _State) -> _Hparams:
+    """See base class."""
+    return state['hparams']
 
-  def set_hparams(  # pyrefly: ignore[bad-override]
-      self, state: optimizer.State, hparams: dict[str, optimizer.Float]  # pyrefly: ignore[invalid-type-var]
-  ) -> optimizer.State:  # pyrefly: ignore[invalid-type-var]
+  def set_hparams(self, state: _State, hparams: _Hparams) -> _State:
+    """See base class."""
     # We use `structure._update_struct` (rather than something like
     # `copy.deepcopy`) to ensure that this can be called within a
     # `federated_language.Computation`.
-    return structure._update_struct(state['hparams'], **hparams)  # pylint: disable=protected-access  # pyrefly: ignore[unsupported-operation]
+    updated_hparams = structure._update_struct(state['hparams'], **hparams)  # pylint: disable=protected-access
+    return structure._update_struct(state, hparams=updated_hparams)  # pylint: disable=protected-access
 
 
 def build_adafactor(
