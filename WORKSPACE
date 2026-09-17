@@ -97,20 +97,18 @@ http_archive(
 http_archive(
     name = "federated_language",
     patches = [
-        "//third_party/federated_language:numpy.patch",
         "//third_party/federated_language:proto_library_loads.patch",
         "//third_party/federated_language:python_deps.patch",
         # Must come after `python_deps.patch`, this patches the output of `python_deps.patch`.
         "//third_party/federated_language:structure_visibility.patch",
-        "//third_party/federated_language:remove_compile_pip_requirements.patch",
     ],
     repo_mapping = {
         "@protobuf": "@com_google_protobuf",
         "@federated_language_pypi": "@pypi",
     },
-    sha256 = "d99f3a4cc88f816391777fc53cdc094d9abd72bdd7a6fe2bdccfa43235f351db",
-    strip_prefix = "federated-language-0.5.4",
-    url = "https://github.com/google-parfait/federated-language/archive/refs/tags/v0.5.4.tar.gz",
+    sha256 = "ac02384601a8368b4cc474dac449db7d967dec3bed6273f0d75db9281f110d8c",
+    strip_prefix = "federated-language-d8536b8ba6184455789e095729d5ec87e389660d",
+    url = "https://github.com/google-parfait/federated-language/archive/d8536b8ba6184455789e095729d5ec87e389660d.tar.gz",
 )
 
 # The version of TensorFlow should match the version in
@@ -136,9 +134,9 @@ http_archive(
 
 http_archive(
     name = "rules_license",
-    sha256 = "8c1155797cb5f5697ea8c6eac6c154cf51aa020e368813d9d9b949558c84f2da",
-    strip_prefix = "rules_license-0.0.8",
-    url = "https://github.com/bazelbuild/rules_license/archive/refs/tags/0.0.8.tar.gz",
+    sha256 = "26d4021f6898e23b82ef953078389dd49ac2b5618ac564ade4ef87cced147b38",
+    strip_prefix = "rules_license-1.0.0",
+    url = "https://github.com/bazelbuild/rules_license/releases/download/1.0.0/rules_license-1.0.0.tar.gz",
 )
 
 #
@@ -147,10 +145,10 @@ http_archive(
 
 http_archive(
     name = "rules_shell",
-    sha256 = "bc61ef94facc78e20a645726f64756e5e285a045037c7a61f65af2941f4c25e1",
-    strip_prefix = "rules_shell-0.4.1",
+    sha256 = "e6b87c89bd0b27039e3af2c5da01147452f240f75d505f5b6880874f31036307",
+    strip_prefix = "rules_shell-0.6.1",
     urls = [
-        "https://github.com/bazelbuild/rules_shell/releases/download/v0.4.1/rules_shell-v0.4.1.tar.gz",
+        "https://github.com/bazelbuild/rules_shell/releases/download/v0.6.1/rules_shell-v0.6.1.tar.gz",
     ],
 )
 

@@ -1,24 +1,3 @@
-diff --git BUILD BUILD
-index 222489c..739d8df 100644
---- BUILD
-+++ BUILD
-@@ -16,7 +16,6 @@ load("@python//3.10:defs.bzl", compile_pip_requirements_3_10 = "compile_pip_requ
- load("@python//3.11:defs.bzl", compile_pip_requirements_3_11 = "compile_pip_requirements")
- load("@python//3.12:defs.bzl", compile_pip_requirements_3_12 = "compile_pip_requirements")
- load("@python//3.13:defs.bzl", compile_pip_requirements_3_13 = "compile_pip_requirements")
--
- load("@rules_license//rules:license.bzl", "license")
- 
- package(
-@@ -39,8 +38,6 @@ exports_files([
-     "requirements.in",
- ])
- 
--
--
- compile_pip_requirements_3_10(
-     name = "requirements_3_10",
-     src = "//:requirements.in",
 diff --git federated_language/common_libs/BUILD federated_language/common_libs/BUILD
 index 15156fb..a25796d 100644
 --- federated_language/common_libs/BUILD
