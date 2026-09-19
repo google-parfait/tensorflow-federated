@@ -22,6 +22,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -171,7 +173,7 @@ class DPGroupingFederatedSum final
 
 // Make a DPGFS object out of norm bounds and aggregator state, if provided.
 template <typename InputT, typename OutputT>
-StatusOr<std::unique_ptr<TensorAggregator>> CreateDPGroupingFederatedSum(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateDPGroupingFederatedSum(
     InputT linfinity_bound, double l1_bound, double l2_bound,
     const OneDimGroupingAggregatorState* aggregator_state) {
   return aggregator_state == nullptr
@@ -186,19 +188,19 @@ StatusOr<std::unique_ptr<TensorAggregator>> CreateDPGroupingFederatedSum(
 
 // Same as above except input and output types are identical.
 template <typename T>
-StatusOr<std::unique_ptr<TensorAggregator>> CreateDPGroupingFederatedSum(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateDPGroupingFederatedSum(
     T linfinity_bound, double l1_bound, double l2_bound,
     const OneDimGroupingAggregatorState* aggregator_state) {
   return CreateDPGroupingFederatedSum<T, T>(linfinity_bound, l1_bound, l2_bound,
                                             aggregator_state);
 }
 template <>
-StatusOr<std::unique_ptr<TensorAggregator>> CreateDPGroupingFederatedSum(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateDPGroupingFederatedSum(
     string_view linfinity_bound, double l1_bound, double l2_bound,
     const OneDimGroupingAggregatorState* aggregator_state) {
-  return TFF_STATUS(INVALID_ARGUMENT)
-         << "DPGroupingFederatedSumFactory: DPGroupingFederatedSum only"
-            " supports numeric datatypes.";
+  return absl::InvalidArgumentError(
+      "DPGroupingFederatedSumFactory: DPGroupingFederatedSum only"
+      " supports numeric datatypes.");
 }
 
 // A factory class for the GroupingFederatedSum.
@@ -215,7 +217,7 @@ class DPGroupingFederatedSumFactory final
       const DPGroupingFederatedSumFactory&) = delete;
 
  private:
-  StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
       const Intrinsic& intrinsic,
       const OneDimGroupingAggregatorState* aggregator_state) const override {
     TFF_CHECK(kDPSumUri == intrinsic.uri)
@@ -223,31 +225,31 @@ class DPGroupingFederatedSumFactory final
         << " but got uri " << intrinsic.uri;
     // Check that the configuration is valid for grouping_federated_sum.
     if (intrinsic.inputs.size() != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupingFederatedSumFactory: Exactly one input "
-                "is expected but got "
-             << intrinsic.inputs.size();
+      return absl::InvalidArgumentError(
+          absl::StrCat("DPGroupingFederatedSumFactory: Exactly one input "
+                       "is expected but got ",
+                       intrinsic.inputs.size()));
     }
 
     if (intrinsic.outputs.size() != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupingFederatedSumFactory: Exactly one output tensor is "
-                "expected but got "
-             << intrinsic.outputs.size();
+      return absl::InvalidArgumentError(absl::StrCat(
+          "DPGroupingFederatedSumFactory: Exactly one output tensor is "
+          "expected but got ",
+          intrinsic.outputs.size()));
     }
 
     if (!intrinsic.nested_intrinsics.empty()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupingFederatedSumFactory: Not expected to have inner "
-                "aggregations.";
+      return absl::InvalidArgumentError(
+          "DPGroupingFederatedSumFactory: Not expected to have inner "
+          "aggregations.");
     }
 
     const TensorSpec& input_spec = intrinsic.inputs[0];
     const TensorSpec& output_spec = intrinsic.outputs[0];
     if (input_spec.shape() != output_spec.shape()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupingFederatedSumFactory: Input and output tensors have "
-                "mismatched shapes.";
+      return absl::InvalidArgumentError(
+          "DPGroupingFederatedSumFactory: Input and output tensors have "
+          "mismatched shapes.");
     }
 
     const auto& linfinity_tensor = intrinsic.parameters[kLinfinityIndex];
@@ -258,9 +260,9 @@ class DPGroupingFederatedSumFactory final
     const DataType output_type = output_spec.dtype();
 
     if (internal::GetTypeKind(input_type) != internal::TypeKind::kNumeric) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupingFederatedSumFactory: DPGroupingFederatedSum only"
-                " supports numeric datatypes.";
+      return absl::InvalidArgumentError(
+          "DPGroupingFederatedSumFactory: DPGroupingFederatedSum only"
+          " supports numeric datatypes.");
     }
 
     if (input_type != output_type) {
@@ -278,15 +280,15 @@ class DPGroupingFederatedSumFactory final
         return CreateDPGroupingFederatedSum<float, double>(
             linfinity_bound, l1, l2, aggregator_state);
       } else {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "DPGroupingFederatedSumFactory: Input and output tensors "
-                  "have mismatched dtypes: input tensor has dtype "
-               << DataType_Name(input_type) << " and output tensor has dtype "
-               << DataType_Name(output_type);
+        return absl::InvalidArgumentError(absl::StrCat(
+            "DPGroupingFederatedSumFactory: Input and output tensors "
+            "have mismatched dtypes: input tensor has dtype ",
+            DataType_Name(input_type), " and output tensor has dtype ",
+            DataType_Name(output_type)));
       }
     }
 
-    StatusOr<std::unique_ptr<TensorAggregator>> aggregator;
+    absl::StatusOr<std::unique_ptr<TensorAggregator>> aggregator;
     DTYPE_CASES(
         input_type, T,
         aggregator = CreateDPGroupingFederatedSum<T>(

@@ -17,6 +17,9 @@
 #include <cstdint>
 #include <memory>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -89,13 +92,13 @@ class GroupingFederatedSum final
 };
 
 template <typename OutputT>
-StatusOr<std::unique_ptr<TensorAggregator>> CreateGroupingFederatedSum(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateGroupingFederatedSum(
     const OneDimGroupingAggregatorState* aggregator_state) {
   if (internal::TypeTraits<OutputT>::type_kind !=
       internal::TypeKind::kNumeric) {
     // Ensure the type is numeric in case new non-numeric types are added.
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupingFederatedSum is only supported for numeric datatypes.";
+    return absl::InvalidArgumentError(
+        "GroupingFederatedSum is only supported for numeric datatypes.");
   }
   return aggregator_state == nullptr
              ? std::make_unique<GroupingFederatedSum<OutputT, OutputT>>()
@@ -106,11 +109,11 @@ StatusOr<std::unique_ptr<TensorAggregator>> CreateGroupingFederatedSum(
 }
 
 template <>
-StatusOr<std::unique_ptr<TensorAggregator>>
+absl::StatusOr<std::unique_ptr<TensorAggregator>>
 CreateGroupingFederatedSum<string_view>(
     const OneDimGroupingAggregatorState* aggregator_state) {
-  return TFF_STATUS(INVALID_ARGUMENT)
-         << "GroupingFederatedSum isn't supported for DT_STRING datatype.";
+  return absl::InvalidArgumentError(
+      "GroupingFederatedSum isn't supported for DT_STRING datatype.");
 }
 
 // Factory class for the GroupingFederatedSum.
@@ -125,48 +128,48 @@ class GroupingFederatedSumFactory final
       delete;
 
  private:
-  StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
       const Intrinsic& intrinsic,
       const OneDimGroupingAggregatorState* aggregator_state) const override {
     if (kGoogleSqlSumUri != intrinsic.uri) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupingFederatedSumFactory: Expected intrinsic URI "
-             << kGoogleSqlSumUri << " but got uri " << intrinsic.uri;
+      return absl::InvalidArgumentError(
+          absl::StrCat("GroupingFederatedSumFactory: Expected intrinsic URI ",
+                       kGoogleSqlSumUri, " but got uri ", intrinsic.uri));
     }
     // Check that the configuration is valid for grouping_federated_sum.
     if (intrinsic.inputs.size() != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupingFederatedSumFactory: Exactly one input "
-                "is expected but got "
-             << intrinsic.inputs.size();
+      return absl::InvalidArgumentError(
+          absl::StrCat("GroupingFederatedSumFactory: Exactly one input "
+                       "is expected but got ",
+                       intrinsic.inputs.size()));
     }
 
     if (intrinsic.outputs.size() != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupingFederatedSumFactory: Exactly one output tensor is "
-                "expected but got "
-             << intrinsic.outputs.size();
+      return absl::InvalidArgumentError(absl::StrCat(
+          "GroupingFederatedSumFactory: Exactly one output tensor is "
+          "expected but got ",
+          intrinsic.outputs.size()));
     }
 
     if (!intrinsic.parameters.empty()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupingFederatedSumFactory: No "
-                "input parameters expected but got "
-             << intrinsic.parameters.size();
+      return absl::InvalidArgumentError(
+          absl::StrCat("GroupingFederatedSumFactory: No "
+                       "input parameters expected but got ",
+                       intrinsic.parameters.size()));
     }
 
     if (!intrinsic.nested_intrinsics.empty()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupingFederatedSumFactory: Not expected to have inner "
-                "aggregations.";
+      return absl::InvalidArgumentError(
+          "GroupingFederatedSumFactory: Not expected to have inner "
+          "aggregations.");
     }
 
     const TensorSpec& input_spec = intrinsic.inputs[0];
     const TensorSpec& output_spec = intrinsic.outputs[0];
     if (input_spec.shape() != output_spec.shape()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupingFederatedSumFactory: Input and output tensors have "
-                "mismatched shapes.";
+      return absl::InvalidArgumentError(
+          "GroupingFederatedSumFactory: Input and output tensors have "
+          "mismatched shapes.");
     }
 
     if (input_spec.dtype() != output_spec.dtype()) {
@@ -190,16 +193,15 @@ class GroupingFederatedSumFactory final
                              aggregator_state->vector_data()),
                          aggregator_state->num_inputs());
       } else {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "GroupingFederatedSumFactory: Input and output tensors have "
-                  "mismatched dtypes: input tensor has dtype "
-               << DataType_Name(input_spec.dtype())
-               << " and output tensor has dtype "
-               << DataType_Name(output_spec.dtype());
+        return absl::InvalidArgumentError(absl::StrCat(
+            "GroupingFederatedSumFactory: Input and output tensors have "
+            "mismatched dtypes: input tensor has dtype ",
+            DataType_Name(input_spec.dtype()), " and output tensor has dtype ",
+            DataType_Name(output_spec.dtype())));
       }
     }
 
-    StatusOr<std::unique_ptr<TensorAggregator>> aggregator;
+    absl::StatusOr<std::unique_ptr<TensorAggregator>> aggregator;
     DTYPE_CASES(
         output_spec.dtype(), OutputT,
         aggregator = CreateGroupingFederatedSum<OutputT>(aggregator_state));

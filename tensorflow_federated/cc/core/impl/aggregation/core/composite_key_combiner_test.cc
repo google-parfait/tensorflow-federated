@@ -24,6 +24,7 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -47,7 +48,7 @@ using ::testing::Eq;
 
 TEST(CompositeKeyCombinerTest, EmptyInput_Invalid) {
   CompositeKeyCombiner combiner(std::vector<DataType>{DT_FLOAT});
-  StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({}));
+  absl::StatusOr<Tensor> result = combiner.Accumulate(InputTensorList({}));
   ASSERT_THAT(result, StatusIs(INVALID_ARGUMENT));
 }
 

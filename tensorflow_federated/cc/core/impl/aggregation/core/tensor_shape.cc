@@ -20,26 +20,28 @@
 #include <cstdint>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
 
-StatusOr<size_t> TensorShape::NumElements() const {
+absl::StatusOr<size_t> TensorShape::NumElements() const {
   size_t num_elements = 1;
   for (auto dim_size : dim_sizes_) {
     // If there are any dimensions of unknown size, the total number of elements
     // is also unknown.
     if (dim_size == -1)
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "TensorShape with unknown size has unknown number of elements.";
+      return absl::InvalidArgumentError(
+          "TensorShape with unknown size has unknown number of elements.");
     num_elements *= dim_size;
   }
   return num_elements;
 }
 
-StatusOr<TensorShape> TensorShape::FromProto(
+absl::StatusOr<TensorShape> TensorShape::FromProto(
     const TensorShapeProto& shape_proto) {
   TensorShape::DimSizesVector dim_sizes;
   for (int64_t dim_size : shape_proto.dim_sizes()) {

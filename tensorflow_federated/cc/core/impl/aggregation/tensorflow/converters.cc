@@ -23,6 +23,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow/core/framework/allocation_description.pb.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -144,7 +145,7 @@ class WrappedNumericAggregationTensorBuffer : public tf::TensorBuffer {
 
 }  // namespace
 
-StatusOr<DataType> ToAggDataType(tf::DataType dtype) {
+absl::StatusOr<DataType> ToAggDataType(tf::DataType dtype) {
   switch (dtype) {
     case tf::DT_FLOAT:
       return DT_FLOAT;
@@ -157,8 +158,8 @@ StatusOr<DataType> ToAggDataType(tf::DataType dtype) {
     case tf::DT_STRING:
       return DT_STRING;
     default:
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Unsupported tf::DataType: " << dtype;
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unsupported tf::DataType: ", dtype));
   }
 }
 
@@ -182,15 +183,14 @@ TensorShape ToAggShape(const tf::PartialTensorShape& shape) {
   return TensorShape(dim_sizes.begin(), dim_sizes.end());
 }
 
-StatusOr<TensorSpec> ToAggTensorSpec(
+absl::StatusOr<TensorSpec> ToAggTensorSpec(
     const ::tensorflow::TensorSpecProto& spec) {
   TFF_ASSIGN_OR_RETURN(DataType dtype, ToAggDataType(spec.dtype()));
   tf::PartialTensorShape tf_shape;
   if (!tf::PartialTensorShape::BuildPartialTensorShape(spec.shape(), &tf_shape)
            .ok()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Unsupported tf::PartialTensorShape: "
-           << spec.shape().DebugString();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Unsupported tf::PartialTensorShape: ", spec.shape().DebugString()));
   }
   return TensorSpec(spec.name(), dtype, ToAggShape(tf_shape));
 }
@@ -210,16 +210,17 @@ std::unique_ptr<TensorData> ToAggTensorData<string_view>(
   return std::make_unique<StringTensorDataAdapter>(std::move(tensor));
 }
 
-StatusOr<Tensor> ToAggTensor(const ::tensorflow::TensorProto& tensor_proto) {
+absl::StatusOr<Tensor> ToAggTensor(
+    const ::tensorflow::TensorProto& tensor_proto) {
   tf::Tensor tf_tensor;
   if (!tf_tensor.FromProto(tensor_proto)) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Failed to parse TensorProto into tf::Tensor: ";
+    return absl::InvalidArgumentError(
+        "Failed to parse TensorProto into tf::Tensor: ");
   }
   return ToAggTensor(std::make_unique<tf::Tensor>(std::move(tf_tensor)));
 }
 
-StatusOr<Tensor> ToAggTensor(std::unique_ptr<tf::Tensor> tensor) {
+absl::StatusOr<Tensor> ToAggTensor(std::unique_ptr<tf::Tensor> tensor) {
   TFF_ASSIGN_OR_RETURN(DataType dtype, ToAggDataType(tensor->dtype()));
   TensorShape shape = ToAggShape(tensor->shape());
   std::unique_ptr<TensorData> data;
@@ -242,8 +243,8 @@ absl::StatusOr<tf::DataType> ToTfDataType(DataType dtype) {
     case DT_UINT64:
       return tf::DT_UINT64;
     default:
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Unsupported Aggregation DataType: " << dtype;
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unsupported Aggregation DataType: ", dtype));
   }
 }
 

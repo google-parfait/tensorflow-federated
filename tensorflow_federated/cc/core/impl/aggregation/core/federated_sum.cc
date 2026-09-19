@@ -18,7 +18,9 @@
 #include <string>
 #include <utility>
 
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
@@ -60,47 +62,48 @@ class FederatedSumFactory final : public TensorAggregatorFactory {
   FederatedSumFactory(const FederatedSumFactory&) = delete;
   FederatedSumFactory& operator=(const FederatedSumFactory&) = delete;
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Create(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Create(
       const Intrinsic& intrinsic) const override {
     return CreateInternal(intrinsic, nullptr);
   }
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override {
     AggVectorAggregatorState aggregator_state;
     if (!aggregator_state.ParseFromString(serialized_state)) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedSumFactory: Failed to deserialize the "
-                "AggVectorAggregatorState.";
+      return absl::InvalidArgumentError(
+          "FederatedSumFactory: Failed to deserialize the "
+          "AggVectorAggregatorState.");
     }
     return CreateInternal(intrinsic, &aggregator_state);
   };
 
  private:
-  StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
       const Intrinsic& intrinsic,
       const AggVectorAggregatorState* aggregator_state) const {
     // Check that the configuration is valid for federated_sum.
     if (kFederatedSumUri != intrinsic.uri) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedSumFactory: Expected intrinsic URI "
-             << kFederatedSumUri << " but got uri " << intrinsic.uri;
+      return absl::InvalidArgumentError(
+          absl::StrCat("FederatedSumFactory: Expected intrinsic URI ",
+                       kFederatedSumUri, " but got uri ", intrinsic.uri));
     }
     if (intrinsic.inputs.size() != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT) << "FederatedSumFactory: Exactly one "
-                                             "input is expected.";
+      return absl::InvalidArgumentError(
+          "FederatedSumFactory: Exactly one "
+          "input is expected.");
     }
     if (intrinsic.outputs.size() != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedSumFactory: Exactly one output tensor is expected.";
+      return absl::InvalidArgumentError(
+          "FederatedSumFactory: Exactly one output tensor is expected.");
     }
     if (!intrinsic.nested_intrinsics.empty()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedSumFactory: Expected no nested intrinsics.";
+      return absl::InvalidArgumentError(
+          "FederatedSumFactory: Expected no nested intrinsics.");
     }
     if (!intrinsic.parameters.empty()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedSumFactory: Expected no parameters.";
+      return absl::InvalidArgumentError(
+          "FederatedSumFactory: Expected no parameters.");
     }
 
     const TensorSpec& input_spec = intrinsic.inputs[0];
@@ -108,9 +111,9 @@ class FederatedSumFactory final : public TensorAggregatorFactory {
 
     if (input_spec.dtype() != output_spec.dtype() ||
         input_spec.shape() != output_spec.shape()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedSumFactory: Input and output tensors have mismatched "
-                "specs.";
+      return absl::InvalidArgumentError(
+          "FederatedSumFactory: Input and output tensors have mismatched "
+          "specs.");
     }
     std::unique_ptr<TensorAggregator> aggregator;
     if (aggregator_state == nullptr) {

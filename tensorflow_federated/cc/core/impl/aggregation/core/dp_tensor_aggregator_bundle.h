@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_tensor_aggregator.h"
@@ -44,33 +46,33 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
 
   // Validates the input tensors for Accumulate. Returns an InvalidArgument
   // Status if the input tensors are not valid. Otherwise, returns an Ok Status.
-  Status ValidateInputs(const InputTensorList& tensors) const override;
+  absl::Status ValidateInputs(const InputTensorList& tensors) const override;
 
   // Returns the number of aggregated inputs.
   int GetNumInputs() const override { return num_inputs_; };
 
   // Serialize the internal state of the TensorAggregator as a string.
-  StatusOr<std::string> Serialize() && override;
+  absl::StatusOr<std::string> Serialize() && override;
 
   inline double GetEpsilonPerAgg() const { return epsilon_per_agg_; }
   inline double GetDeltaPerAgg() const { return delta_per_agg_; }
 
-  Status IsCompatible(const TensorAggregator& other) const;
+  absl::Status IsCompatible(const TensorAggregator& other) const;
 
-  Status MergeWith(TensorAggregator&& other) override;
+  absl::Status MergeWith(TensorAggregator&& other) override;
 
  protected:
-  Status AggregateTensors(InputTensorList tensors) override;
+  absl::Status AggregateTensors(InputTensorList tensors) override;
 
   // Checks if the current TensorAggregator is valid e.g. the resulting output
   // hasn't been consumed.
-  Status CheckValid() const override {
+  absl::Status CheckValid() const override {
     if (output_consumed_) {
-      return TFF_STATUS(FAILED_PRECONDITION)
-             << "DPTensorAggregatorBundle::CheckValid: Output has already been "
-                "consumed.";
+      return absl::FailedPreconditionError(
+          "DPTensorAggregatorBundle::CheckValid: Output has already been "
+          "consumed.");
     }
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
   // Consumes the output of this TensorAggregator. Calls the
@@ -107,16 +109,16 @@ class DPTensorAggregatorBundleFactory : public TensorAggregatorFactory {
   DPTensorAggregatorBundleFactory& operator=(
       const DPTensorAggregatorBundleFactory&) = delete;
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override;
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Create(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Create(
       const Intrinsic& intrinsic) const override {
     return CreateInternal(intrinsic, nullptr);
   }
 
  private:
-  StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
       const Intrinsic& intrinsic,
       const DPTensorAggregatorBundleState* aggregator_state) const;
 };

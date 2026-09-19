@@ -340,7 +340,7 @@ absl::Status SimpleAggregationProtocol::ReceiveClientMessage(
     } else {
       client_completion_status =
           checkpoint_aggregator_->Accumulate(*parser_or_status.value());
-      if (client_completion_status.code() == StatusCode::kAborted) {
+      if (client_completion_status.code() == absl::StatusCode::kAborted) {
         client_completion_state = CLIENT_DISCARDED;
         TFF_LOG(INFO) << "Client " << client_id
                       << " input is discarded: " << client_completion_status;

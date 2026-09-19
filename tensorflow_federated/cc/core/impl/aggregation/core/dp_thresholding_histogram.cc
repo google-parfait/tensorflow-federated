@@ -311,7 +311,7 @@ StatusOr<OutputTensorList> DPThresholdingHistogram::NoisyReport() {
     // identify which of them that should survive.
     for (int j = 0; j < num_aggregations; ++j) {
       size_t column = num_output_keys + j;
-      StatusOr<Tensor> tensor;
+      absl::StatusOr<Tensor> tensor;
       TFF_ASSIGN_OR_RETURN(const DPHistogramBundle& bundle, GetBundle(j));
       NUMERICAL_ONLY_DTYPE_CASES(
           column_dtypes[column], OutputType,
@@ -359,7 +359,7 @@ StatusOr<OutputTensorList> DPThresholdingHistogram::NoisyReport() {
   // Noise all entries without thresholding by values.
   for (int j = 0; j < num_aggregations; ++j) {
     size_t column = num_output_keys + j;
-    StatusOr<Tensor> tensor;
+    absl::StatusOr<Tensor> tensor;
     TFF_ASSIGN_OR_RETURN(const DPHistogramBundle& bundle, GetBundle(j));
     NUMERICAL_ONLY_DTYPE_CASES(
         column_dtypes[column], OutputType,

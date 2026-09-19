@@ -21,9 +21,10 @@
 #include <cstdint>
 #include <initializer_list>
 #include <utility>
-#include <vector>
 
 #include "absl/container/inlined_vector.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 
@@ -41,7 +42,7 @@ class TensorShape final {
   template <typename ForwardIterator>
   TensorShape(ForwardIterator first, ForwardIterator last)
       : dim_sizes_(first, last) {
-    Status status = CheckValidDimSizes(dim_sizes_);
+    absl::Status status = CheckValidDimSizes(dim_sizes_);
     TFF_CHECK(status.ok()) << status.message();
   }
 
@@ -50,7 +51,8 @@ class TensorShape final {
 
   // Creates a TensorShape from a TensorShapeProto.
   // Returns an error if any of the shape dimensions are unknown.
-  static StatusOr<TensorShape> FromProto(const TensorShapeProto& shape_proto);
+  static absl::StatusOr<TensorShape> FromProto(
+      const TensorShapeProto& shape_proto);
 
   // Returns a TensorShapeProto representation of the tensor shape.
   TensorShapeProto ToProto() const;
@@ -63,7 +65,7 @@ class TensorShape final {
   // For a scalar tensor with zero dimensions this returns 1.
   // For a tensor with any unknown dimensions this returns an INVALID_ARGUMENT
   // status.
-  StatusOr<size_t> NumElements() const;
+  absl::StatusOr<size_t> NumElements() const;
 
   // Returns true if the dimensions of known size in this TensorShape match the
   // sizes of corresponding dimensions in `other`. `other` is only permitted to
@@ -82,14 +84,14 @@ class TensorShape final {
   explicit TensorShape(DimSizesVector&& dim_sizes)
       : dim_sizes_(std::move(dim_sizes)) {}
 
-  static Status CheckValidDimSizes(const DimSizesVector& dim_sizes) {
+  static absl::Status CheckValidDimSizes(const DimSizesVector& dim_sizes) {
     for (auto dim_size : dim_sizes) {
       if (dim_size < -1) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "TensorShape: Dimension size less than -1 isn't supported.";
+        return absl::InvalidArgumentError(
+            "TensorShape: Dimension size less than -1 isn't supported.");
       }
     }
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
   DimSizesVector dim_sizes_;

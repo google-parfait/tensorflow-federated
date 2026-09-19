@@ -671,7 +671,7 @@ class CannotReportAggregatorFactory : public TensorAggregatorFactory {
 
   absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override {
-    return TFF_STATUS(UNIMPLEMENTED);
+    return absl::UnimplementedError("Unimplemented");
   }
 };
 
@@ -727,7 +727,7 @@ class DoesNotIncrementNumInputsAggregatorFactory
 
   absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override {
-    return TFF_STATUS(UNIMPLEMENTED);
+    return absl::UnimplementedError("Unimplemented");
   }
 };
 
@@ -1222,7 +1222,7 @@ class FunctionAggregatorFactory final : public TensorAggregatorFactory {
 
   absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override {
-    return TFF_STATUS(UNIMPLEMENTED);
+    return absl::UnimplementedError("Unimplemented");
   }
 
   const FunctionAggregator::Func agg_function_;
@@ -1547,7 +1547,8 @@ class TestPartitioningAggregator final : public AggVectorAggregator<int> {
   TestPartitioningAggregator(DataType dtype, TensorShape shape)
       : AggVectorAggregator<int>(dtype, shape) {}
 
-  StatusOr<std::vector<std::string>> Partition(int num_partitions) && override {
+  absl::StatusOr<std::vector<std::string>> Partition(int num_partitions) &&
+      override {
     std::vector<std::string> partitions(num_partitions);
     auto serialized_state = std::move(*this).Serialize().value();
     for (int i = 0; i < num_partitions; ++i) {
@@ -1581,7 +1582,7 @@ class TestPartitioningAggregatorFactory final : public TensorAggregatorFactory {
 
   absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override {
-    return TFF_STATUS(UNIMPLEMENTED);
+    return absl::UnimplementedError("Unimplemented");
   }
 };
 

@@ -19,7 +19,7 @@
 #include <cstddef>
 
 #include "absl/status/status.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
@@ -36,49 +36,49 @@ Status OneDimBaseGroupingAggregator::MergeWith(TensorAggregator&& other) {
   // OneDimGroupingAggregators, which provides the new ordinals to use while
   // merging. The outer GroupByAggregator is responsible for providing these
   // new ordinals.
-  return TFF_STATUS(UNIMPLEMENTED)
-         << "OneDimGroupingAggregator::MergeWith is not supported. Use "
-            "MergeTensors instead.";
+  return absl::UnimplementedError(
+      "OneDimGroupingAggregator::MergeWith is not supported. Use "
+      "MergeTensors instead.");
 }
 
 Status OneDimBaseGroupingAggregator::ValidateInputs(
     const InputTensorList& tensors) const {
   if (tensors.size() != 2) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneBaseDimGroupingAggregator should operate on 2 input tensors";
+    return absl::InvalidArgumentError(
+        "OneBaseDimGroupingAggregator should operate on 2 input tensors");
   }
 
   const Tensor* ordinals = tensors[0];
   if (ordinals->dtype() != DT_INT64) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimBaseGroupingAggregator::ValidateInputs: dtype "
-              "mismatch "
-              "for tensor 0. Expected DT_INT64.";
+    return absl::InvalidArgumentError(
+        "OneDimBaseGroupingAggregator::ValidateInputs: dtype "
+        "mismatch "
+        "for tensor 0. Expected DT_INT64.");
   }
   const Tensor* tensor = tensors[1];
   if (ordinals->shape() != tensor->shape()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimBaseGroupingAggregator::ValidateInputs: tensor "
-              "shape "
-              "mismatch. Shape of both tensors must be the same.";
+    return absl::InvalidArgumentError(
+        "OneDimBaseGroupingAggregator::ValidateInputs: tensor "
+        "shape "
+        "mismatch. Shape of both tensors must be the same.");
   }
   size_t num_dimensions = tensor->shape().dim_sizes().size();
   if (num_dimensions > (size_t)1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimBaseGroupingAggregator::ValidateInputs: Only 1 "
-              "dimensional tensors supported. Input tensor has "
-           << num_dimensions << " dimensions.";
+    return absl::InvalidArgumentError(
+        absl::StrCat("OneDimBaseGroupingAggregator::ValidateInputs: Only 1 "
+                     "dimensional tensors supported. Input tensor has ",
+                     num_dimensions, " dimensions."));
   }
   if (!ordinals->is_dense() || !tensor->is_dense()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimBaseGroupingAggregator::ValidateInputs: Only dense "
-              "tensors are supported.";
+    return absl::InvalidArgumentError(
+        "OneDimBaseGroupingAggregator::ValidateInputs: Only dense "
+        "tensors are supported.");
   }
   if (tensor->dtype() != GetValidType()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "OneDimBaseGroupingAggregator::ValidateInputs: dtype "
-              "mismatch for tensor 1. Expected "
-           << GetValidType() << " but got " << tensor->dtype() << ".";
+    return absl::InvalidArgumentError(
+        absl::StrCat("OneDimBaseGroupingAggregator::ValidateInputs: dtype "
+                     "mismatch for tensor 1. Expected ",
+                     GetValidType(), " but got ", tensor->dtype(), "."));
   }
   return absl::OkStatus();
 }

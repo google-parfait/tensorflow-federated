@@ -20,9 +20,10 @@
 #include <memory>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 
@@ -58,9 +59,9 @@ class DomainSpec {
   template <typename V>
   absl::StatusOr<bool> IsMember(V datum, int index) const {
     if (index < 0 || index >= columns_.size()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DomainSpec::IsMember: index " << index << " out of bounds [0, "
-             << columns_.size() << ").";
+      return absl::InvalidArgumentError(
+          absl::StrCat("DomainSpec::IsMember: index ", index,
+                       " out of bounds [0, ", columns_.size(), ")."));
     }
     return columns_[index]->IsMember(&datum,
                                      internal::TypeTraits<V>::kDataType);

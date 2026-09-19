@@ -29,6 +29,7 @@
 #include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "google/protobuf/repeated_ptr_field.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
@@ -160,9 +161,9 @@ Status GroupByAggregator::MergeWith(TensorAggregator&& other) {
   // of this class that does not rely on dynamic_cast.
   GroupByAggregator* other_ptr = dynamic_cast<GroupByAggregator*>(&other);
   if (other_ptr == nullptr) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::MergeOutputTensors: Can only merge with "
-              "another GroupByAggregator";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator::MergeOutputTensors: Can only merge with "
+        "another GroupByAggregator");
   }
   TFF_RETURN_IF_ERROR((*other_ptr).CheckValid());
   TFF_RETURN_IF_ERROR(other_ptr->IsCompatible(*this));
@@ -181,7 +182,7 @@ Status GroupByAggregator::MergeWith(TensorAggregator&& other) {
 
 bool GroupByAggregator::CanReport() const { return CheckValid().ok(); }
 
-StatusOr<OutputTensorList> GroupByAggregator::Report() && {
+absl::StatusOr<OutputTensorList> GroupByAggregator::Report() && {
   TFF_RETURN_IF_ERROR(CheckValid());
   OutputTensorList unthresholded_histogram = std::move(*this).TakeOutputs();
 
@@ -212,9 +213,9 @@ Status GroupByAggregator::AggregateTensors(InputTensorList tensors) {
 
 Status GroupByAggregator::CheckValid() const {
   if (output_consumed_) {
-    return TFF_STATUS(FAILED_PRECONDITION)
-           << "GroupByAggregator::CheckValid: Output has already been "
-              "consumed.";
+    return absl::FailedPreconditionError(
+        "GroupByAggregator::CheckValid: Output has already been "
+        "consumed.");
   }
   return absl::OkStatus();
 }
@@ -238,15 +239,15 @@ OutputTensorList GroupByAggregator::TakeOutputs() && {
 
 Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
   if (ordinals.dtype() != DT_INT64) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::AddOneContributor: Expected int64 ordinals "
-              "but got "
-           << ordinals.dtype();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "GroupByAggregator::AddOneContributor: Expected int64 ordinals "
+        "but got ",
+        ordinals.dtype()));
   }
   if (!max_contributors_to_group().has_value()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::AddOneContributor: Expected "
-              "max contributors to group to be set but it is not.";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator::AddOneContributor: Expected "
+        "max contributors to group to be set but it is not.");
   }
   auto ordinals_span = ordinals.AsSpan<int64_t>();
   if (ordinals_span.empty()) {
@@ -273,29 +274,29 @@ Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
 Status GroupByAggregator::AddMultipleContributors(
     const Tensor& ordinals, const std::vector<int>& other_contributors) {
   if (ordinals.dtype() != DT_INT64) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::AddMultipleContributor: Expected int64 "
-              "ordinals but got "
-           << ordinals.dtype();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "GroupByAggregator::AddMultipleContributor: Expected int64 "
+        "ordinals but got ",
+        ordinals.dtype()));
   }
   if (!max_contributors_to_group().has_value()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::AddMultipleContributor: Expected "
-              "max contributors to group to be set but it is not.";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator::AddMultipleContributor: Expected "
+        "max contributors to group to be set but it is not.");
   }
   TensorShape shape = ordinals.shape();
   if (shape.dim_sizes().size() != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::AddMultipleContributor: Expected 1D tensor "
-              "of ordinals.";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator::AddMultipleContributor: Expected 1D tensor "
+        "of ordinals.");
   }
   int64_t num_ordinals = shape.dim_sizes()[0];
   if (num_ordinals != other_contributors.size()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::AddMultipleContributor: Expected the same "
-              "number of ordinals and contributor counts but got "
-           << num_ordinals << " ordinals and " << other_contributors.size()
-           << " contributor counts.";
+    return absl::InvalidArgumentError(absl::StrCat(
+        "GroupByAggregator::AddMultipleContributor: Expected the same "
+        "number of ordinals and contributor counts but got ",
+        num_ordinals, " ordinals and ", other_contributors.size(),
+        " contributor counts."));
   }
   if (num_ordinals == 0) {
     return absl::OkStatus();
@@ -320,7 +321,7 @@ Status GroupByAggregator::AddMultipleContributors(
   return absl::OkStatus();
 }
 
-StatusOr<std::string> GroupByAggregator::Serialize() && {
+absl::StatusOr<std::string> GroupByAggregator::Serialize() && {
   GroupByAggregatorState state;
   state.set_num_inputs(num_inputs_);
   // If keys are being used, store the current list of output keys into state.
@@ -346,11 +347,12 @@ StatusOr<std::string> GroupByAggregator::Serialize() && {
   return state.SerializeAsString();
 }
 
-StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
+absl::StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
     int num_partitions) && {
   if (num_partitions < 1) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "GroupByAggregator::Partition: "
-                                           "num_partitions must be at least 1.";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator::Partition: "
+        "num_partitions must be at least 1.");
   }
 
   std::vector<GroupByAggregatorState> group_by_aggregator_states(
@@ -407,7 +409,7 @@ StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
   return serialized_states;
 }
 
-StatusOr<GroupByAggregator::HistogramAsSliceData>
+absl::StatusOr<GroupByAggregator::HistogramAsSliceData>
 GroupByAggregator::ConvertHistogramToSliceData(OutputTensorList& histogram) {
   int num_columns = histogram.size();
   std::vector<std::unique_ptr<TensorSliceData>> column_data(num_columns);
@@ -422,20 +424,19 @@ GroupByAggregator::ConvertHistogramToSliceData(OutputTensorList& histogram) {
       num_rows = current_rows;
     }
     if (num_rows != current_rows) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupByAggregator::ConvertHistogramToSliceData: Expected "
-                "histogram to be a list of tensors of the same size but "
-                "first "
-                "tensor has size "
-             << num_rows << " and tensor at index " << i << " has size "
-             << current_rows;
+      return absl::InvalidArgumentError(absl::StrCat(
+          "GroupByAggregator::ConvertHistogramToSliceData: Expected "
+          "histogram to be a list of tensors of the same size but "
+          "first "
+          "tensor has size ",
+          num_rows, " and tensor at index ", i, " has size ", current_rows));
     }
   }
   return HistogramAsSliceData{std::move(column_data), std::move(column_dtypes),
                               num_rows};
 }
 
-StatusOr<OutputTensorList> GroupByAggregator::ShrinkHistogramToSurvivors(
+absl::StatusOr<OutputTensorList> GroupByAggregator::ShrinkHistogramToSurvivors(
     HistogramAsSliceData histogram_as_slice_data,
     const absl::flat_hash_set<size_t>& survivor_indices) {
   std::vector<std::unique_ptr<TensorSliceData>>& column_data =
@@ -490,30 +491,30 @@ Status GroupByAggregator::ValidateIndexedTensor(
     const TensorShape& expected_shape) const {
   // Ensure the tensor at input_index has the expected dtype and shape.
   if (tensor.dtype() != expected_dtype) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::ValidateIndexedTensor: Tensor at position "
-           << input_index << " did not have expected dtype " << expected_dtype
-           << " and instead had dtype " << tensor.dtype();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "GroupByAggregator::ValidateIndexedTensor: Tensor at position ",
+        input_index, " did not have expected dtype ", expected_dtype,
+        " and instead had dtype ", tensor.dtype()));
   }
   if (tensor.shape() != expected_shape) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::ValidateIndexedTensor: Shape of value tensor "
-           << "at index " << input_index
-           << " does not match the shape of the first tensor.";
+    return absl::InvalidArgumentError(absl::StrCat(
+        "GroupByAggregator::ValidateIndexedTensor: Shape of value tensor ",
+        "at index ", input_index,
+        " does not match the shape of the first tensor."));
   }
   if (!tensor.is_dense()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::ValidateIndexedTensor: Only dense tensors are"
-           << " supported.";
+    return absl::InvalidArgumentError(absl::StrCat(
+        "GroupByAggregator::ValidateIndexedTensor: Only dense tensors are",
+        " supported."));
   }
   return absl::OkStatus();
 }
 
 Status GroupByAggregator::ValidateInputs(const InputTensorList& tensors) const {
   if (tensors.size() != num_tensors_per_input_) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::ValidateInputs: should operate on "
-           << num_tensors_per_input_ << " input tensors";
+    return absl::InvalidArgumentError(
+        absl::StrCat("GroupByAggregator::ValidateInputs: should operate on ",
+                     num_tensors_per_input_, " input tensors"));
   }
 
   TensorShape first_shape = tensors[0]->shape();
@@ -528,10 +529,10 @@ Status GroupByAggregator::ValidateInputs(const InputTensorList& tensors) const {
   }
 
   if (first_shape.dim_sizes().size() > 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::ValidateInputs: Only scalar or "
-           << "one-dimensional tensors are "
-              "supported.";
+    return absl::InvalidArgumentError(
+        absl::StrCat("GroupByAggregator::ValidateInputs: Only scalar or ",
+                     "one-dimensional tensors are "
+                     "supported."));
   }
   // Check all required invariants on the input tensors via the nested
   // aggregators. The input tensors should correspond to the
@@ -564,7 +565,7 @@ Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
       intrinsic_inputs[j + 1] = tensors[input_index++];
     }
     // Accumulate the input tensors into the aggregator.
-    Status aggregation_status =
+    absl::Status aggregation_status =
         aggregators_[i]->Accumulate(std::move(intrinsic_inputs));
     // If the aggregation operation fails on a sub-intrinsic, the
     // key_combiner_ and any previous sub-intrinsics have already been
@@ -582,9 +583,9 @@ Status GroupByAggregator::MergeTensorsInternal(
     InputTensorList tensors, int num_merged_inputs,
     const std::vector<int>& other_contributors) {
   if (tensors.size() != num_tensors_per_input_) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::MergeTensorsInternal should operate on "
-           << num_tensors_per_input_ << " input tensors";
+    return absl::InvalidArgumentError(absl::StrCat(
+        "GroupByAggregator::MergeTensorsInternal should operate on ",
+        num_tensors_per_input_, " input tensors"));
   }
   // Get the shape of the first key tensor in order to ensure that all the
   // value tensors have the same shape. CompositeKeyCombiner::Accumulate will
@@ -592,9 +593,9 @@ Status GroupByAggregator::MergeTensorsInternal(
   // own internal state.
   TensorShape key_shape = tensors[0]->shape();
   if (key_shape.dim_sizes().size() > 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator: Only scalar or one-dimensional tensors are "
-              "supported.";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator: Only scalar or one-dimensional tensors are "
+        "supported.");
   }
   // Check all required invariants on the input tensors, so this function can
   // fail before changing the state of this GroupByAggregator if there is an
@@ -624,7 +625,7 @@ Status GroupByAggregator::MergeTensorsInternal(
       intrinsic_inputs[j + 1] = tensors[input_index++];
     }
     // Merge the input tensors into the aggregator.
-    Status aggregation_status = aggregators_[i]->MergeTensors(
+    absl::Status aggregation_status = aggregators_[i]->MergeTensors(
         std::move(intrinsic_inputs), num_merged_inputs);
     // If the aggregation operation fails on a sub-intrinsic, the
     // key_combiner_ and any previous sub-intrinsics have already been
@@ -647,7 +648,7 @@ OutputTensorList GroupByAggregator::TakeOutputsInternal() {
   outputs.reserve(outputs.size() + intrinsics_.size());
   for (int i = 0; i < intrinsics_.size(); ++i) {
     auto tensor_aggregator = std::move(aggregators_[i]);
-    StatusOr<OutputTensorList> value_output =
+    absl::StatusOr<OutputTensorList> value_output =
         std::move(*tensor_aggregator).Report();
     TFF_CHECK(value_output.ok()) << value_output.status().message();
     for (Tensor& output_tensor : value_output.value()) {
@@ -657,7 +658,7 @@ OutputTensorList GroupByAggregator::TakeOutputsInternal() {
   return outputs;
 }
 
-StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeys(
+absl::StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeys(
     const InputTensorList& inputs) {
   if (key_combiner_ != nullptr) {
     InputTensorList keys(num_keys_per_input_);
@@ -674,7 +675,7 @@ StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeys(
   return Tensor::Create(internal::TypeTraits<int64_t>::kDataType,
                         inputs[0]->shape(), std::move(ordinals));
 }
-StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeysForMerge(
+absl::StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeysForMerge(
     const InputTensorList& inputs) {
   // In this base class, ordinals are made the same way for
   // MergeTensorsInternal as for AggregateTensorsInternal.
@@ -685,47 +686,49 @@ Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
   bool other_has_no_combiner = (other.key_combiner_ == nullptr);
   bool this_has_no_combiner = (key_combiner_ == nullptr);
   if (other_has_no_combiner != this_has_no_combiner) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "GroupByAggregator::MergeWith: "
-                                           "Expected other GroupByAggregator "
-                                           "to have the same key input and "
-                                           "output specs";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator::MergeWith: "
+        "Expected other GroupByAggregator "
+        "to have the same key input and "
+        "output specs");
   }
   if (this_has_no_combiner) {
     return absl::OkStatus();
   }
   if (min_contributors_to_group_ != other.min_contributors_to_group_) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::MergeWith: "
-              "Expected other GroupByAggregator to have the same "
-              "min_contributors_to_group";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator::MergeWith: "
+        "Expected other GroupByAggregator to have the same "
+        "min_contributors_to_group");
   }
   // The constructor validates that input key types match output key types, so
   // checking that the output key types of both aggregators match is
   // sufficient to verify key compatibility.
   if (other.output_key_specs_ != output_key_specs_) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "GroupByAggregator::MergeWith: "
-                                           "Expected other GroupByAggregator "
-                                           "to have the same key input and "
-                                           "output specs";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator::MergeWith: "
+        "Expected other GroupByAggregator "
+        "to have the same key input and "
+        "output specs");
   }
   if (other.intrinsics_.size() != intrinsics_.size()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByAggregator::MergeWith: Expected other "
-              "GroupByAggregator to use the same number of inner intrinsics";
+    return absl::InvalidArgumentError(
+        "GroupByAggregator::MergeWith: Expected other "
+        "GroupByAggregator to use the same number of inner intrinsics");
   }
   for (int i = 0; i < other.intrinsics_.size(); ++i) {
     const std::vector<Intrinsic>& other_intrinsics = other.intrinsics_;
     if (other_intrinsics[i].inputs != intrinsics_[i].inputs) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupByAggregator::MergeWith: Expected other "
-                "GroupByAggregator to use inner intrinsics with the same "
-                "inputs.";
+      return absl::InvalidArgumentError(
+          "GroupByAggregator::MergeWith: Expected other "
+          "GroupByAggregator to use inner intrinsics with the same "
+          "inputs.");
     }
     if (other_intrinsics[i].outputs != intrinsics_[i].outputs) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupByAggregator::MergeWith: Expected other "
-                "GroupByAggregator to use inner intrinsics with the same "
-                "outputs.";
+      return absl::InvalidArgumentError(
+          "GroupByAggregator::MergeWith: Expected other "
+          "GroupByAggregator to use inner intrinsics with the same "
+          "outputs.");
     }
   }
   return absl::OkStatus();
@@ -735,32 +738,32 @@ Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
 Status GroupByFactory::CheckIntrinsic(const Intrinsic& intrinsic,
                                       const char* uri) {
   if (intrinsic.uri != uri) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByFactory: Expected intrinsic URI " << uri
-           << " but got uri " << intrinsic.uri;
+    return absl::InvalidArgumentError(
+        absl::StrCat("GroupByFactory: Expected intrinsic URI ", uri,
+                     " but got uri ", intrinsic.uri));
   }
   if (intrinsic.inputs.size() != intrinsic.outputs.size()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByFactory: Exactly the same number of input args and "
-              "output tensors are "
-              "expected but got "
-           << intrinsic.inputs.size() << " inputs vs "
-           << intrinsic.outputs.size() << " outputs.";
+    return absl::InvalidArgumentError(absl::StrCat(
+        "GroupByFactory: Exactly the same number of input args and "
+        "output tensors are "
+        "expected but got ",
+        intrinsic.inputs.size(), " inputs vs ", intrinsic.outputs.size(),
+        " outputs."));
   }
   for (int i = 0; i < intrinsic.inputs.size(); ++i) {
     const TensorSpec& input_spec = intrinsic.inputs[i];
     const TensorSpec& output_spec = intrinsic.outputs[i];
     if (input_spec.dtype() != output_spec.dtype() ||
         input_spec.shape() != output_spec.shape()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Input and output tensors have mismatched specs.";
+      return absl::InvalidArgumentError(
+          "Input and output tensors have mismatched specs.");
     }
 
     if (input_spec.shape() != TensorShape{-1} ||
         output_spec.shape() != TensorShape{-1}) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "All input and output tensors must have one dimension of "
-                "unknown size. TensorShape should be {-1}";
+      return absl::InvalidArgumentError(
+          "All input and output tensors must have one dimension of "
+          "unknown size. TensorShape should be {-1}");
     }
   }
   return absl::OkStatus();
@@ -768,7 +771,7 @@ Status GroupByFactory::CheckIntrinsic(const Intrinsic& intrinsic,
 
 // Create a vector of OneDimBaseGroupingAggregators based upon nested
 // intrinsics
-StatusOr<std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>>>
+absl::StatusOr<std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>>>
 GroupByFactory::CreateAggregators(
     const Intrinsic& intrinsic,
     const GroupByAggregatorState* aggregator_state) {
@@ -800,8 +803,9 @@ GroupByFactory::CreateAggregators(
     num_value_inputs += nested.inputs.size();
   }
   if (num_value_inputs + intrinsic.inputs.size() == 0) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "GroupByFactory: Must operate on a "
-                                           "nonzero number of input tensors.";
+    return absl::InvalidArgumentError(
+        "GroupByFactory: Must operate on a "
+        "nonzero number of input tensors.");
   }
   return nested_aggregators;
 }
@@ -821,22 +825,23 @@ Status GroupByFactory::PopulateKeyCombinerFromState(
   return key_combiner.CompositeKeyCombiner::Accumulate(keys).status();
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::Create(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::Create(
     const Intrinsic& intrinsic) const {
   return CreateInternal(intrinsic, nullptr);
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::Deserialize(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::Deserialize(
     const Intrinsic& intrinsic, std::string serialized_state) const {
   GroupByAggregatorState aggregator_state;
   if (!aggregator_state.ParseFromString(serialized_state)) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByFactory: Failed to parse serialized aggregator.";
+    return absl::InvalidArgumentError(
+        "GroupByFactory: Failed to parse serialized aggregator.");
   }
   return CreateInternal(intrinsic, &aggregator_state);
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
+absl::StatusOr<std::unique_ptr<TensorAggregator>>
+GroupByFactory::CreateInternal(
     const Intrinsic& intrinsic,
     const GroupByAggregatorState* aggregator_state) const {
   // Check that the configuration is valid for fedsql_group_by.
@@ -844,31 +849,31 @@ StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::CreateInternal(
 
   // The GroupByAggregator expects at most one parameters
   if (intrinsic.parameters.size() > 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "GroupByFactory: At most one input parameter expected.";
+    return absl::InvalidArgumentError(
+        "GroupByFactory: At most one input parameter expected.");
   }
   std::optional<int> min_contributors_to_group = std::nullopt;
   if (intrinsic.parameters.size() == 1) {
     if (intrinsic.parameters[0].name() != "min_contributors_to_group") {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupByFactory: The name of the provided parameter does not "
-                "match an expected parameter.";
+      return absl::InvalidArgumentError(
+          "GroupByFactory: The name of the provided parameter does not "
+          "match an expected parameter.");
     }
     min_contributors_to_group = intrinsic.parameters[0].CastToScalar<int>();
     if (*min_contributors_to_group <= 0) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupByFactory: The min_contributors_to_group parameter "
-                "must "
-                "be positive if provided.";
+      return absl::InvalidArgumentError(
+          "GroupByFactory: The min_contributors_to_group parameter "
+          "must "
+          "be positive if provided.");
     }
   }
 
   // The nested intrinsics' URIs should begin with kFedSqlPrefix
   for (const Intrinsic& nested : intrinsic.nested_intrinsics) {
     if (!absl::StartsWith(nested.uri, kFedSqlPrefix)) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupByFactory: Nested intrinsic URIs must start with '"
-             << kFedSqlPrefix << "'.";
+      return absl::InvalidArgumentError(absl::StrCat(
+          "GroupByFactory: Nested intrinsic URIs must start with '",
+          kFedSqlPrefix, "'."));
     }
   }
 

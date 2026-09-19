@@ -26,6 +26,8 @@
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
@@ -55,12 +57,12 @@ class GroupByAggregatorPeer {
         dynamic_cast<GroupByAggregator*>(aggregator.release()));
   }
 
-  Status AddOneContributor(Tensor ordinals) {
+  absl::Status AddOneContributor(Tensor ordinals) {
     return aggregator_->AddOneContributor(std::move(ordinals));
   }
 
-  Status AddMultipleContributors(Tensor ordinals,
-                                 std::vector<int> num_contributors) {
+  absl::Status AddMultipleContributors(Tensor ordinals,
+                                       std::vector<int> num_contributors) {
     return aggregator_->AddMultipleContributors(ordinals, num_contributors);
   }
 
@@ -69,19 +71,19 @@ class GroupByAggregatorPeer {
   }
 
   template <typename OutputType>
-  static Status ShrinkTensorSliceToSurvivors(
+  static absl::Status ShrinkTensorSliceToSurvivors(
       TensorSliceData& column,
       const absl::flat_hash_set<size_t>& survivor_indices) {
     return GroupByAggregator::ShrinkTensorSliceToSurvivors<OutputType>(
         column, survivor_indices);
   }
 
-  static StatusOr<GroupByAggregator::HistogramAsSliceData>
+  static absl::StatusOr<GroupByAggregator::HistogramAsSliceData>
   ConvertHistogramToSliceData(OutputTensorList& histogram) {
     return GroupByAggregator::ConvertHistogramToSliceData(histogram);
   }
 
-  static StatusOr<OutputTensorList> ShrinkHistogramToSurvivors(
+  static absl::StatusOr<OutputTensorList> ShrinkHistogramToSurvivors(
       GroupByAggregator::HistogramAsSliceData histogram_as_slice_data,
       const absl::flat_hash_set<size_t>& survivor_indices) {
     return GroupByAggregator::ShrinkHistogramToSurvivors(
@@ -90,7 +92,7 @@ class GroupByAggregatorPeer {
 
   // Serializes and then deserializes the aggregator. Used to test serialization
   // and deserialization preserve state in tests using a peer.
-  Status SerializeAndDeserialize(const Intrinsic& intrinsic) {
+  absl::Status SerializeAndDeserialize(const Intrinsic& intrinsic) {
     TFF_ASSIGN_OR_RETURN(std::string serialized_state,
                          std::move(*aggregator_).Serialize());
     TFF_ASSIGN_OR_RETURN(auto factory, GetAggregatorFactory(intrinsic.uri));
@@ -103,13 +105,13 @@ class GroupByAggregatorPeer {
     // Check if the cast failed before transferring ownership to be cautious
     // around potential memory leaks.
     if (aggregator_raw_ptr == nullptr) {
-      return TFF_STATUS(INTERNAL)
-             << "Failed to cast deserialized aggregator to GroupByAggregator";
+      return absl::InternalError(
+          "Failed to cast deserialized aggregator to GroupByAggregator");
     }
     deserialized_aggregator.release();
     aggregator_.reset(aggregator_raw_ptr);
 
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
  private:
@@ -190,14 +192,14 @@ struct KeyValuePair {
 
 // Helper function to convert output tensors to a vector of key-value pairs.
 template <typename KeyType, typename ValueType>
-StatusOr<std::vector<KeyValuePair<KeyType, ValueType>>> TensorsToKeyValuePairs(
-    const Tensor& keys_tensor, const Tensor& values_tensor) {
+absl::StatusOr<std::vector<KeyValuePair<KeyType, ValueType>>>
+TensorsToKeyValuePairs(const Tensor& keys_tensor, const Tensor& values_tensor) {
   std::vector<KeyValuePair<KeyType, ValueType>> result;
   auto keys = keys_tensor.AsSpan<KeyType>();
   auto values = values_tensor.AsSpan<ValueType>();
   if (keys.size() != values.size()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Keys and values tensors must have the same size.";
+    return absl::InvalidArgumentError(
+        "Keys and values tensors must have the same size.");
   }
   for (size_t i = 0; i < keys.size(); ++i) {
     result.push_back({
@@ -211,7 +213,7 @@ StatusOr<std::vector<KeyValuePair<KeyType, ValueType>>> TensorsToKeyValuePairs(
 // Helper function to convert output tensors to a vector of key-value pairs
 // when there are multiple value tensors.
 template <typename KeyType, typename ValueType>
-StatusOr<std::vector<std::vector<KeyValuePair<KeyType, ValueType>>>>
+absl::StatusOr<std::vector<std::vector<KeyValuePair<KeyType, ValueType>>>>
 TensorsToMultipleKeyValuePairs(const Tensor& keys_tensor,
                                const std::vector<Tensor>& values_tensors) {
   std::vector<std::vector<KeyValuePair<KeyType, ValueType>>> result;
@@ -220,8 +222,8 @@ TensorsToMultipleKeyValuePairs(const Tensor& keys_tensor,
     std::vector<KeyValuePair<KeyType, ValueType>> pairs;
     auto values = values_tensor.AsSpan<ValueType>();
     if (keys.size() != values.size()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Keys and values tensors must have the same size.";
+      return absl::InvalidArgumentError(
+          "Keys and values tensors must have the same size.");
     }
     for (size_t i = 0; i < keys.size(); ++i) {
       pairs.push_back({keys[i], values[i]});
@@ -1185,7 +1187,7 @@ TEST(GroupByAggregatorTest, AccumulateKeyTensorHasIncompatibleDataType) {
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
   Tensor key(1.2f);
   Tensor t(0);
-  Status s = group_by_aggregator->Accumulate({&key, &t});
+  absl::Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(
       s.message(),
@@ -1197,7 +1199,7 @@ TEST(GroupByAggregatorTest, AccumulateValueTensorHasIncompatibleDataType) {
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
   Tensor key("key_string");
   Tensor t(1.2f);
-  Status s = group_by_aggregator->Accumulate({&key, &t});
+  absl::Status s = group_by_aggregator->Accumulate({&key, &t});
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(
       s.message(),

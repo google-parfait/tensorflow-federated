@@ -23,6 +23,7 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -470,7 +471,7 @@ TEST(TensorTest, FromProtoMultipleFields) {
   for (int32_t v : values) {
     tensor_proto.add_int_val(v);
   }
-  Status s = Tensor::FromProto(tensor_proto).status();
+  absl::Status s = Tensor::FromProto(tensor_proto).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(
       s.message(),
@@ -486,7 +487,7 @@ TEST(TensorTest, FromProtoMismatchedType) {
   for (int32_t v : values) {
     tensor_proto.add_int_val(v);
   }
-  Status s = Tensor::FromProto(tensor_proto).status();
+  absl::Status s = Tensor::FromProto(tensor_proto).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
               HasSubstr("Tensor proto contains data of unexpected data type"));
@@ -506,7 +507,7 @@ TEST(TensorTest, FromProtoNoDataMismatchShape) {
   TensorProto tensor_proto;
   tensor_proto.set_dtype(DT_STRING);
   tensor_proto.mutable_shape()->add_dim_sizes(2);
-  Status s = Tensor::FromProto(tensor_proto).status();
+  absl::Status s = Tensor::FromProto(tensor_proto).status();
   EXPECT_THAT(s, StatusIs(FAILED_PRECONDITION));
   EXPECT_THAT(s.message(), HasSubstr("TensorData byte_size is inconsistent "
                                      "with the Tensor dtype and shape"));
@@ -544,7 +545,7 @@ TEST(TensorTest, FromProtoStringContentNumExceedsMax) {
   tensor_proto.mutable_shape()->add_dim_sizes(32769);
   // A non-empty content is needed to trigger DecodeContent for strings.
   tensor_proto.set_content("x");
-  Status s = Tensor::FromProto(tensor_proto).status();
+  absl::Status s = Tensor::FromProto(tensor_proto).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
               HasSubstr("more than the maximum allowed number of string "

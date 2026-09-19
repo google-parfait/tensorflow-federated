@@ -27,6 +27,8 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
@@ -71,58 +73,58 @@ enum class SupportedDPAlgorithms {
 Status ValidateDPParameters(double epsilon, double delta,
                             int64_t max_groups_contributed) {
   if (epsilon <= 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: Epsilon must be positive.";
+    return absl::InvalidArgumentError(
+        "DPGroupByFactory: Epsilon must be positive.");
   }
   if (delta <= 0 || delta >= 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: For DP histograms, delta must lie between 0 "
-           << "and 1.";
+    return absl::InvalidArgumentError(
+        "DPGroupByFactory: For DP histograms, delta must lie between 0 "
+        "and 1.");
   }
   if (max_groups_contributed <= 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: For DP histograms, max_groups_contributed must"
-              " be positive.";
+    return absl::InvalidArgumentError(
+        "DPGroupByFactory: For DP histograms, max_groups_contributed must"
+        " be positive.");
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 // Build a map of parameter names to indices from an intrinsic.
-StatusOr<absl::flat_hash_map<std::string, int>> CreateParameterNameToIndexMap(
-    const Intrinsic& intrinsic) {
+absl::StatusOr<absl::flat_hash_map<std::string, int>>
+CreateParameterNameToIndexMap(const Intrinsic& intrinsic) {
   absl::flat_hash_map<std::string, int> parameter_name_to_index;
   for (int i = 0; i < intrinsic.parameters.size(); ++i) {
     if (parameter_name_to_index.contains(intrinsic.parameters[i].name())) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: Duplicate parameter name: "
-             << intrinsic.parameters[i].name();
+      return absl::InvalidArgumentError(
+          absl::StrCat("DPGroupByFactory: Duplicate parameter name: ",
+                       intrinsic.parameters[i].name()));
     }
     parameter_name_to_index[intrinsic.parameters[i].name()] = i;
   }
   return parameter_name_to_index;
 }
 
-StatusOr<int> FindDPParameterLocationByName(
+absl::StatusOr<int> FindDPParameterLocationByName(
     const Intrinsic& intrinsic,
     const absl::flat_hash_map<std::string, int>& parameter_name_to_index,
     absl::string_view name) {
   auto it = parameter_name_to_index.find(name);
   if (it == parameter_name_to_index.end()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: For all DP histograms, epsilon, delta, "
-              "and "
-              "max_groups_contributed must be provided, but "
-           << name << " was not found amongst parameters.";
+    return absl::InvalidArgumentError(
+        absl::StrCat("DPGroupByFactory: For all DP histograms, epsilon, delta, "
+                     "and "
+                     "max_groups_contributed must be provided, but ",
+                     name, " was not found amongst parameters."));
   }
   if (internal::GetTypeKind(intrinsic.parameters[it->second].dtype()) !=
       internal::TypeKind::kNumeric) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: " << name << " must be numerical.";
+    return absl::InvalidArgumentError(
+        absl::StrCat("DPGroupByFactory: ", name, " must be numerical."));
   }
   return it->second;
 }
 
-StatusOr<DPParameters> FindDPParameters(
+absl::StatusOr<DPParameters> FindDPParameters(
     const Intrinsic& intrinsic,
     const absl::flat_hash_map<std::string, int>& parameter_name_to_index) {
   // Find the indices of the DP parameters. We can't return the parameters
@@ -156,7 +158,7 @@ StatusOr<DPParameters> FindDPParameters(
 // Ensure that the key_names tensor has the correct length and is composed of
 // strings. Should only be called in the closed-domain case, i.e. if key_names
 // is present in the parameters.
-StatusOr<std::vector<std::string>> FindAndValidateKeyNames(
+absl::StatusOr<std::vector<std::string>> FindAndValidateKeyNames(
     const Intrinsic& intrinsic,
     const absl::flat_hash_map<std::string, int>& parameter_name_to_index) {
   int64_t num_keys = intrinsic.inputs.size();
@@ -166,18 +168,18 @@ StatusOr<std::vector<std::string>> FindAndValidateKeyNames(
   int key_names_index = parameter_name_to_index.find("key_names")->second;
   key_names = intrinsic.parameters.at(key_names_index).ToStringVector();
   if (key_names.size() != num_keys) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: The number of key names provided ("
-           << key_names.size()
-           << ") does not match the number of input tensors provided ("
-           << num_keys << ").";
+    return absl::InvalidArgumentError(
+        absl::StrCat("DPGroupByFactory: The number of key names provided (",
+                     key_names.size(),
+                     ") does not match the number of input tensors provided (",
+                     num_keys, ")."));
   }
   DataType domain_type = intrinsic.parameters[key_names_index].dtype();
   if (domain_type != DT_STRING) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: Key names should be of type string but "
-              "were type "
-           << DataType_Name(domain_type) << " instead.";
+    return absl::InvalidArgumentError(
+        absl::StrCat("DPGroupByFactory: Key names should be of type string but "
+                     "were type ",
+                     DataType_Name(domain_type), " instead."));
   }
   return key_names;
 }
@@ -187,19 +189,19 @@ StatusOr<std::vector<std::string>> FindAndValidateKeyNames(
 // the correct types. If those conditions are met, it returns the index of the
 // first key in the parameters. parameter_name_to_index is a map of parameter
 // names to their indices in the parameters of the intrinsic.
-StatusOr<TensorSpan> FindAndValidateKeys(
+absl::StatusOr<TensorSpan> FindAndValidateKeys(
     const Intrinsic& intrinsic, absl::Span<const std::string> key_names,
     const absl::flat_hash_map<std::string, int>& parameter_name_to_index) {
   if (key_names.empty()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: No keys were provided to FindAndValidateKeys.";
+    return absl::InvalidArgumentError(
+        "DPGroupByFactory: No keys were provided to FindAndValidateKeys.");
   }
   auto it = parameter_name_to_index.find(key_names[0]);
   if (it == parameter_name_to_index.end()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: The key name " << key_names[0]
-           << " was listed in the key_names tensor but was not found "
-              "amongst parameters.";
+    return absl::InvalidArgumentError(
+        absl::StrCat("DPGroupByFactory: The key name ", key_names[0],
+                     " was listed in the key_names tensor but was not found "
+                     "amongst parameters."));
   }
   int first_key_index = it->second;
   for (int i = 0; i < key_names.size(); ++i) {
@@ -207,19 +209,19 @@ StatusOr<TensorSpan> FindAndValidateKeys(
     int index = first_key_index + i;
     if (index >= intrinsic.parameters.size() ||
         intrinsic.parameters[index].name() != key_name) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: The key " << key_name
-             << " was not found immediately after the previous key in the "
-                "parameters. All keys must be listed in order amongst the "
-                "parameters.";
+      return absl::InvalidArgumentError(absl::StrCat(
+          "DPGroupByFactory: The key ", key_name,
+          " was not found immediately after the previous key in the "
+          "parameters. All keys must be listed in order amongst the "
+          "parameters."));
     }
     DataType domain_type = intrinsic.parameters[index].dtype();
     DataType expected_type = intrinsic.inputs[i].dtype();
     if (domain_type != expected_type) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: Domain tensor for key " << key_name
-             << " should have type " << DataType_Name(expected_type)
-             << " but has type " << DataType_Name(domain_type) << " instead.";
+      return absl::InvalidArgumentError(absl::StrCat(
+          "DPGroupByFactory: Domain tensor for key ", key_name,
+          " should have type ", DataType_Name(expected_type), " but has type ",
+          DataType_Name(domain_type), " instead."));
     }
   }
 
@@ -239,23 +241,23 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic,
   // The following check will be updated when this changes.
   for (const auto& intrinsic : intrinsic.nested_intrinsics) {
     if (intrinsic.uri != kDPSumUri) {
-      return TFF_STATUS(UNIMPLEMENTED) << "DPGroupByFactory: Currently, only "
-                                          "nested DP sums are supported.";
+      return absl::UnimplementedError(
+          "DPGroupByFactory: Currently, only nested DP sums are supported.");
     }
 
     // Verify presence of all norm bounds
     if (intrinsic.parameters.size() != kNumDPSumParameters) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: Linfinity, L1, and L2 bounds are expected.";
+      return absl::InvalidArgumentError(
+          "DPGroupByFactory: Linfinity, L1, and L2 bounds are expected.");
     }
 
     // Verify that the norm bounds are in numerical Tensors
     for (const auto& parameter_tensor : intrinsic.parameters) {
       if (internal::GetTypeKind(parameter_tensor.dtype()) !=
           internal::TypeKind::kNumeric) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "DPGroupByFactory: Norm bounds must be stored in"
-                  " numerical Tensors.";
+        return absl::InvalidArgumentError(
+            "DPGroupByFactory: Norm bounds must be stored in"
+            " numerical Tensors.");
       }
     }
 
@@ -272,10 +274,10 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic,
         has_linfinity_bound = linfinity_tensor.CastToScalar<InputType>() > 0);
     if (which_algorithm == SupportedDPAlgorithms::kPostAggregationThreshold) {
       if (!has_linfinity_bound) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "DPGroupByFactory: Each nested intrinsic must provide a "
-                  "positive Linfinity bound if boh min_contributors_to_group "
-                  "and domain keys are absent.";
+        return absl::InvalidArgumentError(
+            "DPGroupByFactory: Each nested intrinsic must provide a "
+            "positive Linfinity bound if boh min_contributors_to_group "
+            "and domain keys are absent.");
       }
     } else {
       // All other algorithms require any of L1, L2, or Linfinity bounds.
@@ -284,18 +286,18 @@ Status ValidateNestedIntrinsics(const Intrinsic& intrinsic,
       bool has_l2_bound =
           l2 > 0 && l2 != std::numeric_limits<double>::infinity();
       if (!has_linfinity_bound && !has_l1_bound && !has_l2_bound) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "DPGroupByFactory: Closed-domain DP histograms require "
-                  "either an L1 bound, an L2 bound, or an Linfinity bound.";
+        return absl::InvalidArgumentError(
+            "DPGroupByFactory: Closed-domain DP histograms require "
+            "either an L1 bound, an L2 bound, or an Linfinity bound.");
       }
     }
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 // Find the min_contributors_to_group parameter in the intrinsic. If it is not
 // present, return nullopt. If it is present but non-positive, return an error.
-StatusOr<std::optional<int64_t>> FindMinContributorsToGroup(
+absl::StatusOr<std::optional<int64_t>> FindMinContributorsToGroup(
     const Intrinsic& intrinsic,
     const absl::flat_hash_map<std::string, int>& parameter_name_to_index) {
   std::optional<int64_t> min_contributors_to_group = std::nullopt;
@@ -306,20 +308,20 @@ StatusOr<std::optional<int64_t>> FindMinContributorsToGroup(
   }
   if (min_contributors_to_group.has_value() &&
       *min_contributors_to_group <= 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: min_contributors_to_group must be positive.";
+    return absl::InvalidArgumentError(
+        "DPGroupByFactory: min_contributors_to_group must be positive.");
   }
   return min_contributors_to_group;
 }
 
 }  // namespace
 
-StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Create(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Create(
     const Intrinsic& intrinsic) const {
   return CreateInternal(intrinsic, nullptr);
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Deserialize(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Deserialize(
     const Intrinsic& intrinsic, std::string serialized_state) const {
   // Serialization branched on epsilon, so we need to first extract epsilon and
   // then branch on it.
@@ -336,13 +338,15 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Deserialize(
   }
   GroupByAggregatorState aggregator_state;
   if (!aggregator_state.ParseFromString(serialized_state)) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "DPGroupByFactory::Deserialize: "
-                                           "Failed to parse serialized state.";
+    return absl::InvalidArgumentError(
+        "DPGroupByFactory::Deserialize: "
+        "Failed to parse serialized state.");
   }
   return CreateInternal(intrinsic, &aggregator_state);
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
+absl::StatusOr<std::unique_ptr<TensorAggregator>>
+DPGroupByFactory::CreateInternal(
     const Intrinsic& intrinsic,
     const GroupByAggregatorState* aggregator_state) const {
   // Check if the intrinsic is well-formed.

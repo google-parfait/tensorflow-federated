@@ -20,8 +20,9 @@
 #include <cstddef>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 
 namespace tensorflow_federated {
@@ -33,20 +34,20 @@ namespace aggregation {
 class Partitioner {
  public:
   // Calculates hashes from the key tensors and creates a Partitioner instance.
-  static StatusOr<Partitioner> Create(const std::vector<Tensor>& key_tensors,
-                                      int num_partitions);
+  static absl::StatusOr<Partitioner> Create(
+      const std::vector<Tensor>& key_tensors, int num_partitions);
 
   // Partitions the input key tensor into multiple slices.
-  StatusOr<std::vector<Tensor>> PartitionKeys(const Tensor& key_tensor);
+  absl::StatusOr<std::vector<Tensor>> PartitionKeys(const Tensor& key_tensor);
 
   // Partitions the input vector data into multiple slices.
   template <typename T>
-  StatusOr<std::vector<std::vector<T>>> PartitionData(
+  absl::StatusOr<std::vector<std::vector<T>>> PartitionData(
       const std::vector<T>& data) const {
     if (data.size() != hashes_.size()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "The number of elements in the input data should be equal "
-                "to the number of hashes.";
+      return absl::InvalidArgumentError(
+          "The number of elements in the input data should be equal "
+          "to the number of hashes.");
     }
     return PartitionInternal<T>(data);
   }

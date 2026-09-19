@@ -19,6 +19,8 @@
 
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
@@ -37,19 +39,20 @@ class DPTensorAggregator : public TensorAggregator {
   // This member function should be called in lieu of Report(). Given epsilon &
   // delta, it will perform the DP mechanism with those parameters and return
   // the result.
-  virtual StatusOr<OutputTensorList> ReportWithEpsilonAndDelta(
+  virtual absl::StatusOr<OutputTensorList> ReportWithEpsilonAndDelta(
       double epsilon, double delta) && = 0;
 
   // Verify that the input tensors match the member specifications.
   // Called within DPTensorAggregator::AggregateTensors(). Also called by
   // DPTensorAggregatorBundle::AggregateTensors(), to check all inputs before
   // passing them to the child aggregators.
-  Status ValidateInputs(const InputTensorList& input) const override;
+  virtual absl::Status ValidateInputs(
+      const InputTensorList& input) const override;
 
   // Verify that the other aggregator can be merged with this one.
   // Called by MergeWith. Also called by DPTensorAggregatorBundle::IsCompatible,
   // to check all child aggregators before merging.
-  virtual Status IsCompatible(const TensorAggregator& other) const = 0;
+  virtual absl::Status IsCompatible(const TensorAggregator& other) const = 0;
 
  protected:
   // TakeOutputs() is deprecated given the use of ReportWithEpsilonAndDelta().

@@ -344,7 +344,7 @@ TEST(FederatedMeanTest, Create_WrongUri) {
                       {},
                       {}};
 
-  Status s =
+  auto s =
       (*GetAggregatorFactory("federated_mean"))->Create(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Expected intrinsic URI federated_mean"));
@@ -358,7 +358,7 @@ TEST(FederatedMeanTest, Create_UnsupportedNumberOfInputs) {
       {},
       {}};
 
-  Status s = CreateTensorAggregator(intrinsic).status();
+  auto s = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(
       s.message(),

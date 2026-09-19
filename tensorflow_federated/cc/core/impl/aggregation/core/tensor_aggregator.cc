@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 
@@ -45,19 +46,19 @@ Status TensorAggregator::AccumulateWithoutValidation(InputTensorList tensors) {
 
 bool TensorAggregator::CanReport() const { return CheckValid().ok(); }
 
-StatusOr<OutputTensorList> TensorAggregator::Report() && {
+absl::StatusOr<OutputTensorList> TensorAggregator::Report() && {
   TFF_RETURN_IF_ERROR(CheckValid());
   if (!CanReport()) {
-    return TFF_STATUS(FAILED_PRECONDITION)
-           << "TensorAggregator::Report: the report goal isn't met";
+    return absl::FailedPreconditionError(
+        "TensorAggregator::Report: the report goal isn't met");
   }
   return std::move(*this).TakeOutputs();
 }
 
-StatusOr<std::vector<std::string>> TensorAggregator::Partition(
+absl::StatusOr<std::vector<std::string>> TensorAggregator::Partition(
     int num_partitions) && {
-  return TFF_STATUS(UNIMPLEMENTED)
-         << "TensorAggregator::Partition is not supported";
+  return absl::UnimplementedError(
+      "TensorAggregator::Partition is not supported");
 }
 
 }  // namespace aggregation

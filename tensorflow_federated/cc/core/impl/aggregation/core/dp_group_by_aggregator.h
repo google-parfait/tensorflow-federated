@@ -24,8 +24,9 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
@@ -41,7 +42,7 @@ namespace tensorflow_federated {
 namespace aggregation {
 
 // Number of bytes to represent a number in `varint` format.
-StatusOr<int64_t> CalculateVarintByteSize(int64_t value);
+absl::StatusOr<int64_t> CalculateVarintByteSize(int64_t value);
 
 // The DPGroupByAggregator is an abstract base class for GroupBy aggregations
 // that enforce differential privacy (DP).
@@ -49,16 +50,17 @@ class DPGroupByAggregator : public GroupByAggregator {
  public:
   // Every DPGroupByAggregator's Report() has the same form: check preconditions
   // and then call NoisyReport().
-  StatusOr<OutputTensorList> Report() && override;
+  absl::StatusOr<OutputTensorList> Report() && override;
 
   // Validates the input tensors, adding the string length check on top of what
   // GroupByAggregator::ValidateInputs does.
-  Status ValidateInputs(const InputTensorList& tensors) const override;
+  absl::Status ValidateInputs(const InputTensorList& tensors) const override;
 
   // Given a serialized state, returns how many bytes convey information about
   // uploads (length minus # of bytes for padding and encoding padding length).
   // Returns an error status when the padding length cannot be parsed.
-  static StatusOr<int64_t> GetContentSize(absl::string_view serialized_state);
+  static absl::StatusOr<int64_t> GetContentSize(
+      absl::string_view serialized_state);
 
   // Creates a DP key combiner.
   static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
@@ -66,7 +68,7 @@ class DPGroupByAggregator : public GroupByAggregator {
       const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
       std::optional<DomainSpec> domain_spec = std::nullopt);
 
-  virtual StatusOr<std::string> GetNoiseDescription() const;
+  virtual absl::StatusOr<std::string> GetNoiseDescription() const;
 
  protected:
   // Constructs a DPGroupByAggregator. Only intended for use by child classes.
@@ -97,15 +99,16 @@ class DPGroupByAggregator : public GroupByAggregator {
   // Serializes the aggregator state. Pads the length with a random amount of
   // kPaddingCharacter when DP is enabled. Terminates with a fixed number of
   // bytes representing the length of the padding.
-  StatusOr<std::string> Serialize() && override;
+  absl::StatusOr<std::string> Serialize() && override;
 
   // Creates partitions of the aggregator state identically with
   // GroupByAggregator::Partition(), and then applies the same padding to each
   // serialized state as Serialize().
-  StatusOr<std::vector<std::string>> Partition(int num_partitions) && override;
+  absl::StatusOr<std::vector<std::string>> Partition(int num_partitions) &&
+      override;
 
   // Different DP algorithms will produce noisy reports in different ways.
-  virtual StatusOr<OutputTensorList> NoisyReport() = 0;
+  virtual absl::StatusOr<OutputTensorList> NoisyReport() = 0;
 
   // Access the maximum number of groups that a privacy unit can contribute to.
   int64_t max_groups_contributed() const { return max_groups_contributed_; }
@@ -117,7 +120,7 @@ class DPGroupByAggregator : public GroupByAggregator {
   double delta_per_agg() const { return delta_per_agg_; }
 
   // Access the DPHistogramBundle for a given aggregation.
-  StatusOr<const DPHistogramBundle&> GetBundle(int i) const;
+  absl::StatusOr<const DPHistogramBundle&> GetBundle(int i) const;
 
   // Add to the vector of DPHistogramBundles.
   void AddBundle(DPHistogramBundle bundle) {
@@ -126,14 +129,15 @@ class DPGroupByAggregator : public GroupByAggregator {
 
   // Calculate how much a single Accumulate call impacts the length of the
   // output of Serialize().
-  StatusOr<int64_t> CalculateSerializeSensitivity();
+  absl::StatusOr<int64_t> CalculateSerializeSensitivity();
 
   // Computes the L1 sensitivity of the sum of the lengths of all serialized
   // states returned by Partition().
-  StatusOr<int64_t> CalculatePartitionSensitivity(int num_partitions);
+  absl::StatusOr<int64_t> CalculatePartitionSensitivity(int num_partitions);
 
  private:
-  StatusOr<int64_t> CalculateSensitivityImpl(int64_t partitions_influenced);
+  absl::StatusOr<int64_t> CalculateSensitivityImpl(
+      int64_t partitions_influenced);
 
   double epsilon_;
   double delta_;

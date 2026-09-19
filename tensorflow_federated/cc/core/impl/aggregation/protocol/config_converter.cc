@@ -71,20 +71,20 @@ void TransformFedSqlSpecs(Intrinsic& intrinsic) {
   }
 }
 
-Status IntrinsicConfigArgumentError(
+absl::Status IntrinsicConfigArgumentError(
     const Configuration::IntrinsicConfig& intrinsic_config,
     string_view error_message) {
-  return TFF_STATUS(INVALID_ARGUMENT)
-         << absl::StrCat("IntrinsicConfig: ", error_message, ":\n",
-                         intrinsic_config.DebugString());
+  return absl::InvalidArgumentError(
+      absl::StrCat("IntrinsicConfig: ", error_message, ":\n",
+                   intrinsic_config.DebugString()));
 }
 
 // Parses an IntrinsicConfig proto into an Intrinsic struct to
 // represent the aggregation intrinsic independently from the proto.
-StatusOr<Intrinsic> ParseFromConfig(
+absl::StatusOr<Intrinsic> ParseFromConfig(
     const Configuration::IntrinsicConfig& intrinsic_config);
 
-StatusOr<std::vector<Intrinsic>> ParseFromConfig(
+absl::StatusOr<std::vector<Intrinsic>> ParseFromConfig(
     string_view parent_uri,
     const google::protobuf::RepeatedPtrField<Configuration::IntrinsicConfig>&
         intrinsic_configs) {
@@ -127,14 +127,14 @@ StatusOr<std::vector<Intrinsic>> ParseFromConfig(
     }
     if (is_fedsql && need_fedsql_wrapper) {
       if (intrinsic.uri == kDPSumUri) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "Inner DP sum intrinsics must already be wrapped with an "
-                  "outer DPGroupByAggregator intrinsic.";
+        return absl::InvalidArgumentError(
+            "Inner DP sum intrinsics must already be wrapped with an "
+            "outer DPGroupByAggregator intrinsic.");
       }
       if (intrinsic.uri == kDPQuantileUri) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "Inner DP quantile intrinsics must already be wrapped with "
-                  "an outer DPTensorAggregatorBundle intrinsic.";
+        return absl::InvalidArgumentError(
+            "Inner DP quantile intrinsics must already be wrapped with "
+            "an outer DPTensorAggregatorBundle intrinsic.");
       }
       wrapped_fedsql_intrinsics.push_back(std::move(intrinsic));
     } else {
@@ -151,7 +151,7 @@ StatusOr<std::vector<Intrinsic>> ParseFromConfig(
   return intrinsics;
 }
 
-StatusOr<Intrinsic> ParseFromConfig(
+absl::StatusOr<Intrinsic> ParseFromConfig(
     const Configuration::IntrinsicConfig& intrinsic_config) {
   std::vector<TensorSpec> input_tensor_specs;
   std::vector<Tensor> params;
@@ -188,13 +188,13 @@ StatusOr<Intrinsic> ParseFromConfig(
       std::all_of(params.begin(), params.end(),
                   [](const Tensor& param) { return param.name().empty(); });
   if (any_unnamed && !all_unnamed) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Either all parameters must be named or none of them may be.";
+    return absl::InvalidArgumentError(
+        "Either all parameters must be named or none of them may be.");
   }
   if (intrinsic_config.intrinsic_uri() == kDPGroupByUri && any_unnamed) {
     if (params.size() < 3) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Insufficient parameters provided for DPGroupBy.";
+      return absl::InvalidArgumentError(
+          "Insufficient parameters provided for DPGroupBy.");
     }
     TFF_RETURN_IF_ERROR(params[0].set_name("epsilon"));
     TFF_RETURN_IF_ERROR(params[1].set_name("delta"));
@@ -203,12 +203,12 @@ StatusOr<Intrinsic> ParseFromConfig(
       TFF_RETURN_IF_ERROR(params[3].set_name("key_names"));
       TFF_ASSIGN_OR_RETURN(int num_key_names, params[3].shape().NumElements());
       if (params.size() != num_key_names + 4) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "Number of key names must be equal to the number of "
-                  "remaining parameters.";
+        return absl::InvalidArgumentError(
+            "Number of key names must be equal to the number of "
+            "remaining parameters.");
       }
       if (params[3].dtype() != DT_STRING) {
-        return TFF_STATUS(INVALID_ARGUMENT) << "Key names must be strings.";
+        return absl::InvalidArgumentError("Key names must be strings.");
       }
       auto key_names = params[3].ToStringVector();
       for (int i = 4; i < params.size(); ++i) {
@@ -234,7 +234,8 @@ StatusOr<Intrinsic> ParseFromConfig(
 
 }  // namespace
 
-StatusOr<std::vector<Intrinsic>> ParseFromConfig(const Configuration& config) {
+absl::StatusOr<std::vector<Intrinsic>> ParseFromConfig(
+    const Configuration& config) {
   TFF_RETURN_IF_ERROR(ValidateConfiguration(config));
   return ParseFromConfig("", config.intrinsic_configs());
 }

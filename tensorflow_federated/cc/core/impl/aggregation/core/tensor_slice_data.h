@@ -19,6 +19,8 @@
 #include <cstddef>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -38,15 +40,16 @@ class TensorSliceData : public TensorData {
         byte_offset_(0) {}
 
   // Validates parameters and creates a TensorSliceData instance.
-  static StatusOr<TensorSliceData> Create(Tensor&& tensor, size_t byte_size,
-                                          size_t byte_offset = 0);
+  static absl::StatusOr<TensorSliceData> Create(Tensor&& tensor,
+                                                size_t byte_size,
+                                                size_t byte_offset = 0);
 
   // Reduce the size. Returns an error if the new size is larger than the
   // original size.
-  Status ReduceByteSize(size_t new_size);
+  absl::Status ReduceByteSize(size_t new_size);
 
   template <typename T>
-  StatusOr<absl::Span<T>> AsSpan() {
+  absl::StatusOr<absl::Span<T>> AsSpan() {
     TFF_RETURN_IF_ERROR(CheckValid<T>());
     return absl::Span<T>(const_cast<T*>(reinterpret_cast<const T*>(data())),
                          byte_size() / sizeof(T));

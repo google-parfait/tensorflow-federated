@@ -18,6 +18,8 @@
 
 #include <cstddef>
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 
 namespace tensorflow_federated {
@@ -32,19 +34,19 @@ Status TensorData::CheckValid(size_t value_size, size_t alignment_size) const {
 
   if (byte_size() > 0) {
     if ((byte_size() % value_size) != 0) {
-      return TFF_STATUS(FAILED_PRECONDITION)
-             << "TensorData: byte_size() must be a multiple of value_size "
-             << value_size;
+      return absl::FailedPreconditionError(absl::StrCat(
+          "TensorData: byte_size() must be a multiple of value_size ",
+          value_size));
     }
 
     if (!IsAligned(data(), alignment_size)) {
-      return TFF_STATUS(FAILED_PRECONDITION)
-             << "TensorData: data() address is not aligned by alignment_size "
-             << alignment_size;
+      return absl::FailedPreconditionError(absl::StrCat(
+          "TensorData: data() address is not aligned by alignment_size ",
+          alignment_size));
     }
   }
 
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 }  // namespace aggregation

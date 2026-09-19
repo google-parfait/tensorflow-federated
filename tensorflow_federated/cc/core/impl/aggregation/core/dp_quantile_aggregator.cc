@@ -26,6 +26,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "algorithms/numerical-mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
@@ -59,18 +61,19 @@ Status DPQuantileAggregator<T>::IsCompatible(
     const TensorAggregator& other) const {
   auto* other_ptr = dynamic_cast<const DPQuantileAggregator<T>*>(&other);
   if (other_ptr == nullptr) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregator::IsCompatible: Can only merge with "
-              "another DPQuantileAggregator of the same input type.";
+    return absl::InvalidArgumentError(
+        "DPQuantileAggregator::IsCompatible: Can only merge with "
+        "another DPQuantileAggregator of the same input type.");
   }
 
   // Ensure that the other aggregator has the same target quantile.
   if (target_quantile_ != other_ptr->target_quantile_) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "DPQuantileAggregator::IsCompatible:"
-                                           " Target quantiles must match.";
+    return absl::InvalidArgumentError(
+        "DPQuantileAggregator::IsCompatible:"
+        " Target quantiles must match.");
   }
 
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 // To merge, we insert up to capacity and then perform reservoir sampling.
@@ -90,7 +93,7 @@ Status DPQuantileAggregator<T>::MergeWith(TensorAggregator&& other) {
     buffer_.insert(buffer_.end(), other_ptr->buffer_.begin(),
                    other_ptr->buffer_.end());
     num_inputs_ = num_inputs_ + other_num_inputs;
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
   // Sample without replacement from all items, weighted by the number of items
@@ -149,7 +152,7 @@ Status DPQuantileAggregator<T>::MergeWith(TensorAggregator&& other) {
   reservoir_sampling_count_ =
       std::max(0, num_inputs_ - static_cast<int>(buffer_.size()));
 
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 // Push back the input into the buffer or perform reservoir sampling.
@@ -163,24 +166,23 @@ Status DPQuantileAggregator<T>::AggregateTensors(InputTensorList tensors) {
     InsertWithReservoirSampling(value);
   }
 
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 // Checks if the output has not already been consumed.
 template <typename T>
 Status DPQuantileAggregator<T>::CheckValid() const {
   if (buffer_.size() > kDPQuantileMaxInputs) {
-    return TFF_STATUS(FAILED_PRECONDITION)
-           << "DPQuantileAggregator::CheckValid: Buffer size is "
-           << buffer_.size() << " which is greater than capacity "
-           << kDPQuantileMaxInputs << ".";
+    return absl::FailedPreconditionError(absl::StrCat(
+        "DPQuantileAggregator::CheckValid: Buffer size is ", buffer_.size(),
+        " which is greater than capacity ", kDPQuantileMaxInputs, "."));
   }
   if (output_consumed_) {
-    return TFF_STATUS(FAILED_PRECONDITION)
-           << "DPQuantileAggregator::CheckValid: Output has already been "
-              "consumed.";
+    return absl::FailedPreconditionError(
+        "DPQuantileAggregator::CheckValid: Output has already been "
+        "consumed.");
   }
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 // Create an OutputTensorList containing a single scalar tensor.
@@ -192,8 +194,9 @@ OutputTensorList SingleScalarTensor(double value) {
 
 // Trigger execution of the DP quantile algorithm.
 template <typename T>
-StatusOr<OutputTensorList> DPQuantileAggregator<T>::ReportWithEpsilonAndDelta(
-    double epsilon, double delta) && {
+absl::StatusOr<OutputTensorList>
+DPQuantileAggregator<T>::ReportWithEpsilonAndDelta(double epsilon,
+                                                   double delta) && {
   TFF_RETURN_IF_ERROR(CheckValid());
 
   // When epsilon is above the threshold, noiselessly return the quantile.
@@ -234,18 +237,18 @@ StatusOr<OutputTensorList> DPQuantileAggregator<T>::ReportWithEpsilonAndDelta(
 }
 
 template <>
-StatusOr<OutputTensorList>
+absl::StatusOr<OutputTensorList>
 DPQuantileAggregator<string_view>::ReportWithEpsilonAndDelta(double epsilon,
                                                              double delta) && {
-  return TFF_STATUS(UNIMPLEMENTED)
-         << "DPQuantileAggregator::ReportWithEpsilonAndDelta: string_view is"
-            "not a supported type.";
+  return absl::UnimplementedError(
+      "DPQuantileAggregator::ReportWithEpsilonAndDelta: string_view is"
+      "not a supported type.");
 }
 
 // PrefixSumAboveThreshold iterates over histogram buckets and stops when a
 // private prefix sum exceeds a noisy version of a given threshold.
 template <typename T>
-StatusOr<int> DPQuantileAggregator<T>::PrefixSumAboveThreshold(
+absl::StatusOr<int> DPQuantileAggregator<T>::PrefixSumAboveThreshold(
     double epsilon, absl::flat_hash_map<int, int>& histogram, double threshold,
     int max_bucket) {
   // All estimates will come from the same DP mechanism, as we are answering
@@ -277,49 +280,49 @@ StatusOr<int> DPQuantileAggregator<T>::PrefixSumAboveThreshold(
 }
 
 // The Create method of the DPQuantileAggregatorFactory.
-StatusOr<std::unique_ptr<TensorAggregator>>
+absl::StatusOr<std::unique_ptr<TensorAggregator>>
 DPQuantileAggregatorFactory::CreateInternal(
     const Intrinsic& intrinsic,
     const DPQuantileAggregatorState* aggregator_state) const {
   // First check that the parameter field has a valid target_quantile and
   // nothing else.
   if (intrinsic.parameters.size() != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregatorFactory::Create: Expected exactly one "
-              "parameter, but got "
-           << intrinsic.parameters.size();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "DPQuantileAggregatorFactory::Create: Expected exactly one "
+        "parameter, but got ",
+        intrinsic.parameters.size()));
   }
 
   auto& param = intrinsic.parameters[0];
   if (param.dtype() != DT_DOUBLE) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregatorFactory::Create: Expected a double for the"
-              " `target_quantile` parameter of DPQuantileAggregator, but got "
-           << DataType_Name(param.dtype());
+    return absl::InvalidArgumentError(absl::StrCat(
+        "DPQuantileAggregatorFactory::Create: Expected a double for the"
+        " `target_quantile` parameter of DPQuantileAggregator, but got ",
+        DataType_Name(param.dtype())));
   }
   double target_quantile = param.CastToScalar<double>();
   if (target_quantile <= 0 || target_quantile >= 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregatorFactory::Create: Target quantile must be "
-              "in (0, 1).";
+    return absl::InvalidArgumentError(
+        "DPQuantileAggregatorFactory::Create: Target quantile must be "
+        "in (0, 1).");
   }
 
   // Next, validate the input and output specs.
   // Ensure that input spec has exactly one tensor.
   if (intrinsic.inputs.size() != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregatorFactory::CreateInternal: Expected one input "
-              "tensor, but got "
-           << intrinsic.inputs.size();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "DPQuantileAggregatorFactory::CreateInternal: Expected one input "
+        "tensor, but got ",
+        intrinsic.inputs.size()));
   }
   const TensorSpec& input_spec_tensor = intrinsic.inputs[0];
 
   // Ensure that output spec has exactly one tensor.
   if (intrinsic.outputs.size() != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregatorFactory::CreateInternal: Expected one output"
-              " tensor, but got "
-           << intrinsic.outputs.size();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "DPQuantileAggregatorFactory::CreateInternal: Expected one output"
+        " tensor, but got ",
+        intrinsic.outputs.size()));
   }
   const TensorSpec& output_spec_tensor = intrinsic.outputs[0];
 
@@ -327,10 +330,10 @@ DPQuantileAggregatorFactory::CreateInternal(
   TFF_ASSIGN_OR_RETURN(int num_elements_in_tensor,
                        output_spec_tensor.shape().NumElements());
   if (num_elements_in_tensor != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregatorFactory::CreateInternal: Expected a scalar "
-              "output tensor, but got a tensor with "
-           << num_elements_in_tensor << " elements.";
+    return absl::InvalidArgumentError(absl::StrCat(
+        "DPQuantileAggregatorFactory::CreateInternal: Expected a scalar "
+        "output tensor, but got a tensor with ",
+        num_elements_in_tensor, " elements."));
   }
 
   DataType input_type = input_spec_tensor.dtype();
@@ -338,16 +341,16 @@ DPQuantileAggregatorFactory::CreateInternal(
 
   // Quantile is only defined for numeric input types.
   if (internal::GetTypeKind(input_type) != internal::TypeKind::kNumeric) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregatorFactory::Create: DPQuantileAggregator only "
-              "supports numeric datatypes.";
+    return absl::InvalidArgumentError(
+        "DPQuantileAggregatorFactory::Create: DPQuantileAggregator only "
+        "supports numeric datatypes.");
   }
 
   // To adhere to existing specifications, the output must be a double.
   if (output_type != DT_DOUBLE) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPQuantileAggregatorFactory::Create: Output type must be "
-              "double.";
+    return absl::InvalidArgumentError(
+        "DPQuantileAggregatorFactory::Create: Output type must be "
+        "double.");
   }
 
   if (aggregator_state == nullptr) {

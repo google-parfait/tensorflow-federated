@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -54,9 +55,9 @@ DPTensorAggregatorBundle::DPTensorAggregatorBundle(
 Status DPTensorAggregatorBundle::ValidateInputs(
     const InputTensorList& tensors) const {
   if (tensors.size() != num_tensors_per_input_) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundle::ValidateInputs: Expected "
-           << num_tensors_per_input_ << " tensors, got " << tensors.size();
+    return absl::InvalidArgumentError(
+        absl::StrCat("DPTensorAggregatorBundle::ValidateInputs: Expected ",
+                     num_tensors_per_input_, " tensors, got ", tensors.size()));
   }
 
   // Verify that each batch is valid, by calling ValidateInputs() on the
@@ -90,23 +91,23 @@ Status DPTensorAggregatorBundle::AggregateTensors(InputTensorList tensors) {
   }
   num_inputs_++;
 
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 Status DPTensorAggregatorBundle::IsCompatible(
     const TensorAggregator& other) const {
   const auto* other_ptr = dynamic_cast<const DPTensorAggregatorBundle*>(&other);
   if (other_ptr == nullptr) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundle::IsCompatible: Can only merge with "
-              "another DPTensorAggregatorBundle";
+    return absl::InvalidArgumentError(
+        "DPTensorAggregatorBundle::IsCompatible: Can only merge with "
+        "another DPTensorAggregatorBundle");
   }
   // Check that the number of nested aggregators is the same.
   if (aggregators_.size() != other_ptr->aggregators_.size()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundle::IsCompatible: One bundle has "
-           << aggregators_.size() << " nested aggregators, but the other has "
-           << other_ptr->aggregators_.size() << ".";
+    return absl::InvalidArgumentError(absl::StrCat(
+        "DPTensorAggregatorBundle::IsCompatible: One bundle has ",
+        aggregators_.size(), " nested aggregators, but the other has ",
+        other_ptr->aggregators_.size(), "."));
   }
   // Loop over inner aggregators and check compatibility.
   for (int i = 0; i < aggregators_.size(); ++i) {
@@ -114,7 +115,7 @@ Status DPTensorAggregatorBundle::IsCompatible(
     TFF_RETURN_IF_ERROR(aggregators_[i]->IsCompatible(*(other_aggregators[i])));
   }
 
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 Status DPTensorAggregatorBundle::MergeWith(TensorAggregator&& other) {
@@ -132,7 +133,7 @@ Status DPTensorAggregatorBundle::MergeWith(TensorAggregator&& other) {
   }
   num_inputs_ += other_ptr->num_inputs_;
 
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 OutputTensorList DPTensorAggregatorBundle::TakeOutputs() && {
@@ -151,7 +152,7 @@ OutputTensorList DPTensorAggregatorBundle::TakeOutputs() && {
   return outputs;
 }
 
-StatusOr<std::string> DPTensorAggregatorBundle::Serialize() && {
+absl::StatusOr<std::string> DPTensorAggregatorBundle::Serialize() && {
   DPTensorAggregatorBundleState state;
   state.set_num_inputs(num_inputs_);
   auto* nested_serialized_states = state.mutable_nested_serialized_states();
@@ -164,27 +165,27 @@ StatusOr<std::string> DPTensorAggregatorBundle::Serialize() && {
   return state.SerializeAsString();
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>>
+absl::StatusOr<std::unique_ptr<TensorAggregator>>
 DPTensorAggregatorBundleFactory::Deserialize(
     const Intrinsic& intrinsic, std::string serialized_state) const {
   DPTensorAggregatorBundleState aggregator_state;
   if (!aggregator_state.ParseFromString(serialized_state)) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundleFactory::Deserialize: Failed to parse "
-           << "serialized aggregator.";
+    return absl::InvalidArgumentError(
+        "DPTensorAggregatorBundleFactory::Deserialize: Failed to parse "
+        "serialized aggregator.");
   }
   return CreateInternal(intrinsic, &aggregator_state);
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>>
+absl::StatusOr<std::unique_ptr<TensorAggregator>>
 DPTensorAggregatorBundleFactory::CreateInternal(
     const Intrinsic& intrinsic,
     const DPTensorAggregatorBundleState* aggregator_state) const {
   // Check that there is at least one nested intrinsic.
   if (intrinsic.nested_intrinsics.empty()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundleFactory::CreateInternal: Expected "
-           << "at least one nested intrinsic, got none.";
+    return absl::InvalidArgumentError(
+        "DPTensorAggregatorBundleFactory::CreateInternal: Expected at least "
+        "one nested intrinsic, got none.");
   }
 
   int num_inputs =
@@ -211,10 +212,10 @@ DPTensorAggregatorBundleFactory::CreateInternal(
     auto* dp_aggregator_ptr =
         dynamic_cast<DPTensorAggregator*>(aggregator_ptr.get());
     if (dp_aggregator_ptr == nullptr) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPTensorAggregatorBundleFactory::CreateInternal: Expected "
-             << "all nested intrinsics to be DPTensorAggregators, got "
-             << nested.uri;
+      return absl::InvalidArgumentError(absl::StrCat(
+          "DPTensorAggregatorBundleFactory::CreateInternal: Expected all "
+          "nested intrinsics to be DPTensorAggregators, got ",
+          nested.uri));
     }
     aggregator_ptr.release();  // NOMUTANTS -- Memory ownership transfer.
     nested_aggregators.push_back(
@@ -226,37 +227,38 @@ DPTensorAggregatorBundleFactory::CreateInternal(
 
   // Ensure that there are epsilon and delta parameters.
   if (intrinsic.parameters.size() != 2) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundleFactory::CreateInternal: Expected "
-           << "2 parameters, got " << intrinsic.parameters.size();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "DPTensorAggregatorBundleFactory::CreateInternal: Expected "
+        "2 parameters, got ",
+        intrinsic.parameters.size()));
   }
 
   // Validate epsilon and delta before splitting them.
   if (internal::GetTypeKind(intrinsic.parameters[kEpsilonIndex].dtype()) !=
       internal::TypeKind::kNumeric) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundleFactory::CreateInternal: Epsilon must "
-           << "be numerical.";
+    return absl::InvalidArgumentError(
+        "DPTensorAggregatorBundleFactory::CreateInternal: Epsilon must "
+        "be numerical.");
   }
   double epsilon = intrinsic.parameters[kEpsilonIndex].AsScalar<double>();
   if (internal::GetTypeKind(intrinsic.parameters[kDeltaIndex].dtype()) !=
       internal::TypeKind::kNumeric) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundleFactory::CreateInternal: Delta must "
-           << "be numerical.";
+    return absl::InvalidArgumentError(
+        "DPTensorAggregatorBundleFactory::CreateInternal: Delta must "
+        "be numerical.");
   }
   double delta = intrinsic.parameters[kDeltaIndex].AsScalar<double>();
   if (epsilon <= 0) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "DPTensorAggregatorBundleFactory::"
-                                           "CreateInternal: Epsilon must be "
-                                           "positive, but got "
-                                        << epsilon;
+    return absl::InvalidArgumentError(
+        absl::StrCat("DPTensorAggregatorBundleFactory::"
+                     "CreateInternal: Epsilon must be positive, but got ",
+                     epsilon));
   }
   if (delta < 0 || delta >= 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregatorBundleFactory::CreateInternal: Delta must be "
-              "non-negative and less than 1, but got "
-           << delta;
+    return absl::InvalidArgumentError(absl::StrCat(
+        "DPTensorAggregatorBundleFactory::CreateInternal: Delta must be "
+        "non-negative and less than 1, but got ",
+        delta));
   }
 
   double epsilon_per_agg =

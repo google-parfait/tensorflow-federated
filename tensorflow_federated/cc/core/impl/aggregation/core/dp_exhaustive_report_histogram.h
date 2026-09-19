@@ -22,7 +22,8 @@
 #include <vector>
 
 #include "absl/container/fixed_array.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
@@ -64,7 +65,7 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
   //
   // Takes the same inputs as DPGroupByAggregator, plus `domain_tensors`, a Span
   // of Tensors where the i-th describes the domain of the i-th grouping key.
-  static StatusOr<std::unique_ptr<DPExhaustiveReportHistogram>> Create(
+  static absl::StatusOr<std::unique_ptr<DPExhaustiveReportHistogram>> Create(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
@@ -76,7 +77,7 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
 
   // Checks magnitude of DP budget. If too large, simply releases noiseless
   // aggregate. Otherwise, adds noise scaled to either L1 or L2 sensitivity.
-  StatusOr<OutputTensorList> NoisyReport() override;
+  absl::StatusOr<OutputTensorList> NoisyReport() override;
 
  private:
   // Constructs a DPExhaustiveReportHistogram.
@@ -94,7 +95,7 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
   // When merging two DPExhaustiveReportHistograms, bounding the aggregates will
   // destroy accuracy and is not needed for privacy. Hence, this function calls
   // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
-  StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
+  absl::StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs) override;
 
   // Given indices that specify a combination of keys, increment the index

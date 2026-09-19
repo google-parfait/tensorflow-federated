@@ -77,16 +77,17 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
             contributors_to_groups, max_string_length) {}
   double GetEpsilonPerAgg() { return epsilon_per_agg(); }
   double GetDeltaPerAgg() { return delta_per_agg(); }
-  StatusOr<int64_t> SerializeSensitivity() {
+  absl::StatusOr<int64_t> SerializeSensitivity() {
     return DPGroupByAggregator::CalculateSerializeSensitivity();
   }
-  StatusOr<int64_t> PartitionSensitivity(int num_partitions) {
+  absl::StatusOr<int64_t> PartitionSensitivity(int num_partitions) {
     return DPGroupByAggregator::CalculatePartitionSensitivity(num_partitions);
   }
-  StatusOr<std::string> Serialize() && override {
+  absl::StatusOr<std::string> Serialize() && override {
     return (std::move(*this)).DPGroupByAggregator::Serialize();
   }
-  StatusOr<std::vector<std::string>> Partition(int num_partitions) && override {
+  absl::StatusOr<std::vector<std::string>> Partition(int num_partitions) &&
+      override {
     return (std::move(*this)).DPGroupByAggregator::Partition(num_partitions);
   }
 
@@ -100,7 +101,7 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
   }
 
  protected:
-  StatusOr<OutputTensorList> NoisyReport() override {
+  absl::StatusOr<OutputTensorList> NoisyReport() override {
     return absl::UnimplementedError("Not implemented.");
   }
 };

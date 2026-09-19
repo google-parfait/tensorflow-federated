@@ -20,7 +20,8 @@
 #include <string>
 #include <vector>
 
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -39,39 +40,40 @@ class TensorAggregator
 
   // Check all required invariants on the input tensors, so that we can avoid
   // changing state via Accumulate if they are invalid.
-  virtual Status ValidateInputs(const InputTensorList& tensors) const;
+  virtual absl::Status ValidateInputs(const InputTensorList& tensors) const;
 
   // Implementation of the base Aggregator class methods.
-  Status Accumulate(InputTensorList tensors) override;
+  absl::Status Accumulate(InputTensorList tensors) override;
   bool CanReport() const override;
-  StatusOr<OutputTensorList> Report() && override;
+  absl::StatusOr<OutputTensorList> Report() && override;
 
   // The Accumulate method includes input validation. This variant makes the
   // assumption that validation has already been performed; naturally, it should
   // only be called after ValidateInputs() has returned an OK Status.
-  Status AccumulateWithoutValidation(InputTensorList tensors);
+  absl::Status AccumulateWithoutValidation(InputTensorList tensors);
 
   // Returns the number of aggregated inputs.
   virtual int GetNumInputs() const = 0;
 
   // Serializes the internal state of the TensorAggregator as a string.
-  virtual StatusOr<std::string> Serialize() && = 0;
+  virtual absl::StatusOr<std::string> Serialize() && = 0;
 
   // Partitions the internal state of the TensorAggregator and serializes them
   // as a vector of strings.
-  virtual StatusOr<std::vector<std::string>> Partition(int num_partitions) &&;
+  virtual absl::StatusOr<std::vector<std::string>> Partition(
+      int num_partitions) &&;
 
  protected:
   // Construct TensorAggregator
-  explicit TensorAggregator() {}
+  TensorAggregator() = default;
 
   // The actual implementation of the tensor aggregation to be provided by
   // a derived class.
-  virtual Status AggregateTensors(InputTensorList tensors) = 0;
+  virtual absl::Status AggregateTensors(InputTensorList tensors) = 0;
 
   // Checks if the current TensorAggregator is valid e.g. the resulting output
   // hasn't been consumed.
-  virtual Status CheckValid() const = 0;
+  virtual absl::Status CheckValid() const = 0;
 
   // Consumes the output of this TensorAggregator.
   virtual OutputTensorList TakeOutputs() && = 0;

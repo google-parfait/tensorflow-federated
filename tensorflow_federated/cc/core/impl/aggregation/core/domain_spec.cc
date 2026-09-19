@@ -20,8 +20,9 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 
@@ -45,10 +46,9 @@ class TypedColumnDomainSpec : public ColumnDomainSpec {
   absl::StatusOr<bool> IsMember(const void* datum_ptr,
                                 DataType dtype) const override {
     if (dtype != tensor_dtype_) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "ColumnDomainSpec::IsMember: DataType (" << dtype
-             << ") does not match internal tensor_dtype (" << tensor_dtype_
-             << ").";
+      return absl::InvalidArgumentError(absl::StrCat(
+          "ColumnDomainSpec::IsMember: DataType (", dtype,
+          ") does not match internal tensor_dtype (", tensor_dtype_, ")."));
     }
     return domain_set_.contains(*static_cast<const T*>(datum_ptr));
   }

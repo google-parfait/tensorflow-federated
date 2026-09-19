@@ -26,6 +26,7 @@
 // clang-format on
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -45,9 +46,9 @@ namespace {
 using testing::SizeIs;
 
 class MockFactory : public TensorAggregatorFactory {
-  MOCK_METHOD(StatusOr<std::unique_ptr<TensorAggregator>>, Create,
+  MOCK_METHOD(absl::StatusOr<std::unique_ptr<TensorAggregator>>, Create,
               (const Intrinsic&), (const, override));
-  MOCK_METHOD(StatusOr<std::unique_ptr<TensorAggregator>>, Deserialize,
+  MOCK_METHOD(absl::StatusOr<std::unique_ptr<TensorAggregator>>, Deserialize,
               (const Intrinsic&, std::string), (const, override));
 };
 

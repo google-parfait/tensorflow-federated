@@ -24,6 +24,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
@@ -80,11 +82,11 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // from the other aggregator's buffer as possible into our buffer, without
   // exceeding kDPQuantileMaxInputs. If there are remaining elements in the
   // other buffer, we will perform reservoir sampling.
-  Status MergeWith(TensorAggregator&& other) override;
+  absl::Status MergeWith(TensorAggregator&& other) override;
 
-  Status IsCompatible(const TensorAggregator& other) const override;
+  absl::Status IsCompatible(const TensorAggregator& other) const override;
 
-  StatusOr<std::string> Serialize() && override {
+  absl::StatusOr<std::string> Serialize() && override {
     DPQuantileAggregatorState aggregator_state;
     aggregator_state.set_num_inputs(num_inputs_);
     aggregator_state.set_reservoir_sampling_count(reservoir_sampling_count_);
@@ -98,7 +100,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // of buffer_ belongs to the buckets scanned so far.
   // If the estimate exceeds a noisy version of
   // (target_quantile_ * buffer_.size()), the algorithm returns the bucket.
-  StatusOr<OutputTensorList>
+  absl::StatusOr<OutputTensorList>
       ReportWithEpsilonAndDelta(double epsilon, double delta) && override;
 
   // Given a value, return the bucket that it belongs to. Buckets are partitions
@@ -106,7 +108,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // linear (governed by kDPQuantileLinearRate), then exponential (governed by
   // kDPQuantileExponentialRate); the error due to bucketing is additively
   // kDPQuantileLinearRate and multiplicatively kDPQuantileExponentialRate.
-  inline int GetBucket(double value) const {
+  int GetBucket(double value) const {
     if (value < 0) {
       return 0;
     } else if (value < kDPQuantileEndOfLinearGrowth) {
@@ -125,7 +127,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   }
 
   // A bucket corresponds to a range of values; calculate its upper bound.
-  inline double BucketUpperBound(int bucket) const {
+  double BucketUpperBound(int bucket) const {
     double candidate = bucket * kDPQuantileLinearRate;
     if (candidate < kDPQuantileEndOfLinearGrowth) {
       return candidate;
@@ -137,7 +139,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   }
 
   // Calculate the rank of the target quantile in the buffer.
-  inline double GetTargetRank() const {
+  double GetTargetRank() const {
     return target_quantile_ * static_cast<double>(buffer_.size());
   }
 
@@ -145,10 +147,10 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // This DP mechanism expects one scalar tensor in the input. It pushes the
   // scalar into the buffer if the buffer is smaller than kDPQuantileMaxInputs.
   // Otherwise, it will perform reservoir sampling
-  Status AggregateTensors(InputTensorList tensors) override;
+  absl::Status AggregateTensors(InputTensorList tensors) override;
 
   // Checks if the output has not already been consumed.
-  Status CheckValid() const override;
+  absl::Status CheckValid() const override;
 
  private:
   // Implements Vitter's reservoir sampling algorithm.
@@ -161,7 +163,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
   // it returns the bucket.
   // This algorithm ensures epsilon-DP when each client contributes exactly one
   // value to exactly one bucket of the histogram.
-  StatusOr<int> PrefixSumAboveThreshold(
+  absl::StatusOr<int> PrefixSumAboveThreshold(
       double epsilon, absl::flat_hash_map<int, int>& histogram,
       double threshold, int max_bucket);
 
@@ -183,24 +185,23 @@ class DPQuantileAggregatorFactory final : public TensorAggregatorFactory {
   DPQuantileAggregatorFactory& operator=(const DPQuantileAggregatorFactory&) =
       delete;
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override {
     DPQuantileAggregatorState aggregator_state;
     if (!aggregator_state.ParseFromString(serialized_state)) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPQuantileAggregatorFactory: Failed to parse serialized "
-                "state.";
+      return absl::InvalidArgumentError(
+          "DPQuantileAggregatorFactory: Failed to parse serialized state.");
     }
     return CreateInternal(intrinsic, &aggregator_state);
   }
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Create(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Create(
       const Intrinsic& intrinsic) const override {
     return CreateInternal(intrinsic, nullptr);
   }
 
  private:
-  StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
       const Intrinsic& intrinsic,
       const DPQuantileAggregatorState* aggregator_state) const;
 };

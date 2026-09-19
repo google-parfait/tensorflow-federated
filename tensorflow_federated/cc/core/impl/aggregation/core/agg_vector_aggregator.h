@@ -24,6 +24,9 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -62,7 +65,7 @@ class AggVectorAggregator : public TensorAggregator {
 
   int GetNumInputs() const override { return num_inputs_; }
 
-  Status MergeWith(TensorAggregator&& other) override {
+  absl::Status MergeWith(TensorAggregator&& other) override {
     TFF_RETURN_IF_ERROR(CheckValid());
     TFF_ASSIGN_OR_RETURN(AggVectorAggregator<T> * other_ptr, CastOther(other));
     TFF_RETURN_IF_ERROR((*other_ptr).CheckValid());
@@ -73,59 +76,59 @@ class AggVectorAggregator : public TensorAggregator {
            "should produce a single output tensor";
     const Tensor& output = output_tensors[0];
     if (output.shape() != shape_) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "AggVectorAggregator::MergeOutputTensors: tensor shape "
-                "mismatch";
+      return absl::InvalidArgumentError(
+          "AggVectorAggregator::MergeOutputTensors: tensor shape "
+          "mismatch");
     }
     // Delegate the actual aggregation to the specific aggregation
     // intrinsic implementation.
     AggregateVector(output.AsAggVector<T>());
     num_inputs_ += other_num_inputs;
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
-  StatusOr<std::string> Serialize() && override {
+  absl::StatusOr<std::string> Serialize() && override {
     AggVectorAggregatorState aggregator_state;
     aggregator_state.set_num_inputs(num_inputs_);
     *(aggregator_state.mutable_vector_data()) = data_vector_->EncodeContent();
     return aggregator_state.SerializeAsString();
   }
 
-  Status ValidateInputs(const InputTensorList& tensors) const override {
+  absl::Status ValidateInputs(const InputTensorList& tensors) const override {
     if (tensors.size() != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "AggVectorAggregator::ValidateInputs: Expected 1 tensor, got "
-             << tensors.size();
+      return absl::InvalidArgumentError(absl::StrCat(
+          "AggVectorAggregator::ValidateInputs: Expected 1 tensor, got ",
+          tensors.size()));
     }
     const Tensor* tensor = tensors[0];
     if (tensor->dtype() != dtype_) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "AggVectorAggregator::ValidateInputs: dtype mismatch";
+      return absl::InvalidArgumentError(
+          "AggVectorAggregator::ValidateInputs: dtype mismatch");
     }
     if (tensor->shape() != shape_) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "AggVectorAggregator::ValidateInputs: tensor shape mismatch";
+      return absl::InvalidArgumentError(
+          "AggVectorAggregator::ValidateInputs: tensor shape mismatch");
     }
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
  protected:
   // Implementation of the tensor aggregation.
-  Status AggregateTensors(InputTensorList tensors) override {
+  absl::Status AggregateTensors(InputTensorList tensors) override {
     // Delegate the actual aggregation to the specific aggregation
     // intrinsic implementation.
     AggregateVector(tensors[0]->AsAggVector<T>());
     num_inputs_++;
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
-  Status CheckValid() const override {
+  absl::Status CheckValid() const override {
     if (data_vector_ == nullptr) {
-      return TFF_STATUS(FAILED_PRECONDITION)
-             << "AggVectorAggregator::CheckValid: Output has already been "
-             << "consumed.";
+      return absl::FailedPreconditionError(absl::StrCat(
+          "AggVectorAggregator::CheckValid: Output has already been ",
+          "consumed."));
     }
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
   OutputTensorList TakeOutputs() && override {
@@ -141,20 +144,20 @@ class AggVectorAggregator : public TensorAggregator {
  private:
   static std::unique_ptr<MutableVectorData<T>> CreateData(
       const TensorShape& shape) {
-    StatusOr<size_t> num_elements = shape.NumElements();
+    absl::StatusOr<size_t> num_elements = shape.NumElements();
     TFF_CHECK(num_elements.ok()) << "AggVectorAggregator: All dimensions of "
                                     "tensor shape must be known in advance.";
     return std::make_unique<MutableVectorData<T>>(num_elements.value());
   }
 
-  StatusOr<AggVectorAggregator<T>*> CastOther(TensorAggregator& other) {
+  absl::StatusOr<AggVectorAggregator<T>*> CastOther(TensorAggregator& other) {
     AggVectorAggregator<T>* other_ptr =
         dynamic_cast<AggVectorAggregator<T>*>(&other);
     if (other_ptr == nullptr) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "AggVectorAggregator::MergeOutputTensors: Can only merge with"
-             << "another AggVectorAggregator operating on the same dtype "
-             << internal::TypeTraits<T>::kDataType;
+      return absl::InvalidArgumentError(absl::StrCat(
+          "AggVectorAggregator::MergeOutputTensors: Can only merge with",
+          "another AggVectorAggregator operating on the same dtype ",
+          internal::TypeTraits<T>::kDataType));
     }
     return other_ptr;
   }

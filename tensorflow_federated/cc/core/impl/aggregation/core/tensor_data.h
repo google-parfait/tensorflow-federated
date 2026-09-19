@@ -19,7 +19,7 @@
 
 #include <cstddef>
 
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/status/status.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -72,10 +72,10 @@ class TensorData {
   // data pointer is properly aligned in memory - the address must be a multiple
   // of the alignment_size to avoid a significant cost to performance. Some CPU
   // architectures may not handle unaligned memory access at all.
-  Status CheckValid(size_t value_size, size_t alignment_size) const;
+  absl::Status CheckValid(size_t value_size, size_t alignment_size) const;
 
   template <typename T>
-  Status CheckValid() const {
+  absl::Status CheckValid() const {
     return CheckValid(sizeof(T), alignof(T));
   }
 

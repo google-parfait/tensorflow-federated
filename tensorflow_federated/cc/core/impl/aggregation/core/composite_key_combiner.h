@@ -29,6 +29,8 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/hash/hash.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -224,7 +226,7 @@ class CompositeKeyCombiner {
   //
   // The returned tensor is of data type DT_INT64 and the same shape that was
   // provided to the constructor.
-  virtual StatusOr<Tensor> Accumulate(const InputTensorList& tensors);
+  virtual absl::StatusOr<Tensor> Accumulate(const InputTensorList& tensors);
 
   // Obtains the vector of output keys ordered by their representative
   // ordinal.
@@ -248,7 +250,7 @@ class CompositeKeyCombiner {
 
   // Checks that the provided InputTensorList can be accumulated into this
   // CompositeKeyCombiner.
-  StatusOr<TensorShape> CheckValidAndGetShape(
+  absl::StatusOr<TensorShape> CheckValidAndGetShape(
       const InputTensorList& tensors) const;
 
  protected:

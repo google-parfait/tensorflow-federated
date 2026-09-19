@@ -23,6 +23,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -42,7 +44,7 @@ size_t CombineHashes(size_t a, size_t b) {
 
 }  // namespace
 
-StatusOr<Partitioner> Partitioner::Create(
+absl::StatusOr<Partitioner> Partitioner::Create(
     const std::vector<Tensor>& key_tensors, int num_partitions) {
   if (key_tensors.empty()) {
     // If there are no keys, there is exactly one group containing all
@@ -56,15 +58,15 @@ StatusOr<Partitioner> Partitioner::Create(
     return Partitioner(std::move(hashes), std::move(partition_sizes));
   }
   if (key_tensors[0].shape().dim_sizes().size() != 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Expected key tensor to be one-dimensional.";
+    return absl::InvalidArgumentError(
+        "Expected key tensor to be one-dimensional.");
   }
   int key_size = key_tensors[0].shape().dim_sizes()[0];
   for (const auto& key : key_tensors) {
     if (key.shape().dim_sizes().size() != 1 ||
         key.shape().dim_sizes()[0] != key_size) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "All key tensors must have the same one-dimensional size.";
+      return absl::InvalidArgumentError(
+          "All key tensors must have the same one-dimensional size.");
     }
   }
   std::vector<size_t> hashes(key_size, 0);
@@ -84,7 +86,7 @@ StatusOr<Partitioner> Partitioner::Create(
   return Partitioner(std::move(hashes), std::move(partition_sizes));
 }
 
-StatusOr<std::vector<Tensor>> Partitioner::PartitionKeys(
+absl::StatusOr<std::vector<Tensor>> Partitioner::PartitionKeys(
     const Tensor& key_tensor) {
   std::vector<Tensor> result_tensors;
   DTYPE_CASES(key_tensor.dtype(), T, {

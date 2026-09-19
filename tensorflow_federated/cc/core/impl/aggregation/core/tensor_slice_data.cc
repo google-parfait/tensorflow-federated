@@ -18,6 +18,9 @@
 #include <cstddef>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 
@@ -25,21 +28,21 @@ namespace tensorflow_federated {
 namespace aggregation {
 Status TensorSliceData::ReduceByteSize(size_t new_size) {
   if (new_size > byte_size_) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "TensorSliceData::ReduceSize: target size " << new_size
-           << " is greater than the original size " << byte_size_;
+    return absl::InvalidArgumentError(
+        absl::StrCat("TensorSliceData::ReduceSize: target size ", new_size,
+                     " is greater than the original size ", byte_size_));
   }
   byte_size_ = new_size;
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
-StatusOr<TensorSliceData> TensorSliceData::Create(Tensor&& tensor,
-                                                  size_t byte_size,
-                                                  size_t byte_offset) {
+absl::StatusOr<TensorSliceData> TensorSliceData::Create(Tensor&& tensor,
+                                                        size_t byte_size,
+                                                        size_t byte_offset) {
   if (byte_offset + byte_size > tensor.data().byte_size()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "TensorSliceData::Create: byte_offset + byte_size cannot exceed "
-              "the tensor's size";
+    return absl::InvalidArgumentError(
+        "TensorSliceData::Create: byte_offset + byte_size cannot exceed "
+        "the tensor's size");
   }
   return TensorSliceData(std::move(tensor), byte_size, byte_offset);
 }

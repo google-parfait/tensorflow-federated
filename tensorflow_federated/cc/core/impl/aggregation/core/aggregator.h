@@ -17,7 +17,8 @@
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_AGGREGATOR_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_AGGREGATOR_H_
 
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -49,13 +50,13 @@ class Aggregator {
   // Accumulates an input into the intermediate aggregate.
   // The method may fail if the input isn't compatible with the current
   // Aggregator or if the Aggregator instance has already been 'consumed'.
-  virtual Status Accumulate(T input) = 0;
+  virtual absl::Status Accumulate(T input) = 0;
 
   // Merges intermediate aggregates from the other Aggregator instance into the
   // current Aggregator instance. Doing so 'consumes' the other Aggregator
   // instance.
   // The method may fail if the two Aggregator instances aren't compatible.
-  virtual Status MergeWith(Self&& other) = 0;
+  virtual absl::Status MergeWith(Self&& other) = 0;
 
   // Returns true if the current Aggregator instance can produce a report, for
   // example if a sufficient number of inputs has been accumulated.
@@ -65,7 +66,7 @@ class Aggregator {
   // Once the current instance is consumed it can no longer perform any
   // operations.
   // This method fails when CanReport method returns false.
-  virtual StatusOr<R> Report() && = 0;
+  virtual absl::StatusOr<R> Report() && = 0;
 };
 
 }  // namespace aggregation

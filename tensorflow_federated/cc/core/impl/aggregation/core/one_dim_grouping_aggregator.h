@@ -54,15 +54,15 @@ namespace aggregation {
 // This class is not thread safe.
 class OneDimBaseGroupingAggregator : public TensorAggregator {
  public:
-  Status MergeWith(TensorAggregator&& other) override;
+  absl::Status MergeWith(TensorAggregator&& other) override;
 
-  StatusOr<std::string> Serialize() && override {
+  absl::StatusOr<std::string> Serialize() && override {
     // OneDimBaseGroupingAggregators are always nested within an outer
     // aggregator. Use ToProto to get intermediate state and then serialize the
     // outer aggregator state instead.
-    return TFF_STATUS(UNIMPLEMENTED)
-           << "OneDimBaseGroupingAggregator::Serialize is not supported. Use "
-              "ToProto to store intermediate state.";
+    return absl::UnimplementedError(
+        "OneDimBaseGroupingAggregator::Serialize is not supported. Use "
+        "ToProto to store intermediate state.");
   }
 
   // Merges intermediate aggregates contained in the tensors param into the
@@ -79,7 +79,8 @@ class OneDimBaseGroupingAggregator : public TensorAggregator {
   //
   // The actual implementation of the merge operation is to be provided by a
   // derived class.
-  virtual Status MergeTensors(InputTensorList tensors, int num_inputs) = 0;
+  virtual absl::Status MergeTensors(InputTensorList tensors,
+                                    int num_inputs) = 0;
 
   // Stores the intermediate state of the OneDimBaseGroupingAggregator as a
   // proto.
@@ -87,13 +88,13 @@ class OneDimBaseGroupingAggregator : public TensorAggregator {
 
   // Partitions the OneDimBaseGroupingAggregator into multiple slices and stores
   // the intermediate states into a vector of protos.
-  virtual StatusOr<std::vector<OneDimGroupingAggregatorState>>
+  virtual absl::StatusOr<std::vector<OneDimGroupingAggregatorState>>
   PartitionToProtos(const Partitioner& partitioner) = 0;
 
   // Validate inputs for both AggregateTensors and MergeTensors. Requires a list
   // of two tensors where the first tensor contains ordinals (int64_t) and the
   // second tensor has the same shape as the first. Both must be 1D and dense.
-  Status ValidateInputs(const InputTensorList& tensors) const override;
+  absl::Status ValidateInputs(const InputTensorList& tensors) const override;
 
  protected:
   // An input's validity can depend on calling context. This function allows
@@ -103,32 +104,32 @@ class OneDimBaseGroupingAggregator : public TensorAggregator {
 
 class OneDimBaseGroupingAggregatorFactory : public TensorAggregatorFactory {
  public:
-  StatusOr<std::unique_ptr<TensorAggregator>> Create(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Create(
       const Intrinsic& intrinsic) const override {
     return CreateInternal(intrinsic, nullptr);
   }
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override {
     OneDimGroupingAggregatorState aggregator_state;
     // OneDimGroupingAggregators are always nested within an outer aggregator.
     // Use FromProto to create the aggregator from intermediate state stored by
     // the outer aggregator.
-    return TFF_STATUS(UNIMPLEMENTED)
-           << "OneDimBaseGroupingAggregatorFactory::Deserialize is not "
-              "supported. Use FromProto to create an aggregator from "
-              "intermediate state.";
+    return absl::UnimplementedError(
+        "OneDimBaseGroupingAggregatorFactory::Deserialize is not "
+        "supported. Use FromProto to create an aggregator from "
+        "intermediate state.");
   }
 
   // Creates a OneDimBaseGroupingAggregator from intermediate state.
-  StatusOr<std::unique_ptr<TensorAggregator>> FromProto(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> FromProto(
       const Intrinsic& intrinsic,
       const OneDimGroupingAggregatorState& aggregator_state) const {
     return CreateInternal(intrinsic, &aggregator_state);
   }
 
  private:
-  virtual StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
+  virtual absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
       const Intrinsic& intrinsic,
       const OneDimGroupingAggregatorState* aggregator_state) const = 0;
 };
@@ -158,9 +159,9 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
       : data_vector_(std::move(data)), num_inputs_(num_inputs) {}
 
   // Implementation of the tensor merge operation.
-  Status MergeTensors(InputTensorList tensors, int num_inputs) override {
+  absl::Status MergeTensors(InputTensorList tensors, int num_inputs) override {
     merge_context_ = true;
-    Status can_merge = ValidateInputs(tensors);
+    absl::Status can_merge = ValidateInputs(tensors);
     merge_context_ = false;
     TFF_RETURN_IF_ERROR(can_merge);
     num_inputs_ += num_inputs;
@@ -176,9 +177,9 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
 
   Status CheckValid() const override {
     if (data_vector_ == nullptr) {
-      return TFF_STATUS(FAILED_PRECONDITION)
-             << "OneDimGroupingAggregator::CheckValid: Output has already been "
-                "consumed.";
+      return absl::FailedPreconditionError(
+          "OneDimGroupingAggregator::CheckValid: Output has already been "
+          "consumed.");
     }
     return absl::OkStatus();
   }
@@ -189,7 +190,7 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
     return CreateStateFromMutableVectorData(std::move(*data_vector_));
   }
 
-  StatusOr<std::vector<OneDimGroupingAggregatorState>> PartitionToProtos(
+  absl::StatusOr<std::vector<OneDimGroupingAggregatorState>> PartitionToProtos(
       const Partitioner& partitioner) override {
     std::vector<OneDimGroupingAggregatorState> partitioned_states;
     partitioned_states.reserve(partitioner.GetNumPartitions());

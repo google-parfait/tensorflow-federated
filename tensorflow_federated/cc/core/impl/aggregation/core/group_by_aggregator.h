@@ -66,11 +66,11 @@ class GroupByAggregator : public TensorAggregator {
  public:
   // Validates the input tensors for Accumulate. Returns an InvalidArgument
   // Status if the input tensors are not valid. Otherwise, returns an Ok Status.
-  Status ValidateInputs(const InputTensorList& tensors) const override;
+  absl::Status ValidateInputs(const InputTensorList& tensors) const override;
 
   // Merge this GroupByAggregator with another GroupByAggregator that operates
   // on compatible types using compatible inner intrinsics.
-  Status MergeWith(TensorAggregator&& other) override;
+  absl::Status MergeWith(TensorAggregator&& other) override;
 
   // Returns the number of inputs that have been accumulated or merged into this
   // GroupByAggregator.
@@ -90,7 +90,7 @@ class GroupByAggregator : public TensorAggregator {
 
   // Override Report so that we can enforce k-thresholding if
   // min_contributors_to_group_ is set.
-  StatusOr<OutputTensorList> Report() && override;
+  absl::StatusOr<OutputTensorList> Report() && override;
 
  protected:
   friend class GroupByFactory;
@@ -211,12 +211,13 @@ class GroupByAggregator : public TensorAggregator {
   // The virtual function below enables a distinction between creating ordinals
   // within MergeTensorsInternal and within AggregateTensorsInternal.
   // Refer to CreateOrdinalsByGroupingKeys for the latter.
-  virtual StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
+  virtual absl::StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs);
 
-  StatusOr<std::string> Serialize() && override;
+  absl::StatusOr<std::string> Serialize() && override;
 
-  StatusOr<std::vector<std::string>> Partition(int num_partitions) && override;
+  absl::StatusOr<std::vector<std::string>> Partition(int num_partitions) &&
+      override;
 
   inline size_t num_keys_per_input() const { return num_keys_per_input_; }
   inline std::unique_ptr<CompositeKeyCombiner>& key_combiner() {
@@ -247,7 +248,7 @@ class GroupByAggregator : public TensorAggregator {
   // Given a column of data and a set of survivor indices, shrink the column to
   // only include the survivors.
   template <typename OutputType>
-  static Status ShrinkTensorSliceToSurvivors(
+  static absl::Status ShrinkTensorSliceToSurvivors(
       TensorSliceData& column,
       const absl::flat_hash_set<size_t>& survivor_indices) {
     TFF_ASSIGN_OR_RETURN(absl::Span<OutputType> column_span,
@@ -279,9 +280,9 @@ class GroupByAggregator : public TensorAggregator {
     // The number of survivors is equal to destination, check that survivor
     // indices didn't contain entries outside of [0, num_elements).
     if (destination != survivor_indices.size()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "GroupByAggregator::ShrinkTensorSliceToSurvivors: "
-                "survivor_indices contained invalid indices.";
+      return absl::InvalidArgumentError(
+          "GroupByAggregator::ShrinkTensorSliceToSurvivors: "
+          "survivor_indices contained invalid indices.");
     }
 
     // Now that the survivors are in the front, reduce the byte size of the
@@ -300,12 +301,12 @@ class GroupByAggregator : public TensorAggregator {
   };
 
   // Provides mutable access to the column data in the histogram.
-  static StatusOr<HistogramAsSliceData> ConvertHistogramToSliceData(
+  static absl::StatusOr<HistogramAsSliceData> ConvertHistogramToSliceData(
       OutputTensorList& histogram);
 
   // Given a histogram represented as a list of TensorSliceData, shrink each
   // column to only include the survivors.
-  static StatusOr<OutputTensorList> ShrinkHistogramToSurvivors(
+  static absl::StatusOr<OutputTensorList> ShrinkHistogramToSurvivors(
       HistogramAsSliceData histogram,
       const absl::flat_hash_set<size_t>& survivor_indices);
 
@@ -343,7 +344,8 @@ class GroupByAggregator : public TensorAggregator {
   // Otherwise, produce an ordinals vector of the same shape as the inputs, but
   // made up of all zeroes, so that all elements will be aggregated into a
   // single output element.
-  StatusOr<Tensor> CreateOrdinalsByGroupingKeys(const InputTensorList& inputs);
+  absl::StatusOr<Tensor> CreateOrdinalsByGroupingKeys(
+      const InputTensorList& inputs);
 
   // Returns OK if the input and output tensor specs of the intrinsics
   // held by other match those of the sub-intrinsics held by this
@@ -374,31 +376,33 @@ class GroupByFactory final : public TensorAggregatorFactory {
   GroupByFactory(const GroupByFactory&) = delete;
   GroupByFactory& operator=(const GroupByFactory&) = delete;
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Create(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Create(
       const Intrinsic& intrinsic) const override;
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override;
 
   // Check that the configuration is valid for SQL grouping aggregators.
-  static Status CheckIntrinsic(const Intrinsic& intrinsic, const char* uri);
+  static absl::Status CheckIntrinsic(const Intrinsic& intrinsic,
+                                     const char* uri);
 
   // Create a vector of inner OneDimBaseGroupingAggregators. If state is
   // provided, the inner aggregators will be constructed using their portion of
   // the state.
-  static StatusOr<std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>>>
+  static absl::StatusOr<
+      std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>>>
   CreateAggregators(const Intrinsic& intrinsic,
                     const GroupByAggregatorState* aggregator_state);
 
   // Adds keys from the aggregator state, if any, to the composite key combiner.
-  static Status PopulateKeyCombinerFromState(
+  static absl::Status PopulateKeyCombinerFromState(
       CompositeKeyCombiner& key_combiner,
       const GroupByAggregatorState& aggregator_state);
 
  private:
   // Create a GroupByAggregator. If state is provided, the GroupByAggregator
   // will be constructed using the state.
-  StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
       const Intrinsic& intrinsic,
       const GroupByAggregatorState* aggregator_state) const;
 };

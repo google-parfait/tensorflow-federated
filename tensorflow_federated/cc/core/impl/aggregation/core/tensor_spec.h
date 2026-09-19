@@ -20,7 +20,7 @@
 #include <string>
 #include <utility>
 
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 
 namespace tensorflow_federated {
@@ -44,7 +44,7 @@ class TensorSpec final {
   bool operator!=(const TensorSpec& other) const { return !(*this == other); }
 
   // Creates a TensorSpec instance from a TensorSpecProto.
-  static StatusOr<TensorSpec> FromProto(
+  static absl::StatusOr<TensorSpec> FromProto(
       const TensorSpecProto& tensor_spec_proto);
 
   // Converts TensorSpec to TensorSpecProto.

@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 
@@ -38,7 +38,7 @@ class TensorAggregatorFactory {
   // The lifetime of the provided Intrinsic must outlast that of the returned
   // TensorAggregator as it is valid for the TensorAggregator implementation to
   // hold pointers referring to the Intrinsic.
-  virtual StatusOr<std::unique_ptr<TensorAggregator>> Create(
+  virtual absl::StatusOr<std::unique_ptr<TensorAggregator>> Create(
       const Intrinsic& intrinsic) const = 0;
 
   // Creates an instance of a specific aggregator for the specified type of the
@@ -46,7 +46,7 @@ class TensorAggregatorFactory {
   // The lifetime of the provided Intrinsic must outlast that of the returned
   // TensorAggregator as it is valid for the TensorAggregator implementation to
   // hold pointers referring to the Intrinsic.
-  virtual StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
+  virtual absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const = 0;
 };
 

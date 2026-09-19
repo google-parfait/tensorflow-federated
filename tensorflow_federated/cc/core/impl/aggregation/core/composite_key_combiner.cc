@@ -27,6 +27,9 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_set.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -117,7 +120,7 @@ TensorShape GetTensorShapeForSize(size_t size) {
 // corresponding to T and the same length as the input vector.
 // Each void* pointer in the input vector is incremented by size(T) bytes.
 template <typename T>
-StatusOr<Tensor> GetTensorForType(
+absl::StatusOr<Tensor> GetTensorForType(
     std::vector<const void*>& key_iters,
     const std::shared_ptr<InternPool>& intern_pool) {
   auto output_tensor_data = std::make_unique<MutableVectorData<T>>();
@@ -164,7 +167,7 @@ class InternedStringData : public TensorData {
 // bytes. The returned tensor will own all strings it refers to and is thus safe
 // to use after this class is destroyed.
 template <>
-StatusOr<Tensor> GetTensorForType<string_view>(
+absl::StatusOr<Tensor> GetTensorForType<string_view>(
     std::vector<const void*>& key_iters,
     const std::shared_ptr<InternPool>& intern_pool) {
   std::vector<string_view> string_views_for_output;
@@ -217,7 +220,7 @@ CompositeKeyCombiner::CompositeKeyCombiner(std::vector<DataType> dtypes)
 
 // Returns a single tensor containing the ordinals of the composite keys
 // formed from the InputTensorList.
-StatusOr<Tensor> CompositeKeyCombiner::Accumulate(
+absl::StatusOr<Tensor> CompositeKeyCombiner::Accumulate(
     const InputTensorList& tensors) {
   TFF_ASSIGN_OR_RETURN(TensorShape shape, CheckValidAndGetShape(tensors));
   TFF_ASSIGN_OR_RETURN(size_t num_elements, shape.NumElements());
@@ -285,7 +288,7 @@ OutputTensorList CompositeKeyCombiner::GetOutputKeys() const {
   }
 
   for (DataType dtype : dtypes_) {
-    StatusOr<Tensor> t;
+    absl::StatusOr<Tensor> t;
     DTYPE_CASES(dtype, T, t = GetTensorForType<T>(key_iters, intern_pool_));
     TFF_CHECK(t.status().ok()) << t.status().message();
     output_keys.push_back(std::move(t.value()));
@@ -293,16 +296,15 @@ OutputTensorList CompositeKeyCombiner::GetOutputKeys() const {
   return output_keys;
 }
 
-StatusOr<TensorShape> CompositeKeyCombiner::CheckValidAndGetShape(
+absl::StatusOr<TensorShape> CompositeKeyCombiner::CheckValidAndGetShape(
     const InputTensorList& tensors) const {
   if (tensors.size() == 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "InputTensorList must contain at least one tensor.";
+    return absl::InvalidArgumentError(
+        "InputTensorList must contain at least one tensor.");
   } else if (tensors.size() != dtypes_.size()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "InputTensorList size " << tensors.size()
-           << "is not the same as the length of expected dtypes "
-           << dtypes_.size();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "InputTensorList size ", tensors.size(),
+        "is not the same as the length of expected dtypes ", dtypes_.size()));
   }
   // All the tensors in the input list should have the same shape and have
   // a dense encoding.
@@ -313,21 +315,21 @@ StatusOr<TensorShape> CompositeKeyCombiner::CheckValidAndGetShape(
       shape = &t->shape();
     } else {
       if (*shape != t->shape()) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "All tensors in the InputTensorList must have the expected "
-                  "shape.";
+        return absl::InvalidArgumentError(
+            "All tensors in the InputTensorList must have the expected "
+            "shape.");
       }
     }
     if (!t->is_dense())
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "All tensors in the InputTensorList must be dense.";
+      return absl::InvalidArgumentError(
+          "All tensors in the InputTensorList must be dense.");
     // Ensure the data types of the input tensors match those provided to the
     // constructor of this CompositeKeyCombiner.
     DataType expected_dtype = dtypes_[i];
     if (expected_dtype != t->dtype()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Tensor at position " << i << " did not have expected dtype "
-             << expected_dtype << " and instead had dtype " << t->dtype();
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Tensor at position ", i, " did not have expected dtype ",
+          expected_dtype, " and instead had dtype ", t->dtype()));
     }
   }
   TFF_CHECK(shape != nullptr)

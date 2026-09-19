@@ -23,8 +23,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "algorithms/partition-selection.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
@@ -64,7 +64,7 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
   // should instead create a DPThresholdingHistogram from an intrinsic using the
   // factory, i.e.
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
-  static StatusOr<std::unique_ptr<DPThresholdingHistogram>> Create(
+  static absl::StatusOr<std::unique_ptr<DPThresholdingHistogram>> Create(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
@@ -80,10 +80,10 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
   // on the input specification
 
   // Applies NoiseAndThreshold to the noiseless aggregate.
-  StatusOr<OutputTensorList> NoisyReport() override;
+  absl::StatusOr<OutputTensorList> NoisyReport() override;
 
   // Adds information about the thresholding to the noise description.
-  StatusOr<std::string> GetNoiseDescription() const override;
+  absl::StatusOr<std::string> GetNoiseDescription() const override;
 
  private:
   // Constructs a DPThresholdingHistogram. Only called by the Create() method
@@ -103,7 +103,7 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
   // When merging two DPThresholdingHistograms, norm bounding the aggregates
   // will destroy accuracy and is not needed for privacy. Hence, this function
   // calls CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
-  StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
+  absl::StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs) override;
 
   std::unique_ptr<

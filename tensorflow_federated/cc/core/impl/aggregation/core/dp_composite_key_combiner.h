@@ -24,8 +24,8 @@
 
 #include "absl/container/fixed_array.h"
 #include "absl/random/random.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -64,7 +64,7 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   // If an l0_bound_ was not given or number of contributions is <= l0_bound_,
   // call parent's Accumulate. Otherwise, call AccumulateWithBound which will
   // ensure there are <= l0_bound_ contributions.
-  StatusOr<Tensor> Accumulate(const InputTensorList& tensors) override;
+  absl::StatusOr<Tensor> Accumulate(const InputTensorList& tensors) override;
 
   // AccumulateWithBound will first create the set of unique composite keys in
   // the input, in parallel with a vector of composite keys. Then it samples a
@@ -74,8 +74,9 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   // It is the responsibility of the calling code to not use them as indices;
   // -1 simply indicates that a row of data should be skipped in an inner
   // aggregation
-  StatusOr<Tensor> AccumulateWithBound(const InputTensorList& tensors,
-                                       TensorShape& shape, size_t num_elements);
+  absl::StatusOr<Tensor> AccumulateWithBound(const InputTensorList& tensors,
+                                             TensorShape& shape,
+                                             size_t num_elements);
 
   // Given a span of tensors (where each describes a key's domain) and indices
   // to tensor values, make a CompositeKey out of the data at those indices and

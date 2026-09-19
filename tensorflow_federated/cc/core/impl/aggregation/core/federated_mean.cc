@@ -20,7 +20,9 @@
 #include <utility>
 #include <vector>
 
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -58,7 +60,7 @@ class FederatedMean final : public TensorAggregator {
         weights_sum_(weights_sum),
         num_inputs_(num_inputs) {}
 
-  StatusOr<std::string> Serialize() && override {
+  absl::StatusOr<std::string> Serialize() && override {
     FederatedMeanAggregatorState aggregator_state;
     aggregator_state.set_num_inputs(num_inputs_);
     *(aggregator_state.mutable_weighted_values_sum()) =
@@ -69,22 +71,22 @@ class FederatedMean final : public TensorAggregator {
   }
 
  private:
-  Status MergeWith(TensorAggregator&& other) override {
+  absl::Status MergeWith(TensorAggregator&& other) override {
     TFF_RETURN_IF_ERROR(CheckValid());
     FederatedMean* other_ptr = dynamic_cast<FederatedMean*>(&other);
     if (other_ptr == nullptr) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMean::MergeWith: Can only merge with "
-                "another FederatedMean.";
+      return absl::InvalidArgumentError(
+          "FederatedMean::MergeWith: Can only merge with "
+          "another FederatedMean.");
     }
     TFF_RETURN_IF_ERROR((*other_ptr).CheckValid());
 
     std::pair<std::unique_ptr<MutableVectorData<V>>, W> other_internal_state =
         other_ptr->GetInternalState();
     if (other_internal_state.first->size() != weighted_values_sum_->size()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMean::MergeWith: Can only merge weighted value sum "
-                "tensors of equal length.";
+      return absl::InvalidArgumentError(
+          "FederatedMean::MergeWith: Can only merge weighted value sum "
+          "tensors of equal length.");
     }
 
     for (int i = 0; i < weighted_values_sum_->size(); ++i) {
@@ -92,15 +94,15 @@ class FederatedMean final : public TensorAggregator {
     }
     weights_sum_ += other_internal_state.second;
     num_inputs_ += other_ptr->GetNumInputs();
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
-  Status ValidateInputs(const InputTensorList& tensors) const override {
+  absl::Status ValidateInputs(const InputTensorList& tensors) const override {
     for (const Tensor* tensor : tensors) {
       if (!tensor->is_dense()) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "FederatedMean::ValidateInputs: Only dense "
-                  "tensors are supported.";
+        return absl::InvalidArgumentError(
+            "FederatedMean::ValidateInputs: Only dense "
+            "tensors are supported.");
       }
     }
 
@@ -108,22 +110,22 @@ class FederatedMean final : public TensorAggregator {
     // should contain a positive scalar weight - check that it is the case.
     if (tensors.size() > 1) {
       if (tensors[1]->num_elements() != 1) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "FederatedMean::ValidateInputs: The weight must be a "
-                  "scalar.";
+        return absl::InvalidArgumentError(
+            "FederatedMean::ValidateInputs: The weight must be a "
+            "scalar.");
       }
       AggVector<W> weights = tensors[1]->AsAggVector<W>();
       W weight = weights.begin().value();
       if (weight <= 0) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "FederatedMean::ValidateInputs: Only positive "
-                  "weights are allowed.";
+        return absl::InvalidArgumentError(
+            "FederatedMean::ValidateInputs: Only positive "
+            "weights are allowed.");
       }
     }
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
-  Status AggregateTensors(InputTensorList tensors) override {
+  absl::Status AggregateTensors(InputTensorList tensors) override {
     AggVector<V> values = tensors[0]->AsAggVector<V>();
     if (tensors.size() > 1) {
       AggVector<W> weights = tensors[1]->AsAggVector<W>();
@@ -138,15 +140,15 @@ class FederatedMean final : public TensorAggregator {
       }
     }
     num_inputs_++;
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
-  Status CheckValid() const override {
+  absl::Status CheckValid() const override {
     if (output_consumed_) {
-      return TFF_STATUS(FAILED_PRECONDITION)
-             << "FederatedMean::CheckValid: Output has already been consumed.";
+      return absl::FailedPreconditionError(
+          "FederatedMean::CheckValid: Output has already been consumed.");
     }
-    return TFF_STATUS(OK);
+    return absl::OkStatus();
   }
 
   OutputTensorList TakeOutputs() && override {
@@ -191,56 +193,55 @@ class FederatedMeanFactory final : public TensorAggregatorFactory {
   FederatedMeanFactory(const FederatedMeanFactory&) = delete;
   FederatedMeanFactory& operator=(const FederatedMeanFactory&) = delete;
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Create(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Create(
       const Intrinsic& intrinsic) const override {
     return CreateInternal(intrinsic, nullptr);
   }
 
-  StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
       const Intrinsic& intrinsic, std::string serialized_state) const override {
     FederatedMeanAggregatorState aggregator_state;
     if (!aggregator_state.ParseFromString(serialized_state)) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMeanFactory::Deserialize: Failed to parse "
-                "FederatedMeanAggregatorState.";
+      return absl::InvalidArgumentError(
+          "FederatedMeanFactory::Deserialize: Failed to parse "
+          "FederatedMeanAggregatorState.");
     }
     return CreateInternal(intrinsic, &aggregator_state);
   }
 
  private:
-  StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
+  absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
       const Intrinsic& intrinsic,
       const FederatedMeanAggregatorState* aggregator_state) const {
     // Check that the configuration is valid.
     if (kFederatedMeanUri == intrinsic.uri) {
       if (intrinsic.inputs.size() != 1) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "FederatedMeanFactory: Exactly one input is expected for "
-                  "federated_mean intrinsic.";
+        return absl::InvalidArgumentError(
+            "FederatedMeanFactory: Exactly one input is expected for "
+            "federated_mean intrinsic.");
       }
     } else if (kFederatedWeightedMeanUri == intrinsic.uri) {
       if (intrinsic.inputs.size() != 2) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "FederatedMeanFactory: Exactly two inputs are expected for "
-                  "federated_weighted_mean intrinsic.";
+        return absl::InvalidArgumentError(
+            "FederatedMeanFactory: Exactly two inputs are expected for "
+            "federated_weighted_mean intrinsic.");
       }
     } else {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMeanFactory: Expected intrinsic URI "
-             << kFederatedMeanUri << " or " << kFederatedWeightedMeanUri
-             << " but got uri " << intrinsic.uri;
+      return absl::InvalidArgumentError(absl::StrCat(
+          "FederatedMeanFactory: Expected intrinsic URI ", kFederatedMeanUri,
+          " or ", kFederatedWeightedMeanUri, " but got uri ", intrinsic.uri));
     }
     if (intrinsic.outputs.size() != 1) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMeanFactory: Exactly one output tensor is expected.";
+      return absl::InvalidArgumentError(
+          "FederatedMeanFactory: Exactly one output tensor is expected.");
     }
     if (!intrinsic.nested_intrinsics.empty()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMeanFactory: Expected no nested intrinsics.";
+      return absl::InvalidArgumentError(
+          "FederatedMeanFactory: Expected no nested intrinsics.");
     }
     if (!intrinsic.parameters.empty()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMeanFactory: Expected no parameters.";
+      return absl::InvalidArgumentError(
+          "FederatedMeanFactory: Expected no parameters.");
     }
 
     const TensorSpec& input_value_spec = intrinsic.inputs[0];
@@ -248,33 +249,33 @@ class FederatedMeanFactory final : public TensorAggregatorFactory {
 
     if (input_value_spec.dtype() != output_spec.dtype() ||
         input_value_spec.shape() != output_spec.shape()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMeanFactory: Input value tensor and output tensor "
-                "have mismatched specs.";
+      return absl::InvalidArgumentError(
+          "FederatedMeanFactory: Input value tensor and output tensor "
+          "have mismatched specs.");
     }
     if (input_value_spec.dtype() != DT_FLOAT &&
         input_value_spec.dtype() != DT_DOUBLE) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMeanFactory: Input value tensor type must be "
-                "DT_FLOAT or DT_DOUBLE.";
+      return absl::InvalidArgumentError(
+          "FederatedMeanFactory: Input value tensor type must be "
+          "DT_FLOAT or DT_DOUBLE.");
     }
-    StatusOr<size_t> value_num_elements =
+    absl::StatusOr<size_t> value_num_elements =
         input_value_spec.shape().NumElements();
     if (!value_num_elements.ok()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "FederatedMeanFactory: All dimensions of value tensor shape "
-                "must be known in advance.";
+      return absl::InvalidArgumentError(
+          "FederatedMeanFactory: All dimensions of value tensor shape "
+          "must be known in advance.");
     }
 
     DataType input_value_type = input_value_spec.dtype();
     DataType input_weight_type;
     if (kFederatedWeightedMeanUri == intrinsic.uri) {
       input_weight_type = intrinsic.inputs[1].dtype();
-      StatusOr<size_t> weight_num_elements =
+      absl::StatusOr<size_t> weight_num_elements =
           intrinsic.inputs[1].shape().NumElements();
       if (!weight_num_elements.ok() || weight_num_elements.value() != 1) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "FederatedMeanFactory: The weight must be a scalar.";
+        return absl::InvalidArgumentError(
+            "FederatedMeanFactory: The weight must be a scalar.");
       }
     } else {
       input_weight_type = DT_INT32;

@@ -578,7 +578,8 @@ TEST(DPThresholdingHistogramTest, Deserialize_FailToParseProto) {
   // Suffix of state does not correspond to a valid length.
   auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
   std::string invalid_state("invalid_state");
-  Status s = DeserializeTensorAggregator(intrinsic, invalid_state).status();
+  absl::Status s =
+      DeserializeTensorAggregator(intrinsic, invalid_state).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Failed to parse padding length"));
 

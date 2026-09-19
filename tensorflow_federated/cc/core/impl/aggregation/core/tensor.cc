@@ -26,6 +26,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "google/protobuf/io/coded_stream.h"
@@ -42,7 +43,7 @@ namespace aggregation {
 
 absl::Status Tensor::CheckValid() const {
   if (dtype_ == DT_INVALID) {
-    return TFF_STATUS(FAILED_PRECONDITION) << "Invalid Tensor dtype.";
+    return absl::FailedPreconditionError("Invalid Tensor dtype.");
   }
 
   size_t value_size = 0;
@@ -57,9 +58,9 @@ absl::Status Tensor::CheckValid() const {
   // and the shape.
   // TODO: b/266974165 - Implement sparse tensors.
   if (data_->byte_size() != shape_.NumElements().value() * value_size) {
-    return TFF_STATUS(FAILED_PRECONDITION)
-           << "TensorData byte_size is inconsistent with the Tensor dtype and "
-              "shape.";
+    return absl::FailedPreconditionError(
+        "TensorData byte_size is inconsistent with the Tensor dtype and "
+        "shape.");
   }
 
   return absl::OkStatus();
@@ -186,15 +187,15 @@ class SerializedContentStringData : public TensorData {
   // content.
   absl::Status Initialize(std::string content, size_t num) {
     if (content.size() > INT32_MAX) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Input tensor content size exceeds the maximum allowed size of "
-             << INT32_MAX << " bytes.";
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Input tensor content size exceeds the maximum allowed size of ",
+          INT32_MAX, " bytes."));
     }
     if (num > INT32_MAX) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Input tensor has more than the maximum allowed number of "
-                "string values: "
-             << num << " > " << INT32_MAX;
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Input tensor has more than the maximum allowed number of "
+          "string values: ",
+          num, " > ", INT32_MAX));
     }
 
     content_ = std::move(content);
@@ -217,20 +218,19 @@ class SerializedContentStringData : public TensorData {
     for (size_t i = 0; i < num; ++i) {
       uint64_t size;
       if (!coded_input.ReadVarint64(&size)) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "Expected to read " << num
-               << " string values but the input tensor content doesn't contain "
-                  "a size for the "
-               << i << "th string. The content size is " << content_.size()
-               << " bytes.";
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Expected to read ", num,
+            " string values but the input tensor content doesn't contain "
+            "a size for the ",
+            i, "th string. The content size is ", content_.size(), " bytes."));
       }
       // Ensure that size of any string does not exceed the maximum allowed size
       // to avoid overflow when manipulating the offset.
       if (size > INT32_MAX) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "Input tensor content contains a string value with size "
-               << size << " which exceeds the maximum allowed size of "
-               << INT32_MAX << " bytes.";
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Input tensor content contains a string value with size ", size,
+            " which exceeds the maximum allowed size of ", INT32_MAX,
+            " bytes."));
       }
       string_views_[i] = string_view(content_.data() + cumulative_size, size);
       // Double check that there is no overflow, although this should not be
@@ -247,11 +247,10 @@ class SerializedContentStringData : public TensorData {
     // Verify that the content is large enough.
     TFF_CHECK(offset <= content_.size());
     if (content_.size() - offset < cumulative_size) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Input tensor content has insufficient size to store " << num
-             << " string values. The content size is " << content_.size()
-             << " bytes, but " << offset + cumulative_size
-             << " bytes are required.";
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Input tensor content has insufficient size to store ", num,
+          " string values. The content size is ", content_.size(),
+          " bytes, but ", offset + cumulative_size, " bytes are required."));
     }
 
     // The second pass offsets string_view pointers so that the first one points
@@ -311,12 +310,12 @@ absl::StatusOr<std::unique_ptr<TensorData>> CreateDataFromNumericVector(
     DataType datatype_from_proto, absl::Span<const T> values,
     std::unique_ptr<TensorData>& data) {
   if (internal::TypeTraits<T>::kDataType != datatype_from_proto) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Tensor proto contains data of unexpected data type.";
+    return absl::InvalidArgumentError(
+        "Tensor proto contains data of unexpected data type.");
   }
   if (data != nullptr) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Tensor proto contains multiple representations of data.";
+    return absl::InvalidArgumentError(
+        "Tensor proto contains multiple representations of data.");
   }
   return std::make_unique<VectorData<T>>(
       std::vector<T>(values.begin(), values.end()));
@@ -326,12 +325,12 @@ absl::StatusOr<std::unique_ptr<TensorData>> CreateDataFromStringVector(
     DataType datatype_from_proto, std::vector<std::string> values,
     std::unique_ptr<TensorData>& data) {
   if (internal::TypeTraits<string_view>::kDataType != datatype_from_proto) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Tensor proto contains data of unexpected data type.";
+    return absl::InvalidArgumentError(
+        "Tensor proto contains data of unexpected data type.");
   }
   if (data != nullptr) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Tensor proto contains data of unexpected data type.";
+    return absl::InvalidArgumentError(
+        "Tensor proto contains data of unexpected data type.");
   }
   return std::make_unique<VectorData<string_view>>(std::move(values));
 }
@@ -389,7 +388,7 @@ template <typename ContentType>
 absl::StatusOr<Tensor> FromProtoImpl(const TensorProto& tensor_proto,
                                      ContentType&& content) {
   if (tensor_proto.dtype() == DT_INVALID) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "Invalid Tensor dtype.";
+    return absl::InvalidArgumentError("Invalid Tensor dtype.");
   }
   TFF_ASSIGN_OR_RETURN(TensorShape shape,
                        TensorShape::FromProto(tensor_proto.shape()));

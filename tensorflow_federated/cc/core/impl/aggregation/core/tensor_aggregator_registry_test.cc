@@ -21,7 +21,8 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
@@ -32,9 +33,9 @@ namespace aggregation {
 namespace {
 
 class MockFactory : public TensorAggregatorFactory {
-  MOCK_METHOD(StatusOr<std::unique_ptr<TensorAggregator>>, Create,
+  MOCK_METHOD(absl::StatusOr<std::unique_ptr<TensorAggregator>>, Create,
               (const Intrinsic&), (const, override));
-  MOCK_METHOD(StatusOr<std::unique_ptr<TensorAggregator>>, Deserialize,
+  MOCK_METHOD(absl::StatusOr<std::unique_ptr<TensorAggregator>>, Deserialize,
               (const Intrinsic&, std::string), (const, override));
 };
 
@@ -42,7 +43,8 @@ REGISTER_AGGREGATOR_FACTORY("foobar", MockFactory);
 
 TEST(TensorAggregatorRegistryTest, FactoryRegistrationSuccessful) {
   EXPECT_THAT(GetAggregatorFactory("foobar"), IsOk());
-  EXPECT_THAT(GetAggregatorFactory("xyz"), StatusIs(NOT_FOUND));
+  EXPECT_THAT(GetAggregatorFactory("xyz"),
+              StatusIs(absl::StatusCode::kNotFound));
 }
 
 TEST(TensorAggregatorRegistryTest, RepeatedRegistrationUnsuccessful) {

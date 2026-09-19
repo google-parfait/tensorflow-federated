@@ -69,16 +69,17 @@ DPGroupByAggregator::DPGroupByAggregator(
                             : kEpsilonThreshold)),
       delta_per_agg_(delta / intrinsics->size()) {}
 
-StatusOr<const DPHistogramBundle&> DPGroupByAggregator::GetBundle(int i) const {
+absl::StatusOr<const DPHistogramBundle&> DPGroupByAggregator::GetBundle(
+    int i) const {
   if (i >= bundles_.size() || i < 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByAggregator::GetBundle: " << i
-           << " is not in the range [0, " << bundles_.size() << ")";
+    return absl::InvalidArgumentError(
+        absl::StrCat("DPGroupByAggregator::GetBundle: ", i,
+                     " is not in the range [0, ", bundles_.size(), ")"));
   }
   return bundles_[i];
 }
 
-StatusOr<std::string> DPGroupByAggregator::GetNoiseDescription() const {
+absl::StatusOr<std::string> DPGroupByAggregator::GetNoiseDescription() const {
   if (epsilon_ >= kEpsilonThreshold) {
     return "No noise added.";
   }
@@ -87,9 +88,9 @@ StatusOr<std::string> DPGroupByAggregator::GetNoiseDescription() const {
       "\tNoise was drawn from a %s distribution with standard deviation %f.\n";
   for (int i = 0; i < bundles_.size(); ++i) {
     if (bundles_[i].mechanism == nullptr) {
-      return TFF_STATUS(FAILED_PRECONDITION)
-             << "DPGroupByAggregator::GetNoiseDescription: a mechanism was not "
-                "set.";
+      return absl::FailedPreconditionError(
+          "DPGroupByAggregator::GetNoiseDescription: a mechanism was not "
+          "set.");
     }
     absl::StrAppend(&noise_description, "Aggregation ", i, ":\n");
 
@@ -119,10 +120,10 @@ StatusOr<std::string> DPGroupByAggregator::GetNoiseDescription() const {
   return noise_description;
 }
 
-StatusOr<OutputTensorList> DPGroupByAggregator::Report() && {
+absl::StatusOr<OutputTensorList> DPGroupByAggregator::Report() && {
   if (!CanReport()) {
-    return TFF_STATUS(FAILED_PRECONDITION)
-           << "DPGroupByAggregator::Report: the report goal isn't met";
+    return absl::FailedPreconditionError(
+        "DPGroupByAggregator::Report: the report goal isn't met");
   }
   TFF_RETURN_IF_ERROR(CheckValid());
   return NoisyReport();
@@ -138,9 +139,9 @@ Status DPGroupByAggregator::ValidateInputs(
     }
     for (int j = 0; j < tensors[i]->num_elements(); ++j) {
       if (tensors[i]->AsSpan<string_view>()[j].size() > max_string_length_) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "The maximum length of a string key is " << max_string_length_
-               << " but got a string exceeding that length in tensor " << i;
+        return absl::InvalidArgumentError(absl::StrCat(
+            "The maximum length of a string key is ", max_string_length_,
+            " but got a string exceeding that length in tensor ", i));
       }
     }
   }
@@ -148,10 +149,10 @@ Status DPGroupByAggregator::ValidateInputs(
 }
 
 // Number of bytes to represent a number in `varint` format.
-StatusOr<int64_t> CalculateVarintByteSize(int64_t value) {
+absl::StatusOr<int64_t> CalculateVarintByteSize(int64_t value) {
   if (value <= 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Value must be positive but is " << value;
+    return absl::InvalidArgumentError(
+        absl::StrCat("Value must be positive but is ", value));
   }
   // Determine how many bits are needed to represent `value`.
   double num_bits = std::floor(std::log2(value)) + 1;
@@ -179,9 +180,9 @@ StatusOr<int64_t> CalculateVarintByteSize(int64_t value) {
 //
 // The Serialize() function calls these helpers with `partitions_influenced=1`,
 // recovering the logic used prior to the introduction of Partition().
-StatusOr<int64_t> StringTensorSensitivity(int64_t max_groups_contributed,
-                                          int64_t max_string_length,
-                                          int64_t partitions_influenced) {
+absl::StatusOr<int64_t> StringTensorSensitivity(int64_t max_groups_contributed,
+                                                int64_t max_string_length,
+                                                int64_t partitions_influenced) {
   // For a string tensor, first a stream of varints is written, where the ith
   // varint is the length of the ith string. Then the strings are fed in one
   // after the other.
@@ -200,9 +201,9 @@ StatusOr<int64_t> StringTensorSensitivity(int64_t max_groups_contributed,
          partitions_influenced * bytes_to_encode_content_length;
 }
 
-StatusOr<int64_t> NumericalTensorSensitivity(int64_t max_groups_contributed,
-                                             int64_t bytes_per_value,
-                                             int64_t partitions_influenced) {
+absl::StatusOr<int64_t> NumericalTensorSensitivity(
+    int64_t max_groups_contributed, int64_t bytes_per_value,
+    int64_t partitions_influenced) {
   // For a numerical tensor, the content consists entirely of the raw bytes
   // representing the numerical values.
   int64_t bytes_of_content = max_groups_contributed * bytes_per_value;
@@ -218,7 +219,7 @@ StatusOr<int64_t> NumericalTensorSensitivity(int64_t max_groups_contributed,
 // CalculatePartitionSensitivity. The `partitions_influenced` parameter
 // controls how the varint overhead is accounted for — see the comment block
 // above StringTensorSensitivity for the full explanation.
-StatusOr<int64_t> DPGroupByAggregator::CalculateSensitivityImpl(
+absl::StatusOr<int64_t> DPGroupByAggregator::CalculateSensitivityImpl(
     int64_t partitions_influenced) {
   int64_t sensitivity = 0;
   // First calculate the sensitivity of the keys to one Accumulate call.
@@ -240,8 +241,8 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSensitivityImpl(
                                                      max_groups_contributed_, 8,
                                                      partitions_influenced));
       } else {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "Unsupported key type: " << key_type;
+        return absl::InvalidArgumentError(
+            absl::StrCat("Unsupported key type: ", key_type));
       }
       sensitivity += tensor_sensitivity;
     }
@@ -268,8 +269,8 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSensitivityImpl(
           NumericalTensorSensitivity(max_groups_contributed_, 8,
                                      partitions_influenced));
     } else {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "Unsupported aggregation type: " << aggregation_type;
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unsupported aggregation type: ", aggregation_type));
     }
     sensitivity += aggregation_sensitivity;
   }
@@ -288,7 +289,7 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSensitivityImpl(
 // Sensitivity of the length of a single Serialize() output.
 // With one output there is only one varint header per tensor,
 // so partitions_influenced = 1.
-StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
+absl::StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
   return CalculateSensitivityImpl(1);
 }
 
@@ -297,7 +298,7 @@ StatusOr<int64_t> DPGroupByAggregator::CalculateSerializeSensitivity() {
 // max_groups_contributed groups can vanish and max_groups_contributed
 // groups can appear, influencing at most
 // min(2 * max_groups_contributed, num_partitions) outputs.
-StatusOr<int64_t> DPGroupByAggregator::CalculatePartitionSensitivity(
+absl::StatusOr<int64_t> DPGroupByAggregator::CalculatePartitionSensitivity(
     int num_partitions) {
   int64_t partitions_influenced =
       std::min<int64_t>(2 * max_groups_contributed_, num_partitions);
@@ -324,7 +325,7 @@ Status PadSerializedState(std::string& serialized_state, double epsilon,
   return absl::OkStatus();
 }
 
-StatusOr<std::string> DPGroupByAggregator::Serialize() && {
+absl::StatusOr<std::string> DPGroupByAggregator::Serialize() && {
   TFF_ASSIGN_OR_RETURN(std::string serialized_state,
                        std::move(*this).GroupByAggregator::Serialize());
   if (epsilon_ >= kEpsilonThreshold) {
@@ -337,7 +338,7 @@ StatusOr<std::string> DPGroupByAggregator::Serialize() && {
   return serialized_state;
 }
 
-StatusOr<std::vector<std::string>> DPGroupByAggregator::Partition(
+absl::StatusOr<std::vector<std::string>> DPGroupByAggregator::Partition(
     int num_partitions) && {
   // Generate initial partitions using the base class.
   TFF_ASSIGN_OR_RETURN(
@@ -372,7 +373,7 @@ StatusOr<std::vector<std::string>> DPGroupByAggregator::Partition(
   return serialized_states;
 }
 
-StatusOr<int64_t> DPGroupByAggregator::GetContentSize(
+absl::StatusOr<int64_t> DPGroupByAggregator::GetContentSize(
     absl::string_view serialized_state) {
   // Retrieve padding length. Although Serialize() used reinterpret_cast, use
   // memcpy here to avoid alignment issues.
@@ -384,9 +385,9 @@ StatusOr<int64_t> DPGroupByAggregator::GetContentSize(
   // Clip the suffix of the serialized state (padding & padding length).
   int64_t characters_to_remove = sizeof(int64_t) + padding_length;
   if (padding_length < 0 || characters_to_remove > total_size) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByAggregator::ComputeContentSize:"
-              " Failed to parse padding length.";
+    return absl::InvalidArgumentError(
+        "DPGroupByAggregator::ComputeContentSize:"
+        " Failed to parse padding length.");
   }
   return total_size - characters_to_remove;
 }

@@ -21,7 +21,9 @@
 #include <memory>
 #include <utility>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "algorithms/numerical-mechanisms.h"
 #include "algorithms/partition-selection.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
@@ -127,14 +129,14 @@ absl::StatusOr<DPHistogramBundle> CreateGaussianMechanism(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
     double l2_bound, bool threshold_by_value) {
   if (epsilon <= 0 || epsilon >= kEpsilonThreshold) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "CreateGaussianMechanism: Epsilon must be positive "
-              "and smaller than "
-           << kEpsilonThreshold;
+    return absl::InvalidArgumentError(
+        absl::StrCat("CreateGaussianMechanism: Epsilon must be positive "
+                     "and smaller than ",
+                     kEpsilonThreshold));
   }
   if (delta <= 0 || delta >= 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "CreateGaussianMechanism: Delta must lie within (0, 1).";
+    return absl::InvalidArgumentError(
+        "CreateGaussianMechanism: Delta must lie within (0, 1).");
   }
 
   // The following parameter determines how much of delta is consumed for
@@ -158,10 +160,10 @@ absl::StatusOr<DPHistogramBundle> CreateGaussianMechanism(
 
   if (threshold_by_value) {
     if (l0_bound <= 0 || linfinity_bound <= 0) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "CreateGaussianMechanism: Open-domain DP "
-                "histogram algorithm requires valid l0_bound "
-                "and linfinity_bound.";
+      return absl::InvalidArgumentError(
+          "CreateGaussianMechanism: Open-domain DP "
+          "histogram algorithm requires valid l0_bound "
+          "and linfinity_bound.");
     }
 
     // Calculate the threshold which we will impose on noisy sums.
@@ -181,10 +183,10 @@ absl::StatusOr<DPHistogramBundle> CreateLaplaceMechanism(
     double epsilon, double delta, int64_t l0_bound, double linfinity_bound,
     double l1_bound, bool threshold_by_value) {
   if (epsilon <= 0 || epsilon >= kEpsilonThreshold) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "CreateLaplaceMechanism: Epsilon must be positive "
-              "and smaller than "
-           << kEpsilonThreshold;
+    return absl::InvalidArgumentError(
+        absl::StrCat("CreateLaplaceMechanism: Epsilon must be positive "
+                     "and smaller than ",
+                     kEpsilonThreshold));
   }
 
   double l1_sensitivity =
@@ -199,10 +201,10 @@ absl::StatusOr<DPHistogramBundle> CreateLaplaceMechanism(
 
   if (threshold_by_value) {
     if (delta <= 0 || delta >= 1 || l0_bound <= 0 || linfinity_bound <= 0) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "CreateLaplaceMechanism: Open-domain DP "
-                "histogram algorithm requires valid delta, "
-                "l0_bound, and linfinity_bound.";
+      return absl::InvalidArgumentError(
+          "CreateLaplaceMechanism: Open-domain DP "
+          "histogram algorithm requires valid delta, "
+          "l0_bound, and linfinity_bound.");
     }
 
     // Calculate the threshold which we will impose on noisy sums.
@@ -235,13 +237,13 @@ absl::StatusOr<DPHistogramBundle> CreateDPHistogramBundle(
        l2_sensitivity != internal::kMaxSensitivity);
 
   if (!laplace_is_possible && !gaussian_is_possible) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "CreateDPHistogramBundle: Unable to make either a Laplace or a"
-              " Gaussian DP mechanism. Relevant parameters:"
-           << "\n l0_bound: " << l0_bound
-           << "\n linfinity_bound: " << linfinity_bound
-           << "\n l1_bound: " << l1_bound << "\n l2_bound: " << l2_bound
-           << "\n epsilon: " << epsilon << "\n delta: " << delta;
+    return absl::InvalidArgumentError(absl::StrCat(
+        "CreateDPHistogramBundle: Unable to make either a Laplace or a"
+        " Gaussian DP mechanism. Relevant parameters:"
+        "\n l0_bound: ",
+        l0_bound, "\n linfinity_bound: ", linfinity_bound,
+        "\n l1_bound: ", l1_bound, "\n l2_bound: ", l2_bound,
+        "\n epsilon: ", epsilon, "\n delta: ", delta));
   }
 
   // When only one mechanism can be made, make it.
@@ -304,18 +306,18 @@ absl::StatusOr<std::unique_ptr<PositiveLaplaceMechanism>>
 PositiveLaplaceMechanism::Create(double epsilon, double delta,
                                  double sensitivity) {
   if (epsilon <= 0 || epsilon >= kEpsilonThreshold) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "PositiveLaplaceMechanism::Create: Epsilon must be positive "
-              "and smaller than "
-           << kEpsilonThreshold;
+    return absl::InvalidArgumentError(absl::StrCat(
+        "PositiveLaplaceMechanism::Create: Epsilon must be positive "
+        "and smaller than ",
+        kEpsilonThreshold));
   }
   if (delta <= 0 || delta >= 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "PositiveLaplaceMechanism::Create: Delta must be within (0, 1).";
+    return absl::InvalidArgumentError(
+        "PositiveLaplaceMechanism::Create: Delta must be within (0, 1).");
   }
   if (sensitivity <= 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "PositiveLaplaceMechanism::Create: Sensitivity must be positive.";
+    return absl::InvalidArgumentError(
+        "PositiveLaplaceMechanism::Create: Sensitivity must be positive.");
   }
 
   differential_privacy::LaplaceMechanism::Builder builder;

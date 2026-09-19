@@ -21,6 +21,8 @@
 #include <sstream>
 #include <string>
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -43,9 +45,9 @@ std::string TensorShapeToString(const TensorShape& shape) {
 
 Status DPTensorAggregator::ValidateInputs(const InputTensorList& input) const {
   if (input.size() != input_specs_.size()) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPTensorAggregator::ValidateInputs: Expected exactly "
-           << input_specs_.size() << " tensors, but got " << input.size();
+    return absl::InvalidArgumentError(
+        absl::StrCat("DPTensorAggregator::ValidateInputs: Expected exactly ",
+                     input_specs_.size(), " tensors, but got ", input.size()));
   }
 
   for (int i = 0; i < input.size(); ++i) {
@@ -53,27 +55,25 @@ Status DPTensorAggregator::ValidateInputs(const InputTensorList& input) const {
     const TensorSpec& input_spec = input_specs_[i];
     // Data type of input must match the spec.
     if (input_tensor->dtype() != input_spec.dtype()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPTensorAggregator::ValidateInputs: Expected an input of "
-                "type"
-             << " " << input_spec.dtype() << ", but got "
-             << input_tensor->dtype() << " for input[" << i << "]";
+      return absl::InvalidArgumentError(absl::StrCat(
+          "DPTensorAggregator::ValidateInputs: Expected an input of "
+          "type ",
+          input_spec.dtype(), ", but got ", input_tensor->dtype(),
+          " for input[", i, "]"));
     }
     // If the spec's shape is not {-1}, then the input shape must match.
     // (-1 indicates unknown dimensionality)
     if (input_spec.shape() != TensorShape{-1} &&
         input_tensor->shape() != input_spec.shape()) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPTensorAggregator::ValidateInputs: Expected input with "
-                "shape"
-             << " {" << TensorShapeToString(input_spec.shape()) << "},"
-             << " but got"
-             << " {" << TensorShapeToString(input_tensor->shape()) << "}"
-             << "for input[" << i << "]";
+      return absl::InvalidArgumentError(absl::StrCat(
+          "DPTensorAggregator::ValidateInputs: Expected input with "
+          "shape {",
+          TensorShapeToString(input_spec.shape()), "}, but got {",
+          TensorShapeToString(input_tensor->shape()), "} for input[", i, "]"));
     }
   }
 
-  return TFF_STATUS(OK);
+  return absl::OkStatus();
 }
 
 }  // namespace aggregation

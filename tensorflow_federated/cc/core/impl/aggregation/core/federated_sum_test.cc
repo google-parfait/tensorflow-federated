@@ -146,8 +146,8 @@ TEST(FederatedSumTest, Create_WrongUri) {
                       {},
                       {}};
 
-  Status s =
-      (*GetAggregatorFactory("federated_sum"))->Create(intrinsic).status();
+  TFF_ASSERT_OK_AND_ASSIGN(auto factory, GetAggregatorFactory("federated_sum"));
+  auto s = factory->Create(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Expected intrinsic URI federated_sum"));
 }
@@ -160,15 +160,14 @@ TEST(FederatedSumTest, Create_UnsupportedNumberOfInputs) {
       {},
       {}};
 
-  Status s = CreateTensorAggregator(intrinsic).status();
+  auto s = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Exactly one input is expected"));
 }
 
 TEST(FederatedSumTest, Create_UnsupportedEmptyIntrinsic) {
-  Status s = (*GetAggregatorFactory("federated_sum"))
-                 ->Create(Intrinsic{"federated_sum", {}, {}, {}, {}})
-                 .status();
+  TFF_ASSERT_OK_AND_ASSIGN(auto factory, GetAggregatorFactory("federated_sum"));
+  auto s = factory->Create(Intrinsic{"federated_sum", {}, {}, {}, {}}).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Exactly one input is expected"));
 }
@@ -181,7 +180,7 @@ TEST(FederatedSumTest, Create_UnsupportedNumberOfOutputs) {
                       {},
                       {}};
 
-  Status s = CreateTensorAggregator(intrinsic).status();
+  auto s = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Exactly one output tensor is expected"));
 }
@@ -193,7 +192,7 @@ TEST(FederatedSumTest, Create_UnsupportedUnmatchingInputAndOutputDataType) {
                       {},
                       {}};
 
-  Status s = CreateTensorAggregator(intrinsic).status();
+  auto s = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
               HasSubstr("Input and output tensors have mismatched specs"));
@@ -206,7 +205,7 @@ TEST(FederatedSumTest, Create_UnsupportedUnmatchingInputAndOutputShape) {
                       {},
                       {}};
 
-  Status s = CreateTensorAggregator(intrinsic).status();
+  auto s = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(),
               HasSubstr("Input and output tensors have mismatched specs"));
@@ -223,7 +222,7 @@ TEST(FederatedSumTest, Create_UnsupportedIntrinsicWithParameter) {
                       {}};
   intrinsic.parameters.push_back(std::move(tensor));
 
-  Status s = CreateTensorAggregator(intrinsic).status();
+  auto s = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Expected no parameters"));
 }
@@ -241,7 +240,7 @@ TEST(FederatedSumTest, Create_UnsupportedNestedIntrinsic) {
                       {}};
   intrinsic.nested_intrinsics.push_back(std::move(inner));
 
-  Status s = CreateTensorAggregator(intrinsic).status();
+  auto s = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Expected no nested intrinsics"));
 }

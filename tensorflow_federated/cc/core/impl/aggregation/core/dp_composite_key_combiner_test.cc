@@ -24,6 +24,7 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -78,13 +79,13 @@ TEST(DPCompositeKeyCombinerTest, AccumulateTwiceAndOutput_L0BoundIs1) {
 
     Tensor alice_t1(alice_column1);
     Tensor alice_t2(alice_column2);
-    StatusOr<Tensor> alice_result =
+    absl::StatusOr<Tensor> alice_result =
         combiner.Accumulate(InputTensorList({&alice_t1, &alice_t2}));
     ASSERT_OK(alice_result);
 
     Tensor bob_t1(bob_column1);
     Tensor bob_t2(bob_column2);
-    StatusOr<Tensor> bob_result =
+    absl::StatusOr<Tensor> bob_result =
         combiner.Accumulate(InputTensorList({&bob_t1, &bob_t2}));
     ASSERT_OK(bob_result);
 

@@ -25,6 +25,7 @@
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_factory.h"
@@ -47,9 +48,9 @@ using ::testing::HasSubstr;
 
 class MockFactory : public TensorAggregatorFactory {
  public:
-  MOCK_METHOD(StatusOr<std::unique_ptr<TensorAggregator>>, Create,
+  MOCK_METHOD(absl::StatusOr<std::unique_ptr<TensorAggregator>>, Create,
               (const Intrinsic&), (const, override));
-  MOCK_METHOD(StatusOr<std::unique_ptr<TensorAggregator>>, Deserialize,
+  MOCK_METHOD(absl::StatusOr<std::unique_ptr<TensorAggregator>>, Deserialize,
               (const Intrinsic&, std::string), (const, override));
 };
 

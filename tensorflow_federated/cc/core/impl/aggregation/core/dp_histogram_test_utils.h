@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
@@ -57,7 +58,7 @@ class DPExhaustiveReportHistogramPeer {
     dp_histogram_ = std::unique_ptr<DPExhaustiveReportHistogram>(
         dynamic_cast<DPExhaustiveReportHistogram*>(aggregator.release()));
   }
-  StatusOr<std::string> GetNoiseDescription() const {
+  absl::StatusOr<std::string> GetNoiseDescription() const {
     return dp_histogram_->GetNoiseDescription();
   }
 
@@ -109,7 +110,7 @@ class DPThresholdingHistogramPeer {
 
   double GetDeltaPerAgg() const { return dp_histogram_->delta_per_agg(); }
 
-  StatusOr<std::string> GetNoiseDescription() const {
+  absl::StatusOr<std::string> GetNoiseDescription() const {
     return dp_histogram_->GetNoiseDescription();
   }
 

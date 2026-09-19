@@ -19,6 +19,9 @@
 
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -45,13 +48,13 @@ class Registry final {
                   << intrinsic_uri << "' is registered.";
   }
 
-  StatusOr<const TensorAggregatorFactory*> GetAggregatorFactory(
+  absl::StatusOr<const TensorAggregatorFactory*> GetAggregatorFactory(
       const std::string& intrinsic_uri) {
     absl::MutexLock lock(mutex_);
     auto it = map_.find(intrinsic_uri);
     if (it == map_.end()) {
-      return TFF_STATUS(NOT_FOUND)
-             << "Unknown factory for intrinsic_uri '" << intrinsic_uri << "'.";
+      return absl::NotFoundError(absl::StrCat(
+          "Unknown factory for intrinsic_uri '", intrinsic_uri, "'."));
     }
     return it->second;
   }
@@ -76,17 +79,17 @@ void RegisterAggregatorFactory(const std::string& intrinsic_uri,
 }
 
 // Looks up a factory instance for the given intrinsic type.
-StatusOr<const TensorAggregatorFactory*> GetAggregatorFactory(
+absl::StatusOr<const TensorAggregatorFactory*> GetAggregatorFactory(
     const std::string& intrinsic_uri) {
   return internal::GetRegistry()->GetAggregatorFactory(intrinsic_uri);
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>> CreateTensorAggregator(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateTensorAggregator(
     const Intrinsic& intrinsic) {
   return (*GetAggregatorFactory(intrinsic.uri))->Create(intrinsic);
 }
 
-StatusOr<std::unique_ptr<TensorAggregator>> DeserializeTensorAggregator(
+absl::StatusOr<std::unique_ptr<TensorAggregator>> DeserializeTensorAggregator(
     const Intrinsic& intrinsic, std::string serialized_state) {
   return (*GetAggregatorFactory(intrinsic.uri))
       ->Deserialize(intrinsic, serialized_state);

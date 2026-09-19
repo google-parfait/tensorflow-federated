@@ -308,8 +308,8 @@ TEST(GroupingFederatedSumTest, CreateWrongUri) {
                                   {TensorSpec{"foo_out", DT_INT32, {}}},
                                   {},
                                   {}};
-  Status s =
-      (*GetAggregatorFactory("GoogleSQL:sum"))->Create(intrinsic).status();
+  TFF_ASSERT_OK_AND_ASSIGN(auto factory, GetAggregatorFactory("GoogleSQL:sum"));
+  auto s = factory->Create(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Expected intrinsic URI GoogleSQL:sum"));
 }
@@ -321,7 +321,7 @@ TEST(GroupingFederatedSumTest, CreateUnsupportedNumberOfInputs) {
       {TensorSpec{"foo_out", DT_INT32, {}}},
       {},
       {}};
-  Status s = CreateTensorAggregator(intrinsic).status();
+  auto s = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(s.message(), HasSubstr("Exactly one input is expected"));
 }

@@ -25,6 +25,8 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -643,7 +645,7 @@ TEST(DPGroupingFederatedSumTest, CreateMatchingInputAndOutputDataType) {
                             {TensorSpec{"foo_out", DT_INT32, {}}},
                             {CreateDPGFSParameters<int32_t>(1000, -1, -1)},
                             {}};
-  Status s = CreateTensorAggregator(intrinsic_int32).status();
+  auto s = CreateTensorAggregator(intrinsic_int32).status();
   EXPECT_OK(s);
 
   Intrinsic intrinsic_float{kDPSumUri,
@@ -663,9 +665,9 @@ TEST(DPGroupingFederatedSumTest, CreateWrongUri) {
                 {CreateDPGFSParameters<int64_t>(1000, -1, -1)},
                 {}};
   auto lhs = absl::StrCat("Expected intrinsic URI ", kDPSumUri);
-  EXPECT_DEATH(
-      Status s = (*GetAggregatorFactory(kDPSumUri))->Create(intrinsic).status(),
-      HasSubstr(absl::StrCat(lhs, " but got uri wrong_uri")));
+  TFF_ASSERT_OK_AND_ASSIGN(auto factory, GetAggregatorFactory(kDPSumUri));
+  EXPECT_DEATH(auto s = factory->Create(intrinsic).status(),
+               HasSubstr(absl::StrCat(lhs, " but got uri wrong_uri")));
 }
 
 TEST(DPGroupingFederatedSumTest, CreateUnsupportedNumberOfInputs) {
@@ -681,8 +683,9 @@ TEST(DPGroupingFederatedSumTest, CreateUnsupportedNumberOfInputs) {
 }
 
 TEST(DPGroupingFederatedSumTest, CreateUnsupportedEmptyIntrinsic) {
+  TFF_ASSERT_OK_AND_ASSIGN(auto factory, GetAggregatorFactory(kDPSumUri));
   Status s =
-      (*GetAggregatorFactory(kDPSumUri))
+      factory
           ->Create(Intrinsic{kDPSumUri,
                              {},
                              {},
