@@ -565,10 +565,10 @@ def _as_function_of_single_subparameter(
   bb = _prepare_for_rebinding(bb)
   new_name = next(federated_language.framework.unique_name_generator(bb))
   new_ref = federated_language.framework.Reference(
-      new_name, bb.type_signature.parameter[index]
+      new_name, bb.type_signature.parameter[index]  # pyrefly: ignore[bad-index, unsupported-operation]
   )
   new_lambda_body = tree_transformations.replace_selections(
-      bb.result, bb.parameter_name, {(index,): new_ref}
+      bb.result, bb.parameter_name, {(index,): new_ref}  # pyrefly: ignore[bad-argument-type]
   )
   new_lambda = federated_language.framework.Lambda(
       new_ref.name, new_ref.type_signature, new_lambda_body
@@ -646,7 +646,7 @@ def _as_function_of_some_federated_subparameters(
     )
 
   new_lambda_body = tree_transformations.replace_selections(
-      bb.result, bb.parameter_name, path_to_replacement
+      bb.result, bb.parameter_name, path_to_replacement  # pyrefly: ignore[bad-argument-type]
   )
   lambda_with_zipped_param = federated_language.framework.Lambda(
       ref_to_zip.name, ref_to_zip.type_signature, new_lambda_body

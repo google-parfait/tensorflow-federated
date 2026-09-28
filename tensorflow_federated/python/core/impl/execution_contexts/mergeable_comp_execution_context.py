@@ -421,7 +421,7 @@ def _repackage_partitioned_values(
     for x in after_merge_results:
       py_typecheck.check_type(x, (list, tuple))
     # Merges all clients-placed values back together.
-    return functools.reduce(lambda x, y: x + y, after_merge_results)
+    return functools.reduce(lambda x, y: x + y, after_merge_results)  # pyrefly: ignore[unsupported-operation]
   else:
     return after_merge_results[0]
 
