@@ -179,10 +179,10 @@ class LearningProcess(iterative_process.IterativeProcess):
     super().__init__(initialize_fn, next_fn)
 
     init_fn_result = initialize_fn.type_signature.result
-    if init_fn_result.placement != federated_language.SERVER:  # pytype: disable=attribute-error
+    if init_fn_result.placement != federated_language.SERVER:  # pyrefly: ignore[missing-attribute]
       raise LearningProcessPlacementError(
           'The result of `initialize_fn` must be placed at `SERVER` but found '
-          f'placement {init_fn_result.placement}.'  # pytype: disable=attribute-error
+          f'placement {init_fn_result.placement}.'
       )
 
     next_result_type = next_fn.type_signature.result
@@ -219,10 +219,11 @@ class LearningProcess(iterative_process.IterativeProcess):
       )
 
     next_fn_result = next_fn.type_signature.result
-    if next_fn_result.metrics.placement != federated_language.SERVER:  # pytype: disable=attribute-error
+    if next_fn_result.metrics.placement != federated_language.SERVER:  # pyrefly: ignore[missing-attribute]
       raise LearningProcessPlacementError(
+          # pyrefly: ignore[missing-attribute]
           'The result of `next_fn` must be placed at `SERVER` but found '
-          f'placement {next_fn_result.metrics.placement} for `metrics`.'  # pytype: disable=attribute-error
+          f'placement {next_fn_result.metrics.placement} for `metrics`.'
       )
 
     py_typecheck.check_type(
@@ -230,7 +231,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     )
     get_model_weights_type = get_model_weights.type_signature
     get_model_weights_param = get_model_weights_type.parameter
-    next_fn_state_param = next_fn.type_signature.parameter[0].member  # pytype: disable=unsupported-operands
+    next_fn_state_param = next_fn.type_signature.parameter[0].member  # pyrefly: ignore[bad-index, unsupported-operation]
     if (
         get_model_weights_param is None
         or not get_model_weights_param.is_equivalent_to(next_fn_state_param)
@@ -247,7 +248,7 @@ class LearningProcess(iterative_process.IterativeProcess):
         set_model_weights, federated_language.framework.Computation
     )
     set_model_weights_type = set_model_weights.type_signature
-    set_model_weights_state_param = set_model_weights_type.parameter[0]  # pytype: disable=unsupported-operands
+    set_model_weights_state_param = set_model_weights_type.parameter[0]  # pyrefly: ignore[bad-index, unsupported-operation]
     if not set_model_weights_state_param.is_equivalent_to(next_fn_state_param):
       raise SetModelWeightsTypeSignatureError(
           'The input type of `set_model_weights` must be assignable from '
@@ -265,7 +266,7 @@ class LearningProcess(iterative_process.IterativeProcess):
       )
     self._set_model_weights = set_model_weights
 
-    state_type = initialize_fn.type_signature.result.member  # pytype: disable=attribute-error
+    state_type = initialize_fn.type_signature.result.member  # pyrefly: ignore[missing-attribute]
     if get_hparams_fn is not None:
       hparams_base.type_check_get_hparams_fn(get_hparams_fn, state_type)
     else:

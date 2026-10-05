@@ -73,7 +73,7 @@ def _type_check_initialize_fn(
         'see a collection of federated types, try wrapping the returned '
         'value in `federated_language.federated_zip` before returning.'
     )
-  if initialize_fn.type_signature.result.placement != federated_language.SERVER:  # pytype: disable=attribute-error
+  if initialize_fn.type_signature.result.placement != federated_language.SERVER:
     raise errors.TemplatePlacementError(
         'The state controlled by a `ClientWorkProcess` must be placed at '
         f'the SERVER, but found type: {initialize_fn.type_signature.result}.'
@@ -147,28 +147,30 @@ def _type_check_next_fn_result(
   """Validates the output types of `next_fn` in a `ClientWorkProcess`."""
   next_fn_result = next_fn.type_signature.result
   if (
-      not isinstance(next_fn_result.result, federated_language.FederatedType)  # pytype: disable=attribute-error
-      or next_fn_result.result.placement is not federated_language.CLIENTS  # pytype: disable=attribute-error
+      not isinstance(next_fn_result.result, federated_language.FederatedType)  # pyrefly: ignore[missing-attribute]
+      or next_fn_result.result.placement is not federated_language.CLIENTS
   ):
     raise errors.TemplatePlacementError(
+        # pyrefly: ignore[missing-attribute]
         'The "result" attribute of the return type of `next_fn` must be '
-        f'placed at CLIENTS, but found {next_fn_result.result}.'  # pytype: disable=attribute-error
+        f'placed at CLIENTS, but found {next_fn_result.result}.'
     )
   if (
       not isinstance(
-          next_fn_result.result.member,  # pytype: disable=attribute-error
+          next_fn_result.result.member,
           federated_language.StructWithPythonType,
       )
-      or next_fn_result.result.member.python_container is not ClientResult  # pytype: disable=attribute-error
+      or next_fn_result.result.member.python_container is not ClientResult
   ):
     raise ClientResultTypeError(
         'The "result" attribute of the return type of `next_fn` must have '
-        f'the `ClientResult` container, but found {next_fn_result.result}.'  # pytype: disable=attribute-error
+        f'the `ClientResult` container, but found {next_fn_result.result}.'
     )
-  if next_fn_result.measurements.placement != federated_language.SERVER:  # pytype: disable=attribute-error
+  if next_fn_result.measurements.placement != federated_language.SERVER:  # pyrefly: ignore[missing-attribute]
     raise errors.TemplatePlacementError(
+        # pyrefly: ignore[missing-attribute]
         'The "measurements" attribute of return type of `next_fn` must be '
-        f'placed at SERVER, but found {next_fn_result.measurements}.'  # pytype: disable=attribute-error
+        f'placed at SERVER, but found {next_fn_result.measurements}.'
     )
 
 
@@ -280,8 +282,8 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
 
   @property
   def get_hparams(self) -> federated_language.framework.Computation:
-    return self._get_hparams_fn  # pytype: disable=attribute-error
+    return self._get_hparams_fn
 
   @property
   def set_hparams(self) -> federated_language.framework.Computation:
-    return self._set_hparams_fn  # pytype: disable=attribute-error
+    return self._set_hparams_fn

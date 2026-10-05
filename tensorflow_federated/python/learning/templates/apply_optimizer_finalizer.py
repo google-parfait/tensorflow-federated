@@ -69,7 +69,7 @@ def _build_tff_optimizer_initialize_and_next(
   @tensorflow_computation.tf_computation
   def init_fn():
     tensor_specs = type_conversions.type_to_tf_tensor_specs(
-        model_weights_type.trainable  # pytype: disable=attribute-error
+        model_weights_type.trainable  # pyrefly: ignore[missing-attribute]
     )
     return optimizer.initialize(tensor_specs)
 
@@ -77,8 +77,8 @@ def _build_tff_optimizer_initialize_and_next(
 
   @tensorflow_computation.tf_computation(
       optimizer_state_type,
-      model_weights_type.trainable,  # pytype: disable=attribute-error
-      model_weights_type.trainable,  # pytype: disable=attribute-error
+      model_weights_type.trainable,  # pyrefly: ignore[missing-attribute]
+      model_weights_type.trainable,  # pyrefly: ignore[missing-attribute]
   )
   @tf.function
   def next_fn(optimizer_state, trainable_weights, update):

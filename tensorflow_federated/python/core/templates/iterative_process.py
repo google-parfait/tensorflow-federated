@@ -36,14 +36,12 @@ def _infer_state_type(
     # `state_type` may be `next_parameter_type` or
     # `next_parameter_type[0]`, depending on which one was assignable from
     # `initialize_result_type`.
-    if next_parameter_type.is_assignable_from(initialize_result_type):  # pytype: disable=attribute-error
+    if next_parameter_type.is_assignable_from(initialize_result_type):
       return next_parameter_type
     if _is_nonempty_struct(next_parameter_type) and next_parameter_type[
         0
-    ].is_assignable_from(
-        initialize_result_type
-    ):  # pytype: disable=unsupported-operands
-      return next_parameter_type[0]  # pytype: disable=unsupported-operands
+    ].is_assignable_from(initialize_result_type):
+      return next_parameter_type[0]
     raise errors.TemplateStateNotAssignableError(
         'The return type of `initialize_fn` must be assignable to either\n'
         'the whole argument to `next_fn` or the first argument to `next_fn`,\n'
@@ -58,8 +56,8 @@ def _infer_state_type(
           'Expected `next_parameter_type` to be a structure type of at least '
           f'length one, but found type:\n{next_parameter_type}'
       )
-    if next_parameter_type[0].is_assignable_from(initialize_result_type):  # pytype: disable=unsupported-operands
-      return next_parameter_type[0]  # pytype: disable=unsupported-operands
+    if next_parameter_type[0].is_assignable_from(initialize_result_type):
+      return next_parameter_type[0]
     raise errors.TemplateStateNotAssignableError(
         'The return type of `initialize_fn` must be assignable to the first\n'
         'argument to `next_fn`, but found `initialize_fn` return type:\n'
@@ -69,7 +67,7 @@ def _infer_state_type(
     )
   else:
     # `next_is_multi_arg` is `False`
-    if next_parameter_type.is_assignable_from(initialize_result_type):  # pytype: disable=attribute-error
+    if next_parameter_type.is_assignable_from(initialize_result_type):
       return next_parameter_type
     raise errors.TemplateStateNotAssignableError(
         'The return type of `initialize_fn` must be assignable to the whole\n'
@@ -166,14 +164,14 @@ class IterativeProcess:
     )
 
     next_result_type = next_fn.type_signature.result
-    if state_type.is_assignable_from(next_result_type):  # pytype: disable=attribute-error
+    if state_type.is_assignable_from(next_result_type):
       # The whole return value is the state type
       pass
     elif _is_nonempty_struct(
         next_result_type
     ) and state_type.is_assignable_from(
-        next_result_type[0]  # pytype: disable=unsupported-operands
-    ):  # pytype: disable=attribute-error
+        next_result_type[0]  # pyrefly: ignore[bad-index]
+    ):
       # The first return value is state type
       pass
     else:
@@ -209,7 +207,7 @@ class IterativeProcess:
   @property
   def state_type(self) -> federated_language.Type:
     """The `federated_language.Type` of the state of the process."""
-    return self._state_type  # pytype: disable=bad-return-type
+    return self._state_type
 
 
 def is_stateful(process: IterativeProcess) -> bool:

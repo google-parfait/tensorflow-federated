@@ -498,7 +498,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     )
 
     agg_output_type = (
-        record_agg_process.next.type_signature.result.result.member  # pytype: disable=attribute-error
+        record_agg_process.next.type_signature.result.result.member  # pyrefly: ignore[missing-attribute]
     )
 
     @tensorflow_computation.tf_computation(agg_output_type, query_state_type)

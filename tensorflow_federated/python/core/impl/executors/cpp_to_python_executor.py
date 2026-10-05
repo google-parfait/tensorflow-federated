@@ -135,7 +135,7 @@ class CppToPythonExecutorBridge(federated_language.framework.Executor):
       _handle_error(e)
     return CppToPythonExecutorValue(
         owned_call_id,
-        fn.type_signature.result,  # pytype: disable=attribute-error
+        fn.type_signature.result,  # pyrefly: ignore[missing-attribute]
         self._cpp_executor,
         self._futures_executor,
     )
@@ -174,7 +174,7 @@ class CppToPythonExecutorBridge(federated_language.framework.Executor):
       )
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)
-    selection_type = source.type_signature[index]  # pytype: disable=unsupported-operands
+    selection_type = source.type_signature[index]  # pyrefly: ignore[bad-index]
     return CppToPythonExecutorValue(
         selection_id, selection_type, self._cpp_executor, self._futures_executor
     )

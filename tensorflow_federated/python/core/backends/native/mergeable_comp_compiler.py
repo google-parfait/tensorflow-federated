@@ -110,14 +110,14 @@ def _ensure_lambda(
         f' {building_block.type_signature}.'
     )
   if not isinstance(building_block, federated_language.framework.Lambda):
-    if building_block.type_signature.parameter is not None:  # pytype: disable=attribute-error
+    if building_block.type_signature.parameter is not None:
       name_generator = federated_language.framework.unique_name_generator(
           building_block
       )
       parameter_name = next(name_generator)
       argument = federated_language.framework.Reference(
           parameter_name,
-          building_block.type_signature.parameter,  # pytype: disable=attribute-error
+          building_block.type_signature.parameter,
       )
       parameter_type = argument.type_signature
     else:
@@ -187,7 +187,7 @@ def compile_to_mergeable_comp_form(
   # Construct a report function which accepts the result of merge.
   merge_fn_type = before_agg.type_signature.result['federated_aggregate_param'][  # pyrefly: ignore[bad-index]
       3
-  ]  # pytype: disable=unsupported-operands
+  ]
   report_proto, report_type = tensorflow_computation_factory.create_identity(
       merge_fn_type.result
   )
@@ -228,7 +228,7 @@ def compile_to_mergeable_comp_form(
     @federated_language.federated_computation(
         before_agg.type_signature.parameter,
         federated_language.FederatedType(
-            identity_report.type_signature.result,  # pytype: disable=attribute-error
+            identity_report.type_signature.result,  # pyrefly: ignore[missing-attribute]
             federated_language.SERVER,
         ),
     )
@@ -253,7 +253,7 @@ def compile_to_mergeable_comp_form(
 
     @federated_language.federated_computation(
         federated_language.FederatedType(
-            identity_report.type_signature.result,  # pytype: disable=attribute-error
+            identity_report.type_signature.result,  # pyrefly: ignore[missing-attribute]
             federated_language.SERVER,
         )
     )

@@ -107,7 +107,7 @@ def create_federated_secure_modular_sum(
   )
 
   result_type = federated_language.FederatedType(
-      value.type_signature.member,  # pytype: disable=attribute-error
+      value.type_signature.member,
       federated_language.SERVER,
   )
   intrinsic_type = federated_language.FunctionType(
@@ -130,7 +130,7 @@ def create_federated_secure_modular_sum(
   # type.
   casted_mod = _cast(
       mod_ref,
-      value.type_signature.member,  # pytype: disable=attribute-error
+      value.type_signature.member,  # pyrefly: ignore[bad-argument-type]
   )
   # Since in the preapply_modulus case the modulus is expected to be available
   # at the client as well as at the server for aggregation, we need to broadcast
@@ -154,7 +154,7 @@ def create_federated_secure_modular_sum(
   structural_modulus_proto, structural_modulus_type = (
       tensorflow_computation_factory.create_binary_operator(
           structural_modulus,
-          value.type_signature.member,  # pytype: disable=attribute-error
+          value.type_signature.member,
           casted_mod.type_signature,
       )
   )
@@ -251,7 +251,7 @@ def federated_secure_modular_sum(value, modulus):
       value.type_signature
   )
   modulus_value = federated_language.to_value(modulus, type_spec=None)
-  value_member_type = value.type_signature.member  # pytype: disable=attribute-error
+  value_member_type = value.type_signature.member
   modulus_type = modulus_value.type_signature
   if not federated_language.framework.is_single_integer_or_matches_structure(
       modulus_type, value_member_type

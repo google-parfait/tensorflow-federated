@@ -385,7 +385,7 @@ class _KerasModel(variable.VariableModel):
         self._loss_fns = loss_fns
         self._loss_weights = loss_weights
 
-      def update_state(self, y_true, y_pred, sample_weight=None):  # pytype: disable=signature-mismatch
+      def update_state(self, y_true, y_pred, sample_weight=None):  # pyrefly: ignore[bad-override]
         first_prediction = tf.nest.flatten(y_pred)[0]
         batch_size = tf.shape(first_prediction)[0]
 
@@ -424,7 +424,7 @@ class _KerasModel(variable.VariableModel):
   def local_variables(self):
     local_variables = []
     for metric in self.get_metrics():
-      local_variables.extend(metric.variables)  # pytype: disable=attribute-error
+      local_variables.extend(metric.variables)
     return local_variables
 
   def get_metrics(self):
@@ -494,7 +494,7 @@ class _KerasModel(variable.VariableModel):
     # TODO: b/145308951 - Follow up here to pass through sample_weight in the
     # case that we have a model supporting masking.
     for metric in self.get_metrics():
-      metric.update_state(y_true=y_true, y_pred=predictions)  # pytype: disable=attribute-error
+      metric.update_state(y_true=y_true, y_pred=predictions)
 
     def nrows(t):
       return t.nrows() if isinstance(t, tf.RaggedTensor) else tf.shape(t)[0]
@@ -557,9 +557,7 @@ class _KerasModel(variable.VariableModel):
         )
     else:
       for metric in self.get_metrics():
-        # pytype: disable=attribute-error
         finalizers[metric.name] = keras_finalizer.create_keras_metric_finalizer(
             metric
         )
-        # pytype: enable=attribute-error
     return finalizers

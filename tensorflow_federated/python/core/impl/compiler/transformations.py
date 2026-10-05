@@ -421,20 +421,20 @@ def _compute_merged_intrinsics(
       )
     else:
       calls = [local[1] for local in locals_for_uri]
-      result_placement = calls[0].type_signature.placement  # pytype: disable=attribute-error
-      result_all_equal = calls[0].type_signature.all_equal  # pytype: disable=attribute-error
+      result_placement = calls[0].type_signature.placement  # pyrefly: ignore[missing-attribute]
+      result_all_equal = calls[0].type_signature.all_equal  # pyrefly: ignore[missing-attribute]
       for call in calls:
-        if call.type_signature.all_equal != result_all_equal:  # pytype: disable=attribute-error
+        if call.type_signature.all_equal != result_all_equal:  # pyrefly: ignore[missing-attribute]
           raise ValueError(
               'Encountered intrinsics to be merged with '
               f'mismatched all_equal bits. Intrinsic of URI {uri} '
               f'first call had all_equal bit {result_all_equal}, '
               'encountered call with all_equal value '
-              f'{call.type_signature.all_equal}'  # pytype: disable=attribute-error
+              f'{call.type_signature.all_equal}'
           )
       return_type = federated_language.FederatedType(
           federated_language.StructType(
-              [(None, call.type_signature.member) for call in calls]  # pytype: disable=attribute-error
+              [(None, call.type_signature.member) for call in calls]  # pyrefly: ignore[missing-attribute]
           ),
           placement=result_placement,
           all_equal=result_all_equal,
@@ -518,7 +518,7 @@ def _merge_args(
       parameter_types = [[] for _ in range(num_args)]
       for arg in args:
         for i in range(num_args):
-          parameter_types[i].append(arg.type_signature.parameter[i])  # pytype: disable=attribute-error
+          parameter_types[i].append(arg.type_signature.parameter[i])  # pyrefly: ignore[missing-attribute]
       param_type = federated_language.StructType(parameter_types)
       param_ref = federated_language.framework.Reference(param_name, param_type)
       calls = []
@@ -541,7 +541,7 @@ def _merge_args(
         )
     else:
       param_type = federated_language.StructType(
-          [arg.type_signature.parameter for arg in args]  # pytype: disable=attribute-error
+          [arg.type_signature.parameter for arg in args]  # pyrefly: ignore[missing-attribute]
       )
       param_ref = federated_language.framework.Reference(param_name, param_type)
       calls = [
@@ -976,7 +976,7 @@ def _augment_lambda_with_parameter_for_unbound_references(
 
   # Update the comp parameter type to include the new extension.
   new_parameter_type = federated_language.StructType(
-      list(comp.type_signature.parameter.items())  # pytype: disable=attribute-error
+      list(comp.type_signature.parameter.items())  # pyrefly: ignore[missing-attribute]
       + [(
           lambda_parameter_extension_name,
           [e.type_signature for e in new_input_comps.keys()],
@@ -1482,7 +1482,7 @@ def divisive_force_align_and_split_by_intrinsics(
   # of the after comp parameter (it would have been lost by the earlier
   # subparams transformation).
   after_param_type_signature = list(
-      preliminary_after_comp.parameter_type.items()  # pytype: disable=attribute-error
+      preliminary_after_comp.parameter_type.items()  # pyrefly: ignore[missing-attribute]
   )
   intrinsic_results_index_in_after_comp_param = -2
   after_param_type_signature[intrinsic_results_index_in_after_comp_param] = (

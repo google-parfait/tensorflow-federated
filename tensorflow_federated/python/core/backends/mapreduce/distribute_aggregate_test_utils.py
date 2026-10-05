@@ -36,7 +36,7 @@ def generate_unnamed_type_signature(
   """Generates a type signature for the DistributeAggregateForm."""
   parameter = federated_language.StructType([
       server_prepare.type_signature.parameter,
-      client_work.type_signature.parameter[0],  # pytype: disable=unsupported-operands
+      client_work.type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
   ])
   result = server_result.type_signature.result
   return federated_language.FunctionType(parameter, result)

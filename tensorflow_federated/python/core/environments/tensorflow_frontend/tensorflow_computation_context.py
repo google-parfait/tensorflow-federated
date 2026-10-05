@@ -73,7 +73,8 @@ class TensorFlowComputationContext(federated_language.framework.SyncContext):
 
       if not comp.type_signature.parameter.is_assignable_from(inferred_type):  # pyrefly: ignore[bad-argument-type]
         raise TypeError(
-            f'{inferred_type.formatted_representation()}\n'  # pytype: disable=attribute-error
+            # pyrefly: ignore[missing-attribute]
+            f'{inferred_type.formatted_representation()}\n'
             'is not assignable to\n'
             f'{comp.type_signature.parameter.formatted_representation()}\n'
         )

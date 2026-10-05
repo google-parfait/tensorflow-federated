@@ -326,7 +326,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
 
   # Serialize the report_local_unfinalized_metrics tf.function.
   m.report_local_unfinalized_metrics = (
-      model.report_local_unfinalized_metrics.get_concrete_function()  # pytype: disable=attribute-error
+      model.report_local_unfinalized_metrics.get_concrete_function()  # pyrefly: ignore[missing-attribute]
   )
 
   # Serialize the metric_finalizers as `tf.Variable`s.
@@ -371,7 +371,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
 
   # Serialize the reset_metrics tf.function.
   try:
-    m.reset_metrics = model.reset_metrics.get_concrete_function()  # pytype: disable=attribute-error
+    m.reset_metrics = model.reset_metrics.get_concrete_function()  # pyrefly: ignore[missing-attribute]
   except NotImplementedError:
     m.reset_metrics = None
 
@@ -669,9 +669,9 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
   def predict_on_batch(self, model_weights, x, training=True):
     """Returns tensor(s) interpretable by the loss function."""
     if training:
-      return self._predict_on_batch_training(model_weights=model_weights, x=x)  # pytype: disable=attribute-error
+      return self._predict_on_batch_training(model_weights=model_weights, x=x)
     else:
-      return self._predict_on_batch_inference(model_weights=model_weights, x=x)  # pytype: disable=attribute-error
+      return self._predict_on_batch_inference(model_weights=model_weights, x=x)
 
   @property
   def input_spec(self):

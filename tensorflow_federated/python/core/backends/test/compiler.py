@@ -71,7 +71,7 @@ def _get_secure_intrinsic_reductions() -> dict[
         arg, federated_language.framework.ComputationBuildingBlock
     )
     summand_arg = federated_language.framework.Selection(arg, index=0)
-    summand_type = summand_arg.type_signature.member  # pytype: disable=attribute-error
+    summand_type = summand_arg.type_signature.member  # pyrefly: ignore[missing-attribute]
     max_input_arg = federated_language.framework.Selection(arg, index=1)
     max_input_type = max_input_arg.type_signature
 
@@ -244,15 +244,15 @@ def _get_secure_intrinsic_reductions() -> dict[
       modulus = _ensure_structure(
           modulus,
           unplaced_modulus.type_signature,
-          raw_summed_values.type_signature.member,  # pytype: disable=attribute-error
+          raw_summed_values.type_signature.member,  # pyrefly: ignore[missing-attribute]
       )
       return structure._map_structure(tf.math.mod, summed_values, modulus)  # pylint: disable=protected-access
 
     proto, type_signature = (
         tensorflow_computation_factory.create_binary_operator(
             map_structure_mod,
-            operand_type=raw_summed_values.type_signature.member,  # pytype: disable=attribute-error
-            second_operand_type=placed_modulus.type_signature.member,  # pytype: disable=attribute-error
+            operand_type=raw_summed_values.type_signature.member,  # pyrefly: ignore[missing-attribute]
+            second_operand_type=placed_modulus.type_signature.member,  # pyrefly: ignore[missing-attribute]
         )
     )
     modulus_fn = federated_language.framework.CompiledComputation(

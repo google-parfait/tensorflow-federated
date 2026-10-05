@@ -135,15 +135,16 @@ class MergeableCompForm:
     # TFF's StructType assignability relation ensures that an unnamed struct can
     # be assigned to any struct with names.
     expected_merge_param_type = federated_language.StructType([
-        (None, up_to_merge.type_signature.result.member),  # pytype: disable=attribute-error
-        (None, up_to_merge.type_signature.result.member),  # pytype: disable=attribute-error
+        (None, up_to_merge.type_signature.result.member),
+        (None, up_to_merge.type_signature.result.member),
     ])
     if not merge.type_signature.parameter.is_assignable_from(  # pyrefly: ignore[missing-attribute]
         expected_merge_param_type
-    ):  # pytype: disable=attribute-error
+    ):
       raise MergeTypeNotAssignableError(
+          # pyrefly: ignore[missing-attribute]
           'Type mismatch checking `merge` type signature.\n'
-          f'{merge.type_signature.parameter.formatted_representation()}\n'  # pytype: disable=attribute-error
+          f'{merge.type_signature.parameter.formatted_representation()}\n'
           'is not assignable to\n'
           f'{expected_merge_param_type.formatted_representation()}\n'
       )
@@ -151,10 +152,10 @@ class MergeableCompForm:
     if not (
         merge.type_signature.parameter[0].is_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
             merge.type_signature.result
-        )  # pytype: disable=unsupported-operands
+        )
         and merge.type_signature.parameter[1].is_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
             merge.type_signature.result
-        )  # pytype: disable=unsupported-operands
+        )
     ):
       raise MergeTypeNotAssignableError(
           'Expected `merge` to have result which is assignable to '
@@ -182,7 +183,7 @@ class MergeableCompForm:
 
     after_merge.type_signature.parameter.check_assignable_from(  # pyrefly: ignore[missing-attribute]
         expected_after_merge_arg_type
-    )  # pytype: disable=attribute-error
+    )
 
     def _federated_type_predicate(
         type_signature: federated_language.Type,
@@ -197,11 +198,11 @@ class MergeableCompForm:
         intrinsic: federated_language.framework.Intrinsic,
     ):
       parameter_contains_clients_placement = federated_language.framework.type_contains(
-          intrinsic.type_signature.parameter,  # pytype: disable=attribute-error
+          intrinsic.type_signature.parameter,  # pyrefly: ignore[missing-attribute]
           lambda x: _federated_type_predicate(x, federated_language.CLIENTS),
       )
       result_contains_server_placement = federated_language.framework.type_contains(
-          intrinsic.type_signature.result,  # pytype: disable=attribute-error
+          intrinsic.type_signature.result,  # pyrefly: ignore[missing-attribute]
           lambda x: _federated_type_predicate(x, federated_language.SERVER),
       )
       return (
@@ -455,7 +456,7 @@ async def _invoke_up_to_merge_and_return_context(
     context: federated_language.framework.AsyncContext,
 ):
   return await context.invoke(
-      comp.up_to_merge,  # pytype: disable=attribute-error
+      comp.up_to_merge,
       arg,
   )
 
@@ -467,7 +468,7 @@ async def _merge_results(
     context: federated_language.framework.AsyncContext,
 ):
   return await context.invoke(
-      comp.merge,  # pytype: disable=attribute-error
+      comp.merge,
       structure.Struct.unnamed(merge_partial, value_to_merge),
   )
 
@@ -483,7 +484,7 @@ async def _compute_after_merged(
   else:
     arg = merge_result
   return await context.invoke(
-      comp.after_merge,  # pytype: disable=attribute-error
+      comp.after_merge,
       arg,
   )
 
@@ -624,7 +625,7 @@ async def _invoke_mergeable_comp_form(
     )
 
   if federated_language.framework.type_contains_only(
-      comp.after_merge.type_signature.result,  # pytype: disable=attribute-error
+      comp.after_merge.type_signature.result,
       _predicate,
   ):
     # In this case, all contexts must return the same result, which must
@@ -642,7 +643,7 @@ async def _invoke_mergeable_comp_form(
 
   repackaged_values = _repackage_partitioned_values(
       after_merge_results,
-      result_type_spec=comp.after_merge.type_signature.result,  # pytype: disable=attribute-error
+      result_type_spec=comp.after_merge.type_signature.result,
   )
   return repackaged_values
 
@@ -730,7 +731,7 @@ class MergeableCompExecutionContext(
     if arg is not None:
       arg = MergeableCompExecutionContextValue(
           arg,
-          comp.up_to_merge.type_signature.parameter,  # pytype: disable=attribute-error
+          comp.up_to_merge.type_signature.parameter,  # pyrefly: ignore[bad-argument-type]
           self._num_subrounds,
       )
 
@@ -740,7 +741,7 @@ class MergeableCompExecutionContext(
                 comp, arg, self._async_execution_contexts
             )
         ),
-        comp.after_merge.type_signature.result,  # pytype: disable=attribute-error
+        comp.after_merge.type_signature.result,
     )
 
     if self._transform_result is not None:

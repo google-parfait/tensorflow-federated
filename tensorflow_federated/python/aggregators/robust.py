@@ -86,10 +86,10 @@ def _check_norm_process(
   norm_type_at_clients = federated_language.FederatedType(
       NORM_TF_TYPE, federated_language.CLIENTS
   )
-  if not next_parameter_type[1].is_assignable_from(norm_type_at_clients):  # pytype: disable=unsupported-operands
+  if not next_parameter_type[1].is_assignable_from(norm_type_at_clients):
     raise TypeError(
         f'Second argument of `{name}.next` must be assignable from '
-        f'{norm_type_at_clients} but found {next_parameter_type[1]}'  # pytype: disable=unsupported-operands
+        f'{norm_type_at_clients} but found {next_parameter_type[1]}'
     )
 
   next_result_type = norm_process.next.type_signature.result
@@ -327,7 +327,7 @@ def _make_wrapper(
   _check_norm_process(clipping_norm_process, 'clipping_norm_process')
 
   clipped_count_agg_process = clipped_count_sum_factory.create(
-      federated_language.to_type(COUNT_TF_TYPE)  # pytype: disable=wrong-arg-types
+      federated_language.to_type(COUNT_TF_TYPE)  # pyrefly: ignore[bad-argument-type]
   )
 
   prefix = lambda s: attribute_prefix + s

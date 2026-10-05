@@ -343,7 +343,7 @@ class MapReduceForm(federated_language.TypedObject):
     prepare_arg_type = prepare.type_signature.parameter
 
     _check_accepts_tuple('work', work, 2)
-    work_2nd_arg_type = work.type_signature.parameter[1]  # pytype: disable=unsupported-operands
+    work_2nd_arg_type = work.type_signature.parameter[1]  # pyrefly: ignore[bad-index, unsupported-operation]
     prepare_result_type = prepare.type_signature.result
     if not _is_assignable_from_or_both_none(
         work_2nd_arg_type, prepare_result_type
@@ -372,9 +372,9 @@ class MapReduceForm(federated_language.TypedObject):
 
     accumulate.type_signature.parameter[0].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         zero.type_signature.result
-    )  # pytype: disable=unsupported-operands
-    accumulate_2nd_arg_type = accumulate.type_signature.parameter[1]  # pytype: disable=unsupported-operands
-    work_client_update_type = work.type_signature.result[WORK_UPDATE_INDEX]  # pytype: disable=unsupported-operands
+    )
+    accumulate_2nd_arg_type = accumulate.type_signature.parameter[1]  # pyrefly: ignore[bad-index, unsupported-operation]
+    work_client_update_type = work.type_signature.result[WORK_UPDATE_INDEX]  # pyrefly: ignore[bad-index]
     if not _is_assignable_from_or_both_none(
         accumulate_2nd_arg_type, work_client_update_type
     ):
@@ -387,7 +387,7 @@ class MapReduceForm(federated_language.TypedObject):
       )
     accumulate.type_signature.parameter[0].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         accumulate.type_signature.result
-    )  # pytype: disable=unsupported-operands
+    )
 
     if (
         isinstance(
@@ -403,26 +403,26 @@ class MapReduceForm(federated_language.TypedObject):
 
     merge.type_signature.parameter[0].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         accumulate.type_signature.result
-    )  # pytype: disable=unsupported-operands
+    )
     merge.type_signature.parameter[1].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         accumulate.type_signature.result
-    )  # pytype: disable=unsupported-operands
+    )
     merge.type_signature.parameter[0].check_assignable_from(  # pyrefly: ignore[bad-index, unsupported-operation]
         merge.type_signature.result
-    )  # pytype: disable=unsupported-operands
+    )
 
     report.type_signature.parameter.check_assignable_from(  # pyrefly: ignore[missing-attribute]
         merge.type_signature.result
-    )  # pytype: disable=attribute-error
+    )
 
     expected_update_parameter_type = federated_language.to_type([
-        type_signature.parameter[0].member,  # pytype: disable=unsupported-operands
+        type_signature.parameter[0].member,  # pyrefly: ignore[bad-index, unsupported-operation]
         [
             report.type_signature.result,
             # Update takes in the post-summation values of secure aggregation.
-            work.type_signature.result[WORK_SECAGG_BITWIDTH_INDEX],  # pytype: disable=unsupported-operands
-            work.type_signature.result[WORK_SECAGG_MAX_INPUT_INDEX],  # pytype: disable=unsupported-operands
-            work.type_signature.result[WORK_SECAGG_MODULUS_INDEX],  # pytype: disable=unsupported-operands
+            work.type_signature.result[WORK_SECAGG_BITWIDTH_INDEX],  # pyrefly: ignore[bad-index]
+            work.type_signature.result[WORK_SECAGG_MAX_INPUT_INDEX],  # pyrefly: ignore[bad-index]
+            work.type_signature.result[WORK_SECAGG_MODULUS_INDEX],  # pyrefly: ignore[bad-index]
         ],
     ])
     # The first part of the parameter should align with any initial state that
@@ -438,15 +438,15 @@ class MapReduceForm(federated_language.TypedObject):
           'The `update` computation expects arguments of type {}, '
           'which does not match the expected {} as implied by the type '
           'signatures of `report` and `work`.'.format(
-              federated_language.to_type(update.type_signature.parameter[1:]),  # pytype: disable=unsupported-operands
+              federated_language.to_type(update.type_signature.parameter[1:]),  # pyrefly: ignore[bad-index, unsupported-operation]
               expected_update_parameter_type,
           )
       )
 
     _check_returns_tuple('update', update, 2)
 
-    updated_state_type = update.type_signature.result[0]  # pytype: disable=unsupported-operands
-    if not prepare_arg_type.is_assignable_from(updated_state_type):  # pytype: disable=attribute-error
+    updated_state_type = update.type_signature.result[0]  # pyrefly: ignore[bad-index]
+    if not prepare_arg_type.is_assignable_from(updated_state_type):  # pyrefly: ignore[missing-attribute]
       raise TypeError(
           'The `update` computation returns a result tuple whose first element '
           '(the updated state type of the server) is type:\n'
@@ -467,7 +467,7 @@ class MapReduceForm(federated_language.TypedObject):
     self._secure_modular_sum_modulus = secure_modular_sum_modulus
     self._update = update
 
-    parameter_names = [n for n, _ in type_signature.parameter.items()]  # pytype: disable=attribute-error
+    parameter_names = [n for n, _ in type_signature.parameter.items()]  # pyrefly: ignore[missing-attribute]
     self._server_state_label, self._client_data_label = parameter_names
 
   @property
@@ -536,7 +536,7 @@ class MapReduceForm(federated_language.TypedObject):
     # of `work`.
     _, secagg_bitwidth_type, secagg_max_input_type, secagg_modulus_type = (  # pyrefly: ignore[not-iterable]
         self.work.type_signature.result
-    )  # pytype: disable=attribute-error
+    )
     for secagg_type in [
         secagg_bitwidth_type,
         secagg_max_input_type,
@@ -659,7 +659,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
     for (
         local_name,
         local_value,
-    ) in server_to_client_broadcast.to_building_block().result.locals:  # pytype: disable=attribute-error
+    ) in server_to_client_broadcast.to_building_block().result.locals:
       if not isinstance(local_value, federated_language.framework.Call):
         raise ValueError(
             'Expected a `federated_language.framework.Call`, found'
@@ -679,20 +679,22 @@ class DistributeAggregateForm(federated_language.TypedObject):
         )
       _check_flattened_intrinsic_args_are_selections_or_literals(
           local_value.argument,  # pyrefly: ignore[bad-argument-type]
-          server_to_client_broadcast.to_building_block().parameter_name,  # pytype: disable=attribute-error
+          server_to_client_broadcast.to_building_block().parameter_name,
       )
       expected_return_references.append(local_name)
     if not isinstance(
-        server_to_client_broadcast.to_building_block().result.result,  # pytype: disable=attribute-error
+        server_to_client_broadcast.to_building_block().result.result,
         federated_language.framework.Struct,
     ):
       raise ValueError(
           'Expected a `federated_language.framework.Struct`, found'
-          f' {type(server_to_client_broadcast.to_building_block().result.result)}.'  # pytype: disable=attribute-error
+          f' {type(server_to_client_broadcast.to_building_block().result.result)}.'
       )
     return_references = [
         reference.name
-        for reference in server_to_client_broadcast.to_building_block().result.result  # pytype: disable=attribute-error
+        for reference in (
+            server_to_client_broadcast.to_building_block().result.result
+        )
     ]
     if expected_return_references != return_references:
       raise ValueError(
@@ -720,7 +722,7 @@ class DistributeAggregateForm(federated_language.TypedObject):
     for (
         local_name,
         local_value,
-    ) in client_to_server_aggregation.to_building_block().result.locals:  # pytype: disable=attribute-error
+    ) in client_to_server_aggregation.to_building_block().result.locals:
       if not isinstance(local_value, federated_language.framework.Call):
         raise ValueError(
             'Expected a `federated_language.framework.Call`, found'
@@ -740,12 +742,12 @@ class DistributeAggregateForm(federated_language.TypedObject):
         )
       _check_flattened_intrinsic_args_are_selections_or_literals(
           local_value.argument,  # pyrefly: ignore[bad-argument-type]
-          client_to_server_aggregation.to_building_block().parameter_name,  # pytype: disable=attribute-error
+          client_to_server_aggregation.to_building_block().parameter_name,
       )
       expected_return_references.append(local_name)
 
     aggregation_result_result = (
-        client_to_server_aggregation.to_building_block().result.result  # pytype: disable=attribute-error
+        client_to_server_aggregation.to_building_block().result.result
     )
     if not isinstance(
         aggregation_result_result, federated_language.framework.Struct
@@ -776,28 +778,28 @@ class DistributeAggregateForm(federated_language.TypedObject):
     # 'server_to_client_broadcast' argument should match.
     if not _is_assignable_from_or_both_none(
         server_to_client_broadcast.type_signature.parameter,
-        server_prepare.type_signature.result[0],  # pytype: disable=unsupported-operands
+        server_prepare.type_signature.result[0],  # pyrefly: ignore[bad-index]
     ):
       raise TypeError(
           'The `server_to_client_broadcast` computation expects an argument '
           'type {} that does not match the corresponding result type {} of '
           '`server_prepare`.'.format(
               server_to_client_broadcast.type_signature.parameter,
-              server_prepare.type_signature.result[0],  # pytype: disable=unsupported-operands
+              server_prepare.type_signature.result[0],  # pyrefly: ignore[bad-index]
           )
       )
 
     # The broadcast output data types in the 'server_to_client_broadcast' result
     # and 'client_work' argument should match.
     if not _is_assignable_from_or_both_none(
-        client_work.type_signature.parameter[1],  # pytype: disable=unsupported-operands
+        client_work.type_signature.parameter[1],  # pyrefly: ignore[bad-index, unsupported-operation]
         server_to_client_broadcast.type_signature.result,
     ):
       raise TypeError(
           'The `client_work` computation expects an argument type {} '
           'that does not match the corresponding result type {} of '
           '`server_to_client_broadcast`.'.format(
-              client_work.type_signature.parameter[1],  # pytype: disable=unsupported-operands
+              client_work.type_signature.parameter[1],  # pyrefly: ignore[bad-index, unsupported-operation]
               server_to_client_broadcast.type_signature.result,
           )
       )
@@ -805,14 +807,14 @@ class DistributeAggregateForm(federated_language.TypedObject):
     # The aggregation input data types in the 'client_work' result and
     # 'client_to_server_aggregation' argument should match.
     if not _is_assignable_from_or_both_none(
-        client_to_server_aggregation.type_signature.parameter[1],  # pytype: disable=unsupported-operands
+        client_to_server_aggregation.type_signature.parameter[1],  # pyrefly: ignore[bad-index, unsupported-operation]
         client_work.type_signature.result,
     ):
       raise TypeError(
           'The `client_to_server_aggregation` computation expects an argument '
           'type {} that does not match the corresponding result type {} of '
           '`client_work`.'.format(
-              client_to_server_aggregation.type_signature.parameter[1],  # pytype: disable=unsupported-operands
+              client_to_server_aggregation.type_signature.parameter[1],  # pyrefly: ignore[bad-index, unsupported-operation]
               client_work.type_signature.result,
           )
       )
@@ -820,14 +822,14 @@ class DistributeAggregateForm(federated_language.TypedObject):
     # The aggregation output data types in the 'client_to_server_aggregation'
     # result and 'server_result' argument should match.
     if not _is_assignable_from_or_both_none(
-        server_result.type_signature.parameter[1],  # pytype: disable=unsupported-operands
+        server_result.type_signature.parameter[1],  # pyrefly: ignore[bad-index, unsupported-operation]
         client_to_server_aggregation.type_signature.result,
     ):
       raise TypeError(
           'The `server_result` computation expects an argument type {} '
           'that does not match the corresponding result type {} of '
           '`client_to_server_aggregation`.'.format(
-              server_result.type_signature.parameter[1],  # pytype: disable=unsupported-operands
+              server_result.type_signature.parameter[1],  # pyrefly: ignore[bad-index, unsupported-operation]
               client_to_server_aggregation.type_signature.result,
           )
       )
@@ -836,20 +838,20 @@ class DistributeAggregateForm(federated_language.TypedObject):
     # 'client_to_server_aggregation' argument, and 'server_result' argument
     # should match.
     if not _is_assignable_from_or_both_none(
-        client_to_server_aggregation.type_signature.parameter[0],  # pytype: disable=unsupported-operands
-        server_prepare.type_signature.result[1],  # pytype: disable=unsupported-operands
+        client_to_server_aggregation.type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
+        server_prepare.type_signature.result[1],  # pyrefly: ignore[bad-index]
     ) or not _is_assignable_from_or_both_none(
-        server_result.type_signature.parameter[0],  # pytype: disable=unsupported-operands
-        server_prepare.type_signature.result[1],  # pytype: disable=unsupported-operands
+        server_result.type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
+        server_prepare.type_signature.result[1],  # pyrefly: ignore[bad-index]
     ):
       raise TypeError(
           'The `client_to_server_aggregation` computation expects an argument '
           'type {} and the `server_result` computation expects an argument '
           'type {} that does not match the corresponding result type {} of '
           '`server_prepare`.'.format(
-              client_to_server_aggregation.type_signature.parameter[0],  # pytype: disable=unsupported-operands
-              server_result.type_signature.parameter[0],  # pytype: disable=unsupported-operands
-              server_prepare.type_signature.result[1],  # pytype: disable=unsupported-operands
+              client_to_server_aggregation.type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
+              server_result.type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
+              server_prepare.type_signature.result[1],  # pyrefly: ignore[bad-index]
           )
       )
 
@@ -859,15 +861,15 @@ class DistributeAggregateForm(federated_language.TypedObject):
     if (
         not _is_assignable_from_or_both_none(
             server_prepare.type_signature.parameter,
-            type_signature.parameter[0],  # pytype: disable=unsupported-operands
+            type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
         )
         or not _is_assignable_from_or_both_none(
-            server_result.type_signature.result[0],  # pytype: disable=unsupported-operands
-            type_signature.parameter[0],  # pytype: disable=unsupported-operands
+            server_result.type_signature.result[0],  # pyrefly: ignore[bad-index]
+            type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
         )
         or not _is_assignable_from_or_both_none(
-            type_signature.result[0],  # pytype: disable=unsupported-operands
-            type_signature.parameter[0],  # pytype: disable=unsupported-operands
+            type_signature.result[0],  # pyrefly: ignore[bad-index]
+            type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
         )
     ):
       raise TypeError(
@@ -876,39 +878,39 @@ class DistributeAggregateForm(federated_language.TypedObject):
           'the `server_result` computation result type {}, '
           'and the original computation result type {} should all match.'
           .format(
-              type_signature.parameter[0],  # pytype: disable=unsupported-operands
+              type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
               server_prepare.type_signature.parameter,
-              server_result.type_signature.result[0],  # pytype: disable=unsupported-operands
-              type_signature.result[0],  # pytype: disable=unsupported-operands
+              server_result.type_signature.result[0],  # pyrefly: ignore[bad-index]
+              type_signature.result[0],  # pyrefly: ignore[bad-index]
           )
       )
 
     # The data types of the client data in the original computation argument
     # and the 'client_work' argument should match.
     if not _is_assignable_from_or_both_none(
-        client_work.type_signature.parameter[0],  # pytype: disable=unsupported-operands
-        type_signature.parameter[1],  # pytype: disable=unsupported-operands
+        client_work.type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
+        type_signature.parameter[1],  # pyrefly: ignore[bad-index, unsupported-operation]
     ):
       raise TypeError(
           'The `client_work` computation expects an argument type {} '
           'that does not match the original computation argument type {}.'
           .format(
-              client_work.type_signature.parameter[0],  # pytype: disable=unsupported-operands
-              type_signature.parameter[1],  # pytype: disable=unsupported-operands
+              client_work.type_signature.parameter[0],  # pyrefly: ignore[bad-index, unsupported-operation]
+              type_signature.parameter[1],  # pyrefly: ignore[bad-index, unsupported-operation]
           )
       )
 
     # The server-side output data types in the original computation result and
     # the 'server_result' result should match.
     if not _is_assignable_from_or_both_none(
-        server_result.type_signature.result[1],  # pytype: disable=unsupported-operands
-        type_signature.result[1],  # pytype: disable=unsupported-operands
+        server_result.type_signature.result[1],  # pyrefly: ignore[bad-index]
+        type_signature.result[1],  # pyrefly: ignore[bad-index]
     ):
       raise TypeError(
           'The `server_result` computation expects an result type {} '
           'that does not match the original computation result type {}.'.format(
-              server_result.type_signature.result[1],  # pytype: disable=unsupported-operands
-              type_signature.result[1],  # pytype: disable=unsupported-operands
+              server_result.type_signature.result[1],  # pyrefly: ignore[bad-index]
+              type_signature.result[1],  # pyrefly: ignore[bad-index]
           )
       )
 

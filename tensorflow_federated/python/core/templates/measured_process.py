@@ -183,10 +183,10 @@ def chain_measured_processes(
       ) from e
 
   first_process = next(iter(measured_processes.values()))
-  first_process_value_type_spec = first_process.next.type_signature.parameter[1]  # pytype: disable=unsupported-operands
+  first_process_value_type_spec = first_process.next.type_signature.parameter[1]  # pyrefly: ignore[bad-index, unsupported-operation]
   concatenated_state_type_spec = federated_language.FederatedType(
       federated_language.StructType([
-          (name, process.next.type_signature.parameter[0].member)  # pytype: disable=unsupported-operands
+          (name, process.next.type_signature.parameter[0].member)  # pyrefly: ignore[bad-index, unsupported-operation]
           for name, process in measured_processes.items()
       ]),
       federated_language.SERVER,
@@ -202,7 +202,7 @@ def chain_measured_processes(
       values_type = values.type_signature
       if values_type is not None:
         if not values_type.is_assignable_from(
-            process.next.type_signature.parameter[1]  # pytype: disable=unsupported-operands
+            process.next.type_signature.parameter[1]  # pyrefly: ignore[bad-index, unsupported-operation]
         ):
           raise TypeError(
               f'Cannot call function {name} of type '

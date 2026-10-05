@@ -131,7 +131,7 @@ def get_state_initialization_computation(
     raise TypeError(
         'Expected `initialize` to return a single federated value '
         'placed at server (type `T@SERVER`), found return type:\n'
-        f'{init_type.result}'  # pytype: disable=attribute-error
+        f'{init_type.result}'
     )
   initialize_tree = initialize_computation.to_building_block()
   initialize_tree, _ = (
@@ -266,10 +266,10 @@ def _check_type_is_no_arg_fn(
     err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
   _check_type_is_fn(target, name, err_fn)
-  if target.parameter is not None:  # pytype: disable=attribute-error
+  if target.parameter is not None:  # pyrefly: ignore[missing-attribute]
     raise err_fn(
         f'Expected {name} to take no argument, but found '
-        f'parameter of type {target.parameter}.'  # pytype: disable=attribute-error
+        f'parameter of type {target.parameter}.'
     )
 
 
@@ -287,7 +287,7 @@ def _check_function_signature_compatible_with_broadcast_form(
         '(server data and client data) but found parameter type:\n'
         f'{function_type.parameter}'
     )
-  server_data_type, client_data_type = function_type.parameter  # pytype: disable=attribute-error
+  server_data_type, client_data_type = function_type.parameter
   if (
       not isinstance(server_data_type, federated_language.FederatedType)
       or server_data_type.placement is not federated_language.SERVER
@@ -397,18 +397,18 @@ def check_computation_compatible_with_map_reduce_form(
   if (
       not isinstance(comp_type.parameter, federated_language.StructType)
       or len(comp_type.parameter) != 2
-  ):  # pytype: disable=attribute-error
+  ):
     raise TypeError(
         'Expected `comp` to take two arguments, found parameter '
-        f' type:\n{comp_type.parameter}'  # pytype: disable=attribute-error
+        f' type:\n{comp_type.parameter}'
     )
   if (
       not isinstance(comp_type.result, federated_language.StructType)
       or len(comp_type.result) != 2
-  ):  # pytype: disable=attribute-error
+  ):
     raise TypeError(
         'Expected `comp` to return two values, found result '
-        f'type:\n{comp_type.result}'  # pytype: disable=attribute-error
+        f'type:\n{comp_type.result}'
     )
 
   comp_tree, _ = tensorflow_tree_transformations.replace_intrinsics_with_bodies(
@@ -435,10 +435,10 @@ def _untuple_broadcast_only_before_after(before, after):
       federated_language.framework.unique_name_generator(after)
   )
   after_param_type = federated_language.StructType([
-      ('original_arg', after.parameter_type.original_arg),  # pytype: disable=attribute-error
+      ('original_arg', after.parameter_type.original_arg),
       (
           'federated_broadcast_result',
-          after.parameter_type.intrinsic_results.federated_broadcast_result,  # pytype: disable=attribute-error
+          after.parameter_type.intrinsic_results.federated_broadcast_result,
       ),
   ])
   after_param_ref = federated_language.framework.Reference(
@@ -908,7 +908,7 @@ def _extract_update(after_aggregate, grappler_config):
       update_with_flat_inputs
   )
   unpack_param_name = next(name_generator)
-  original_param_type = update_with_flat_inputs.parameter_type.member  # pytype: disable=attribute-error
+  original_param_type = update_with_flat_inputs.parameter_type.member  # pyrefly: ignore[missing-attribute]
   unpack_param_type = federated_language.StructType([
       original_param_type[0],
       federated_language.StructType(original_param_type[1:]),
@@ -1055,7 +1055,7 @@ def get_broadcast_form_for_computation(
       for bb in (compute_server_context, client_processing)
   )
 
-  comp_param_names = [n for n, _ in comp.type_signature.parameter.items()]  # pytype: disable=attribute-error
+  comp_param_names = [n for n, _ in comp.type_signature.parameter.items()]  # pyrefly: ignore[missing-attribute]
   server_data_label, client_data_label = comp_param_names
   return forms.BroadcastForm(
       compute_server_context,
@@ -1190,18 +1190,18 @@ def get_distribute_aggregate_form_for_computation(
   if (
       not isinstance(comp_type.parameter, federated_language.StructType)
       or len(comp_type.parameter) != 2
-  ):  # pytype: disable=attribute-error
+  ):
     raise TypeError(
         'Expected `comp` to take two arguments, found parameter '
-        f' type:\n{comp_type.parameter}'  # pytype: disable=attribute-error
+        f' type:\n{comp_type.parameter}'
     )
   if (
       not isinstance(comp_type.result, federated_language.StructType)
       or len(comp_type.result) != 2
-  ):  # pytype: disable=attribute-error
+  ):
     raise TypeError(
         'Expected `comp` to return two values, found result '
-        f'type:\n{comp_type.result}'  # pytype: disable=attribute-error
+        f'type:\n{comp_type.result}'
     )
   if not isinstance(comp_tree, federated_language.framework.Lambda):
     raise federated_language.framework.UnexpectedBlockError(

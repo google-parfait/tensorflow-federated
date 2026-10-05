@@ -118,7 +118,7 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
 
     if self._distortion_aggregation_factory is not None:
       distortion_aggregation_process = self._distortion_aggregation_factory.create(
-          federated_language.to_type(np.float32)  # pytype: disable=wrong-arg-types
+          federated_language.to_type(np.float32)  # pyrefly: ignore[bad-argument-type]
       )
 
     @tensorflow_computation.tf_computation(value_type, np.float32)
