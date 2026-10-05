@@ -269,7 +269,7 @@ def _remove_batch_dim(
 
   return structure._map_structure(  # pylint: disable=protected-access  # pyrefly: ignore[bad-return]
       _remove_first_dim_in_tensortype,
-      type_spec,  # pytype: disable=wrong-arg-types
+      type_spec,  # pyrefly: ignore[bad-argument-type]
   )
 
 

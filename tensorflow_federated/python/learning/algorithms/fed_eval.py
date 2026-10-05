@@ -293,7 +293,7 @@ def _build_functional_fed_eval_client_work(
   batch_type = tensorflow_types.to_type(model.input_spec)
   local_eval = _build_functional_local_evaluation(
       model,
-      tuple_weights_type,  # pytype: disable=wrong-arg-types
+      tuple_weights_type,  # pyrefly: ignore[bad-argument-type]
       batch_type,  # pyrefly: ignore[bad-argument-type]
   )
 
@@ -452,9 +452,7 @@ def build_fed_eval(
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
-      return model_weights_lib.ModelWeights.from_model(
-          model_fn()  # pytype: disable=not-callable
-      )
+      return model_weights_lib.ModelWeights.from_model(model_fn())
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 
@@ -481,8 +479,8 @@ def build_fed_eval(
       client_works.ClientResult(update=(), update_weight=()),
       federated_language.CLIENTS,
   )
-  model_update_type = client_work_result_type.member.update  # pytype: disable=attribute-error
-  model_update_weight_type = client_work_result_type.member.update_weight  # pytype: disable=attribute-error
+  model_update_type = client_work_result_type.member.update  # pyrefly: ignore[missing-attribute]
+  model_update_weight_type = client_work_result_type.member.update_weight  # pyrefly: ignore[missing-attribute]
   model_aggregator_factory = mean.MeanFactory()
   model_aggregator = model_aggregator_factory.create(
       model_update_type, model_update_weight_type
@@ -491,7 +489,7 @@ def build_fed_eval(
   # The finalizer performs no update on model weights.
   finalizer = finalizers.build_identity_finalizer(
       model_weights_type,
-      model_aggregator.next.type_signature.result.result.member,  # pytype: disable=attribute-error
+      model_aggregator.next.type_signature.result.result.member,  # pyrefly: ignore[missing-attribute]
   )
 
   return composers.compose_learning_process(

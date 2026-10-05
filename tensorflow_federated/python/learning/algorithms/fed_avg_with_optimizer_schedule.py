@@ -321,8 +321,8 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       model_weights_type.trainable, federated_language.TensorType(np.float32)
   )
   process_signature = aggregator.next.type_signature
-  input_client_value_type = process_signature.parameter[1]  # pytype: disable=unsupported-operands
-  result_server_value_type = process_signature.result[1]  # pytype: disable=unsupported-operands
+  input_client_value_type = process_signature.parameter[1]  # pyrefly: ignore[bad-index, unsupported-operation]
+  result_server_value_type = process_signature.result[1]  # pyrefly: ignore[bad-index]
   if input_client_value_type.member != result_server_value_type.member:
     raise TypeError(
         '`model_update_aggregation_factory` does not produce a '

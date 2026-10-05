@@ -354,7 +354,7 @@ def build_fed_kmeans(
   value_type = federated_language.to_type((centroids_type, weights_type))
   aggregator = weighted_aggregator.create(
       value_type,  # pyrefly: ignore[bad-argument-type]
-      federated_language.to_type(()),  # pytype: disable=wrong-arg-types
+      federated_language.to_type(()),  # pyrefly: ignore[bad-argument-type]
   )
 
   finalizer = _build_kmeans_finalizer(centroids_type, num_clusters)

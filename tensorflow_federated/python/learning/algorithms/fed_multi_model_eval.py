@@ -296,7 +296,7 @@ def _build_functional_fed_eval_client_work(
   batch_type = tensorflow_types.to_type(model.input_spec)
   local_eval = _build_functional_local_evaluation(
       model,
-      tuple_weights_type,  # pytype: disable=wrong-arg-types
+      tuple_weights_type,  # pyrefly: ignore[bad-argument-type]
       batch_type,  # pyrefly: ignore[bad-argument-type]
   )
 
@@ -382,9 +382,7 @@ def _build_initial_model_weights_fn(
         )
       else:
         initial_model_weights.append(
-            model_weights_lib.ModelWeights.from_model(
-                model_fn()  # pytype: disable=not-callable
-            )
+            model_weights_lib.ModelWeights.from_model(model_fn())
         )
     return dict(zip(string.ascii_lowercase, initial_model_weights))
 
@@ -571,8 +569,8 @@ def build_fed_multi_model_eval(
       client_works.ClientResult(update=(), update_weight=()),
       federated_language.CLIENTS,
   )
-  model_update_type = client_work_result_type.member.update  # pytype: disable=attribute-error
-  model_update_weight_type = client_work_result_type.member.update_weight  # pytype: disable=attribute-error
+  model_update_type = client_work_result_type.member.update  # pyrefly: ignore[missing-attribute]
+  model_update_weight_type = client_work_result_type.member.update_weight  # pyrefly: ignore[missing-attribute]
   model_aggregator_factory = mean.MeanFactory()
   model_aggregator = model_aggregator_factory.create(
       model_update_type, model_update_weight_type
@@ -581,7 +579,7 @@ def build_fed_multi_model_eval(
   # The finalizer performs no update on model weights.
   finalizer = finalizers.build_identity_finalizer(
       multi_model_weights_type,
-      model_aggregator.next.type_signature.result.result.member,  # pytype: disable=attribute-error
+      model_aggregator.next.type_signature.result.result.member,  # pyrefly: ignore[missing-attribute]
   )
 
   return composers.compose_learning_process(
@@ -694,12 +692,10 @@ def build_fed_multi_model_eval_from_processes(
 
   # Get the type of the client data from the first eval process. It is
   # required that all models have the same input spec.
-  # pytype: disable=unsupported-operands
-  dataset_type = eval_processes[0].next.type_signature.parameter[1]
+  dataset_type = eval_processes[0].next.type_signature.parameter[1]  # pyrefly: ignore[bad-index, unsupported-operation]
   client_data_matches = lambda process: process.next.type_signature.parameter[
       1
   ].is_equivalent_to(dataset_type)
-  # pytype: enable=unsupported-operands
   if not all(client_data_matches(p) for p in eval_processes[1:]):
     raise ValueError(
         'All evaluation processes must have the same dataset type.'
@@ -713,7 +709,7 @@ def build_fed_multi_model_eval_from_processes(
             string.ascii_letters, eval_processes
         )
     }
-    return _combine_multi_state(multi_state)  # pyrefly: ignore[bad-argument-type]
+    return _combine_multi_state(multi_state)
 
   state_type = init_fn.type_signature.result
 

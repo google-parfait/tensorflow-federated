@@ -346,7 +346,7 @@ def _build_functional_client_update_fn_for_mime_lite(
         incoming_weights: model_weights_lib.ModelWeights,
         data: tf.data.Dataset,
     ) -> Any:
-      trainable_weights, _ = incoming_weights  # pytype: disable=attribute-error
+      trainable_weights, _ = incoming_weights
 
       def full_gradient_reduce_fn(state, batch):
         """Sums individual gradients, to be later divided by num_examples."""
@@ -450,7 +450,7 @@ def _build_functional_client_update_fn_for_mime_lite(
           train_reduce_fn, data, initial_training_weights
       )
 
-      incoming_training_weights, _ = incoming_weights  # pytype: disable=attribute-error
+      incoming_training_weights, _ = incoming_weights
       trainable_weights, _ = model_weights
       client_weights_delta = tf.nest.map_structure(
           tf.subtract, incoming_training_weights, trainable_weights
@@ -550,7 +550,7 @@ def _build_mime_lite_functional_client_work(
   weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
 
   full_gradient_aggregator = full_gradient_aggregator.create(  # pyrefly: ignore[bad-assignment]
-      weights_type.trainable,  # pytype: disable=attribute-error
+      weights_type.trainable,  # pyrefly: ignore[missing-attribute]
       federated_language.TensorType(np.float32),
   )
 
@@ -576,7 +576,7 @@ def _build_mime_lite_functional_client_work(
 
   @tensorflow_computation.tf_computation(
       aggregator_state_type,
-      weights_type.trainable,  # pytype: disable=attribute-error
+      weights_type.trainable,  # pyrefly: ignore[missing-attribute]
   )
   def update_optimizer_state(state, aggregate_gradient):
     whimsy_weights = tf.nest.map_structure(
@@ -706,7 +706,7 @@ def _build_scheduled_mime_lite_client_work(
 
   federated_mime_state_type, federated_weights_type, federated_data_type = (  # pyrefly: ignore[not-iterable]
       client_work.next.type_signature.parameter
-  )  # pytype: disable=attribute-error
+  )
   data_type = federated_data_type.member
   weights_type = federated_weights_type.member
   mime_state_type = federated_mime_state_type.member
@@ -897,7 +897,7 @@ def build_weighted_mime_lite(
 
     @tensorflow_computation.tf_computation
     def initial_model_weights_fn():
-      model = model_fn()  # pytype: disable=not-callable
+      model = model_fn()
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'
@@ -1228,7 +1228,7 @@ def build_mime_lite_with_optimizer_schedule(
 
     @tensorflow_computation.tf_computation
     def initial_model_weights_fn():
-      model = model_fn()  # pytype: disable=not-callable
+      model = model_fn()
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'

@@ -194,7 +194,7 @@ def build_weighted_fed_prox(
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
-      model = model_fn()  # pytype: disable=not-callable
+      model = model_fn()
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'
@@ -215,8 +215,8 @@ def build_weighted_fed_prox(
       model_update_type, federated_language.TensorType(np.float32)
   )
   process_signature = aggregator.next.type_signature
-  input_client_value_type = process_signature.parameter[1]  # pytype: disable=unsupported-operands
-  result_server_value_type = process_signature.result[1]  # pytype: disable=unsupported-operands
+  input_client_value_type = process_signature.parameter[1]  # pyrefly: ignore[bad-index, unsupported-operation]
+  result_server_value_type = process_signature.result[1]  # pyrefly: ignore[bad-index]
   if input_client_value_type.member != result_server_value_type.member:
     raise TypeError(
         '`model_update_aggregation_factory` does not produce a '
