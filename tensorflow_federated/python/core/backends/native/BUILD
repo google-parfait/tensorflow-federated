@@ -4,6 +4,7 @@ package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
         ":native_packages",
+        "//inputmethod/keyboard/tensorflow/federated/fedrecon:__subpackages__",
         "//tensorflow_federated/python/core:core_users",
 
         # TODO: b/233800373 - Remove dependency from `test` to `native`.
