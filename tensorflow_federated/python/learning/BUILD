@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//third_party/bazel_rules/rules_python/python:py_test.bzl", "py_test")
 load("//tools:build_defs.bzl", "py_cpu_gpu_test")
 
 package(
