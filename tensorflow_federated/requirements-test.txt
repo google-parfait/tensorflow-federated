@@ -18,7 +18,7 @@ greenlet==3.2.3
 grpcio==1.73.1
 grpcio-tools==1.62.3
 h5py==3.14.0
-idna==3.10
+idna==3.15
 joblib==1.5.1
 keras==2.14.0
 libclang==18.1.1
