@@ -64,7 +64,6 @@ cc_library(
     name = "tensor",
     srcs = [
         "datatype.cc",
-        "input_tensor_list.cc",
         "tensor.cc",
         "tensor_data.cc",
         "tensor_shape.cc",
@@ -75,7 +74,6 @@ cc_library(
         "agg_vector.h",
         "agg_vector_iterator.h",
         "datatype.h",
-        "input_tensor_list.h",
         "mutable_vector_data.h",
         "scalar_data.h",
         "tensor.h",
@@ -102,12 +100,14 @@ cc_library(
 cc_library(
     name = "aggregator",
     srcs = [
+        "input_tensor_list.cc",
         "tensor_aggregator.cc",
         "tensor_aggregator_registry.cc",
     ],
     hdrs = [
         "agg_vector_aggregator.h",
         "aggregator.h",
+        "input_tensor_list.h",
         "one_dim_grouping_aggregator.h",
         "tensor_aggregator.h",
         "tensor_aggregator_factory.h",
@@ -210,6 +210,7 @@ cc_library(
         "dp_composite_key_combiner.h",
     ],
     deps = [
+        ":aggregator",
         ":composite_key_combiner",
         ":domain_spec",
         ":tensor",
@@ -345,6 +346,7 @@ cc_library(
         "dp_group_by_aggregator.h",
     ],
     deps = [
+        ":aggregator",
         ":composite_key_combiner",
         ":domain_spec",
         ":dp_composite_key_combiner",
@@ -352,7 +354,6 @@ cc_library(
         ":dp_noise_mechanisms",
         ":group_by_aggregator",
         ":intrinsic",
-        ":one_dim_grouping_aggregator",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/status",
@@ -686,6 +687,7 @@ cc_test(
     name = "input_tensor_list_test",
     srcs = ["input_tensor_list_test.cc"],
     deps = [
+        ":aggregator",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
@@ -696,6 +698,7 @@ cc_test(
     name = "composite_key_combiner_test",
     srcs = ["composite_key_combiner_test.cc"],
     deps = [
+        ":aggregator",
         ":composite_key_combiner",
         ":mutable_string_data",
         ":tensor",
@@ -1051,6 +1054,7 @@ cc_binary(
     srcs = ["composite_key_combiner_bench.cc"],
     linkstatic = 1,
     deps = [
+        ":aggregator",
         ":composite_key_combiner",
         ":mutable_string_data",
         ":tensor",
