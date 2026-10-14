@@ -536,7 +536,7 @@ async def _run_in_async_context_pool(
         pending_tasks, return_when=asyncio.FIRST_COMPLETED
     )
     for done_task in done:
-      context = contexts_by_task[done_task]
+      context = contexts_by_task.pop(done_task)
       partial_result = done_task.result()
       result = await postprocessing_hook(result, partial_result, context)
       if arg_list_index < len(arg_list):
