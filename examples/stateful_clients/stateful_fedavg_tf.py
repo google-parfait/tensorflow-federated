@@ -17,24 +17,17 @@ The TF functions for sever and client udpates.
 """
 
 import collections
-from typing import Any, NamedTuple, Union
+from typing import Any, NamedTuple
 
 import tensorflow as tf
-import tensorflow_federated as tff
 
 ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
 ModelOutputs = collections.namedtuple('ModelOutputs', 'loss')
 
 
-def get_model_weights(
-    model: Union[tff.learning.models.VariableModel, 'KerasModelWrapper']
-) -> Union[tff.learning.models.ModelWeights, ModelWeights]:
+def get_model_weights(model: 'KerasModelWrapper') -> ModelWeights:
   """Gets the appropriate ModelWeights object based on the model type."""
-  if isinstance(model, tff.learning.models.VariableModel):
-    return tff.learning.models.ModelWeights.from_model(model)
-  else:
-    # Using simple_fedavg custom Keras wrapper.
-    return model.weights
+  return model.weights
 
 
 class KerasModelWrapper:
@@ -44,11 +37,11 @@ class KerasModelWrapper:
     """A wrapper class that provides necessary API handles for TFF.
 
     Args:
-      keras_model: A `tf.keras.Model` to be trained.
+      keras_model: A `keras.Model` to be trained.
       input_spec: Metadata of dataset that desribes the input tensors, which
         will be converted to `federated_language.Type` specifying the expected
         type of input and output of the model.
-      loss: A `tf.keras.losses.Loss` instance to be used for training.
+      loss: A `keras.losses.Loss` instance to be used for training.
     """
     self.keras_model = keras_model
     self.input_spec = input_spec
@@ -72,8 +65,14 @@ class KerasModelWrapper:
   @property
   def weights(self):
     return ModelWeights(
-        trainable=self.keras_model.trainable_variables,
-        non_trainable=self.keras_model.non_trainable_variables,
+        trainable=[
+            v.value if hasattr(v, 'value') else v
+            for v in self.keras_model.trainable_variables
+        ],
+        non_trainable=[
+            v.value if hasattr(v, 'value') else v
+            for v in self.keras_model.non_trainable_variables
+        ],
     )
 
   def from_weights(self, model_weights):
@@ -90,7 +89,7 @@ class KerasModelWrapper:
 
 
 def keras_evaluate(model, test_data, metric):
-  metric.reset_states()
+  metric.reset_state()
   for batch in test_data:
     preds = model(batch['x'], training=False)
     metric.update_state(y_true=batch['y'], y_pred=preds)
@@ -119,10 +118,8 @@ class ClientOutput(NamedTuple):
        variables.
   -   `client_weight`: Weight to be used in a weighted mean when
        aggregating `weights_delta`.
-  -   `model_output`: A structure matching
-      `tff.learning.models.VariableModel.report_local_unfinalized_metrics`,
-      reflecting the
-       results of training on the input dataset.
+  -   `model_output`: A structure reflecting the results of training on the
+       input dataset.
   -   `client_state`: The updated `ClientState`.
   """
 
@@ -170,7 +167,7 @@ def server_update(
   """Updates `server_state` based on `weights_delta`.
 
   Args:
-    model: A `KerasModelWrapper` or `tff.learning.models.VariableModel`.
+    model: A `KerasModelWrapper` or `tff.learning.models.FunctionalModel`.
     server_optimizer: A `tf.keras.optimizers.Optimizer`. If the optimizer
       creates variables, they must have already been created.
     server_state: A `ServerState`, the state to be updated.
@@ -233,7 +230,7 @@ def client_update(
   """Performans client local training of `model` on `dataset`.
 
   Args:
-    model: A `tff.learning.models.VariableModel`.
+    model: A `tff.learning.models.FunctionalModel` or `KerasModelWrapper`.
     dataset: A 'tf.data.Dataset'.
     client_state: A 'ClientState'.
     server_message: A `BroadcastMessage` from server.

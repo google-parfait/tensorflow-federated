@@ -37,7 +37,6 @@ from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
 
-
 _AggregationProcess = aggregation_process.AggregationProcess
 
 
@@ -173,7 +172,7 @@ def _build_functional_local_evaluation(
       # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
           metrics_state,
-          batch_output=variable.BatchOutput(
+          batch_output=functional.BatchOutput(
               loss=batch_loss,
               predictions=batch_output,
               num_examples=batch_num_examples,
@@ -299,10 +298,17 @@ def _build_functional_fed_eval_client_work(
 
   if metrics_aggregation_process is None:
     unfinalized_metrics_type = local_eval.type_signature.result
-    metrics_aggregation_process = (
-        sum_aggregation_factory.SumThenFinalizeFactory(
-            model.finalize_metrics
-        ).create(unfinalized_metrics_type)  # pyrefly: ignore[bad-argument-type]
+    metrics_factory = sum_aggregation_factory.SumThenFinalizeFactory(
+        model.finalize_metrics
+    )
+    metrics_aggregation_process = metrics_factory.create(
+        unfinalized_metrics_type  # pyrefly: ignore[bad-argument-type]
+    )
+  else:
+    py_typecheck.check_type(
+        metrics_aggregation_process,
+        _AggregationProcess,
+        'metrics_aggregation_process',
     )
 
   @federated_language.federated_computation

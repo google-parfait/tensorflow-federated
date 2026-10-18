@@ -235,6 +235,7 @@ def build_weighted_fed_prox(
         client_weighting=client_weighting,  # pyrefly: ignore[bad-argument-type]
         delta_l2_regularizer=proximal_strength,
         metrics_aggregator=metrics_aggregator,
+        loop_implementation=loop_implementation,
     )
   else:
     client_work = proximal_client_work.build_model_delta_client_work(

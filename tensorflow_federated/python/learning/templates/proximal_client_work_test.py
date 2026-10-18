@@ -517,6 +517,28 @@ class FunctionalProximalClientWorkExecutionTest(
     )
 
   @parameterized.named_parameters(
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+  )
+  @mock.patch.object(
+      loop_builder,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
+  )
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
+    model = create_functional_model()
+    client_tf = proximal_client_work._build_functional_model_delta_update(
+        model=model,
+        weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        delta_l2_regularizer=0.1,
+        loop_implementation=loop_implementation,
+    )
+    optimizer = sgdm.build_sgdm(learning_rate=0.1)
+    dataset = create_test_dataset()
+    client_tf(optimizer, model.initial_weights, dataset)
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
+
+  @parameterized.named_parameters(
       ('simple', sgdm.build_sgdm(1.0)),
       ('momentum', sgdm.build_sgdm(1.0, momentum=0.9)),
   )

@@ -21,7 +21,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
-from tensorflow_federated.python.learning.models import variable
 
 
 def build_functional_linear_regression(
@@ -79,7 +78,7 @@ def build_functional_linear_regression(
   def update_metrics_state(
       state: types.MetricsState,
       labels: Any,
-      batch_output: variable.BatchOutput,
+      batch_output: functional.BatchOutput,
       sample_weight: Optional[Any] = None,
   ) -> types.MetricsState:
     del sample_weight  # Unused.

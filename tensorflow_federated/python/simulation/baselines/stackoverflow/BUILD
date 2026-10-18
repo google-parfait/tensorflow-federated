@@ -60,14 +60,13 @@ py_library(
     deps = [
         ":constants",
         ":tag_prediction_preprocessing",
-        "//tensorflow_federated/python/learning/models:keras_utils",
-        "//tensorflow_federated/python/learning/models:variable",
+        "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:stackoverflow",
-        "@pypi//tensorflow",
+        "@pypi//keras",
     ],
 )
 
@@ -79,6 +78,7 @@ py_test(
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//tensorflow",
     ],
 )
@@ -86,7 +86,7 @@ py_test(
 py_library(
     name = "word_prediction_models",
     srcs = ["word_prediction_models.py"],
-    deps = ["@pypi//tensorflow"],
+    deps = ["@pypi//keras"],
 )
 
 py_test(
@@ -95,6 +95,7 @@ py_test(
     deps = [
         ":word_prediction_models",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//tensorflow",
     ],
 )
@@ -129,15 +130,14 @@ py_library(
         ":constants",
         ":word_prediction_models",
         ":word_prediction_preprocessing",
-        "//tensorflow_federated/python/learning/models:keras_utils",
-        "//tensorflow_federated/python/learning/models:variable",
+        "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/baselines:keras_metrics",
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:stackoverflow",
-        "@pypi//tensorflow",
+        "@pypi//keras",
     ],
 )
 

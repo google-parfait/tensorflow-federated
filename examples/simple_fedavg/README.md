@@ -46,12 +46,11 @@ This EMNIST example can easily be adapted for experimental changes:
     [model wrapper](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L151-152),
     and build an
     [iterative process](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L154-L155)
-    with TFF. We define a stand-alone model wrapper for keras models in
-    [simple_fedavg_tf](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L39-L81),
-    which can be substituted with `tff.learning.models.VariableModel` by calling
-    `tff.learning.models.from_keras_model`. Note that the inner
+    with TFF. We construct a `tff.learning.models.FunctionalModel` from a Keras
+    model by calling `tff.learning.models.functional_model_from_keras`. Note
+    that the inner
     [keras_model](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L174)
-    of `tff.learning.models.VariableModel` may not be directly accessible for
+    of `tff.learning.models.FunctionalModel` is not directly accessible for
     evaluation.
 
 *   In the TF function file

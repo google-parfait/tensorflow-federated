@@ -96,6 +96,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "@federated_language//federated_language",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],
@@ -126,6 +127,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/test:cpp_execution_contexts",
         "@federated_language//federated_language",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],
@@ -135,6 +137,7 @@ py_library(
     name = "counters",
     srcs = ["counters.py"],
     deps = [
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],

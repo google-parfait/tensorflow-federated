@@ -24,6 +24,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import variable
 
 
@@ -40,13 +41,29 @@ class ModelWeights(NamedTuple):
   non_trainable: Any
 
   @classmethod
-  def from_model(cls, model):
+  def from_model(
+      cls,
+      model: Union[
+          variable.VariableModel,
+          tf.keras.Model,
+          keras.Model,
+          functional.FunctionalModel,
+      ],
+  ) -> 'ModelWeights':
     """Creates a `ModelWeights` instance from a model."""
 
     py_typecheck.check_type(
-        model, (variable.VariableModel, tf.keras.Model, keras.Model)
+        model,
+        (
+            variable.VariableModel,
+            tf.keras.Model,
+            keras.Model,
+            functional.FunctionalModel,
+        ),
     )
-    if (
+    if isinstance(model, functional.FunctionalModel):
+      return cls(*model.initial_weights)
+    elif (
         isinstance(model, (tf.keras.Model, keras.Model))
         and tf.executing_eagerly()
         and not tf.inside_function()
@@ -132,29 +149,44 @@ class ModelWeights(NamedTuple):
 
 
 def weights_type_from_model(
-    model: Union[variable.VariableModel, Callable[[], variable.VariableModel]],
+    model: Union[
+        variable.VariableModel,
+        Callable[[], variable.VariableModel],
+        functional.FunctionalModel,
+        tf.keras.Model,
+        Callable[[], tf.keras.Model],
+        keras.Model,
+        Callable[[], keras.Model],
+    ],
 ) -> federated_language.StructType:
-  """Creates a `Type` from a `VariableModel` or callable.
+  """Creates a `Type` from a model or callable that returns a model.
 
   Args:
-    model: A `tff.learning.models.VariableModel` instance, or a no-arg callable
-      that returns a model.
+    model: A model instance, or a no-arg callable that returns a model.
 
   Returns:
     A `federated_language.StructType` representing the TFF type of the
-    `ModelWeights`
-    structure for `model`.
+    `ModelWeights` structure for `model`.
   """
-
   if callable(model):
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
     with tf.Graph().as_default():
       model = model()
-  py_typecheck.check_type(model, variable.VariableModel)
+  py_typecheck.check_type(
+      model,
+      (
+          variable.VariableModel,
+          functional.FunctionalModel,
+          tf.keras.Model,
+          keras.Model,
+      ),
+  )
   model_weights = ModelWeights.from_model(model)
 
-  def _variable_to_type(x: tf.Variable) -> federated_language.Type:
+  def _variable_to_type(x: Any) -> federated_language.Type:
+    if not (hasattr(x, 'dtype') and hasattr(x, 'shape')):
+      x = np.asarray(x)
     return tensorflow_types.to_type(tf.TensorSpec(dtype=x.dtype, shape=x.shape))
 
   model_weights_type = tf.nest.map_structure(_variable_to_type, model_weights)

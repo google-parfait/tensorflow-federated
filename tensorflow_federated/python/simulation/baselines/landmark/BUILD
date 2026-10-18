@@ -29,14 +29,14 @@ py_library(
     srcs = ["landmark_tasks.py"],
     deps = [
         ":landmark_preprocessing",
-        "//tensorflow_federated/python/learning/models:keras_utils",
-        "//tensorflow_federated/python/learning/models:variable",
+        "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:gldv2",
         "//tensorflow_federated/python/simulation/models:mobilenet_v2",
+        "@pypi//keras",
         "@pypi//tensorflow",
     ],
 )

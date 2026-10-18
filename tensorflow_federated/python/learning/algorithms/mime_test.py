@@ -17,6 +17,7 @@ from unittest import mock
 
 from absl.testing import parameterized
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -664,9 +665,9 @@ class FunctionalMimeLiteTest(tf.test.TestCase, parameterized.TestCase):
     dataset = _create_dataset()
 
     def create_keras_model():
-      return tf.keras.Sequential([
-          tf.keras.layers.InputLayer(input_shape=(2,)),
-          tf.keras.layers.Dense(
+      return keras.Sequential([
+          keras.layers.InputLayer(shape=(2,)),
+          keras.layers.Dense(
               units=1, kernel_initializer='zeros', bias_initializer='zeros'
           ),
       ])
@@ -674,10 +675,10 @@ class FunctionalMimeLiteTest(tf.test.TestCase, parameterized.TestCase):
     def create_functional_model():
       return functional.functional_model_from_keras(
           create_keras_model(),
-          loss_fn=tf.keras.losses.MeanSquaredError(),
+          loss_fn=keras.losses.MeanSquaredError(),
           input_spec=dataset.element_spec,
           metrics_constructor=collections.OrderedDict(
-              loss=tf.keras.metrics.MeanSquaredError,
+              loss=keras.metrics.MeanSquaredError,
               num_examples=counters.NumExamplesCounter,
               num_batches=counters.NumBatchesCounter,
           ),
@@ -686,7 +687,7 @@ class FunctionalMimeLiteTest(tf.test.TestCase, parameterized.TestCase):
     def create_tff_model():
       return keras_utils.from_keras_model(
           create_keras_model(),
-          loss=tf.keras.losses.MeanSquaredError(),
+          loss=keras.losses.MeanSquaredError(),
           input_spec=dataset.element_spec,
       )
 

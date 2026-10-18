@@ -13,13 +13,13 @@
 # limitations under the License.
 """Library for creating character recognition tasks on EMNIST."""
 
+import collections
 import enum
 from typing import Optional, Union
 
-import tensorflow as tf
+import keras
 
-from tensorflow_federated.python.learning.models import keras_utils
-from tensorflow_federated.python.learning.models import variable
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
@@ -44,8 +44,8 @@ def _get_character_recognition_model(
     model_id: Union[str, CharacterRecognitionModel],
     only_digits: bool,
     debug_seed: Optional[int] = None,
-) -> tf.keras.Model:
-  """Constructs a `tf.keras.Model` for character recognition."""
+) -> keras.Model:
+  """Constructs a `keras.Model` for character recognition."""
   try:
     model_enum = CharacterRecognitionModel(model_id)
   except ValueError as e:
@@ -132,17 +132,18 @@ def create_character_recognition_task_from_datasets(
       eval_preprocess_fn=eval_preprocess_fn,
   )
 
-  def model_fn() -> variable.VariableModel:
-    return keras_utils.from_keras_model(
-        keras_model=_get_character_recognition_model(
-            model_id, only_digits, debug_seed
-        ),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        input_spec=task_datasets.element_type_structure,
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
-    )
+  model = functional.functional_model_from_keras(
+      keras_model=_get_character_recognition_model(
+          model_id, only_digits, debug_seed
+      ),
+      loss_fn=keras.losses.SparseCategoricalCrossentropy(),
+      input_spec=task_datasets.element_type_structure,
+      metrics_constructor=collections.OrderedDict(
+          sparse_categorical_accuracy=keras.metrics.SparseCategoricalAccuracy
+      ),
+  )
 
-  return baseline_task.BaselineTask(task_datasets, model_fn)
+  return baseline_task.BaselineTask(task_datasets, model)
 
 
 def create_character_recognition_task(

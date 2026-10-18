@@ -15,6 +15,7 @@ py_binary(
         ":stateful_fedavg_tff",
         "//tensorflow_federated",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],
@@ -23,10 +24,7 @@ py_binary(
 py_library(
     name = "stateful_fedavg_tf",
     srcs = ["stateful_fedavg_tf.py"],
-    deps = [
-        "//tensorflow_federated",
-        "@pypi//tensorflow",
-    ],
+    deps = ["@pypi//tensorflow"],
 )
 
 py_library(
@@ -50,6 +48,7 @@ py_test(
         ":stateful_fedavg_tff",
         "//tensorflow_federated",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],
