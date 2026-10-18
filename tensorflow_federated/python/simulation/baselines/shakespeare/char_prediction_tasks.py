@@ -13,12 +13,12 @@
 # limitations under the License.
 """Library for creating baseline tasks on Shakespeare."""
 
+import collections
 from typing import Optional
 
-import tensorflow as tf
+import keras
 
-from tensorflow_federated.python.learning.models import keras_utils
-from tensorflow_federated.python.learning.models import variable
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import keras_metrics
@@ -85,20 +85,21 @@ def create_character_prediction_task_from_datasets(
 
   pad_token, _, _, _ = char_prediction_preprocessing.get_special_tokens()
 
-  def model_fn() -> variable.VariableModel:
-    return keras_utils.from_keras_model(
-        keras_model=char_prediction_models.create_recurrent_model(
-            vocab_size=VOCAB_LENGTH, sequence_length=sequence_length
-        ),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        input_spec=task_datasets.element_type_structure,
-        metrics=[
-            keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
-            keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token]),
-        ],
-    )
+  model = functional.functional_model_from_keras(
+      keras_model=char_prediction_models.create_recurrent_model(
+          vocab_size=VOCAB_LENGTH, sequence_length=sequence_length
+      ),
+      loss_fn=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+      input_spec=task_datasets.element_type_structure,
+      metrics_constructor=lambda: collections.OrderedDict(
+          num_tokens=keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
+          accuracy=keras_metrics.MaskedCategoricalAccuracy(
+              masked_tokens=[pad_token]
+          ),
+      ),
+  )
 
-  return baseline_task.BaselineTask(task_datasets, model_fn)
+  return baseline_task.BaselineTask(task_datasets, model)
 
 
 def create_character_prediction_task(

@@ -19,6 +19,7 @@ import os
 
 from absl.testing import parameterized
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -534,25 +535,22 @@ def create_test_functional_model(input_spec):
 
 
 def create_test_keras_functional_model(input_spec):
-  # We must create the functional model that wraps a keras model in a graph
-  # context (see IMPORTANT note in `functional_model_from_keras`), otherwise
-  # we'll get non-model Variables.
-  keras_model = tf.keras.Sequential([
-      tf.keras.layers.InputLayer(input_shape=[3]),
-      tf.keras.layers.Dense(
+  keras_model = keras.Sequential([
+      keras.layers.InputLayer(shape=[3]),
+      keras.layers.Dense(
           1, kernel_initializer='zeros', bias_initializer='zeros'
       ),
   ])
 
   def _metrics_constructor():
     return collections.OrderedDict({
-        'loss': tf.keras.metrics.MeanSquaredError(),
+        'loss': keras.metrics.MeanSquaredError(),
         'num_examples': counters.NumExamplesCounter(),
     })
 
   return functional.functional_model_from_keras(
       keras_model,
-      loss_fn=tf.keras.losses.MeanSquaredError(),
+      loss_fn=keras.losses.MeanSquaredError(),
       input_spec=input_spec,
       metrics_constructor=_metrics_constructor,
   )
@@ -694,7 +692,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     updated_state = loaded_model.update_metrics_state(
         initial_state,
         example_batch[1],
-        variable.BatchOutput(
+        functional.BatchOutput(
             loss=expected_loss,
             predictions=tf.convert_to_tensor([[0.0]] * 5),
             num_examples=tf.constant(5),
@@ -741,7 +739,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     updated_state = loaded_model.update_metrics_state(
         initial_state,
         example_batch[1],
-        variable.BatchOutput(
+        functional.BatchOutput(
             loss=expected_loss,
             predictions=tf.convert_to_tensor([[0.0]] * 5),
             num_examples=tf.constant(5),
@@ -813,7 +811,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
       tf.nest.map_structure(
           lambda x, y: self.assertAllClose(x, y, atol=1e-2, rtol=1e-2),
           tff_model.forward_pass(batch_input=example_batch, training=training),
-          variable.BatchOutput(
+          functional.BatchOutput(
               loss=74.250, predictions=np.zeros(shape=[5, 1]), num_examples=5
           ),
       )

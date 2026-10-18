@@ -91,7 +91,10 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
 
   def __init__(
       self,
-      metric_finalizers: types.MetricFinalizersType,
+      metric_finalizers: Union[
+          types.MetricFinalizersType,
+          types.FunctionalMetricFinalizersType,
+      ],
       initial_unfinalized_metrics: Optional[
           collections.OrderedDict[str, Any]
       ] = None,
@@ -461,6 +464,24 @@ def fill_missing_values_with_defaults(
         fill_missing_values_with_defaults(default_value, user_values[idx])  # pyrefly: ignore[bad-argument-type, bad-index]
         for idx, default_value in enumerate(default_values)
     ]
+  # FunctionalModel metric state containers (`create_functional_metric_fns`)
+  # pack each metric's state variables into a tuple rather than a list, so a
+  # metric's default quantization ranges can be a tuple of 2-tuple ranges
+  # (e.g., `((0, 1048575),)`). Distinguish container tuples from leaf
+  # `(lower, upper)` bound tuples before constructing `_MetricRange`.
+  elif isinstance(default_values, tuple) and not (
+      len(default_values) == 2
+      and isinstance(default_values[0], (int, float, type(None)))
+  ):
+    if user_values is None:
+      user_values = [None] * len(default_values)  # pyrefly: ignore[bad-assignment]
+    elements = [
+        fill_missing_values_with_defaults(default_value, user_values[idx])  # pyrefly: ignore[bad-argument-type, bad-index]
+        for idx, default_value in enumerate(default_values)
+    ]
+    if hasattr(default_values, '_fields'):
+      return type(default_values)(*elements)  # pyrefly: ignore[bad-return]
+    return type(default_values)(elements)  # pyrefly: ignore[bad-return]
   elif user_values is None:
     return _MetricRange(*default_values)  # pyrefly: ignore[bad-return]
   else:

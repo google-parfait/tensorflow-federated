@@ -14,32 +14,35 @@
 """An example of an MNIST model function for use with TensorFlow Federated."""
 
 import collections
+from collections.abc import Callable
 import random
+from typing import Optional
 
+import keras
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.metrics import counters
 
 
 def create_simple_keras_model(learning_rate=0.1):
-  """Returns an instance of `tf.Keras.Model` with just one dense layer.
+  """Returns an instance of `keras.Model` with just one dense layer.
 
   Args:
     learning_rate: The learning rate to use with the SGD optimizer.
 
   Returns:
-    An instance of `tf.Keras.Model`.
+    An instance of `keras.Model`.
   """
-  model = tf.keras.models.Sequential([
-      tf.keras.layers.Flatten(input_shape=(784,)),
-      tf.keras.layers.Dense(10, tf.nn.softmax, kernel_initializer='zeros'),
+  model = keras.models.Sequential([
+      keras.layers.Flatten(input_shape=(784,)),
+      keras.layers.Dense(10, 'softmax', kernel_initializer='zeros'),
   ])
 
   model.compile(
-      loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-      optimizer=tf.keras.optimizers.SGD(learning_rate),
+      loss=keras.losses.SparseCategoricalCrossentropy(),
+      optimizer=keras.optimizers.SGD(learning_rate),
       metrics=[
-          tf.keras.metrics.SparseCategoricalAccuracy(),
+          keras.metrics.SparseCategoricalAccuracy(),
           counters.NumExamplesCounter(),
       ],
   )
@@ -71,8 +74,8 @@ class _DeterministicInitializer:
 
   def __init__(
       self,
-      initializer_type: type[tf.keras.initializers.Initializer],
-      base_seed: int,
+      initializer_type: Callable[..., keras.initializers.Initializer],
+      base_seed: Optional[int],
   ):
     self._initializer_type = initializer_type
     if base_seed is None:
@@ -85,7 +88,7 @@ class _DeterministicInitializer:
 
 
 def create_keras_model(compile_model=False):
-  """Returns an instance of `tf.keras.Model` for use with the MNIST example.
+  """Returns an instance of `keras.Model` for use with the MNIST example.
 
   This code is based on the following target, which unfortunately cannot be
   imported as it is a Python binary, not a library:
@@ -96,47 +99,47 @@ def create_keras_model(compile_model=False):
     compile_model: If True, compile the model with a basic optimizer and loss.
 
   Returns:
-    A `tf.keras.Model`.
+    A `keras.Model`.
   """
   # TODO: b/120157713 - Find a way to import this code.
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
   initializer = _DeterministicInitializer(
-      tf.keras.initializers.RandomNormal, base_seed=0
+      keras.initializers.RandomNormal, base_seed=0
   )
-  max_pool = tf.keras.layers.MaxPooling2D(
+  max_pool = keras.layers.MaxPooling2D(
       (2, 2), (2, 2), padding='same', data_format=data_format
   )
-  model = tf.keras.Sequential([
-      tf.keras.layers.Reshape(target_shape=input_shape, input_shape=(28 * 28,)),
-      tf.keras.layers.Conv2D(
+  model = keras.Sequential([
+      keras.layers.Reshape(target_shape=input_shape, input_shape=(28 * 28,)),
+      keras.layers.Conv2D(
           32,
           5,
           padding='same',
           data_format=data_format,
-          activation=tf.nn.relu,
+          activation='relu',
           kernel_initializer=initializer(),
       ),
       max_pool,
-      tf.keras.layers.Conv2D(
+      keras.layers.Conv2D(
           64,
           5,
           padding='same',
           data_format=data_format,
-          activation=tf.nn.relu,
+          activation='relu',
           kernel_initializer=initializer(),
       ),
       max_pool,
-      tf.keras.layers.Flatten(),
-      tf.keras.layers.Dense(
-          1024, activation=tf.nn.relu, kernel_initializer=initializer()
+      keras.layers.Flatten(),
+      keras.layers.Dense(
+          1024, activation='relu', kernel_initializer=initializer()
       ),
-      tf.keras.layers.Dropout(0.4, seed=1),
-      tf.keras.layers.Dense(10, kernel_initializer=initializer()),
+      keras.layers.Dropout(0.4, seed=1),
+      keras.layers.Dense(10, kernel_initializer=initializer()),
   ])
   if compile_model:
     model.compile(
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        optimizer=tf.keras.optimizers.SGD(learning_rate=0.1),
+        loss=keras.losses.SparseCategoricalCrossentropy(),
+        optimizer=keras.optimizers.SGD(learning_rate=0.1),
     )
   return model

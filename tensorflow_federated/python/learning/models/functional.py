@@ -52,6 +52,24 @@ UpdateMetricsStateFn = Callable[
 FinalizeMetricsFn = Callable[[types.MetricsState], Any]
 GenericMetricsState = TypeVar('GenericMetricsState', bound=types.MetricsState)
 
+BatchOutput = collections.namedtuple(
+    'BatchOutput',
+    ['loss', 'predictions', 'num_examples'],
+    defaults=[None, None, None],
+)
+BatchOutput.__doc__ = """A structure that holds the output of a model on a batch.
+
+  Note: All fields are optional (may be None).
+
+  Attributes:
+    loss: The scalar mean loss on the examples in the batch. If the model has
+      multiple losses, it is the sum of all the individual losses.
+    predictions: Tensor of predictions on the examples. The first dimension must
+      be the same size (the size of the batch).
+    num_examples: Number of examples seen in the batch.
+  """
+variable.BatchOutput = BatchOutput  # pyrefly: ignore[bad-assignment]
+
 
 class CallableNotTensorFlowFunctionError(TypeError):
   """Error raised when a callable is not decorated as a tf.function."""
@@ -70,7 +88,7 @@ def empty_metrics_state() -> types.MetricsState:
 def noop_update_metrics(
     state: types.MetricsState,
     labels: Any,
-    batch_output: variable.BatchOutput,
+    batch_output: BatchOutput,
     sample_weight: Optional[Any] = None,
 ) -> types.MetricsState:
   del state  # Unused.
@@ -215,7 +233,7 @@ class FunctionalModel:
       self,
       state: GenericMetricsState,
       labels: Any,
-      batch_output: variable.BatchOutput,
+      batch_output: BatchOutput,
       sample_weight: Optional[Any] = None,
   ) -> GenericMetricsState:
     return self._update_metrics_state(  # pyrefly: ignore[bad-return]
@@ -283,7 +301,10 @@ class _ModelFromFunctional(variable.VariableModel):
   def local_variables(self) -> tuple[tf.Variable, ...]:
     metrics_variables = [self._loss_sum, self._num_examples]
     for metric in self._metrics:
-      metrics_variables.extend(metric.variables)
+      metrics_variables.extend(
+          v.value if isinstance(v, keras.Variable) else v
+          for v in metric.variables
+      )
     return tuple(metrics_variables)
 
   @property
@@ -311,7 +332,7 @@ class _ModelFromFunctional(variable.VariableModel):
     )
     for metric in self._metrics:
       metric.update_state(y_true=y, y_pred=batch_output)
-    forward_pass_output = variable.BatchOutput(
+    forward_pass_output = BatchOutput(
         loss=batch_loss,
         predictions=batch_output,
         num_examples=batch_num_examples,
@@ -334,7 +355,10 @@ class _ModelFromFunctional(variable.VariableModel):
         loss=[self._loss_sum, tf.cast(self._num_examples, tf.float32)]
     )
     for metric in self._metrics:
-      outputs[metric.name] = [tf.identity(v) for v in metric.variables]
+      outputs[metric.name] = [
+          tf.identity(v.value if isinstance(v, keras.Variable) else v)
+          for v in metric.variables
+      ]
     return outputs  # pyrefly: ignore[bad-return]
 
   def metric_finalizers(
@@ -387,8 +411,12 @@ class KerasFunctionalModelError(Exception):
 
 
 def functional_model_from_keras(
-    keras_model: Union[tf.keras.Model, Callable[[], tf.keras.Model]],
-    loss_fn: tf.keras.losses.Loss,
+    keras_model: Union[
+        keras.Model,
+        tf.keras.Model,
+        Callable[[], Union[keras.Model, tf.keras.Model]],
+    ],
+    loss_fn: Union[keras.losses.Loss, tf.keras.losses.Loss, Callable[..., Any]],
     input_spec: Union[Sequence[Any], Mapping[str, Any]],
     metrics_constructor: Optional[
         Union[
@@ -461,22 +489,6 @@ def functional_model_from_keras(
   #
   # 3. This does not support multiple outputs with different loss functions, or
   #    laywerise regularization losses TODO: b/156629927.
-  if isinstance(keras_model, tf.keras.Model):
-    for layer in keras_model.layers:
-      # There may be other layers that are problematic, at this time updating
-      # the mean/variance in batchnorm layer is the only known such instance.
-      if isinstance(layer, tf.keras.layers.BatchNormalization):
-        raise KerasFunctionalModelError(
-            'Keras model contains a batch normalization layer, which is '
-            'incompatible with `tff.learning.models.FunctionalModel`. Consider '
-            'using group normalization instead.'
-        )
-  elif not callable(keras_model):
-    raise ValueError(
-        '`keras_model` must be a `tf.keras.Model` or a no-arg '
-        'callable that returns a `tf.keras.Model`.'
-    )
-
   # TODO: b/269671316 - more work needed to support non-None sample_weight
   # during model serialization and deserialization.
   keras_sample_weight = (
@@ -486,6 +498,120 @@ def functional_model_from_keras(
     raise KerasFunctionalModelError(
         'Received a non-None model_weight. Non-None model_weight is not'
         'supported in the current model serialization and deserialization.'
+    )
+
+  model = None
+  if isinstance(keras_model, keras.Model):
+    model = keras_model
+  elif isinstance(keras_model, tf.keras.Model):
+    for layer in keras_model.layers:
+      # There may be other layers that are problematic, at this time updating
+      # the mean/variance in batchnorm layer is the only known such instance.
+      if isinstance(layer, tf.keras.layers.BatchNormalization):
+        raise KerasFunctionalModelError(
+            'Keras model contains a batch normalization layer, which is '
+            'incompatible with `tff.learning.models.FunctionalModel`. Consider '
+            'using group normalization instead.'
+        )
+  elif callable(keras_model):
+    constructed_model = keras_model()
+    if isinstance(constructed_model, keras.Model):
+      model = constructed_model
+    elif not isinstance(constructed_model, tf.keras.Model):
+      raise ValueError(
+          '`keras_model` must be a `keras.Model` or a no-arg '
+          'callable that returns a `keras.Model`.'
+      )
+  else:
+    raise ValueError(
+        '`keras_model` must be a `keras.Model` or a no-arg '
+        'callable that returns a `keras.Model`.'
+    )
+
+  if model is not None:
+    for layer in model._flatten_layers():  # pylint: disable=protected-access
+      if isinstance(
+          layer,
+          (keras.layers.BatchNormalization, tf.keras.layers.BatchNormalization),
+      ):
+        raise KerasFunctionalModelError(
+            'Keras model contains a batch normalization layer, which is '
+            'incompatible with `tff.learning.models.FunctionalModel`. Consider '
+            'using group normalization instead.'
+        )
+
+    if isinstance(input_spec, Mapping):
+      x_spec = input_spec['x']
+    else:
+      x_spec, _ = input_spec
+
+    if not model.built:
+      symbolic_x = tf.nest.map_structure(
+          lambda s: keras.KerasTensor(shape=s.shape, dtype=s.dtype), x_spec
+      )
+      model(symbolic_x)
+      for layer in model._flatten_layers():  # pylint: disable=protected-access
+        if isinstance(
+            layer,
+            (
+                keras.layers.BatchNormalization,
+                tf.keras.layers.BatchNormalization,
+            ),
+        ):
+          raise KerasFunctionalModelError(
+              'Keras model contains a batch normalization layer, which is '
+              'incompatible with `tff.learning.models.FunctionalModel`. '
+              'Consider using group normalization instead.'
+          )
+
+    if tf.executing_eagerly():
+      initial_weights = (
+          tuple(v.numpy() for v in model.trainable_variables),
+          tuple(v.numpy() for v in model.non_trainable_variables),
+      )
+    else:
+      with tf.compat.v1.Session() as sess:
+        all_vars = [v.value for v in model.trainable_variables] + [
+            v.value for v in model.non_trainable_variables
+        ]
+        sess.run([v.initializer for v in all_vars])
+        initial_weights = sess.run((
+            tuple(v.value for v in model.trainable_variables),
+            tuple(v.value for v in model.non_trainable_variables),
+        ))
+
+    @tf.function
+    def keras_3_predict_on_batch(
+        model_weights: ModelWeights, x: Any, training: bool = True
+    ) -> Any:
+      trainable, non_trainable = model_weights
+      outputs, _ = model.stateless_call(
+          trainable, non_trainable, x, training=training
+      )
+      return outputs
+
+    def keras_3_loss(
+        output: Any, label: Any, sample_weight: Optional[Any] = None
+    ) -> float:
+      return loss_fn(y_true=label, y_pred=output, sample_weight=sample_weight)
+
+    if metrics_constructor is not None:
+      metrics_fns = keras_utils.create_functional_metric_fns(
+          metrics_constructor
+      )
+    else:
+      metrics_fns = (
+          empty_metrics_state,
+          noop_update_metrics,
+          noop_finalize_metrics,
+      )
+
+    return FunctionalModel(
+        initial_weights=initial_weights,
+        predict_on_batch_fn=keras_3_predict_on_batch,
+        loss_fn=keras_3_loss,
+        metrics_fns=metrics_fns,
+        input_spec=input_spec,
     )
 
   def _unwrap(v):
@@ -706,7 +832,10 @@ def keras_model_from_functional_weights(
     return next_creator_fn(**kwargs)
 
   with tf.variable_creator_scope(variable_creator_with_weights):
-    new_model = tf.keras.models.clone_model(keras_model)
+    if isinstance(keras_model, keras.Model):
+      new_model = keras.models.clone_model(keras_model)
+    else:
+      new_model = tf.keras.models.clone_model(keras_model)
   if trainable_weights or non_trainable_weights:
     raise ValueError(
         '`model_weights` contained more variables than `keras_model` uses, '

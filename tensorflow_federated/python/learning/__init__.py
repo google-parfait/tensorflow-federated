@@ -49,3 +49,4 @@ from tensorflow_federated.python.learning.loop_builder import LoopImplementation
 from tensorflow_federated.python.learning.model_update_aggregator import dp_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import robust_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import secure_aggregator
+from tensorflow_federated.python.learning.models.functional import BatchOutput

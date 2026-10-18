@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, Union
 
 import federated_language
 import tensorflow as tf
@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.models import variable
 
@@ -33,21 +34,19 @@ _MetricsType = Mapping[str, Any]
 _SplitFnType = Callable[
     [tf.data.Dataset], tuple[tf.data.Dataset, tf.data.Dataset]
 ]
-_FinetuneEvalFnType = Callable[
-    [variable.VariableModel, tf.data.Dataset, tf.data.Dataset],
-    _MetricsType,
-]
+_FinetuneEvalFnType = Callable[..., Any]
 
 _TRAIN_DATA_KEY = 'train_data'
 _EVAL_DATA_KEY = 'test_data'
 
 
 def build_personalization_eval_computation(
-    model_fn: Callable[[], variable.VariableModel],
-    personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
-    baseline_evaluate_fn: Callable[
-        [variable.VariableModel, tf.data.Dataset], _MetricsType
+    model_fn: Union[
+        Callable[[], Union[variable.VariableModel, functional.FunctionalModel]],
+        functional.FunctionalModel,
     ],
+    personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
+    baseline_evaluate_fn: Callable[..., _MetricsType],
     max_num_clients: int = 100,
 ) -> federated_language.framework.Computation:
   """Builds the TFF computation for evaluating personalization strategies.
@@ -122,10 +121,26 @@ def build_personalization_eval_computation(
   """
   # Obtain the types by constructing the model first.
   # TODO: b/124477628 - Replace it with other ways of handling metadata.
-  with tf.Graph().as_default():
-    model = model_fn()
+  if not callable(model_fn):
+    py_typecheck.check_type(model_fn, functional.FunctionalModel, 'model_fn')
+    model = model_fn
     model_weights_type = model_weights_lib.weights_type_from_model(model)
     batch_tff_type = tensorflow_types.to_type(model.input_spec)
+  else:
+    try:
+      with tf.Graph().as_default():
+        model = model_fn()
+    except NotImplementedError:
+      model = model_fn()
+    py_typecheck.check_type(
+        model,
+        (variable.VariableModel, functional.FunctionalModel),
+        'model',
+    )
+    model_weights_type = model_weights_lib.weights_type_from_model(model)
+    batch_tff_type = tensorflow_types.to_type(model.input_spec)
+    if isinstance(model, functional.FunctionalModel):
+      model_fn = model
 
   # Define the `federated_language.Type` of each client's input. Since batching
   # (as well as other preprocessing of datasets) is done within each
@@ -190,11 +205,12 @@ def build_personalization_eval_computation(
 def _build_client_computation(
     model_weights_type: federated_language.Type,
     client_data_type: federated_language.Type,
-    model_fn: Callable[[], variable.VariableModel],
-    personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
-    baseline_evaluate_fn: Callable[
-        [variable.VariableModel, tf.data.Dataset], _MetricsType
+    model_fn: Union[
+        Callable[[], Union[variable.VariableModel, functional.FunctionalModel]],
+        functional.FunctionalModel,
     ],
+    personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
+    baseline_evaluate_fn: Callable[..., _MetricsType],
 ):
   """Return an unplaced federated_language.Computation representing the client computation."""
 
@@ -280,7 +296,13 @@ def _compute_baseline_metrics(
     baseline_evaluate_fn: Callable[..., object],
 ):
   """Evaluate the model with weights being the `initial_model_weights`."""
-  model = model_fn()
+  model = model_fn() if callable(model_fn) else model_fn
+  if isinstance(model, functional.FunctionalModel):
+    weights = (
+        initial_model_weights.trainable,
+        initial_model_weights.non_trainable,
+    )
+    return baseline_evaluate_fn(model, weights, test_data)
   model_weights = model_weights_lib.ModelWeights.from_model(model)
 
   @tf.function
@@ -301,8 +323,7 @@ def _compute_p13n_metrics(
     personalize_fn_dict: Mapping[str, Callable[[], Callable[..., object]]],
 ):
   """Train and evaluate the personalized models."""
-  model = model_fn()
-  model_weights = model_weights_lib.ModelWeights.from_model(model)
+  model = model_fn() if callable(model_fn) else model_fn
   # Construct the `personalize_fn` (and the associated `tf.Variable`s) here.
   # This ensures that the new variables are created in the graphs that TFF
   # controls. This is the key reason why we need `personalize_fn_dict` to
@@ -314,6 +335,30 @@ def _compute_p13n_metrics(
   for name, personalize_fn_builder in personalize_fn_dict.items():
     py_typecheck.check_type(name, str)
     personalize_fns[name] = personalize_fn_builder()
+
+  if isinstance(model, functional.FunctionalModel):
+    weights = (
+        initial_model_weights.trainable,
+        initial_model_weights.non_trainable,
+    )
+
+    @tf.function
+    def loop_and_compute_functional():
+      p13n_metrics = collections.OrderedDict()
+      for name, personalize_fn in personalize_fns.items():
+        result = personalize_fn(model, weights, train_data, test_data)
+        if (
+            isinstance(result, tuple)
+            and len(result) == 2
+            and isinstance(result[0], Mapping)
+        ):
+          result = result[0]
+        p13n_metrics[name] = result
+      return p13n_metrics
+
+    return loop_and_compute_functional()
+
+  model_weights = model_weights_lib.ModelWeights.from_model(model)
 
   @tf.function
   def loop_and_compute():

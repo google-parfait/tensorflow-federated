@@ -25,7 +25,7 @@ py_library(
 py_library(
     name = "char_prediction_models",
     srcs = ["char_prediction_models.py"],
-    deps = ["@pypi//tensorflow"],
+    deps = ["@pypi//keras"],
 )
 
 py_test(
@@ -65,15 +65,14 @@ py_library(
     deps = [
         ":char_prediction_models",
         ":char_prediction_preprocessing",
-        "//tensorflow_federated/python/learning/models:keras_utils",
-        "//tensorflow_federated/python/learning/models:variable",
+        "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/baselines:keras_metrics",
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:shakespeare",
-        "@pypi//tensorflow",
+        "@pypi//keras",
     ],
 )
 

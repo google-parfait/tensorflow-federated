@@ -46,6 +46,7 @@ py_test(
         "//tensorflow_federated",
         "@federated_language//federated_language",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],
@@ -70,6 +71,7 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],

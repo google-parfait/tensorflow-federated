@@ -36,9 +36,8 @@ py_library(
     srcs = ["baseline_task.py"],
     deps = [
         ":task_data",
-        "//tensorflow_federated/python/learning/models:variable",
+        "//tensorflow_federated/python/learning/models:functional",
         "@pypi//attrs",
-        "@pypi//tensorflow",
     ],
 )
 
@@ -48,9 +47,9 @@ py_test(
     deps = [
         ":baseline_task",
         ":task_data",
-        "//tensorflow_federated/python/learning/models:keras_utils",
+        "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/simulation/datasets:client_data",
-        "@pypi//attrs",
+        "@pypi//keras",
         "@pypi//tensorflow",
     ],
 )
@@ -64,7 +63,10 @@ py_library(
 py_library(
     name = "keras_metrics",
     srcs = ["keras_metrics.py"],
-    deps = ["@pypi//tensorflow"],
+    deps = [
+        "@pypi//keras",
+        "@pypi//tensorflow",
+    ],
 )
 
 py_test(
@@ -72,6 +74,7 @@ py_test(
     srcs = ["keras_metrics_test.py"],
     deps = [
         ":keras_metrics",
+        "@pypi//keras",
         "@pypi//tensorflow",
     ],
 )

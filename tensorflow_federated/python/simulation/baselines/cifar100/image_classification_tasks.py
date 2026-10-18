@@ -13,13 +13,13 @@
 # limitations under the License.
 """Library for creating baseline tasks on CIFAR-100."""
 
+import collections
 import enum
 from typing import Optional, Union
 
-import tensorflow as tf
+import keras
 
-from tensorflow_federated.python.learning.models import keras_utils
-from tensorflow_federated.python.learning.models import variable
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
@@ -47,8 +47,8 @@ DEFAULT_CROP_WIDTH = 24
 
 def _get_resnet_model(
     model_id: Union[str, ResnetModel], input_shape: tuple[int, int, int]
-) -> tf.keras.Model:
-  """Constructs a `tf.keras.Model` for digit recognition."""
+) -> keras.Model:
+  """Constructs a `keras.Model` for digit recognition."""
   try:
     model_enum = ResnetModel(model_id)
   except ValueError as e:
@@ -143,15 +143,16 @@ def create_image_classification_task_with_datasets(
       eval_preprocess_fn=eval_preprocess_fn,
   )
 
-  def model_fn() -> variable.VariableModel:
-    return keras_utils.from_keras_model(
-        keras_model=_get_resnet_model(model_id, crop_shape),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        input_spec=task_datasets.element_type_structure,
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
-    )
+  model = functional.functional_model_from_keras(
+      keras_model=_get_resnet_model(model_id, crop_shape),
+      loss_fn=keras.losses.SparseCategoricalCrossentropy(),
+      input_spec=task_datasets.element_type_structure,
+      metrics_constructor=collections.OrderedDict(
+          sparse_categorical_accuracy=keras.metrics.SparseCategoricalAccuracy
+      ),
+  )
 
-  return baseline_task.BaselineTask(task_datasets, model_fn)
+  return baseline_task.BaselineTask(task_datasets, model)
 
 
 def create_image_classification_task(

@@ -13,12 +13,12 @@
 # limitations under the License.
 """Library for creating tag prediction tasks on Stack Overflow."""
 
+import collections
 from typing import Optional
 
-import tensorflow as tf
+import keras
 
-from tensorflow_federated.python.learning.models import keras_utils
-from tensorflow_federated.python.learning.models import variable
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
@@ -29,13 +29,11 @@ from tensorflow_federated.python.simulation.datasets import stackoverflow
 
 
 def _build_logistic_regression_model(input_size: int, output_size: int):
-  return tf.keras.models.Sequential(
-      [
-          tf.keras.layers.Dense(
-              output_size, activation='sigmoid', input_shape=(input_size,)
-          )
-      ]
-  )
+  return keras.models.Sequential([
+      keras.layers.Dense(
+          output_size, activation='sigmoid', input_shape=(input_size,)
+      )
+  ])
 
 
 def create_tag_prediction_task_from_datasets(
@@ -86,22 +84,21 @@ def create_tag_prediction_task_from_datasets(
       eval_preprocess_fn=eval_preprocess_fn,
   )
 
-  def model_fn() -> variable.VariableModel:
-    return keras_utils.from_keras_model(
-        keras_model=_build_logistic_regression_model(
-            input_size=word_vocab_size, output_size=tag_vocab_size
-        ),
-        loss=tf.keras.losses.BinaryCrossentropy(
-            from_logits=False, reduction=tf.keras.losses.Reduction.SUM
-        ),
-        input_spec=task_datasets.element_type_structure,
-        metrics=[
-            tf.keras.metrics.Precision(name='precision'),
-            tf.keras.metrics.Recall(top_k=5, name='recall_at_5'),
-        ],
-    )
+  model = functional.functional_model_from_keras(
+      keras_model=_build_logistic_regression_model(
+          input_size=word_vocab_size, output_size=tag_vocab_size
+      ),
+      loss_fn=keras.losses.BinaryCrossentropy(
+          from_logits=False, reduction='sum'
+      ),
+      input_spec=task_datasets.element_type_structure,
+      metrics_constructor=lambda: collections.OrderedDict(
+          precision=keras.metrics.Precision(name='precision'),
+          recall_at_5=keras.metrics.Recall(top_k=5, name='recall_at_5'),
+      ),
+  )
 
-  return baseline_task.BaselineTask(task_datasets, model_fn)
+  return baseline_task.BaselineTask(task_datasets, model)
 
 
 def create_tag_prediction_task(
