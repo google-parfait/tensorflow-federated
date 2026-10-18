@@ -137,6 +137,7 @@ py_library(
     name = "counters",
     srcs = ["counters.py"],
     deps = [
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],

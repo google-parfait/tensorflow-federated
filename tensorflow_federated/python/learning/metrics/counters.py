@@ -11,14 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A library of `tf.keras.metrics.Metrics` for learning."""
+"""A library of `keras.metrics.Metric`s for learning."""
 
+import keras
 import numpy as np
 import tensorflow as tf
 
 
-class NumExamplesCounter(tf.keras.metrics.Sum):
-  """A `tf.keras.metrics.Metric` that counts the number of examples seen.
+class NumExamplesCounter(keras.metrics.Sum):
+  """A `keras.metrics.Metric` that counts the number of examples seen.
 
   This metric expects `np.ndarray` or `tf.Tensor` values. To work with
   multi-output models it will raise an error if the inputs are Python structures
@@ -51,8 +52,8 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
     return super().update_state(tf.shape(labels[0])[0], sample_weight=None)
 
 
-class NumBatchesCounter(tf.keras.metrics.Sum):
-  """A `tf.keras.metrics.Metric` that counts the number of batches seen.
+class NumBatchesCounter(keras.metrics.Sum):
+  """A `keras.metrics.Metric` that counts the number of batches seen.
 
   NOTE: This metric ignores sample weighting, counting each batch uniformly.
   """

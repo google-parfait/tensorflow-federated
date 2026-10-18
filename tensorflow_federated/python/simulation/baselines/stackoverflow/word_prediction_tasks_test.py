@@ -120,8 +120,9 @@ class WordPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
         baseline_task_spec.datasets.get_centralized_test_data()
     )
     sample_batch = next(iter(centralized_dataset))
-    model = baseline_task_spec.model_fn()
-    model.forward_pass(sample_batch)
+    model = baseline_task_spec.model
+    preds = model.predict_on_batch(model.initial_weights, sample_batch[0])
+    model.loss(preds, sample_batch[1])
 
 
 if __name__ == '__main__':
