@@ -14,7 +14,7 @@
 """Module for Keras metrics integration."""
 
 import collections
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 import functools
 from typing import Any, TypeVar, Union
 
@@ -24,10 +24,97 @@ import tensorflow as tf
 from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
 
 StateVar = TypeVar('StateVar')
-MetricConstructor = Callable[[], tf.keras.metrics.Metric]
-MetricConstructors = collections.OrderedDict[str, MetricConstructor]
-MetricStructure = collections.OrderedDict[str, tf.keras.metrics.Metric]
+Metric = Union[tf.keras.metrics.Metric, keras.metrics.Metric]
+MetricConstructor = Callable[[], Metric]
+MetricConstructors = Mapping[str, MetricConstructor]
+MetricStructure = Mapping[str, Metric]
 MetricsConstructor = Callable[[], MetricStructure]
+
+
+def _tf_categorical_accuracy(y_true, y_pred):
+  """Computes categorical accuracy without emitting `BitwiseAnd` on `int32`.
+
+  `keras.ops.argmax` on the TensorFlow backend calls `signbit` via
+  `tf.bitwise.bitwise_and(..., dtype=tf.int32)` to handle negative zeros.
+  Android GmsCore's TFLite FlexDelegate only registers `BitwiseAnd` for
+  `DT_INT64`, so TFF metrics serialized into `.bar` plans must use
+  `tf.math.argmax` directly.
+
+  Args:
+    y_true: One-hot ground truth targets.
+    y_pred: Predicted target probabilities or logits.
+
+  Returns:
+    A float tensor of per-example accuracy values (1.0 for match, 0.0
+    otherwise).
+  """
+  y_true = tf.math.argmax(y_true, axis=-1)
+  reshape_matches = False
+  y_pred = tf.convert_to_tensor(y_pred)
+  y_true = tf.cast(tf.convert_to_tensor(y_true), dtype=y_pred.dtype)
+  y_true_org_shape = tf.shape(y_true)
+  y_pred_rank = y_pred.shape.ndims
+  y_true_rank = y_true.shape.ndims
+
+  if (
+      (y_true_rank is not None)
+      and (y_pred_rank is not None)
+      and (len(y_true.shape) == len(y_pred.shape))
+  ):
+    y_true = tf.squeeze(y_true, [-1])
+    reshape_matches = True
+  y_pred = tf.math.argmax(y_pred, axis=-1)
+
+  if y_pred.dtype != y_true.dtype:
+    y_pred = tf.cast(y_pred, dtype=y_true.dtype)
+  matches = tf.cast(tf.equal(y_true, y_pred), keras.backend.floatx())
+  if reshape_matches:
+    matches = tf.reshape(matches, shape=y_true_org_shape)
+  return matches
+
+
+def _tf_sparse_categorical_accuracy(y_true, y_pred):
+  """Computes sparse categorical accuracy without `BitwiseAnd` on `int32`.
+
+  `keras.ops.argmax` on the TensorFlow backend calls `signbit` via
+  `tf.bitwise.bitwise_and(..., dtype=tf.int32)` to handle negative zeros.
+  Android GmsCore's TFLite FlexDelegate only registers `BitwiseAnd` for
+  `DT_INT64`, so TFF metrics serialized into `.bar` plans must use
+  `tf.math.argmax` directly.
+
+  Args:
+    y_true: Integer ground truth target class indices.
+    y_pred: Predicted target probabilities or logits.
+
+  Returns:
+    A float tensor of per-example accuracy values (1.0 for match, 0.0
+    otherwise).
+  """
+  reshape_matches = False
+  y_pred = tf.convert_to_tensor(y_pred)
+  y_true = tf.cast(tf.convert_to_tensor(y_true), dtype=y_pred.dtype)
+  y_true_org_shape = tf.shape(y_true)
+  y_pred_rank = y_pred.shape.ndims
+  y_true_rank = y_true.shape.ndims
+
+  if (
+      (y_true_rank is not None)
+      and (y_pred_rank is not None)
+      and (len(y_true.shape) == len(y_pred.shape))
+      and tf.shape(y_true)[-1] == 1
+  ):
+    y_true = tf.squeeze(y_true, [-1])
+    reshape_matches = True
+  y_pred = tf.math.argmax(y_pred, axis=-1)
+
+  if y_pred.dtype != y_true.dtype:
+    y_pred = tf.cast(y_pred, y_true.dtype)
+  matches = tf.cast(tf.equal(y_true, y_pred), keras.backend.floatx())
+  if reshape_matches:
+    matches = tf.reshape(matches, shape=y_true_org_shape)
+  if len(matches.shape) > 1 and matches.shape[-1] == 1:
+    matches = tf.squeeze(matches, [-1])
+  return matches
 
 
 def create_functional_metric_fns(
@@ -101,7 +188,7 @@ def create_functional_metric_fns(
     # have the expected properties to provide better debugging messages to
     # caller.
     def check_keras_metric_type(obj):
-      if not isinstance(obj, tf.keras.metrics.Metric):
+      if not isinstance(obj, (tf.keras.metrics.Metric, keras.metrics.Metric)):
         raise TypeError(
             f'Found non-tf.keras.metrics.Metric value: {type(obj)}: {obj!r}.'
         )
@@ -150,23 +237,23 @@ def create_functional_metric_fns(
       self._current_index += 1
       return tensor_variable
 
+  def _unwrap(v):
+    """Unwraps a Keras 3 variable."""
+    match v:
+      case keras.Variable():
+        return v.value
+    return v
+
   @tf.function
   def initialize():
     with tf.variable_creator_scope(IndexedTensorVariableCreator()):
-
-      def _unwrap(v):
-        """Wraps a Keras 3 metric."""
-        match v:
-          case keras.Variable():
-            return v.value
-        return v
-
       tensor_variable_structure = tf.nest.map_structure(
-          lambda m: tuple(m.variables), metrics_constructor()
+          lambda m: tuple(_unwrap(v) for v in m.variables),
+          metrics_constructor(),
       )
     nonlocal variable_creation_indices
     variable_creation_indices = [
-        _unwrap(tensor_variable).index
+        tensor_variable.index
         for tensor_variable in tf.nest.flatten(tensor_variable_structure)
     ]
     return tensor_variable_structure
@@ -234,7 +321,16 @@ def create_functional_metric_fns(
       )
     predictions = batch_output.predictions
 
-    def inner_update(metric: tf.keras.metrics.Metric) -> tuple[tf.Tensor, ...]:
+    def inner_update(metric: Metric) -> tuple[tf.Tensor, ...]:
+      # Replace Keras 3 accuracy functions that invoke `keras.ops.argmax` with
+      # pure TensorFlow equivalents so traced TFF graphs do not emit
+      # `BitwiseAnd[T=DT_INT32]` ops unsupported by Android GmsCore's TFLite
+      # FlexDelegate.
+      metric_fn = getattr(metric, '_fn', None)
+      if metric_fn is keras.metrics.sparse_categorical_accuracy:
+        metric._fn = _tf_sparse_categorical_accuracy  # pylint: disable=protected-access
+      elif metric_fn is keras.metrics.categorical_accuracy:
+        metric._fn = _tf_categorical_accuracy  # pylint: disable=protected-access
       # We must unwrap `update_state` here because the `TensorVariable` is
       # created in the outer `update` FuncGraph and since it is not constant
       # it can't be closed over in the `update_state` FuncGraph. The
@@ -245,7 +341,7 @@ def create_functional_metric_fns(
       update_state_fn(
           y_true=labels, y_pred=predictions, sample_weight=sample_weight
       )
-      return tuple(metric.variables)
+      return tuple(_unwrap(v) for v in metric.variables)
 
     with tf.variable_creator_scope(
         build_replace_variable_with_parameter_creator(state)

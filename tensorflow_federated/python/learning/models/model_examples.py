@@ -18,6 +18,7 @@ from collections.abc import Callable
 import functools
 from typing import Union
 
+import keras
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.models import variable
@@ -162,10 +163,10 @@ def _dense_all_zeros_layer(input_dims=None, output_dim=1):
       one, effectively making the layer perform linear regression.
 
   Returns:
-    a `tf.keras.layers.Dense` object.
+    a `keras.layers.Dense` object.
   """
   build_keras_dense_layer = functools.partial(
-      tf.keras.layers.Dense,
+      keras.layers.Dense,
       units=output_dim,
       use_bias=True,
       kernel_initializer='zeros',
@@ -254,8 +255,8 @@ def _dense_all_ones_regularized_layer(
 
 
 def build_linear_regression_keras_sequential_model(feature_dims=2):
-  """Build a linear regression `tf.keras.Model` using the Sequential API."""
-  keras_model = tf.keras.models.Sequential()
+  """Build a linear regression `keras.Model` using the Sequential API."""
+  keras_model = keras.models.Sequential()
   keras_model.add(_dense_all_zeros_layer(feature_dims))
   return keras_model
 
@@ -287,17 +288,17 @@ def build_linear_regression_ones_regularized_keras_sequential_model(
 
 
 def build_linear_regression_keras_functional_model(feature_dims=2):
-  """Build a linear regression `tf.keras.Model` using the functional API."""
-  a = tf.keras.layers.Input(shape=(feature_dims,), dtype=tf.float32)
+  """Build a linear regression `keras.Model` using the functional API."""
+  a = keras.layers.Input(shape=(feature_dims,), dtype=tf.float32)
   b = _dense_all_zeros_layer()(a)
-  return tf.keras.Model(inputs=a, outputs=b)
+  return keras.Model(inputs=a, outputs=b)
 
 
 def build_linear_regression_keras_subclass_model(feature_dims=2):
-  """Build a linear regression model by sub-classing `tf.keras.Model`."""
+  """Build a linear regression model by sub-classing `keras.Model`."""
   del feature_dims  # Unused.
 
-  class _KerasLinearRegression(tf.keras.Model):
+  class _KerasLinearRegression(keras.Model):
 
     def __init__(self):
       super().__init__()
@@ -322,12 +323,12 @@ def build_conv_batch_norm_keras_model():
   """Builds a test model with convolution and batch normalization."""
   # This is an example of a model that has trainable and non-trainable
   # variables.
-  l = tf.keras.layers
+  l = keras.layers
   data_format = 'channels_last'
   max_pool = l.MaxPooling2D(
       (2, 2), (2, 2), padding='same', data_format=data_format
   )
-  keras_model = tf.keras.models.Sequential([
+  keras_model = keras.models.Sequential([
       l.Reshape(target_shape=[28, 28, 1], input_shape=(28 * 28,)),
       l.Conv2D(
           32,
@@ -366,7 +367,7 @@ def build_conv_batch_norm_keras_model():
 
 def build_multiple_inputs_keras_model():
   """Builds a test model with two inputs."""
-  l = tf.keras.layers
+  l = keras.layers
   a = l.Input((1,), name='a')
   b = l.Input((1,), name='b')
   # Each input has a single, independent dense layer, which are combined into
@@ -377,7 +378,7 @@ def build_multiple_inputs_keras_model():
           l.Dense(1)(b),
       ])
   )
-  return tf.keras.Model(inputs={'a': a, 'b': b}, outputs=[output])
+  return keras.Model(inputs={'a': a, 'b': b}, outputs=[output])
 
 
 def build_multiple_outputs_keras_model():

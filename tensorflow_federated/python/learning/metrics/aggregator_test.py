@@ -17,6 +17,7 @@ from typing import Any
 
 from absl.testing import parameterized
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -38,7 +39,7 @@ _UNUSED_UNFINALIZED_METRICS_TYPE = federated_language.StructWithPythonType(
 )
 
 
-class CustomSumMetric(tf.keras.metrics.Sum):
+class CustomSumMetric(keras.metrics.Sum):
   """A custom metric whose result is total + extra scalar and vector values."""
 
   def __init__(self, name='custom_sum_metric'):
@@ -63,7 +64,7 @@ _TEST_ARGUMENTS_KERAS_METRICS = {
     # different shapes.
     'metric_finalizers': collections.OrderedDict(
         accuracy=keras_finalizer.create_keras_metric_finalizer(
-            tf.keras.metrics.SparseCategoricalAccuracy
+            keras.metrics.SparseCategoricalAccuracy
         ),
         custom_sum=keras_finalizer.create_keras_metric_finalizer(
             CustomSumMetric
@@ -106,7 +107,7 @@ def _test_finalize_metrics(
 ) -> collections.OrderedDict[str, Any]:
   return collections.OrderedDict(
       accuracy=keras_finalizer.create_keras_metric_finalizer(
-          tf.keras.metrics.SparseCategoricalAccuracy
+          keras.metrics.SparseCategoricalAccuracy
       )(unfinalized_metrics['accuracy']),
       custom_sum=keras_finalizer.create_keras_metric_finalizer(CustomSumMetric)(
           unfinalized_metrics['custom_sum']

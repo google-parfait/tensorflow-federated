@@ -14,6 +14,7 @@
 
 import collections
 
+import keras
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -34,20 +35,20 @@ def _create_dataset():
 
 def _model_fn():
   """Constructs a linear model with weights initialized to be zeros."""
-  inputs = tf.keras.Input(shape=(_INPUT_DIM,))
-  outputs = tf.keras.layers.Dense(_OUTPUT_DIM, kernel_initializer='zeros')(
-      inputs
-  )
-  keras_model = tf.keras.Model(inputs=inputs, outputs=outputs)
+  inputs = keras.Input(shape=(_INPUT_DIM,))
+  outputs = keras.layers.Dense(_OUTPUT_DIM, kernel_initializer='zeros')(inputs)
+  keras_model = keras.Model(inputs=inputs, outputs=outputs)
   input_spec = collections.OrderedDict([
       ('x', tf.TensorSpec([None, _INPUT_DIM], dtype=tf.float32)),
       ('y', tf.TensorSpec([None, _OUTPUT_DIM], dtype=tf.float32)),
   ])
-  return tff.learning.models.from_keras_model(
+  return tff.learning.models.functional_model_from_keras(
       keras_model=keras_model,
+      loss_fn=keras.losses.MeanSquaredError(),
       input_spec=input_spec,
-      loss=tf.keras.losses.MeanSquaredError(),
-      metrics=[tf.keras.metrics.MeanAbsoluteError()],
+      metrics_constructor=collections.OrderedDict(
+          mean_absolute_error=keras.metrics.MeanAbsoluteError
+      ),
   )
 
 
@@ -67,9 +68,6 @@ class P13nUtilsTest(tf.test.TestCase):
         {
             'num_test_examples': 3,
             'mean_absolute_error': 1.0,
-            'loss': 1.0,
-            'num_examples': 3,
-            'num_batches': 3,
         },
     )
 
@@ -93,9 +91,6 @@ class P13nUtilsTest(tf.test.TestCase):
             'epoch_1': {
                 'num_test_examples': 3,
                 'mean_absolute_error': 0.0,
-                'loss': 0.0,
-                'num_examples': 3,
-                'num_batches': 3,
             },
             'num_train_examples': 3,  # Same dataset is used for train and test.
         },

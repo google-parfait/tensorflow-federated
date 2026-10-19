@@ -33,13 +33,14 @@ import tensorflow_federated as tff
 from examplessimple_fedavg.simple_fedavg_tf import batch_client_update
 from examplessimple_fedavg.simple_fedavg_tf import build_server_broadcast_message
 from examplessimple_fedavg.simple_fedavg_tf import client_update
+from examplessimple_fedavg.simple_fedavg_tf import get_model_weights
 from examplessimple_fedavg.simple_fedavg_tf import init_client_ouput
 from examplessimple_fedavg.simple_fedavg_tf import server_update
 from examplessimple_fedavg.simple_fedavg_tf import ServerState
 
 
 def _initialize_optimizer_vars(
-    model: tff.learning.models.VariableModel,
+    model: tff.learning.models.FunctionalModel,
     optimizer: tf.keras.optimizers.Optimizer,
 ):
   """Creates optimizer variables to assign the optimizer's state."""
@@ -48,7 +49,7 @@ def _initialize_optimizer_vars(
   # creates the variables on first usage of the optimizer. Optimizers such as
   # Adam, Adagrad, or using momentum need to create a new set of variables shape
   # like the model weights.
-  model_weights = tff.learning.models.ModelWeights.from_model(model)
+  model_weights = get_model_weights(model)
   zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
   optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
   assert optimizer.variables()
@@ -57,7 +58,7 @@ def _initialize_optimizer_vars(
 def _build_client_update_fn(
     tf_dataset_type,
     server_message_type,
-    model_fn,
+    model,
     client_optimizer_fn,
     use_sequence_reduce,
 ):
@@ -65,8 +66,8 @@ def _build_client_update_fn(
 
   @tff.tensorflow.computation(server_message_type, tf_dataset_type)
   def client_update_fn(server_message, tf_dataset):
-    model = model_fn()
     client_optimizer = client_optimizer_fn()
+    _initialize_optimizer_vars(model, client_optimizer)
     return client_update(model, tf_dataset, server_message, client_optimizer)
 
   if not use_sequence_reduce:
@@ -77,23 +78,23 @@ def _build_client_update_fn(
     # function, using tff.sequenece_reduce.
 
     client_update_type_spec = client_update_fn.type_signature.result
-    batch_type = tff.tensorflow.to_type(model_fn().input_spec)
+    batch_type = tff.tensorflow.to_type(model.input_spec)
 
     @tff.tensorflow.computation(client_update_type_spec, batch_type)
     def client_update_batch_fn(client_data, batch):
-      model = model_fn()
       client_optimizer = client_optimizer_fn()
+      _initialize_optimizer_vars(model, client_optimizer)
       return batch_client_update(
           model,
           batch,
           client_data.weights_delta,
           client_data.client_weight,
+          client_data.model_output,
           client_optimizer,
       )
 
     @tff.tensorflow.computation(server_message_type)
     def initialize_client_data(server_message):
-      model = model_fn()
       return init_client_ouput(model, server_message)
 
     @federated_language.federated_computation(
@@ -110,15 +111,19 @@ def _build_client_update_fn(
 
 def build_federated_averaging_process(
     model_fn,
-    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
-    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02),
+    server_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(
+        learning_rate=1.0
+    ),
+    client_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(
+        learning_rate=0.02
+    ),
     use_sequence_reduce=False,
 ):
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
-    model_fn: A no-arg function that returns a
-      `tff.learning.models.VariableModel`.
+    model_fn: A `tff.learning.models.FunctionalModel` or a no-arg function that
+      returns a `tff.learning.models.FunctionalModel`.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer` for server update.
     client_optimizer_fn: A no-arg function that returns a
@@ -131,15 +136,14 @@ def build_federated_averaging_process(
     A `tff.templates.IterativeProcess`.
   """
 
-  whimsy_model = model_fn()
+  model = model_fn() if callable(model_fn) else model_fn
   metrics_aggregation_computation = tff.learning.metrics.sum_then_finalize(
-      whimsy_model.metric_finalizers(),
+      model.finalize_metrics
   )
 
   @tff.tensorflow.computation()
   def server_init_tf():
-    model = model_fn()
-    model_weights = tff.learning.models.ModelWeights.from_model(model)
+    model_weights = get_model_weights(model)
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
@@ -156,7 +160,6 @@ def build_federated_averaging_process(
       model_weights_type.trainable,
   )
   def server_update_fn(server_state, model_delta):
-    model = model_fn()
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return server_update(model, server_optimizer, server_state, model_delta)
@@ -166,7 +169,7 @@ def build_federated_averaging_process(
     return build_server_broadcast_message(server_state)
 
   server_message_type = server_message_fn.type_signature.result
-  element_type = tff.tensorflow.to_type(whimsy_model.input_spec)
+  element_type = tff.tensorflow.to_type(model.input_spec)
   tf_dataset_type = federated_language.SequenceType(element_type)
 
   federated_server_state_type = federated_language.FederatedType(
@@ -198,7 +201,7 @@ def build_federated_averaging_process(
     client_update_fn = _build_client_update_fn(
         tf_dataset_type,
         server_message_type,
-        model_fn,
+        model,
         client_optimizer_fn,
         use_sequence_reduce,
     )

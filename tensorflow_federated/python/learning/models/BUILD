@@ -4,6 +4,7 @@ package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
         ":models_packages",
+        "//tensorflow_federated/python/learning:learning_packages",
         "//tensorflow_federated/python/learning:learning_users",
         "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
         "//tensorflow_federated/python/learning/programs:programs_packages",
@@ -22,6 +23,7 @@ py_library(
     name = "model_weights",
     srcs = ["model_weights.py"],
     deps = [
+        ":functional",
         ":variable",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -67,7 +69,6 @@ py_test(
     srcs = ["functional_test.py"],
     deps = [
         ":functional",
-        ":variable",
         "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:variable_utils",
         "//tensorflow_federated/python/learning/metrics:aggregator",
@@ -122,6 +123,7 @@ py_library(
     srcs = ["model_examples.py"],
     deps = [
         ":variable",
+        "@pypi//keras",
         "@pypi//tensorflow",
     ],
 )
@@ -159,7 +161,9 @@ py_test(
     name = "model_weights_test",
     srcs = ["model_weights_test.py"],
     deps = [
+        ":functional",
         ":model_weights",
+        ":test_models",
         ":variable",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
@@ -185,6 +189,7 @@ py_test(
         "//tensorflow_federated/python/learning/metrics:counters",
         "@federated_language//federated_language",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],
@@ -195,7 +200,6 @@ py_library(
     srcs = ["test_models.py"],
     deps = [
         ":functional",
-        ":variable",
         "//tensorflow_federated/python/learning/metrics:types",
         "@pypi//numpy",
         "@pypi//tensorflow",

@@ -13,12 +13,9 @@
 # limitations under the License.
 """Utilities for baseline tasks."""
 
-from collections.abc import Callable
-
 import attrs
-import tensorflow as tf
 
-from tensorflow_federated.python.learning.models import variable
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.simulation.baselines import task_data
 
 
@@ -30,31 +27,20 @@ class BaselineTask:
     datasets: A `tff.simulation.baselines.BaselineTaskDatasets` object
       specifying dataset-related aspects of the task, including training data
       and preprocessing functions.
-    model_fn: A no-arg callable returning a `tff.learning.models.VariableModel`
-      used for the task. Note that `model_fn().input_spec` must match
-      `datasets.element_type_structure`.
+    model_fn: A `tff.learning.models.FunctionalModel` used for the task. Note
+      that `model_fn.input_spec` must match `datasets.element_type_structure`.
   """
 
   datasets: task_data.BaselineTaskDatasets = attrs.field(
       validator=attrs.validators.instance_of(task_data.BaselineTaskDatasets)
   )
-  model_fn: Callable[[], variable.VariableModel] = attrs.field(
-      validator=attrs.validators.is_callable()
+  model_fn: functional.FunctionalModel = attrs.field(
+      validator=attrs.validators.instance_of(functional.FunctionalModel)
   )
 
   def __attrs_post_init__(self):
-    # Wrap model construction in a graph to avoid polluting the global context
-    # with variables created for this model.
-    with tf.Graph().as_default():
-      tff_model = self.model_fn()
-    if not isinstance(tff_model, variable.VariableModel):
-      raise TypeError(
-          'Expected model_fn to output a tff.learning.models.VariableModel, '
-          'found {} instead'.format(type(tff_model))
-      )
-
     dataset_element_spec = self.datasets.element_type_structure
-    model_input_spec = tff_model.input_spec
+    model_input_spec = self.model_fn.input_spec
 
     if dataset_element_spec != model_input_spec:
       raise ValueError(

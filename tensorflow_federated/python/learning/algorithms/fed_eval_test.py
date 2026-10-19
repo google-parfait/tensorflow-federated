@@ -19,6 +19,7 @@ from unittest import mock
 
 from absl.testing import absltest
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -170,6 +171,8 @@ def _create_custom_metrics_aggregation_process(
 
     @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
     def finalizer_computation(unfinalized_metrics):
+      if callable(metric_finalizers):
+        return metric_finalizers(unfinalized_metrics)
       finalized_metrics = collections.OrderedDict()
       for metric_name, metric_finalizer in metric_finalizers.items():
         finalized_metrics[metric_name] = metric_finalizer(
@@ -478,7 +481,7 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
   def test_functional_evaluation_matches_non_functional(self):
     datasets = self.create_test_datasets()
     batch_type = tensorflow_types.to_type(datasets[0].element_spec)
-    loss_fn = tf.keras.losses.MeanSquaredError
+    loss_fn = keras.losses.MeanSquaredError
     keras_model_fn = functools.partial(
         model_examples.build_linear_regression_keras_functional_model,
         feature_dims=2,
@@ -498,7 +501,7 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
     # Defining artifacts using `tff.learning.models.FunctionalModel`
     def build_metrics_fn():
       return collections.OrderedDict(
-          loss=tf.keras.metrics.MeanSquaredError(),
+          loss=keras.metrics.MeanSquaredError(),
           num_examples=counters.NumExamplesCounter(),
           num_batches=counters.NumBatchesCounter(),
       )
@@ -515,6 +518,83 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
         functional_eval_state, datasets
     )
     self.assertDictEqual(eval_output.metrics, functional_eval_output.metrics)
+
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_functional_evaluation_with_metrics_aggregation_process_matches_non_functional(
+      self,
+  ):
+    datasets = self.create_test_datasets()
+    batch_type = tensorflow_types.to_type(datasets[0].element_spec)
+    loss_fn = keras.losses.MeanSquaredError
+    keras_model_fn = functools.partial(
+        model_examples.build_linear_regression_keras_functional_model,
+        feature_dims=2,
+    )
+
+    def tff_model_fn():
+      keras_model = keras_model_fn()
+      return keras_utils.from_keras_model(
+          keras_model, loss=loss_fn(), input_spec=batch_type
+      )
+
+    with tf.Graph().as_default():
+      test_model = tff_model_fn()
+      unfinalized_metrics = test_model.report_local_unfinalized_metrics()
+      local_unfinalized_metrics_type = _get_metrics_type(unfinalized_metrics)
+      metric_finalizers = test_model.metric_finalizers()
+
+    eval_process = fed_eval.build_fed_eval(
+        tff_model_fn,
+        metrics_aggregation_process=_create_custom_metrics_aggregation_process(
+            metric_finalizers, local_unfinalized_metrics_type
+        ),
+    )
+    eval_state = eval_process.initialize()
+    eval_output = eval_process.next(eval_state, datasets)
+
+    def build_metrics_fn():
+      return collections.OrderedDict(
+          loss=keras.metrics.MeanSquaredError(),
+          num_examples=counters.NumExamplesCounter(),
+          num_batches=counters.NumBatchesCounter(),
+      )
+
+    functional_model = functional.functional_model_from_keras(
+        keras_model=keras_model_fn(),
+        loss_fn=loss_fn(),
+        input_spec=batch_type,
+        metrics_constructor=build_metrics_fn,
+    )
+    functional_unfinalized_metrics_type = tensorflow_computation.tf_computation(
+        functional_model.initialize_metrics_state
+    ).type_signature.result
+    functional_eval_process = fed_eval.build_fed_eval(
+        functional_model,
+        metrics_aggregation_process=_create_custom_metrics_aggregation_process(
+            functional_model.finalize_metrics,
+            functional_unfinalized_metrics_type,
+        ),
+    )
+    functional_eval_state = functional_eval_process.initialize()
+    functional_eval_output = functional_eval_process.next(
+        functional_eval_state, datasets
+    )
+    self.assertDictEqual(eval_output.metrics, functional_eval_output.metrics)
+
+  def test_invalid_metrics_aggregation_process_raises(self):
+    datasets = self.create_test_datasets()
+    batch_type = tensorflow_types.to_type(datasets[0].element_spec)
+    functional_model = functional.functional_model_from_keras(
+        keras_model=model_examples.build_linear_regression_keras_functional_model(
+            feature_dims=2
+        ),
+        loss_fn=keras.losses.MeanSquaredError(),
+        input_spec=batch_type,
+    )
+    with self.assertRaisesRegex(TypeError, 'AggregationProcess'):
+      fed_eval.build_fed_eval(
+          functional_model, metrics_aggregation_process='not_a_process'
+      )
 
 
 if __name__ == '__main__':

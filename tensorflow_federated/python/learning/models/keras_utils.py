@@ -203,7 +203,10 @@ def from_keras_model(
     py_typecheck.check_type(metrics, list)
 
   for layer in keras_model.layers:
-    if isinstance(layer, tf.keras.layers.BatchNormalization):
+    if isinstance(
+        layer,
+        (tf.keras.layers.BatchNormalization, keras.layers.BatchNormalization),
+    ):
       warnings.warn(
           (
               "Batch Normalization contains non-trainable variables that won't"
@@ -294,7 +297,9 @@ def federated_aggregate_keras_metric(
 
       assignments = []
       for v, a in zip(keras_metric.variables, values):
-        assignments.append(v.assign(a))
+        assignments.append(
+            (v.value if isinstance(v, keras.Variable) else v).assign(a)
+        )
       with tf.control_dependencies(assignments):
         return keras_metric.result()
 
@@ -414,17 +419,30 @@ class _KerasModel(variable.VariableModel):
 
   @property
   def trainable_variables(self):
-    return self._keras_model.trainable_variables
+    return [
+        v.value if isinstance(v, keras.Variable) else v
+        for v in self._keras_model.trainable_variables
+    ]
 
   @property
   def non_trainable_variables(self):
-    return self._keras_model.non_trainable_variables
+    # Exclude Keras 3 `SeedGenerator` state variables so legacy `VariableModel`
+    # wrappers around Keras 3 models containing `Dropout` layers match Keras 2
+    # non-trainable variable structures.
+    return [
+        v.value if isinstance(v, keras.Variable) else v
+        for v in self._keras_model.non_trainable_variables
+        if not (isinstance(v, keras.Variable) and 'seed_generator' in v.path)
+    ]
 
   @property
   def local_variables(self):
     local_variables = []
     for metric in self.get_metrics():
-      local_variables.extend(metric.variables)
+      local_variables.extend(
+          v.value if isinstance(v, keras.Variable) else v
+          for v in metric.variables
+      )
     return local_variables
 
   def get_metrics(self):
@@ -531,7 +549,10 @@ class _KerasModel(variable.VariableModel):
 
     outputs = collections.OrderedDict()
     for metric in self.get_metrics():
-      outputs[metric.name] = [tf.identity(v) for v in metric.variables]
+      outputs[metric.name] = [
+          tf.identity(v.value if isinstance(v, keras.Variable) else v)
+          for v in metric.variables
+      ]
     return outputs
 
   def metric_finalizers(

@@ -18,6 +18,7 @@ from unittest import mock
 
 from absl.testing import parameterized
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -514,7 +515,7 @@ class FunctionalModelDeltaClientWorkExecutionTest(
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=2
     )
-    loss_fn = tf.keras.losses.MeanSquaredError()
+    loss_fn = keras.losses.MeanSquaredError()
     input_spec = dataset.element_spec
     functional_model = functional.functional_model_from_keras(
         keras_model, loss_fn=loss_fn, input_spec=input_spec
@@ -598,7 +599,7 @@ class FunctionalModelDeltaClientWorkExecutionTest(
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=2
     )
-    loss_fn = tf.keras.losses.MeanSquaredError()
+    loss_fn = keras.losses.MeanSquaredError()
     dataset = create_test_dataset()
     input_spec = dataset.element_spec
 

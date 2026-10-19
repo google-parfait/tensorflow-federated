@@ -1152,6 +1152,25 @@ class FillMissingMetricValueRangesTest(
           default_ranges, user_ranges
       )
 
+  def test_fill_tuple_container_ranges_returns_correct_results(self):
+    default_ranges = collections.OrderedDict(
+        num_examples=((0, 100),),
+        loss=((0.0, 100.0), (0.0, 100.0)),
+    )
+    user_ranges = collections.OrderedDict(
+        loss=(None, (0.0, 400.0)),
+    )
+    filled_ranges = sum_aggregation_factory.fill_missing_values_with_defaults(
+        default_ranges, user_ranges
+    )
+    expected_filled_ranges = collections.OrderedDict(
+        num_examples=(MetricRange(0, 100),),
+        loss=(MetricRange(0.0, 100.0), MetricRange(0.0, 400.0)),
+    )
+    tf.nest.map_structure(
+        self.assertAllEqual, filled_ranges, expected_filled_ranges
+    )
+
 
 if __name__ == '__main__':
   cpp_execution_contexts.set_sync_test_cpp_execution_context()
