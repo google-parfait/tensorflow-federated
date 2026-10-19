@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Union
 
 import federated_language
 import tensorflow as tf
@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.learning import client_weight_lib
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import sgdm
@@ -356,9 +357,13 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
   )
 
 
-def build_basic_fedavg_process(model_fn: Callable[[], variable.VariableModel],
-                               client_learning_rate: float,
-                               server_learning_rate: float = 1.0):
+def build_basic_fedavg_process(
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
+    client_learning_rate: float,
+    server_learning_rate: float = 1.0,
+):
   """Builds vanilla Federated Averaging process.
 
   The created process is the basic form of the Federated Averaging algorithm as
@@ -403,7 +408,9 @@ def build_basic_fedavg_process(model_fn: Callable[[], variable.VariableModel],
   ```
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.models.VariableModel`.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of
+      `tff.learning.models.FunctionalModel`.
     client_learning_rate: A float. Learning rate for the SGD at clients.
     server_learning_rate: A float representing the learning rate for the SGD
       step occuring at the server. Defaults to 1.0.
@@ -412,24 +419,47 @@ def build_basic_fedavg_process(model_fn: Callable[[], variable.VariableModel],
     A `LearningProcess`.
   """
   py_typecheck.check_type(client_learning_rate, float)
+  if not callable(model_fn):
+    py_typecheck.check_type(model_fn, functional.FunctionalModel)
 
-  @tensorflow_computation.tf_computation()
-  def initial_model_weights_fn():
-    return model_weights_lib.ModelWeights.from_model(model_fn())
+    @tensorflow_computation.tf_computation()
+    def initial_model_weights_fn():
+      trainable_weights, non_trainable_weights = model_fn.initial_weights
+      return model_weights_lib.ModelWeights(
+          tuple(tf.convert_to_tensor(w) for w in trainable_weights),
+          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights),
+      )
+
+    client_work = (
+        model_delta_client_work.build_functional_model_delta_client_work(
+            model=model_fn,
+            optimizer=sgdm.build_sgdm(client_learning_rate),
+            client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        )
+    )
+  else:
+
+    @tensorflow_computation.tf_computation()
+    def initial_model_weights_fn():
+      return model_weights_lib.ModelWeights.from_model(model_fn())
+
+    client_work = model_delta_client_work.build_model_delta_client_work(
+        model_fn,
+        sgdm.build_sgdm(client_learning_rate),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    )
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 
   distributor = distributors.build_broadcast_process(model_weights_type)
-  client_work = model_delta_client_work.build_model_delta_client_work(
-      model_fn,
-      sgdm.build_sgdm(client_learning_rate),
-      client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
   aggregator = mean.MeanFactory().create(
       client_work.next.type_signature.result.result.member.update,  # pyrefly: ignore[missing-attribute]
       client_work.next.type_signature.result.result.member.update_weight,  # pyrefly: ignore[missing-attribute]
   )
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-      sgdm.build_sgdm(server_learning_rate), model_weights_type)
+      sgdm.build_sgdm(server_learning_rate), model_weights_type
+  )
 
-  return compose_learning_process(initial_model_weights_fn, distributor,
-                                  client_work, aggregator, finalizer)
+  return compose_learning_process(
+      initial_model_weights_fn, distributor, client_work, aggregator, finalizer
+  )

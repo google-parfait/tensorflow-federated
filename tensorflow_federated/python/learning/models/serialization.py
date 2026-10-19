@@ -517,7 +517,7 @@ def save_functional_model(
             functional_model.update_metrics_state,
             initialize_metrics_state_tensor_specs,
             y_spec,
-            variable.BatchOutput(
+            functional.BatchOutput(
                 loss=loss_tensor_specs,
                 predictions=output_tensor_specs,
                 num_examples=tf.TensorSpec(shape=(), dtype=tf.int32),

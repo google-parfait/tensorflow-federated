@@ -13,12 +13,13 @@
 # limitations under the License.
 """Library for creating Baseline Task on GLDv2."""
 
+import collections
 from typing import Optional
 
+import keras
 import tensorflow as tf
 
-from tensorflow_federated.python.learning.models import keras_utils
-from tensorflow_federated.python.learning.models import variable
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
@@ -87,19 +88,20 @@ def create_landmark_classification_task_from_datasets(
       eval_preprocess_fn=eval_preprocess_fn,
   )
 
-  def model_fn() -> variable.VariableModel:
-    return keras_utils.from_keras_model(
-        keras_model=mobilenet_v2.create_mobilenet_v2(
-            input_shape=(_IMAGE_SIZE, _IMAGE_SIZE, 3),
-            num_groups=_NUM_GROUPS,
-            num_classes=_NUM_CLASSES,
-        ),
-        input_spec=task_datasets.element_type_structure,
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
-    )
+  model = functional.functional_model_from_keras(
+      keras_model=mobilenet_v2.create_mobilenet_v2(
+          input_shape=(_IMAGE_SIZE, _IMAGE_SIZE, 3),
+          num_groups=_NUM_GROUPS,
+          num_classes=_NUM_CLASSES,
+      ),
+      input_spec=task_datasets.element_type_structure,
+      loss_fn=keras.losses.SparseCategoricalCrossentropy(from_logits=False),
+      metrics_constructor=collections.OrderedDict(
+          sparse_categorical_accuracy=keras.metrics.SparseCategoricalAccuracy
+      ),
+  )
 
-  return baseline_task.BaselineTask(task_datasets, model_fn)
+  return baseline_task.BaselineTask(task_datasets, model)
 
 
 def create_landmark_classification_task(

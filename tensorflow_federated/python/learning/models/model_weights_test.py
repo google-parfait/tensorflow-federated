@@ -22,7 +22,9 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights
+from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.models import variable
 
 
@@ -60,7 +62,7 @@ class TestModel(variable.VariableModel):
     return 1.0
 
   def forward_pass(self, batch_input, training=True):
-    return variable.BatchOutput(
+    return functional.BatchOutput(
         loss=0.0, predictions=self.predict_on_batch, num_examples=0
     )
 
@@ -147,6 +149,32 @@ class WeightsTypeFromModelTest(absltest.TestCase):
         weights_type,
     )
 
+  def test_returns_model_weights_for_functional_model(self):
+    model = test_models.build_functional_linear_regression(feature_dim=3)
+    weights_type = model_weights.weights_type_from_model(model)
+    self.assertEqual(
+        federated_language.StructWithPythonType(
+            [
+                (
+                    'trainable',
+                    federated_language.StructWithPythonType(
+                        [
+                            federated_language.TensorType(np.float32, [3, 1]),
+                            federated_language.TensorType(np.float32, [1]),
+                        ],
+                        tuple,
+                    ),
+                ),
+                (
+                    'non_trainable',
+                    federated_language.StructWithPythonType([], tuple),
+                ),
+            ],
+            model_weights.ModelWeights,
+        ),
+        weights_type,
+    )
+
 
 class FromModelTest(parameterized.TestCase, tf.test.TestCase):
 
@@ -159,6 +187,18 @@ class FromModelTest(parameterized.TestCase, tf.test.TestCase):
     self.assertIsInstance(weights, model_weights.ModelWeights)
     self.assertLen(weights.trainable, 1)
     self.assertEmpty(weights.non_trainable)
+
+  def test_returns_model_weights_for_functional_model(self):
+    model = test_models.build_functional_linear_regression(feature_dim=3)
+    weights = model_weights.ModelWeights.from_model(model)
+    self.assertIsInstance(weights, model_weights.ModelWeights)
+    self.assertAllClose(
+        weights,
+        model_weights.ModelWeights(
+            trainable=(np.zeros([3, 1], np.float32), np.zeros([1], np.float32)),
+            non_trainable=(),
+        ),
+    )
 
   def test_weights_to_variable_model(self):
     model = TestModel()

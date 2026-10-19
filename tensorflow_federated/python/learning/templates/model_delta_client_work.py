@@ -371,7 +371,7 @@ def build_functional_model_delta_update(
       # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
           metrics_state,
-          batch_output=variable.BatchOutput(
+          batch_output=functional.BatchOutput(
               loss=batch_loss,
               predictions=batch_output,
               num_examples=batch_num_examples,

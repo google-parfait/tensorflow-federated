@@ -26,11 +26,41 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
+import collections
 from typing import Any, NamedTuple
+import weakref
 
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
+
+_MODEL_WEIGHTS_CACHE = weakref.WeakKeyDictionary()
+
+
+def get_model_weights(
+    model: tff.learning.models.FunctionalModel,
+) -> tff.learning.models.ModelWeights:
+  """Creates a `ModelWeights` structure of `tf.Variable`s from `model`."""
+  with tf.init_scope():
+    if tf.executing_eagerly():
+      eager_weights = getattr(model, '_eager_model_weights', None)
+      if eager_weights is None:
+        eager_weights = tff.learning.models.ModelWeights(
+            trainable=tuple(tf.Variable(w) for w in model.initial_weights[0]),
+            non_trainable=tuple(
+                tf.Variable(w) for w in model.initial_weights[1]
+            ),
+        )
+        setattr(model, '_eager_model_weights', eager_weights)
+      return eager_weights
+    graph = tf.compat.v1.get_default_graph()
+    graph_cache = _MODEL_WEIGHTS_CACHE.setdefault(graph, {})
+    if id(model) not in graph_cache:
+      graph_cache[id(model)] = tff.learning.models.ModelWeights(
+          trainable=tuple(tf.Variable(w) for w in model.initial_weights[0]),
+          non_trainable=tuple(tf.Variable(w) for w in model.initial_weights[1]),
+      )
+    return graph_cache[id(model)]
 
 
 # TODO: b/295181362 - Update from `Any` to a more specific type.
@@ -42,8 +72,8 @@ class ClientOutput(NamedTuple):
     client_weight: Weight to be used in a weighted mean when aggregating
       `weights_delta`.
     model_output: A structure matching
-      `tff.learning.models.VariableModel.report_local_unfinalized_metrics`,
-      reflecting the results of training on the input dataset.
+      `tff.learning.models.FunctionalModel.update_metrics_state`, reflecting the
+      results of training on the input dataset.
   """
 
   weights_delta: Any
@@ -87,7 +117,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   """Updates `server_state` based on `weights_delta`.
 
   Args:
-    model: A `KerasModelWrapper` or `tff.learning.models.VariableModel`.
+    model: A `tff.learning.models.FunctionalModel`.
     server_optimizer: A `tf.keras.optimizers.Optimizer`. If the optimizer
       creates variables, they must have already been created.
     server_state: A `ServerState`, the state to be updated.
@@ -98,7 +128,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
     An updated `ServerState`.
   """
   # Initialize the model with the current state.
-  model_weights = tff.learning.models.ModelWeights.from_model(model)
+  model_weights = get_model_weights(model)
   tf.nest.map_structure(
       lambda v, t: v.assign(t), model_weights, server_state.model
   )
@@ -143,39 +173,61 @@ def build_server_broadcast_message(server_state):
 
 @tf.function
 def batch_client_update(
-    model, batch, initial_weights, num_examples, client_optimizer
+    model,
+    batch,
+    initial_weights,
+    num_examples,
+    metrics_state,
+    client_optimizer,
 ):
   """Performs client local training of `model` on `dataset`.
 
   Args:
-    model: A `tff.learning.models.VariableModel` to train locally on the client.
+    model: A `tff.learning.models.FunctionalModel` to train locally on the
+      client.
     batch: A batch from 'tf.data.Dataset' representing the clients local data.
     initial_weights: initial model weights to use for update. weights to train.
     num_examples: Number of examples observed so far.
+    metrics_state: Metrics state accumulated so far.
     client_optimizer: A `tf.keras.optimizers.Optimizer` used to update the local
       model during training.
 
   Returns:
     A `ClientOutput` instance with a model update to aggregate on the server.
   """
-  model_weights = tff.learning.models.ModelWeights.from_model(model)
+  model_weights = get_model_weights(model)
   tf.nest.map_structure(
       lambda v, t: v.assign(t), model_weights.trainable, initial_weights
   )
 
   num_examples = tf.cast(num_examples, tf.int32)
+  if isinstance(batch, collections.abc.Mapping):
+    x = batch['x']
+    y = batch['y']
+  else:
+    x, y = batch
   with tf.GradientTape() as tape:
-    outputs = model.forward_pass(batch)
-  grads = tape.gradient(outputs.loss, model_weights.trainable)
+    predictions = model.predict_on_batch(
+        model_weights=(model_weights.trainable, model_weights.non_trainable),
+        x=x,
+        training=True,
+    )
+    loss = model.loss(output=predictions, label=y)
+  grads = tape.gradient(loss, model_weights.trainable)
   client_optimizer.apply_gradients(zip(grads, model_weights.trainable))
-  batch_size = tf.shape(batch['y'])[0]
+  batch_size = tf.shape(y)[0]
   num_examples += batch_size
 
   weights_delta = tf.nest.map_structure(
       lambda a, b: a - b, model_weights.trainable, initial_weights
   )
   client_weight = tf.cast(num_examples, tf.float32)
-  model_outputs = model.report_local_unfinalized_metrics()
+  batch_output = tff.learning.models.BatchOutput(
+      loss=loss, predictions=predictions, num_examples=batch_size
+  )
+  model_outputs = model.update_metrics_state(
+      metrics_state, batch_output=batch_output, labels=y
+  )
   return ClientOutput(weights_delta, client_weight, model_outputs)
 
 
@@ -185,7 +237,7 @@ def init_client_ouput(model, server_message):
   return ClientOutput(
       server_message.model_weights.trainable,
       client_weight,
-      model.report_local_unfinalized_metrics(),
+      model.initialize_metrics_state(),
   )
 
 
@@ -194,7 +246,8 @@ def client_update(model, dataset, server_message, client_optimizer):
   """Performans client local training of `model` on `dataset`.
 
   Args:
-    model: A `tff.learning.models.VariableModel` to train locally on the client.
+    model: A `tff.learning.models.FunctionalModel` to train locally on the
+      client.
     dataset: A 'tf.data.Dataset' representing the clients local dataset.
     server_message: A `BroadcastMessage` from serve containing the initial model
       weights to train.
@@ -204,27 +257,43 @@ def client_update(model, dataset, server_message, client_optimizer):
   Returns:
     A `ClientOutput` instance with a model update to aggregate on the server.
   """
-  model_weights = tff.learning.models.ModelWeights.from_model(model)
+  model_weights = get_model_weights(model)
   initial_weights = server_message.model_weights
   tf.nest.map_structure(
       lambda v, t: v.assign(t), model_weights, initial_weights
   )
 
   num_examples = tf.constant(0, dtype=tf.int32)
+  metrics_state = model.initialize_metrics_state()
   # Explicit use `iter` for dataset is a trick that makes TFF more robust in
   # GPU simulation and slightly more performant in the unconventional usage
   # of large number of small datasets.
   for batch in iter(dataset):
+    if isinstance(batch, collections.abc.Mapping):
+      x = batch['x']
+      y = batch['y']
+    else:
+      x, y = batch
     with tf.GradientTape() as tape:
-      outputs = model.forward_pass(batch)
-    grads = tape.gradient(outputs.loss, model_weights.trainable)
+      predictions = model.predict_on_batch(
+          model_weights=(model_weights.trainable, model_weights.non_trainable),
+          x=x,
+          training=True,
+      )
+      loss = model.loss(output=predictions, label=y)
+    grads = tape.gradient(loss, model_weights.trainable)
     client_optimizer.apply_gradients(zip(grads, model_weights.trainable))
-    batch_size = tf.shape(batch['y'])[0]
+    batch_size = tf.shape(y)[0]
     num_examples += batch_size
+    batch_output = tff.learning.models.BatchOutput(
+        loss=loss, predictions=predictions, num_examples=batch_size
+    )
+    metrics_state = model.update_metrics_state(
+        metrics_state, batch_output=batch_output, labels=y
+    )
 
   weights_delta = tf.nest.map_structure(
       lambda a, b: a - b, model_weights.trainable, initial_weights.trainable
   )
   client_weight = tf.cast(num_examples, tf.float32)
-  model_outputs = model.report_local_unfinalized_metrics()
-  return ClientOutput(weights_delta, client_weight, model_outputs)
+  return ClientOutput(weights_delta, client_weight, metrics_state)

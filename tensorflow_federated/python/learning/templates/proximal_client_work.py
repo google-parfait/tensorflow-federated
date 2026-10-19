@@ -157,6 +157,7 @@ def _build_functional_model_delta_update(
     model: functional.FunctionalModel,
     weighting: client_weight_lib.ClientWeighting,
     delta_l2_regularizer: float,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> Callable[[Any, Any, Any], tuple[client_works.ClientResult, Any]]:
   """Creates client update logic in FedProx for a FunctionalModel.
 
@@ -165,12 +166,14 @@ def _build_functional_model_delta_update(
     weighting: A `tff.learning.ClientWeighting` value.
     delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
       model delta.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tf.function`.
   """
   dataset_reduce_fn = loop_builder.build_training_loop(
-      loop_builder.LoopImplementation.DATASET_ITERATOR
+      loop_implementation=loop_implementation
   )
 
   @tf.function
@@ -219,7 +222,7 @@ def _build_functional_model_delta_update(
       # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
           metrics_state,
-          batch_output=variable.BatchOutput(
+          batch_output=functional.BatchOutput(
               loss=batch_loss,
               predictions=batch_output,
               num_examples=batch_num_examples,
@@ -398,6 +401,7 @@ def build_functional_model_delta_client_work(
     client_weighting: client_weight_lib.ClientWeighting,
     delta_l2_regularizer: float,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for the FedProx algorithm.
 
@@ -417,6 +421,8 @@ def build_functional_model_delta_client_work(
       and returns a `federated_language.Computation` for aggregating the
       unfinalized metrics. If `None`, this is set to
       `tff.learning.metrics.sum_then_finalize`.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `ClientWorkProcess`.
@@ -463,6 +469,7 @@ def build_functional_model_delta_client_work(
         model=model,
         weighting=client_weighting,
         delta_l2_regularizer=delta_l2_regularizer,
+        loop_implementation=loop_implementation,
     )
     return client_update(optimizer, initial_model_weights, dataset)
 

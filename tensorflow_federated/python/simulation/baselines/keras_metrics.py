@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries of `tf.Keras` metrics used for baseline tasks."""
+"""Libraries of `keras` metrics used for baseline tasks."""
 
+import keras
 import tensorflow as tf
 
 
@@ -27,26 +28,20 @@ def _apply_mask(y_true, sample_weight, masked_tokens, dtype):
   return sample_weight
 
 
-class NumTokensCounter(tf.keras.metrics.Metric):
-  """A `tf.keras.metrics.Metric` that counts tokens seen after masking."""
+class NumTokensCounter(keras.metrics.Sum):
+  """A `keras.metrics.Metric` that counts tokens seen after masking."""
 
   def __init__(self, masked_tokens=None, name='num_tokens', dtype=tf.int64):
     super().__init__(name=name, dtype=dtype)
-    self._sum = self.add_variable(
-        name='sum', initializer='zeros', shape=(), dtype=dtype
-    )
     self._masked_tokens = masked_tokens or []
 
-  def result(self):
-    return tf.identity(self._sum)
-
-  def update_state(self, y_true, y_pred, sample_weight=None):
+  def update_state(self, y_true, y_pred=None, sample_weight=None):  # pyrefly: ignore[bad-override]
+    del y_pred
     sample_weight = _apply_mask(
-        y_true, sample_weight, self._masked_tokens, self._dtype
+        y_true, sample_weight, self._masked_tokens, self.dtype
     )
     sample_weight = tf.reshape(sample_weight, [-1])
-    sample_weight = tf.reduce_sum(sample_weight)
-    self._sum.assign_add(sample_weight)
+    super().update_state(sample_weight)
 
   def get_config(self):
     config = super().get_config()
@@ -54,16 +49,16 @@ class NumTokensCounter(tf.keras.metrics.Metric):
     return config
 
 
-class MaskedCategoricalAccuracy(tf.keras.metrics.SparseCategoricalAccuracy):
+class MaskedCategoricalAccuracy(keras.metrics.SparseCategoricalAccuracy):
   """An accuracy metric that masks some tokens."""
 
   def __init__(self, masked_tokens=None, name='accuracy', dtype=None):
     self._masked_tokens = masked_tokens or []
-    super().__init__(name, dtype=dtype)
+    super().__init__(name=name, dtype=dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
     sample_weight = _apply_mask(
-        y_true, sample_weight, self._masked_tokens, self._dtype
+        y_true, sample_weight, self._masked_tokens, self.dtype
     )
     num_classes = tf.shape(y_pred)[-1]
     y_true = tf.reshape(y_true, [-1])

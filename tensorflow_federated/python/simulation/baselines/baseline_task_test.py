@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import attrs
+import keras
 import tensorflow as tf
 
-from tensorflow_federated.python.learning.models import keras_utils
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import task_data
 from tensorflow_federated.python.simulation.datasets import client_data
@@ -42,43 +42,38 @@ def create_task_data():
 
 
 def keras_model_builder():
-  inputs = tf.keras.layers.Input(shape=(3,), name='input_layer')
-  outputs = tf.keras.layers.Dense(
-      2, kernel_initializer='ones', use_bias=False, name='dense_layer'
+  inputs = keras.layers.Input(shape=(1,), name='input_layer')
+  outputs = keras.layers.Dense(
+      1, kernel_initializer='ones', use_bias=False, name='dense_layer'
   )(inputs)
-  return tf.keras.models.Model(inputs=inputs, outputs=outputs, name='model')
+  return keras.models.Model(inputs=inputs, outputs=outputs, name='model')
 
 
 def tff_model_builder():
   x_type = tf.TensorSpec(shape=(None, 1), dtype=tf.float32)
   input_spec = (x_type, x_type)
   keras_model = keras_model_builder()
-  loss = tf.keras.losses.MeanSquaredError()
-  return keras_utils.from_keras_model(keras_model, loss, input_spec=input_spec)
+  loss = keras.losses.MeanSquaredError()
+  return functional.functional_model_from_keras(
+      keras_model, loss_fn=loss, input_spec=input_spec
+  )
 
 
 class TaskUtilsTest(tf.test.TestCase):
 
   def test_constructs_with_matching_dataset_and_model_spec(self):
     baseline_task_spec = baseline_task.BaselineTask(
-        create_task_data(), tff_model_builder
+        create_task_data(), tff_model_builder()
     )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   def test_construct_raises_on_non_baseline_task_spec_datasets(self):
     with self.assertRaises(TypeError):
-      baseline_task.BaselineTask(create_dataset(0), tff_model_builder)
-
-  def test_construct_raises_on_non_callable_model_fn(self):
-    with self.assertRaises(attrs.exceptions.NotCallableError):
-      baseline_task.BaselineTask(create_task_data(), 'bad_input')
+      baseline_task.BaselineTask(create_dataset(0), tff_model_builder())
 
   def test_construct_raises_on_non_tff_model(self):
-    with self.assertRaisesRegex(
-        TypeError,
-        'Expected model_fn to output a tff.learning.models.VariableModel',
-    ):
-      baseline_task.BaselineTask(create_task_data(), keras_model_builder)
+    with self.assertRaises(TypeError):
+      baseline_task.BaselineTask(create_task_data(), keras_model_builder())
 
   def test_raises_on_different_data_and_model_spec(self):
     baseline_task_spec_data = create_task_data()
@@ -86,23 +81,21 @@ class TaskUtilsTest(tf.test.TestCase):
         tf.TensorSpec(shape=(None, 4, 2), dtype=tf.float32, name=None),
         tf.TensorSpec(shape=(None, 4, 2), dtype=tf.float32, name=None),
     )
-    inputs = tf.keras.layers.Input(shape=(4, 2))
-    outputs = tf.keras.layers.Dense(
-        2, kernel_initializer='ones', use_bias=False
-    )(inputs)
-    keras_model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
-
-    def tff_model_fn():
-      return keras_utils.from_keras_model(
-          keras_model,
-          loss=tf.keras.losses.MeanSquaredError(),
-          input_spec=model_input_spec,
-      )
+    inputs = keras.layers.Input(shape=(4, 2))
+    outputs = keras.layers.Dense(2, kernel_initializer='ones', use_bias=False)(
+        inputs
+    )
+    keras_model = keras.models.Model(inputs=inputs, outputs=outputs)
+    tff_model = functional.functional_model_from_keras(
+        keras_model,
+        loss_fn=keras.losses.MeanSquaredError(),
+        input_spec=model_input_spec,
+    )
 
     with self.assertRaisesRegex(
         ValueError, 'Dataset element spec and model input spec do not match'
     ):
-      baseline_task.BaselineTask(baseline_task_spec_data, tff_model_fn)
+      baseline_task.BaselineTask(baseline_task_spec_data, tff_model)
 
 
 if __name__ == '__main__':

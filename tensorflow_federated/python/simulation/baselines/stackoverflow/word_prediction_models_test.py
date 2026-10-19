@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import parameterized
+import keras
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.baselines.stackoverflow import word_prediction_models
@@ -92,11 +93,13 @@ class CreateRecurrentModelTest(tf.test.TestCase, parameterized.TestCase):
       model = word_prediction_models.create_recurrent_model(
           vocab_size=3, shared_embedding=True
       )
-      loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+      loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
       with tf.GradientTape() as tape:
         predictions = model(batch_x, training=True)
         loss = loss_fn(y_true=batch_y, y_pred=predictions)
-      embedding_gradient = tape.gradient(loss, model.trainable_variables[0])
+      embedding_gradient = tape.gradient(
+          loss, model.trainable_variables[0].value
+      )
       init_op = tf.compat.v1.global_variables_initializer()
 
     with tf.compat.v1.Session(graph=graph) as sess:

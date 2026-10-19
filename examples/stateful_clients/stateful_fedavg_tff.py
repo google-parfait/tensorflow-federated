@@ -50,8 +50,12 @@ def _initialize_optimizer_vars(model, optimizer):
 def build_federated_averaging_process(
     model_fn,
     client_state_fn,
-    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
-    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
+    server_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(
+        learning_rate=1.0
+    ),
+    client_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(
+        learning_rate=0.1
+    ),
 ):
   """Builds the TFF computations for optimization using federated averaging.
 
@@ -69,11 +73,11 @@ def build_federated_averaging_process(
   """
   del client_state_fn  # Unused.
 
-  whimsy_model = model_fn()
+  whimsy_model = model_fn() if callable(model_fn) else model_fn
 
   @tff.tensorflow.computation
   def server_init_tf():
-    model = model_fn()
+    model = model_fn() if callable(model_fn) else model_fn
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return stateful_fedavg_tf.ServerState(
@@ -101,7 +105,7 @@ def build_federated_averaging_process(
       client_state_type.iters_count,
   )
   def server_update_fn(server_state, model_delta, total_iters_count):
-    model = model_fn()
+    model = model_fn() if callable(model_fn) else model_fn
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return stateful_fedavg_tf.server_update(
@@ -120,8 +124,9 @@ def build_federated_averaging_process(
       tf_dataset_type, client_state_type, server_message_type
   )
   def client_update_fn(tf_dataset, client_state, server_message):
-    model = model_fn()
+    model = model_fn() if callable(model_fn) else model_fn
     client_optimizer = client_optimizer_fn()
+    _initialize_optimizer_vars(model, client_optimizer)
     return stateful_fedavg_tf.client_update(
         model, tf_dataset, client_state, server_message, client_optimizer
     )

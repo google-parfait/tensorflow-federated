@@ -430,7 +430,7 @@ def _build_functional_client_update_fn_for_mime_lite(
         # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
         metrics_state = model.update_metrics_state(
             metrics_state,
-            batch_output=variable.BatchOutput(
+            batch_output=functional.BatchOutput(
                 loss=batch_loss,
                 predictions=batch_output,
                 num_examples=tf.cast(batch_num_examples, tf.int64),

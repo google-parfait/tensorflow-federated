@@ -11,15 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""MobileNet v2 model in tf.keras using Group Normalization.
+"""MobileNet v2 model in keras using Group Normalization.
 
 For architectural details, see the original paper,
 https://arxiv.org/abs/1801.04381.
 """
+
 import math
 from typing import Optional
 
-import tensorflow as tf
+import keras
 
 
 def _check_tuple_with_positive_ints(structure):
@@ -125,7 +126,7 @@ def _inverted_res_block(
 
   if expansion_layer:
     # We perform an initial pointwise convolution layer.
-    x = tf.keras.layers.Conv2D(
+    x = keras.layers.Conv2D(
         expansion_factor * num_input_channels,
         kernel_size=1,
         padding='same',
@@ -133,22 +134,20 @@ def _inverted_res_block(
         activation=None,
         name=prefix + 'expand_conv',
     )(x)
-    x = tf.keras.layers.GroupNormalization(
+    x = keras.layers.GroupNormalization(
         groups=num_groups, axis=channel_axis, name=prefix + 'expand_gn'
     )(x)
     if dropout_prob:
-      x = tf.keras.layers.Dropout(dropout_prob, name=prefix + 'expand_dropout')(
-          x
-      )
-    x = tf.keras.layers.ReLU(6.0, name=prefix + 'expand_relu')(x)
+      x = keras.layers.Dropout(dropout_prob, name=prefix + 'expand_dropout')(x)
+    x = keras.layers.ReLU(6.0, name=prefix + 'expand_relu')(x)
 
   # We now use depthwise convolutions
   if stride % 2 == 0:
     padding = compute_pad(image_shape, 3, enforce_odd=True)
-    x = tf.keras.layers.ZeroPadding2D(padding=padding, name=prefix + 'pad')(x)
+    x = keras.layers.ZeroPadding2D(padding=padding, name=prefix + 'pad')(x)
 
   padding_type = 'same' if stride == 1 else 'valid'
-  x = tf.keras.layers.DepthwiseConv2D(
+  x = keras.layers.DepthwiseConv2D(
       kernel_size=3,
       strides=stride,
       activation=None,
@@ -156,18 +155,16 @@ def _inverted_res_block(
       padding=padding_type,
       name=prefix + 'depthwise_conv',
   )(x)
-  x = tf.keras.layers.GroupNormalization(
+  x = keras.layers.GroupNormalization(
       groups=num_groups, axis=channel_axis, name=prefix + 'depthwise_gn'
   )(x)
   if dropout_prob:
-    x = tf.keras.layers.Dropout(
-        dropout_prob, name=prefix + 'depthwise_dropout'
-    )(x)
-  x = tf.keras.layers.ReLU(6.0, name=prefix + 'depthwise_relu')(x)
+    x = keras.layers.Dropout(dropout_prob, name=prefix + 'depthwise_dropout')(x)
+  x = keras.layers.ReLU(6.0, name=prefix + 'depthwise_relu')(x)
 
   # Projection phase, using pointwise convolutions
   num_projection_filters = _make_divisible(int(filters * alpha), 8)
-  x = tf.keras.layers.Conv2D(
+  x = keras.layers.Conv2D(
       num_projection_filters,
       kernel_size=1,
       padding='same',
@@ -175,15 +172,13 @@ def _inverted_res_block(
       activation=None,
       name=prefix + 'project_conv',
   )(x)
-  x = tf.keras.layers.GroupNormalization(
+  x = keras.layers.GroupNormalization(
       groups=num_groups, axis=channel_axis, name=prefix + 'project_gn'
   )(x)
   if dropout_prob:
-    x = tf.keras.layers.Dropout(dropout_prob, name=prefix + 'project_dropout')(
-        x
-    )
+    x = keras.layers.Dropout(dropout_prob, name=prefix + 'project_dropout')(x)
   if num_input_channels == num_projection_filters and stride == 1:
-    x = tf.keras.layers.add([input_tensor, x])
+    x = keras.layers.add([input_tensor, x])
   return x
 
 
@@ -258,7 +253,7 @@ def create_mobilenet_v2(
     num_classes: A positive integer indicating the number of output classes.
 
   Returns:
-    A `tf.keras.Model`.
+    A `keras.Model`.
 
   Raises:
     ValueError: If image data format is not `channels_last` (the format is
@@ -270,7 +265,7 @@ def create_mobilenet_v2(
 
   # TODO: b/265363369 - Support `channels_first` image format once the
   # GroupNormalizaiton index issue is fixed.
-  if tf.keras.backend.image_data_format() == 'channels_last':
+  if keras.backend.image_data_format() == 'channels_last':
     row_axis, col_axis = (0, 1)
     channel_axis = -1  # last non-batch dimension in keras GroupNormalization
   else:
@@ -281,13 +276,11 @@ def create_mobilenet_v2(
     )
 
   image_shape = (input_shape[row_axis], input_shape[col_axis])
-  img_input = tf.keras.layers.Input(shape=input_shape)
+  img_input = keras.layers.Input(shape=input_shape)
   initial_padding = compute_pad(image_shape, 3, enforce_odd=True)
-  x = tf.keras.layers.ZeroPadding2D(initial_padding, name='initial_pad')(
-      img_input
-  )
+  x = keras.layers.ZeroPadding2D(initial_padding, name='initial_pad')(img_input)
   num_filters_first_block = _make_divisible(32 * alpha, 8)
-  x = tf.keras.layers.Conv2D(
+  x = keras.layers.Conv2D(
       num_filters_first_block,
       kernel_size=3,
       strides=(2, 2),
@@ -295,12 +288,12 @@ def create_mobilenet_v2(
       use_bias=False,
       name='initial_conv',
   )(x)
-  x = tf.keras.layers.GroupNormalization(
+  x = keras.layers.GroupNormalization(
       groups=num_groups, axis=channel_axis, name='initial_gn'
   )(x)
   if dropout_prob:
-    x = tf.keras.layers.Dropout(dropout_prob, name='initial_dropout')(x)
-  x = tf.keras.layers.ReLU(6.0, name='initial_relu')(x)
+    x = keras.layers.Dropout(dropout_prob, name='initial_dropout')(x)
+  x = keras.layers.ReLU(6.0, name='initial_relu')(x)
 
   x = _inverted_res_block(
       x,
@@ -481,26 +474,26 @@ def create_mobilenet_v2(
   else:
     last_block_filters = 1280
 
-  x = tf.keras.layers.Conv2D(
+  x = keras.layers.Conv2D(
       last_block_filters, kernel_size=1, use_bias=False, name='last_conv'
   )(x)
-  x = tf.keras.layers.GroupNormalization(
+  x = keras.layers.GroupNormalization(
       groups=num_groups, axis=channel_axis, name='last_gn'
   )(x)
   if dropout_prob:
-    x = tf.keras.layers.Dropout(dropout_prob, name='last_dropout')(x)
-  x = tf.keras.layers.ReLU(6.0, name='last_relu')(x)
+    x = keras.layers.Dropout(dropout_prob, name='last_dropout')(x)
+  x = keras.layers.ReLU(6.0, name='last_relu')(x)
 
   if pooling == 'avg':
-    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    x = keras.layers.GlobalAveragePooling2D()(x)
   elif pooling == 'max':
-    x = tf.keras.layers.GlobalMaxPooling2D()(x)
+    x = keras.layers.GlobalMaxPooling2D()(x)
   else:
     raise ValueError('Found unexpected pooling argument {}'.format(pooling))
 
-  x = tf.keras.layers.Dense(
+  x = keras.layers.Dense(
       num_classes, activation='softmax', use_bias=True, name='logits'
   )(x)
-  model = tf.keras.models.Model(inputs=img_input, outputs=x)
+  model = keras.models.Model(inputs=img_input, outputs=x)
 
   return model

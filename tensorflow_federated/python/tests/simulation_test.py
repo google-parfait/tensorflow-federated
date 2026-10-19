@@ -13,15 +13,13 @@
 # limitations under the License.
 """End-to-end tests for simulations using TFF."""
 
-from collections.abc import Callable
-
 from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_federated as tff
 
 
 def learning_process_builder(
-    model_fn: Callable[[], tff.learning.models.VariableModel]
+    model_fn: tff.learning.models.FunctionalModel,
 ) -> tff.learning.templates.LearningProcess:
   return tff.learning.algorithms.build_weighted_fed_avg(
       model_fn=model_fn,
