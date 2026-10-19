@@ -4,6 +4,7 @@ package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
         ":models_packages",
+        "//tensorflow_federated/python/learning:learning_packages",
         "//tensorflow_federated/python/learning:learning_users",
         "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
         "//tensorflow_federated/python/learning/programs:programs_packages",
@@ -22,6 +23,7 @@ py_library(
     name = "model_weights",
     srcs = ["model_weights.py"],
     deps = [
+        ":functional",
         ":variable",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -159,7 +161,9 @@ py_test(
     name = "model_weights_test",
     srcs = ["model_weights_test.py"],
     deps = [
+        ":functional",
         ":model_weights",
+        ":test_models",
         ":variable",
         "//tensorflow_federated/python/common_libs:structure",
         "@federated_language//federated_language",
