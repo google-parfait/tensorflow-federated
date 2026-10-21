@@ -120,6 +120,7 @@ http_archive(
     patch_args = ["-p1"],
     patches = [
         "//third_party/tensorflow:internal_visibility.patch",
+        "//third_party/tensorflow:llvm_url.patch",
         "//third_party/tensorflow:numpy_headers.patch",
     ],
     sha256 = "ef3568bb4865d6c1b2564fb5689c19b6b9a5311572cd1f2ff9198636a8520921",
