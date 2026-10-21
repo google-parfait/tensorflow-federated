@@ -124,7 +124,7 @@ py_test(
         ":forms",
         ":intrinsics",
         ":mapreduce_test_utils",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/backends/test:cpp_execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:serialization_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",

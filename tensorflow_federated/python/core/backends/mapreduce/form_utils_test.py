@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_backend import serialization_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
@@ -676,11 +676,12 @@ class GetComputationForDistributeAggregateFormTest(
   @parameterized.named_parameters(
       (
           'temperature',
-          distribute_aggregate_test_utils.get_temperature_sensor_example(),
+          distribute_aggregate_test_utils.get_temperature_sensor_example,
       ),
-      ('mnist', distribute_aggregate_test_utils.get_mnist_training_example()),
+      ('mnist', distribute_aggregate_test_utils.get_mnist_training_example),
   )
-  def test_type_signature_matches_generated_computation(self, example):
+  def test_type_signature_matches_generated_computation(self, example_fn):
+    example = example_fn()
     comp = form_utils.get_computation_for_distribute_aggregate_form(example.daf)
     self.assertTrue(
         comp.type_signature.is_equivalent_to(example.daf.type_signature)
@@ -888,10 +889,11 @@ class GetComputationForMapReduceFormTest(
 ):
 
   @parameterized.named_parameters(
-      ('temperature', mapreduce_test_utils.get_temperature_sensor_example()),
-      ('mnist', mapreduce_test_utils.get_mnist_training_example()),
+      ('temperature', mapreduce_test_utils.get_temperature_sensor_example),
+      ('mnist', mapreduce_test_utils.get_mnist_training_example),
   )
-  def test_type_signature_matches_generated_computation(self, example):
+  def test_type_signature_matches_generated_computation(self, example_fn):
+    example = example_fn()
     comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
     self.assertTrue(
         comp.type_signature.is_equivalent_to(example.mrf.type_signature)
@@ -1640,5 +1642,7 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 if __name__ == '__main__':
   # The test execution context replaces all secure intrinsics with insecure
   # reductions.
-  execution_contexts.set_sync_test_cpp_execution_context(default_num_clients=1)
+  cpp_execution_contexts.set_sync_test_cpp_execution_context(
+      default_num_clients=1
+  )
   absltest.main()
