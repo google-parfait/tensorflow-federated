@@ -25,9 +25,11 @@ from tensorflow_federated.python.core.backends.native import cpp_execution_conte
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import keras_utils
 from tensorflow_federated.python.learning.models import model_examples
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
@@ -311,7 +313,12 @@ class ComposeLearningProcessTest(tf.test.TestCase):
 
 class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _test_data(self):
+  def _test_data(self, use_functional_model: bool = False):
+    if use_functional_model:
+      return tf.data.Dataset.from_tensor_slices((
+          [[1.0, 2.0], [3.0, 4.0]],
+          [[5.0], [6.0]],
+      )).batch(2)
     return tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
             x=[[1.0, 2.0], [3.0, 4.0]],
@@ -320,22 +327,42 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     ).batch(2)
 
   def _test_batch_loss(self, model, weights):
+    if isinstance(model, functional.FunctionalModel):
+      weights_tuple = (weights.trainable, weights.non_trainable)
+      loss = None
+      for x, y in self._test_data(use_functional_model=True).take(1):
+        batch_output = model.predict_on_batch(weights_tuple, x, training=False)
+        loss = model.loss(batch_output, y)
+      return loss
     tf.nest.map_structure(
         lambda w, v: w.assign(v),
         model_weights_lib.ModelWeights.from_model(model),
         weights,
     )
-    for batch in self._test_data().take(1):
+    batch_output = None
+    for batch in self._test_data(use_functional_model=False).take(1):
       batch_output = model.forward_pass(batch, training=False)
-    return batch_output.loss
+    return batch_output.loss  # pyrefly: ignore[missing-attribute]
 
-  def test_loss_decreases(self):
-    model_fn = model_examples.LinearRegression
-    test_model = model_fn()
+  @parameterized.named_parameters(
+      ('variable_model', False),
+      ('functional_model', True),
+  )
+  def test_loss_decreases(self, use_functional_model):
+    if use_functional_model:
+      model_fn = test_models.build_functional_linear_regression()
+      test_model = model_fn
+      client_lr = 0.05
+    else:
+      model_fn = model_examples.LinearRegression
+      test_model = model_fn()
+      client_lr = 0.1
     fedavg = composers.build_basic_fedavg_process(
-        model_fn=model_fn, client_learning_rate=0.1
+        model_fn=model_fn, client_learning_rate=client_lr
     )
-    client_data = [self._test_data()] * 3  # 3 clients with identical data.
+    client_data = [
+        self._test_data(use_functional_model=use_functional_model)
+    ] * 3
     state = fedavg.initialize()
     last_loss = self._test_batch_loss(test_model, state.global_model_weights)
     for _ in range(5):
@@ -355,8 +382,16 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     ]:
       self.assertIn(key, metrics)
 
-  def test_get_set_model_weights_roundtrip(self):
-    model_fn = model_examples.LinearRegression
+  @parameterized.named_parameters(
+      ('variable_model', False),
+      ('functional_model', True),
+  )
+  def test_get_set_model_weights_roundtrip(self, use_functional_model):
+    model_fn = (
+        test_models.build_functional_linear_regression()
+        if use_functional_model
+        else model_examples.LinearRegression
+    )
     fedavg = composers.build_basic_fedavg_process(
         model_fn=model_fn, client_learning_rate=0.1
     )
@@ -365,21 +400,44 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     new_state = fedavg.set_model_weights(state, model_weights)
     self.assertAllClose(tf.nest.flatten(state), tf.nest.flatten(new_state))
 
-  def test_get_set_model_weights_keras_model(self):
-    def model_fn():
+  @parameterized.named_parameters(
+      ('variable_model', False),
+      ('functional_model', True),
+  )
+  def test_get_set_model_weights_keras_model(self, use_functional_model):
+    if use_functional_model:
       keras_model = (
           model_examples.build_linear_regression_keras_functional_model()
       )
-      return keras_utils.from_keras_model(
+      model_fn = functional.functional_model_from_keras(
           keras_model,
-          loss=tf.keras.losses.MeanSquaredError(),
-          input_spec=collections.OrderedDict(
-              x=tf.TensorSpec(shape=[None, 2]), y=tf.TensorSpec(shape=[None, 1])
+          loss_fn=tf.keras.losses.MeanSquaredError(),
+          input_spec=(
+              tf.TensorSpec(shape=[None, 2]),
+              tf.TensorSpec(shape=[None, 1]),
           ),
       )
+      client_lr = 0.05
+    else:
+
+      def build_variable_model():
+        keras_model = (
+            model_examples.build_linear_regression_keras_functional_model()
+        )
+        return keras_utils.from_keras_model(
+            keras_model,
+            loss=tf.keras.losses.MeanSquaredError(),
+            input_spec=collections.OrderedDict(
+                x=tf.TensorSpec(shape=[None, 2]),
+                y=tf.TensorSpec(shape=[None, 1]),
+            ),
+        )
+
+      model_fn = build_variable_model
+      client_lr = 0.1
 
     fedavg = composers.build_basic_fedavg_process(
-        model_fn=model_fn, client_learning_rate=0.1
+        model_fn=model_fn, client_learning_rate=client_lr
     )
     state = fedavg.initialize()
     # Create a local model and perform some pretraining.
@@ -387,7 +445,7 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
         model_examples.build_linear_regression_keras_functional_model()
     )
     keras_model.compile(optimizer='adam', loss='mse')
-    keras_model.fit(self._test_data().map(lambda d: (d['x'], d['y'])))
+    keras_model.fit(self._test_data(use_functional_model=True))
     pretrained_weights = model_weights_lib.ModelWeights.from_model(keras_model)
     # Assert the initial state weights are not the same as the pretrained model.
     initial_weights = fedavg.get_model_weights(state)
@@ -401,7 +459,9 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
         tf.nest.flatten(fedavg.get_model_weights(state)),
     )
     # Run some FedAvg.
-    client_data = [self._test_data()] * 3  # 3 clients with identical data.
+    client_data = [
+        self._test_data(use_functional_model=use_functional_model)
+    ] * 3
     for _ in range(3):
       fedavg_result = fedavg.next(state, client_data)
       state = fedavg_result.state
@@ -414,25 +474,46 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     # an error.
     fedavg.get_model_weights(state).assign_weights_to(keras_model)
 
-  def test_get_hparams_returns_expected_result(self):
-    model_fn = model_examples.LinearRegression
+  @parameterized.named_parameters(
+      ('variable_model', False),
+      ('functional_model', True),
+  )
+  def test_get_hparams_returns_expected_result(self, use_functional_model):
     client_learning_rate = 0.1
     server_learning_rate = 1.0
-    fedavg = composers.build_basic_fedavg_process(
-        model_fn=model_fn,
-        client_learning_rate=client_learning_rate,
-        server_learning_rate=server_learning_rate,
-    )
+    if use_functional_model:
+      model = test_models.build_functional_linear_regression()
+      fedavg = composers.build_basic_fedavg_process(
+          model_fn=model,
+          client_learning_rate=client_learning_rate,
+          server_learning_rate=server_learning_rate,
+      )
+      client_work_process = (
+          model_delta_client_work.build_functional_model_delta_client_work(
+              model=model,
+              optimizer=sgdm.build_sgdm(client_learning_rate),
+              client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+          )
+      )
+    else:
+      model_fn = model_examples.LinearRegression
+      fedavg = composers.build_basic_fedavg_process(
+          model_fn=model_fn,
+          client_learning_rate=client_learning_rate,
+          server_learning_rate=server_learning_rate,
+      )
+      client_work_process = (
+          model_delta_client_work.build_model_delta_client_work(
+              model_fn=model_fn,
+              optimizer=sgdm.build_sgdm(client_learning_rate),
+              client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+          )
+      )
     state = fedavg.initialize()
 
     hparams = fedavg.get_hparams(state)
 
     self.assertIsInstance(hparams, collections.OrderedDict)
-    client_work_process = model_delta_client_work.build_model_delta_client_work(
-        model_fn=model_fn,
-        optimizer=sgdm.build_sgdm(client_learning_rate),
-        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-    )
     client_work_hparams = client_work_process.get_hparams(state.client_work)
     model_weights_type = fedavg.get_model_weights.type_signature.result
     finalizer_process = (
@@ -446,20 +527,41 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     )
     self.assertDictEqual(hparams, expected_hparams)
 
-  def test_set_hparams_returns_expected_result(self):
-    model_fn = model_examples.LinearRegression
+  @parameterized.named_parameters(
+      ('variable_model', False),
+      ('functional_model', True),
+  )
+  def test_set_hparams_returns_expected_result(self, use_functional_model):
     client_learning_rate = 0.1
     server_learning_rate = 1.0
-    fedavg = composers.build_basic_fedavg_process(
-        model_fn=model_fn,
-        client_learning_rate=client_learning_rate,
-        server_learning_rate=server_learning_rate,
-    )
-    client_work_process = model_delta_client_work.build_model_delta_client_work(
-        model_fn=model_fn,
-        optimizer=sgdm.build_sgdm(learning_rate=0.5),
-        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-    )
+    if use_functional_model:
+      model = test_models.build_functional_linear_regression()
+      fedavg = composers.build_basic_fedavg_process(
+          model_fn=model,
+          client_learning_rate=client_learning_rate,
+          server_learning_rate=server_learning_rate,
+      )
+      client_work_process = (
+          model_delta_client_work.build_functional_model_delta_client_work(
+              model=model,
+              optimizer=sgdm.build_sgdm(learning_rate=0.5),
+              client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+          )
+      )
+    else:
+      model_fn = model_examples.LinearRegression
+      fedavg = composers.build_basic_fedavg_process(
+          model_fn=model_fn,
+          client_learning_rate=client_learning_rate,
+          server_learning_rate=server_learning_rate,
+      )
+      client_work_process = (
+          model_delta_client_work.build_model_delta_client_work(
+              model_fn=model_fn,
+              optimizer=sgdm.build_sgdm(learning_rate=0.5),
+              client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+          )
+      )
     client_work_hparams = client_work_process.get_hparams(
         client_work_process.initialize()
     )
@@ -509,7 +611,7 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
   def test_created_model_raises(self):
     with self.assertRaises(TypeError):
       composers.build_basic_fedavg_process(
-          model_examples.LinearRegression(), 0.1
+          model_examples.LinearRegression(), 0.1  # pyrefly: ignore[bad-argument-type]
       )
 
   @parameterized.named_parameters(
@@ -518,7 +620,7 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
   def test_wrong_client_learning_rate_raises(self, bad_client_lr):
     with self.assertRaises(TypeError):
       composers.build_basic_fedavg_process(
-          model_examples.LinearRegression(), bad_client_lr
+          model_examples.LinearRegression(), bad_client_lr  # pyrefly: ignore[bad-argument-type]
       )
 
 

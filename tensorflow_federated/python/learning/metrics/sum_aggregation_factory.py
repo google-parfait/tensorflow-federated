@@ -91,7 +91,10 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
 
   def __init__(
       self,
-      metric_finalizers: types.MetricFinalizersType,
+      metric_finalizers: Union[
+          types.MetricFinalizersType,
+          types.FunctionalMetricFinalizersType,
+      ],
       initial_unfinalized_metrics: Optional[
           collections.OrderedDict[str, Any]
       ] = None,
@@ -693,11 +696,11 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         tensor_type_list,
     ) in tensor_type_list_by_factory_key.items():  # pyrefly: ignore[missing-attribute]
       value_range = value_range_by_factory_key[factory_key]
-      aggregation_process_by_factory_key[
-          factory_key
-      ] = aggregator_factories.get(value_range).create(  # pyrefly: ignore[missing-attribute]
-          federated_language.to_type(tensor_type_list)
-      )  # pytype: disable=attribute-error,wrong-arg-types
+      aggregation_process_by_factory_key[factory_key] = aggregator_factories[
+          value_range
+      ].create(
+          federated_language.to_type(tensor_type_list)  # pyrefly: ignore[bad-argument-type]
+      )
 
     @federated_language.federated_computation
     def init_fn():
@@ -732,7 +735,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       )
 
       @tensorflow_computation.tf_computation(
-          metrics_aggregation_output.type_signature.member  # pytype: disable=attribute-error
+          metrics_aggregation_output.type_signature.member
       )
       def flatten_aggregation_output(grouped_aggregation_output):
         secure_sum_measurements = collections.OrderedDict(
