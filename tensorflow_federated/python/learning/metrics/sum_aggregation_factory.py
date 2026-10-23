@@ -254,8 +254,8 @@ MetricValueUpperBoundType = Union[
 ]
 
 
-@dataclasses.dataclass(frozen=True)
-class _MetricRange:
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class MetricValueRange:
   """An opaque structure defining a closed range.
 
   This is used as an opaque object in a nested structure to prevent
@@ -267,6 +267,8 @@ class _MetricRange:
 
   def __eq__(self, other):
     """A type-aware equality that prevents int/float conversion."""
+    if not isinstance(other, MetricValueRange):
+      return False
     if isinstance(self.upper, estimation_process.EstimationProcess):
       return False
     return (
@@ -277,14 +279,11 @@ class _MetricRange:
     )
 
 
-UserMetricValueRange = Union[tuple[float, float], tuple[int, int], _MetricRange]
+UserMetricValueRange = Union[
+    tuple[float, float], tuple[int, int], MetricValueRange
+]
 UserMetricValueRangeDict = collections.OrderedDict[
     str, Union[UserMetricValueRange, 'UserMetricValueRangeDict']
-]
-MetricValueRange = Union[
-    tuple[float, float],
-    tuple[int, int],
-    tuple[None, estimation_process.EstimationProcess],
 ]
 MetricValueRangeDict = collections.OrderedDict[
     str, Union[MetricValueRange, 'MetricValueRangeDict']
@@ -366,15 +365,16 @@ def create_default_secure_sum_quantization_ranges(
     use_auto_tuned_bounds_for_float_values: An optional boolean for specifying
       whether to use auto-tuned bounds for float values. If True, a default
       `tff.templates.EstimationProcess` is used for `upper_bound`, and the
-      `lower_bound` is None to allow `tff.aggregators.SecureSumFactory` to
+      `lower_bound` is `None` to allow `tff.aggregators.SecureSumFactory` to
       determine the `lower_bound`.
 
   Returns:
     A nested structure matching the structure of
     `local_unfinalized_metrics_type` where each `tf.TensorType` has been
-    replaced with a 2-tuple of lower bound and upper bound, where the tuple
-    can be (`float`, `float`) or (None, `tff.templates.EstimationProcess`) for
-    floating dtypes, and (`int`, `int`) for integer dtypes.
+    replaced with a `MetricValueRange` of lower bound and upper bound, where the
+    range can have (`float`, `float`) or (`None`,
+    `tff.templates.EstimationProcess`) bounds for floating dtypes, and (`int`,
+    `int`) bounds for integer dtypes.
 
   Raises:
     UnquantizableDTypeError: If A `federated_language.TensorType` in
@@ -404,8 +404,10 @@ def create_default_secure_sum_quantization_ranges(
   ) -> MetricValueRange:
     if np.issubdtype(type_spec.dtype, np.floating):
       if use_auto_tuned_bounds_for_float_values:
-        return None, auto_tuned_float_upper_bound
-      return float(lower_bound), float(upper_bound)
+        return MetricValueRange(lower=None, upper=auto_tuned_float_upper_bound)
+      return MetricValueRange(
+          lower=float(lower_bound), upper=float(upper_bound)
+      )
     elif np.issubdtype(type_spec.dtype, np.integer):
       if integer_range_width < 1:
         raise ValueError(
@@ -413,7 +415,9 @@ def create_default_secure_sum_quantization_ranges(
             f'[{lower_bound}, {upper_bound}] is not wide enough to quantize '
             f'any integers (becomes [{int(lower_bound)}, {int(upper_bound)}]).'
         )
-      return math.ceil(lower_bound), math.floor(upper_bound)
+      return MetricValueRange(
+          lower=math.ceil(lower_bound), upper=math.floor(upper_bound)
+      )
     else:
       raise UnquantizableDTypeError(
           'Do not know how to create a default range for dtype '
@@ -441,7 +445,7 @@ def fill_missing_values_with_defaults(
     A `MetricValueRangeDict` with all metric value ranges filled.
 
   Raises:
-    TypeError: If the user value is not a `_MetricRange` or a `tuple` or its
+    TypeError: If the user value is not a `MetricValueRange` or a `tuple` or its
       elements are not allowed types of `MetricValueRange`.
     ValueError: If the value has length other than two.
   """
@@ -457,20 +461,26 @@ def fill_missing_values_with_defaults(
           ),
       ))
     return type(default_values)(filled_with_defaults_values)
-  elif isinstance(default_values, list):
+  elif isinstance(default_values, (list, tuple)):
     if user_values is None:
       user_values = [None] * len(default_values)  # pyrefly: ignore[bad-assignment]
-    return [  # pyrefly: ignore[bad-return]
+    elements = [
         fill_missing_values_with_defaults(default_value, user_values[idx])  # pyrefly: ignore[bad-argument-type, bad-index]
         for idx, default_value in enumerate(default_values)
     ]
+    if hasattr(default_values, '_fields'):
+      return type(default_values)(*elements)  # pyrefly: ignore[bad-return]
+    return type(default_values)(elements)  # pyrefly: ignore[bad-return]
   elif user_values is None:
-    return _MetricRange(*default_values)  # pyrefly: ignore[bad-return]
+    return default_values
   else:
-    if isinstance(user_values, _MetricRange):
+    if isinstance(user_values, MetricValueRange):
       return user_values  # pyrefly: ignore[bad-return]
     _check_user_metric_value_range(user_values)  # pyrefly: ignore[bad-argument-type]
-    return _MetricRange(*user_values)  # pyrefly: ignore[bad-argument-type, bad-return]
+    return MetricValueRange(  # pyrefly: ignore[bad-return]
+        lower=user_values[0],  # pyrefly: ignore[bad-argument-type, bad-index]
+        upper=user_values[1],  # pyrefly: ignore[bad-argument-type, bad-index]
+    )
 
 
 # Define a delimiter that is used to generate a string key of a inner secure

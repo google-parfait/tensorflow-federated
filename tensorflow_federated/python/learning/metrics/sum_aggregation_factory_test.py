@@ -30,7 +30,7 @@ from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 
 # Convenience aliases.
 TensorType = federated_language.TensorType
-MetricRange = sum_aggregation_factory._MetricRange
+MetricValueRange = sum_aggregation_factory.MetricValueRange
 
 
 def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
@@ -63,13 +63,13 @@ def _tf_mean(x):
 _DEFAULT_FLOAT_FACTORY_KEY = 'None/default_estimation_process/float32'
 _DEFAULT_INT_FACTORY_KEY = '0/1048575/int32'
 
-_DEFAULT_FIXED_FLOAT_RANGE = (
-    float(sum_aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
-    float(sum_aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
+_DEFAULT_FIXED_FLOAT_RANGE = MetricValueRange(
+    lower=float(sum_aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
+    upper=float(sum_aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
 )
-_DEFAULT_AUTO_TUNED_FLOAT_RANGE = (
-    None,
-    quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
+_DEFAULT_AUTO_TUNED_FLOAT_RANGE = MetricValueRange(
+    lower=None,
+    upper=quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
         initial_estimate=50.0,
         target_quantile=0.95,
         learning_rate=1.0,
@@ -77,9 +77,9 @@ _DEFAULT_AUTO_TUNED_FLOAT_RANGE = (
         secure_estimation=True,
     ),
 )
-_DEFAULT_INT_RANGE = (
-    int(sum_aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
-    int(sum_aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
+_DEFAULT_INT_RANGE = MetricValueRange(
+    lower=int(sum_aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
+    upper=int(sum_aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
 )
 
 
@@ -828,8 +828,16 @@ class CreateDefaultSecureSumQuantizationRangesTest(
   # The auto-tuned bound of float values is a `tff.templates.EstimationProcess`,
   # simply check two bounds have the same type.
   def assertAutoTunedBoundEqual(self, a, b, msg=None):
-    if isinstance(a, estimation_process.EstimationProcess):
-      return self.assertIsInstance(b, estimation_process.EstimationProcess, msg)
+    if isinstance(a.upper, estimation_process.EstimationProcess):
+      self.assertIsNone(a.lower, msg)
+      self.assertIsNone(b.lower, msg)
+      return self.assertIsInstance(
+          b.upper, estimation_process.EstimationProcess, msg
+      )
+    self.assertIs(type(a.lower), type(b.lower), msg)
+    self.assertEqual(a.lower, b.lower, msg)
+    self.assertIs(type(a.upper), type(b.upper), msg)
+    self.assertEqual(a.upper, b.upper, msg)
 
   @parameterized.named_parameters(
       ('float32', TensorType(np.float32, [3]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
@@ -863,9 +871,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
   def test_default_auto_tuned_range_construction(
       self, type_spec, expected_range
   ):
-    self.addTypeEqualityFunc(
-        estimation_process.EstimationProcess, self.assertAutoTunedBoundEqual
-    )
+    self.addTypeEqualityFunc(MetricValueRange, self.assertAutoTunedBoundEqual)
     tf.nest.map_structure(
         self.assertEqual,
         sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
@@ -904,7 +910,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
       ),
   )
   def test_default_fixed_range_construction(self, type_spec, expected_range):
-    self.assertAllEqual(
+    self.assertEqual(
         sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
             type_spec, use_auto_tuned_bounds_for_float_values=False
         ),
@@ -926,21 +932,36 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           5,
           _DEFAULT_AUTO_TUNED_FLOAT_RANGE,
       ),
-      ('int32_int_range', TensorType(np.int32, [1]), 1, 5, (1, 5)),
-      ('int32_float_range', TensorType(np.int32, [1]), 1.0, 5.0, (1, 5)),
+      (
+          'int32_int_range',
+          TensorType(np.int32, [1]),
+          1,
+          5,
+          MetricValueRange(lower=1, upper=5),
+      ),
+      (
+          'int32_float_range',
+          TensorType(np.int32, [1]),
+          1.0,
+          5.0,
+          MetricValueRange(lower=1, upper=5),
+      ),
       (
           'int32_float_range_truncated',
           TensorType(np.int32, [1]),
           1.5,
           5.5,
-          (2, 5),
+          MetricValueRange(lower=2, upper=5),
       ),
       (
           '<int64,float32>',
           federated_language.to_type([np.int64, np.float32]),
           1,
           5,
-          [(1, 5), _DEFAULT_AUTO_TUNED_FLOAT_RANGE],
+          [
+              MetricValueRange(lower=1, upper=5),
+              _DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+          ],
       ),
       (
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
@@ -955,9 +976,13 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           1,
           5,
           collections.OrderedDict(
-              a=(1, 5),
+              a=MetricValueRange(lower=1, upper=5),
               b=collections.OrderedDict(
-                  c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE, d=[(1, 5), (1, 5)]
+                  c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+                  d=[
+                      MetricValueRange(lower=1, upper=5),
+                      MetricValueRange(lower=1, upper=5),
+                  ],
               ),
           ),
       ),
@@ -965,9 +990,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
   def test_user_supplied_range_using_default_auto_tuned_range(
       self, type_spec, lower_bound, upper_bound, expected_range
   ):
-    self.addTypeEqualityFunc(
-        estimation_process.EstimationProcess, self.assertAutoTunedBoundEqual
-    )
+    self.addTypeEqualityFunc(MetricValueRange, self.assertAutoTunedBoundEqual)
     tf.nest.map_structure(
         self.assertEqual,
         sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
@@ -982,24 +1005,45 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           TensorType(np.float32, [3]),
           0.1,
           0.5,
-          (0.1, 0.5),
+          MetricValueRange(lower=0.1, upper=0.5),
       ),
-      ('float32_int_range', TensorType(np.float32, [3]), 1, 5, (1.0, 5.0)),
-      ('int32_int_range', TensorType(np.int32, [1]), 1, 5, (1, 5)),
-      ('int32_float_range', TensorType(np.int32, [1]), 1.0, 5.0, (1, 5)),
+      (
+          'float32_int_range',
+          TensorType(np.float32, [3]),
+          1,
+          5,
+          MetricValueRange(lower=1.0, upper=5.0),
+      ),
+      (
+          'int32_int_range',
+          TensorType(np.int32, [1]),
+          1,
+          5,
+          MetricValueRange(lower=1, upper=5),
+      ),
+      (
+          'int32_float_range',
+          TensorType(np.int32, [1]),
+          1.0,
+          5.0,
+          MetricValueRange(lower=1, upper=5),
+      ),
       (
           'int32_float_range_truncated',
           TensorType(np.int32, [1]),
           1.5,
           5.5,
-          (2, 5),
+          MetricValueRange(lower=2, upper=5),
       ),
       (
           '<int64,float32>',
           federated_language.to_type([np.int64, np.float32]),
           1,
           5,
-          [(1, 5), (1.0, 5.0)],
+          [
+              MetricValueRange(lower=1, upper=5),
+              MetricValueRange(lower=1.0, upper=5.0),
+          ],
       ),
       (
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
@@ -1014,15 +1058,21 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           1,
           5,
           collections.OrderedDict(
-              a=(1, 5),
-              b=collections.OrderedDict(c=(1.0, 5.0), d=[(1, 5), (1, 5)]),
+              a=MetricValueRange(lower=1, upper=5),
+              b=collections.OrderedDict(
+                  c=MetricValueRange(lower=1.0, upper=5.0),
+                  d=[
+                      MetricValueRange(lower=1, upper=5),
+                      MetricValueRange(lower=1, upper=5),
+                  ],
+              ),
           ),
       ),
   )
   def test_user_supplied_range_using_default_fixed_range(
       self, type_spec, lower_bound, upper_bound, expected_range
   ):
-    self.assertAllEqual(
+    self.assertEqual(
         sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
             type_spec,
             lower_bound,
@@ -1064,16 +1114,22 @@ class FillMissingMetricValueRangesTest(
           'none_user_ranges',
           None,
           collections.OrderedDict(
-              num_example=MetricRange(0, 100),
-              loss=[MetricRange(0.0, 100.0), MetricRange(0.0, 100.0)],
+              num_example=MetricValueRange(lower=0, upper=100),
+              loss=[
+                  MetricValueRange(lower=0.0, upper=100.0),
+                  MetricValueRange(lower=0.0, upper=100.0),
+              ],
           ),
       ),
       (
           'partial_user_ranges',
           collections.OrderedDict(loss=[None, (0.0, 400.0)]),
           collections.OrderedDict(
-              num_example=MetricRange(0, 100),
-              loss=[MetricRange(0.0, 100.0), MetricRange(0.0, 400.0)],
+              num_example=MetricValueRange(lower=0, upper=100),
+              loss=[
+                  MetricValueRange(lower=0.0, upper=100.0),
+                  MetricValueRange(lower=0.0, upper=400.0),
+              ],
           ),
       ),
       (
@@ -1082,19 +1138,28 @@ class FillMissingMetricValueRangesTest(
               num_example=(10, 200), loss=[(-100.0, 300.0), (0.0, 400.0)]
           ),
           collections.OrderedDict(
-              num_example=MetricRange(10, 200),
-              loss=[MetricRange(-100.0, 300.0), MetricRange(0.0, 400.0)],
+              num_example=MetricValueRange(lower=10, upper=200),
+              loss=[
+                  MetricValueRange(lower=-100.0, upper=300.0),
+                  MetricValueRange(lower=0.0, upper=400.0),
+              ],
           ),
       ),
       (
           'full_metric_range_user_ranges',
           collections.OrderedDict(
-              num_example=MetricRange(10, 200),
-              loss=[MetricRange(-100.0, 300.0), MetricRange(0.0, 400.0)],
+              num_example=MetricValueRange(lower=10, upper=200),
+              loss=[
+                  MetricValueRange(lower=-100.0, upper=300.0),
+                  MetricValueRange(lower=0.0, upper=400.0),
+              ],
           ),
           collections.OrderedDict(
-              num_example=MetricRange(10, 200),
-              loss=[MetricRange(-100.0, 300.0), MetricRange(0.0, 400.0)],
+              num_example=MetricValueRange(lower=10, upper=200),
+              loss=[
+                  MetricValueRange(lower=-100.0, upper=300.0),
+                  MetricValueRange(lower=0.0, upper=400.0),
+              ],
           ),
       ),
   )
@@ -1102,14 +1167,16 @@ class FillMissingMetricValueRangesTest(
       self, user_ranges, expected_filled_ranges
   ):
     default_ranges = collections.OrderedDict(
-        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)]
+        num_example=MetricValueRange(lower=0, upper=100),
+        loss=[
+            MetricValueRange(lower=0.0, upper=100.0),
+            MetricValueRange(lower=0.0, upper=100.0),
+        ],
     )
     filled_ranges = sum_aggregation_factory.fill_missing_values_with_defaults(
         default_ranges, user_ranges
     )
-    tf.nest.map_structure(
-        self.assertAllEqual, filled_ranges, expected_filled_ranges
-    )
+    self.assertEqual(filled_ranges, expected_filled_ranges)
 
   @parameterized.named_parameters(
       (
@@ -1132,7 +1199,11 @@ class FillMissingMetricValueRangesTest(
   )
   def test_invalid_user_ranges_type_raises(self, user_ranges, expected_regex):
     default_ranges = collections.OrderedDict(
-        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)]
+        num_example=MetricValueRange(lower=0, upper=100),
+        loss=[
+            MetricValueRange(lower=0.0, upper=100.0),
+            MetricValueRange(lower=0.0, upper=100.0),
+        ],
     )
     with self.assertRaisesRegex(TypeError, expected_regex):
       sum_aggregation_factory.fill_missing_values_with_defaults(
@@ -1145,12 +1216,43 @@ class FillMissingMetricValueRangesTest(
   )
   def test_invalid_user_ranges_value_raises(self, user_ranges):
     default_ranges = collections.OrderedDict(
-        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)]
+        num_example=MetricValueRange(lower=0, upper=100),
+        loss=[
+            MetricValueRange(lower=0.0, upper=100.0),
+            MetricValueRange(lower=0.0, upper=100.0),
+        ],
     )
     with self.assertRaisesRegex(ValueError, '2-tuple'):
       sum_aggregation_factory.fill_missing_values_with_defaults(
           default_ranges, user_ranges
       )
+
+  def test_fill_tuple_container_ranges_returns_correct_results(self):
+    default_ranges = collections.OrderedDict(
+        num_examples=(MetricValueRange(lower=0, upper=100),),
+        loss=(
+            MetricValueRange(lower=0.0, upper=100.0),
+            MetricValueRange(lower=0.0, upper=100.0),
+        ),
+    )
+    user_ranges = collections.OrderedDict(
+        loss=(None, (0.0, 400.0)),
+    )
+    filled_ranges = sum_aggregation_factory.fill_missing_values_with_defaults(
+        default_ranges, user_ranges
+    )
+    expected_filled_ranges = collections.OrderedDict(
+        num_examples=(MetricValueRange(lower=0, upper=100),),
+        loss=(
+            MetricValueRange(lower=0.0, upper=100.0),
+            MetricValueRange(lower=0.0, upper=400.0),
+        ),
+    )
+    self.assertEqual(filled_ranges, expected_filled_ranges)
+
+  def test_metric_value_range_positional_args_raises(self):
+    with self.assertRaises(TypeError):
+      MetricValueRange(0, 100)  # pylint: disable=missing-kwoa  # pyrefly: ignore[bad-argument-count]
 
 
 if __name__ == '__main__':
