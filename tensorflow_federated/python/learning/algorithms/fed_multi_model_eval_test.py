@@ -19,6 +19,7 @@ from unittest import mock
 
 from absl.testing import absltest
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -551,7 +552,7 @@ class FunctionalFedMultiModelEvalProcessTest(tf.test.TestCase):
   def test_functional_evaluation_matches_non_functional(self):
     datasets = self.create_test_datasets()
     batch_type = tensorflow_types.to_type(datasets[0].element_spec)
-    loss_fn = tf.keras.losses.MeanSquaredError
+    loss_fn = keras.losses.MeanSquaredError
     keras_model_fn = functools.partial(
         model_examples.build_linear_regression_keras_functional_model,
         feature_dims=2,
@@ -573,7 +574,7 @@ class FunctionalFedMultiModelEvalProcessTest(tf.test.TestCase):
     # Defining artifacts using `tff.learning.models.FunctionalModel`
     def build_metrics_fn():
       return collections.OrderedDict(
-          loss=tf.keras.metrics.MeanSquaredError(),
+          loss=keras.metrics.MeanSquaredError(),
           num_examples=counters.NumExamplesCounter(),
           num_batches=counters.NumBatchesCounter(),
       )
@@ -599,7 +600,7 @@ class FunctionalFedMultiModelEvalProcessTest(tf.test.TestCase):
   ):
     datasets = self.create_test_datasets()
     batch_type = tensorflow_types.to_type(datasets[0].element_spec)
-    loss_fn = tf.keras.losses.MeanSquaredError
+    loss_fn = keras.losses.MeanSquaredError
     keras_model_fn = functools.partial(
         model_examples.build_linear_regression_keras_functional_model,
         feature_dims=2,
@@ -630,7 +631,7 @@ class FunctionalFedMultiModelEvalProcessTest(tf.test.TestCase):
 
     def build_metrics_fn():
       return collections.OrderedDict(
-          loss=tf.keras.metrics.MeanSquaredError(),
+          loss=keras.metrics.MeanSquaredError(),
           num_examples=counters.NumExamplesCounter(),
           num_batches=counters.NumBatchesCounter(),
       )
@@ -666,7 +667,7 @@ class FunctionalFedMultiModelEvalProcessTest(tf.test.TestCase):
         keras_model=model_examples.build_linear_regression_keras_functional_model(
             feature_dims=2
         ),
-        loss_fn=tf.keras.losses.MeanSquaredError(),
+        loss_fn=keras.losses.MeanSquaredError(),
         input_spec=batch_type,
     )
     with self.assertRaisesRegex(TypeError, 'AggregationProcess'):

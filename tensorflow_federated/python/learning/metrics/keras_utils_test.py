@@ -41,16 +41,6 @@ BINARY_METRIC_NAMES = (
 )
 
 
-def _unwrap(v):
-  """Wraps a Keras 3 metric."""
-
-  match v:
-    case keras.Variable():
-      return v.value
-    case _:
-      return v
-
-
 # keras_utils assumes that the input to a metric's `update` method has a
 # `prediction` attribute.
 # TODO: b/259609586 - Remove this class when `FunctionalModel` has an explicit
@@ -63,6 +53,11 @@ _BatchOutput = collections.namedtuple(
 
 
 class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
+
+  def assertAllClose(self, a, b, **kwargs):
+    a = tf.nest.map_structure(keras_utils.unwrap_keras_variable, a)
+    b = tf.nest.map_structure(keras_utils.unwrap_keras_variable, b)
+    super().assertAllClose(a, b, **kwargs)
 
   def assertAllEqual(self, a, b, msg=None):
     # assertAllEqual fails to walk nested structures nicely, but assertAllClose
@@ -127,7 +122,7 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(metric.result(), finalize(state))
 
   @parameterized.named_parameters(
-      (name, getattr(tf.keras.metrics, name)) for name in BINARY_METRIC_NAMES
+      (name, getattr(keras.metrics, name)) for name in BINARY_METRIC_NAMES
   )
   def test_binary_metrics_graph(self, metric_constructor):
 
@@ -138,7 +133,7 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
       @tf.function
       def _update_state(y_pred, y_true):
         metric.update_state(y_pred=y_pred, y_true=y_true)
-        return metric.variables
+        return [keras_utils.unwrap_keras_variable(v) for v in metric.variables]
 
       return _update_state
 
@@ -147,7 +142,7 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
         metric = metric_constructor()
         sess.run(
             tf.compat.v1.initializers.variables(
-                [_unwrap(v) for v in metric.variables]
+                [keras_utils.unwrap_keras_variable(v) for v in metric.variables]
             )
         )
         initialize, update, finalize = keras_utils.create_functional_metric_fns(
@@ -157,7 +152,9 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
             initialize, update, finalize
         )
         state = initialize()
-        metric_variables = [_unwrap(v) for v in metric.variables]
+        metric_variables = [
+            keras_utils.unwrap_keras_variable(v) for v in metric.variables
+        ]
         self.assertAllEqual(
             self.evaluate(metric_variables), self.evaluate(state)
         )
@@ -187,7 +184,7 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
         )
 
   @parameterized.named_parameters(
-      (name, getattr(tf.keras.metrics, name)) for name in BINARY_METRIC_NAMES
+      (name, getattr(keras.metrics, name)) for name in BINARY_METRIC_NAMES
   )
   def test_binary_metrics_eager(self, metric_constructor):
     metric = metric_constructor()
@@ -216,7 +213,7 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_non_default_metric(self):
     def metric_constructor():
-      return tf.keras.metrics.Precision(thresholds=[0.25, 0.5, 0.75])
+      return keras.metrics.Precision(thresholds=[0.25, 0.5, 0.75])
 
     metric = metric_constructor()
     initialize, update, finalize = keras_utils.create_functional_metric_fns(
@@ -242,8 +239,8 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
   def test_multiple_metrics_constructor(self):
     def metrics_constructor():
       return collections.OrderedDict(
-          precisions=tf.keras.metrics.Precision(thresholds=[0.25, 0.5, 0.75]),
-          accuracy=tf.keras.metrics.Accuracy(),
+          precisions=keras.metrics.Precision(thresholds=[0.25, 0.5, 0.75]),
+          accuracy=keras.metrics.Accuracy(),
       )
 
     metrics = metrics_constructor()
@@ -282,8 +279,8 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('sum', tf.keras.metrics.Sum),
-      ('mean', tf.keras.metrics.Mean),
+      ('sum', keras.metrics.Sum),
+      ('mean', keras.metrics.Mean),
   )
   def test_unary_metrics(self, metric_constructor):
     initialize, update, _ = keras_utils.create_functional_metric_fns(
@@ -304,9 +301,9 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     # construction.
     def metrics_constructor():
       return collections.OrderedDict(
-          precision_at_5=tf.keras.metrics.Precision(thresholds=[0.5]),
+          precision_at_5=keras.metrics.Precision(thresholds=[0.5]),
           num_batches=counters.NumBatchesCounter(dtype=tf.int64),
-          accuracy=tf.keras.metrics.Accuracy(),
+          accuracy=keras.metrics.Accuracy(),
           num_examples=counters.NumExamplesCounter(dtype=tf.int64),
       )
 
@@ -332,6 +329,18 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     finalized_metrics = finalize(state)
     metric_result = tf.nest.map_structure(lambda m: m.result(), metrics_by_name)
     self.assertAllClose(finalized_metrics, metric_result)
+
+  def test_unwrap_keras_variable_unwraps_keras_3_variable(self):
+    keras_var = keras.Variable([1.0, 2.0])
+    unwrapped = keras_utils.unwrap_keras_variable(keras_var)
+    self.assertIsInstance(unwrapped, tf.Variable)
+    self.assertIs(unwrapped, keras_var.value)
+
+  def test_unwrap_keras_variable_returns_non_keras_variable_unchanged(self):
+    tf_var = tf.Variable([1.0, 2.0])
+    self.assertIs(keras_utils.unwrap_keras_variable(tf_var), tf_var)
+    tensor = tf.constant([1.0, 2.0])
+    self.assertIs(keras_utils.unwrap_keras_variable(tensor), tensor)
 
 
 if __name__ == '__main__':

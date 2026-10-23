@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.environments.tensorflow_backend import typ
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import keras_finalizer
+from tensorflow_federated.python.learning.metrics import keras_utils as metrics_keras_utils
 from tensorflow_federated.python.learning.models import variable
 
 Loss = Union[
@@ -203,7 +204,10 @@ def from_keras_model(
     py_typecheck.check_type(metrics, list)
 
   for layer in keras_model.layers:
-    if isinstance(layer, tf.keras.layers.BatchNormalization):
+    if isinstance(
+        layer,
+        (tf.keras.layers.BatchNormalization, keras.layers.BatchNormalization),
+    ):
       warnings.warn(
           (
               "Batch Normalization contains non-trainable variables that won't"
@@ -294,7 +298,9 @@ def federated_aggregate_keras_metric(
 
       assignments = []
       for v, a in zip(keras_metric.variables, values):
-        assignments.append(v.assign(a))
+        assignments.append(
+            metrics_keras_utils.unwrap_keras_variable(v).assign(a)
+        )
       with tf.control_dependencies(assignments):
         return keras_metric.result()
 
@@ -414,17 +420,37 @@ class _KerasModel(variable.VariableModel):
 
   @property
   def trainable_variables(self):
-    return self._keras_model.trainable_variables
+    return [
+        metrics_keras_utils.unwrap_keras_variable(v)
+        for v in self._keras_model.trainable_variables
+    ]
 
   @property
   def non_trainable_variables(self):
-    return self._keras_model.non_trainable_variables
+    # Exclude Keras 3 `SeedGenerator` state variables so legacy `VariableModel`
+    # wrappers around Keras 3 models containing `Dropout` layers match Keras 2
+    # non-trainable variable structures.
+    seed_generator_vars = set()
+    if isinstance(self._keras_model, keras.Model):
+      for layer in self._keras_model.layers:
+        for sg in getattr(layer, '_seed_generators', ()):
+          seed_generator_vars.add(
+              metrics_keras_utils.unwrap_keras_variable(sg.state).ref()
+          )
+    return [
+        metrics_keras_utils.unwrap_keras_variable(v)
+        for v in self._keras_model.non_trainable_variables
+        if metrics_keras_utils.unwrap_keras_variable(v).ref()
+        not in seed_generator_vars
+    ]
 
   @property
   def local_variables(self):
     local_variables = []
     for metric in self.get_metrics():
-      local_variables.extend(metric.variables)
+      local_variables.extend(
+          metrics_keras_utils.unwrap_keras_variable(v) for v in metric.variables
+      )
     return local_variables
 
   def get_metrics(self):
@@ -531,7 +557,10 @@ class _KerasModel(variable.VariableModel):
 
     outputs = collections.OrderedDict()
     for metric in self.get_metrics():
-      outputs[metric.name] = [tf.identity(v) for v in metric.variables]
+      outputs[metric.name] = [
+          tf.identity(metrics_keras_utils.unwrap_keras_variable(v))
+          for v in metric.variables
+      ]
     return outputs
 
   def metric_finalizers(

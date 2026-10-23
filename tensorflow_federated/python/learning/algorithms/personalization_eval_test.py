@@ -18,6 +18,7 @@ from unittest import mock
 
 from absl.testing import parameterized
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -500,24 +501,24 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
   def test_success_with_model_constructed_from_keras(
       self, use_functional_model, input_spec
   ):
-    def build_keras_model():
-      inputs = tf.keras.Input(shape=(2,))  # feature dim = 2
-      outputs = tf.keras.layers.Dense(1)(inputs)
-      return tf.keras.Model(inputs=inputs, outputs=outputs)
-
     if use_functional_model:
+      inputs = keras.Input(shape=(2,))  # feature dim = 2
+      outputs = keras.layers.Dense(1)(inputs)
+      keras_model = keras.Model(inputs=inputs, outputs=outputs)
       model = functional.functional_model_from_keras(
-          build_keras_model,
+          keras_model,
           input_spec=input_spec,
-          loss_fn=tf.keras.losses.MeanSquaredError(),
+          loss_fn=keras.losses.MeanSquaredError(),
       )
       p13n_fn_dict = _create_p13n_fn_dict(learning_rate=0.5)
       evaluate_fn = _evaluate_fn
     else:
 
       def model_fn():
+        inputs = tf.keras.Input(shape=(2,))  # feature dim = 2
+        outputs = tf.keras.layers.Dense(1)(inputs)
         return keras_utils.from_keras_model(
-            build_keras_model(),
+            tf.keras.Model(inputs=inputs, outputs=outputs),
             input_spec=input_spec,
             loss=tf.keras.losses.MeanSquaredError(),
         )

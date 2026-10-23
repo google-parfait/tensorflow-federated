@@ -21,6 +21,7 @@ import warnings
 
 from absl.testing import parameterized
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -1526,6 +1527,28 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['num_examples'], [0])
     self.assertSequenceEqual(metrics['loss'], [0, 0])
     self.assertSequenceEqual(metrics['mean_absolute_error'], [0, 0])
+
+  def test_tff_model_from_keras_3_model_with_dropout_excludes_seed_generator(
+      self,
+  ):
+    feature_dims = 3
+    keras_model = keras.Sequential([
+        keras.layers.InputLayer(shape=(feature_dims,)),
+        keras.layers.Dropout(0.5, seed=42),
+        keras.layers.Dense(
+            1, kernel_initializer='zeros', bias_initializer='zeros'
+        ),
+    ])
+    self.assertLen(keras_model.non_trainable_variables, 1)
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=_create_whimsy_types(feature_dims),
+        loss=keras.losses.MeanSquaredError(),
+    )
+    self.assertEmpty(tff_model.non_trainable_variables)
+    batch = _create_test_batch(feature_dims)
+    output = tff_model.forward_pass(batch, training=True)
+    self.assertEqual(output.loss, 0.5)
 
 
 if __name__ == '__main__':

@@ -29,10 +29,12 @@ import collections
 from collections.abc import Callable, Mapping, Sequence
 import inspect
 from typing import Any, Optional, TypeVar, Union
+import warnings
 
 import keras
 import numpy as np
 import tensorflow as tf
+import typing_extensions
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
@@ -283,7 +285,9 @@ class _ModelFromFunctional(variable.VariableModel):
   def local_variables(self) -> tuple[tf.Variable, ...]:
     metrics_variables = [self._loss_sum, self._num_examples]
     for metric in self._metrics:
-      metrics_variables.extend(metric.variables)
+      metrics_variables.extend(
+          keras_utils.unwrap_keras_variable(v) for v in metric.variables
+      )
     return tuple(metrics_variables)
 
   @property
@@ -334,7 +338,10 @@ class _ModelFromFunctional(variable.VariableModel):
         loss=[self._loss_sum, tf.cast(self._num_examples, tf.float32)]
     )
     for metric in self._metrics:
-      outputs[metric.name] = [tf.identity(v) for v in metric.variables]
+      outputs[metric.name] = [
+          tf.identity(keras_utils.unwrap_keras_variable(v))
+          for v in metric.variables
+      ]
     return outputs  # pyrefly: ignore[bad-return]
 
   def metric_finalizers(
@@ -386,9 +393,9 @@ class KerasFunctionalModelError(Exception):
   """An error raised when a Keras FunctionalModel is used outside TFF."""
 
 
-def functional_model_from_keras(
-    keras_model: Union[tf.keras.Model, Callable[[], tf.keras.Model]],
-    loss_fn: tf.keras.losses.Loss,
+def _functional_model_from_keras_3(
+    keras_model: keras.Model,
+    loss_fn: Union[keras.losses.Loss, tf.keras.losses.Loss, Callable[..., Any]],
     input_spec: Union[Sequence[Any], Mapping[str, Any]],
     metrics_constructor: Optional[
         Union[
@@ -398,41 +405,112 @@ def functional_model_from_keras(
         ]
     ] = None,
 ) -> FunctionalModel:
-  """Converts a `tf.keras.Model` to a `tff.learning.models.FunctionalModel`.
+  """Converts a Keras 3 `keras.Model` to a `FunctionalModel`."""
+  if isinstance(input_spec, Mapping):
+    x_spec = input_spec['x']
+  else:
+    x_spec, _ = input_spec
 
-  NOTE: This method only supports models where calling that model with
-  `training=True` and `training=False` produce the same graph. Keras layers
-  such as batch normalization will fail because they require updating internal
-  state when `training=True` which is not supported.
+  if not keras_model.built:
+    symbolic_x = tf.nest.map_structure(
+        lambda s: keras.KerasTensor(shape=s.shape, dtype=s.dtype), x_spec
+    )
+    keras_model(symbolic_x)
 
-  This method doesn't support loss functions scaled by sample weights at the
-  current state. Keras models with non-None sample weights will fail because
-  sample weights aren't supported in model serialization and deserialization.
+  for layer in keras_model._flatten_layers():  # pylint: disable=protected-access
+    if isinstance(layer, keras.layers.BatchNormalization):
+      raise KerasFunctionalModelError(
+          'Keras model contains a batch normalization layer, which is '
+          'incompatible with `tff.learning.models.FunctionalModel`. '
+          'Consider using group normalization instead.'
+      )
 
-  IMPORTANT: The returned model must only be used in a graph context (for
-  example inside a `tff.tensorflow.computation` decorated callable). It will
-  raise an error otherwise.
+  if not tf.executing_eagerly():
+    raise KerasFunctionalModelError(
+        'A Keras 3 `keras.Model` must be converted to a `FunctionalModel` in an'
+        ' eager execution context.'
+    )
+  # Retain all `non_trainable_variables` (including `SeedGenerator` state for
+  # layers such as `Dropout`) because `keras_model.stateless_call` requires the
+  # `non_trainable_variables` argument to match
+  # `keras_model.non_trainable_variables` positionally.
+  initial_weights = (
+      tuple(v.numpy() for v in keras_model.trainable_variables),
+      tuple(v.numpy() for v in keras_model.non_trainable_variables),
+  )
+
+  @tf.function
+  def predict_on_batch(
+      model_weights: ModelWeights, x: Any, training: bool = True
+  ) -> Any:
+    trainable, non_trainable = model_weights
+    outputs, _ = keras_model.stateless_call(
+        trainable, non_trainable, x, training=training
+    )
+    return outputs
+
+  def loss(
+      output: Any, label: Any, sample_weight: Optional[Any] = None
+  ) -> float:
+    return loss_fn(y_true=label, y_pred=output, sample_weight=sample_weight)
+
+  if metrics_constructor is not None:
+    metrics_fns = keras_utils.create_functional_metric_fns(metrics_constructor)
+  else:
+    metrics_fns = (
+        empty_metrics_state,
+        noop_update_metrics,
+        noop_finalize_metrics,
+    )
+
+  return FunctionalModel(
+      initial_weights=initial_weights,
+      predict_on_batch_fn=predict_on_batch,
+      loss_fn=loss,
+      metrics_fns=metrics_fns,
+      input_spec=input_spec,
+  )
+
+
+@typing_extensions.deprecated(
+    'Keras 2 (`tf.keras.Model`) support in `functional_model_from_keras` is '
+    'deprecated and slated for removal; pass a Keras 3 `keras.Model` instead.'
+)
+def _functional_model_from_keras_2(
+    keras_model: Union[tf.keras.Model, Callable[[], tf.keras.Model]],
+    loss_fn: Union[keras.losses.Loss, tf.keras.losses.Loss, Callable[..., Any]],
+    input_spec: Union[Sequence[Any], Mapping[str, Any]],
+    metrics_constructor: Optional[
+        Union[
+            keras_utils.MetricConstructor,
+            keras_utils.MetricsConstructor,
+            keras_utils.MetricConstructors,
+        ]
+    ] = None,
+    constructed_model: Optional[tf.keras.Model] = None,
+) -> FunctionalModel:
+  """Converts a Keras 2 `tf.keras.Model` to a `FunctionalModel`.
+
+  Deprecated: This helper is deprecated and slated for removal once all
+  `tf.keras` callers migrate to Keras 3 (`keras.Model`).
 
   Args:
-    keras_model: A `tf.keras.Model` object, should be uncompiled. If compiled,
-      the metrics, optimizer, and loss function will be ignored. Note: models
-      that have multiple outputs will send all outputs to the `loss_fn`.
-    loss_fn: A `tf.keras.losses.Loss` object.
+    keras_model: A `tf.keras.Model` instance or a no-arg callable that returns a
+      `tf.keras.Model`.
+    loss_fn: A loss callable or `tf.keras.losses.Loss` instance.
     input_spec: A structure of `tf.TensorSpec` defining the input to the model.
-    metrics_constructor: An optional callable that must be compatible with
+    metrics_constructor: An optional metrics constructor compatible with
       `tff.learning.metrics.create_functional_metric_fns`.
+    constructed_model: An optional pre-constructed `tf.keras.Model` instance
+      when `keras_model` is a callable, avoiding a second eager construction.
 
   Returns:
     A `tff.learning.models.FunctionalModel`.
 
   Raises:
-    KerasFunctionalModelError: If the following conditions: 1) the Keras model
-    contains a batch normalization layer, 2) the Keras model is with
-    non-trainable variable, 3) error occurs when converting the Keras model, 4)
-    the Keras model shares variable across layers, 5) the FunctionalModel is
-    used outside of a `tff.tensorflow.computation` decorated callable or a graph
-    context, 6) the Keras model contains a loss function with non-None sample
-    weights.
+    KerasFunctionalModelError: If the Keras model contains a batch normalization
+      layer, fails to clone, shares variables across layers, or is used outside
+      of a `tff.tensorflow.computation` decorated callable or a graph context.
   """
   # We're going to do something fancy here:
   #
@@ -471,30 +549,6 @@ def functional_model_from_keras(
             'incompatible with `tff.learning.models.FunctionalModel`. Consider '
             'using group normalization instead.'
         )
-  elif not callable(keras_model):
-    raise ValueError(
-        '`keras_model` must be a `tf.keras.Model` or a no-arg '
-        'callable that returns a `tf.keras.Model`.'
-    )
-
-  # TODO: b/269671316 - more work needed to support non-None sample_weight
-  # during model serialization and deserialization.
-  keras_sample_weight = (
-      inspect.signature(loss_fn).parameters['sample_weight'].default
-  )
-  if keras_sample_weight is not None:
-    raise KerasFunctionalModelError(
-        'Received a non-None model_weight. Non-None model_weight is not'
-        'supported in the current model serialization and deserialization.'
-    )
-
-  def _unwrap(v):
-    """Unwraps a Keras 3 variable."""
-    match v:
-      case keras.Variable():
-        return v.value
-      case _:
-        return v
 
   # Clone the keras model inside a graph context so that we only get the
   # variables for the layers (otherwise keras adds other non-user variables). We
@@ -530,16 +584,21 @@ def functional_model_from_keras(
         p = tf.compat.v1.placeholder(dtype=v.dtype, shape=v.shape)
         return v.assign(p), p
 
-      assign_ops, placeholders = zip(
-          *(assign_placeholder(_unwrap(v)) for v in cloned_model.variables)
-      )
+      assign_ops, placeholders = zip(*(
+          assign_placeholder(keras_utils.unwrap_keras_variable(v))
+          for v in cloned_model.variables
+      ))
 
-    captured_variables = tuple(_unwrap(v) for v in captured_variables)
+    captured_variables = tuple(
+        keras_utils.unwrap_keras_variable(v) for v in captured_variables
+    )
     trainable_refs = tuple(
-        _unwrap(v).ref() for v in cloned_model.trainable_variables
+        keras_utils.unwrap_keras_variable(v).ref()
+        for v in cloned_model.trainable_variables
     )
     non_trainable_refs = tuple(
-        _unwrap(v).ref() for v in cloned_model.non_trainable_variables
+        keras_utils.unwrap_keras_variable(v).ref()
+        for v in cloned_model.non_trainable_variables
     )
     trainable_variables = tuple(
         v for v in captured_variables if v.ref() in trainable_refs
@@ -553,6 +612,8 @@ def functional_model_from_keras(
   # incoming model weights rather than their fresh initialization.
   if isinstance(keras_model, tf.keras.Model):
     model_for_variables = keras_model
+  elif constructed_model is not None:
+    model_for_variables = constructed_model
   else:
     model_for_variables = keras_model()
   current_model_weights = tf.nest.map_structure(
@@ -646,6 +707,127 @@ def functional_model_from_keras(
       metrics_fns=metrics_fns,
       input_spec=input_spec,
   )
+
+
+def functional_model_from_keras(
+    keras_model: Union[
+        keras.Model,
+        tf.keras.Model,
+        Callable[[], Union[keras.Model, tf.keras.Model]],
+    ],
+    loss_fn: Union[keras.losses.Loss, tf.keras.losses.Loss, Callable[..., Any]],
+    input_spec: Union[Sequence[Any], Mapping[str, Any]],
+    metrics_constructor: Optional[
+        Union[
+            keras_utils.MetricConstructor,
+            keras_utils.MetricsConstructor,
+            keras_utils.MetricConstructors,
+        ]
+    ] = None,
+) -> FunctionalModel:
+  """Converts a `keras.Model` or `tf.keras.Model` to a `FunctionalModel`.
+
+  When `keras_model` is a Keras 3 `keras.Model` (or a callable returning one),
+  the returned `FunctionalModel` executes forward passes statelessly via
+  `keras_model.stateless_call`, supports shared layers, and can be invoked in
+  both eager and graph contexts (provided the model was converted in an eager
+  context).
+
+  When `keras_model` is a legacy Keras 2 `tf.keras.Model` (or a callable
+  returning one), support is deprecated and slated for removal. The returned
+  `FunctionalModel` must only be used in a graph context (for example inside a
+  `tff.tensorflow.computation` decorated callable) and does not support shared
+  variables across layers unless a model-constructing callable is passed.
+
+  NOTE: This method only supports models where calling that model with
+  `training=True` and `training=False` produce the same graph. Keras layers
+  such as batch normalization will fail because they require updating internal
+  state when `training=True` which is not supported.
+
+  This method doesn't support loss functions scaled by sample weights at the
+  current state. Keras models with non-`None` sample weights will fail because
+  sample weights aren't supported in model serialization and deserialization.
+
+  Args:
+    keras_model: A `keras.Model` or `tf.keras.Model` object (or a no-arg
+      callable returning one), which should be uncompiled. If compiled, the
+      metrics, optimizer, and loss function will be ignored. Note: models that
+      have multiple outputs will send all outputs to the `loss_fn`. Support for
+      `tf.keras.Model` is deprecated.
+    loss_fn: A `keras.losses.Loss`, `tf.keras.losses.Loss`, or loss callable.
+    input_spec: A structure of `tf.TensorSpec` defining the input to the model.
+    metrics_constructor: An optional callable or `OrderedDict` compatible with
+      `tff.learning.metrics.create_functional_metric_fns`.
+
+  Returns:
+    A `tff.learning.models.FunctionalModel`.
+
+  Raises:
+    ValueError: If `keras_model` is not a `keras.Model`, `tf.keras.Model`, or a
+      no-arg callable returning one.
+    KerasFunctionalModelError: If the Keras model contains a batch normalization
+      layer, a Keras 3 model is converted outside an eager execution context,
+      a Keras 2 model fails to clone, shares variables across layers, or is used
+      outside a graph context, or `loss_fn` has non-`None` default sample
+      weights.
+  """
+  # TODO: b/269671316 - more work needed to support non-None sample_weight
+  # during model serialization and deserialization.
+  keras_sample_weight = (
+      inspect.signature(loss_fn).parameters['sample_weight'].default
+  )
+  if keras_sample_weight is not None:
+    raise KerasFunctionalModelError(
+        'Received a non-None model_weight. Non-None model_weight is not'
+        'supported in the current model serialization and deserialization.'
+    )
+
+  if isinstance(keras_model, keras.Model):
+    return _functional_model_from_keras_3(
+        keras_model, loss_fn, input_spec, metrics_constructor
+    )
+  elif isinstance(keras_model, tf.keras.Model):
+    warnings.warn(
+        'Keras 2 (`tf.keras.Model`) support in `functional_model_from_keras`'
+        ' is deprecated and slated for removal; pass a Keras 3 `keras.Model`'
+        ' instead.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _functional_model_from_keras_2(
+        keras_model, loss_fn, input_spec, metrics_constructor
+    )
+  elif callable(keras_model):
+    constructed_model = keras_model()
+    if isinstance(constructed_model, keras.Model):
+      return _functional_model_from_keras_3(
+          constructed_model, loss_fn, input_spec, metrics_constructor
+      )
+    elif isinstance(constructed_model, tf.keras.Model):
+      warnings.warn(
+          'Keras 2 (`tf.keras.Model`) support in `functional_model_from_keras`'
+          ' is deprecated and slated for removal; pass a Keras 3 `keras.Model`'
+          ' instead.',
+          DeprecationWarning,
+          stacklevel=2,
+      )
+      return _functional_model_from_keras_2(
+          keras_model,
+          loss_fn,
+          input_spec,
+          metrics_constructor,
+          constructed_model=constructed_model,
+      )
+    else:
+      raise ValueError(
+          '`keras_model` must be a `keras.Model` or a no-arg '
+          'callable that returns a `keras.Model`.'
+      )
+  else:
+    raise ValueError(
+        '`keras_model` must be a `keras.Model` or a no-arg '
+        'callable that returns a `keras.Model`.'
+    )
 
 
 def keras_model_from_functional_weights(

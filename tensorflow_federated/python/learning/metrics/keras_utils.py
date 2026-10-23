@@ -24,10 +24,28 @@ import tensorflow as tf
 from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
 
 StateVar = TypeVar('StateVar')
-MetricConstructor = Callable[[], tf.keras.metrics.Metric]
-MetricConstructors = collections.OrderedDict[str, MetricConstructor]
-MetricStructure = collections.OrderedDict[str, tf.keras.metrics.Metric]
+Metric = Union[tf.keras.metrics.Metric, keras.metrics.Metric]
+MetricConstructor = Callable[[], Metric]
+MetricConstructors = Union[
+    collections.OrderedDict[str, Callable[[], tf.keras.metrics.Metric]],
+    collections.OrderedDict[str, Callable[[], keras.metrics.Metric]],
+    collections.OrderedDict[str, MetricConstructor],
+]
+MetricStructure = Union[
+    collections.OrderedDict[str, tf.keras.metrics.Metric],
+    collections.OrderedDict[str, keras.metrics.Metric],
+    collections.OrderedDict[str, Metric],
+]
 MetricsConstructor = Callable[[], MetricStructure]
+
+
+def unwrap_keras_variable(v: Any) -> Any:
+  """Unwraps a Keras 3 `keras.Variable` to its underlying TensorFlow variable."""
+  match v:
+    case keras.Variable():
+      return v.value
+    case _:
+      return v
 
 
 def create_functional_metric_fns(
@@ -101,7 +119,7 @@ def create_functional_metric_fns(
     # have the expected properties to provide better debugging messages to
     # caller.
     def check_keras_metric_type(obj):
-      if not isinstance(obj, tf.keras.metrics.Metric):
+      if not isinstance(obj, (tf.keras.metrics.Metric, keras.metrics.Metric)):
         raise TypeError(
             f'Found non-tf.keras.metrics.Metric value: {type(obj)}: {obj!r}.'
         )
@@ -153,20 +171,13 @@ def create_functional_metric_fns(
   @tf.function
   def initialize():
     with tf.variable_creator_scope(IndexedTensorVariableCreator()):
-
-      def _unwrap(v):
-        """Wraps a Keras 3 metric."""
-        match v:
-          case keras.Variable():
-            return v.value
-        return v
-
       tensor_variable_structure = tf.nest.map_structure(
-          lambda m: tuple(m.variables), metrics_constructor()
+          lambda m: tuple(unwrap_keras_variable(v) for v in m.variables),
+          metrics_constructor(),
       )
     nonlocal variable_creation_indices
     variable_creation_indices = [
-        _unwrap(tensor_variable).index
+        tensor_variable.index
         for tensor_variable in tf.nest.flatten(tensor_variable_structure)
     ]
     return tensor_variable_structure
@@ -234,7 +245,7 @@ def create_functional_metric_fns(
       )
     predictions = batch_output.predictions
 
-    def inner_update(metric: tf.keras.metrics.Metric) -> tuple[tf.Tensor, ...]:
+    def inner_update(metric: Metric) -> tuple[tf.Tensor, ...]:
       # We must unwrap `update_state` here because the `TensorVariable` is
       # created in the outer `update` FuncGraph and since it is not constant
       # it can't be closed over in the `update_state` FuncGraph. The
@@ -245,7 +256,7 @@ def create_functional_metric_fns(
       update_state_fn(
           y_true=labels, y_pred=predictions, sample_weight=sample_weight
       )
-      return tuple(metric.variables)
+      return tuple(unwrap_keras_variable(v) for v in metric.variables)
 
     with tf.variable_creator_scope(
         build_replace_variable_with_parameter_creator(state)
