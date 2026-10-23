@@ -68,7 +68,7 @@ def tff_cc_cpu_gpu_test(name, tags = [], **kwargs):
     )
     cc_test(
         name = name + "_gpu",
-        tags = tags + ["requires-gpu-nvidia"],
+        tags = tags + ["requires-gpu-sm90"],
         **kwargs
     )
     native.test_suite(
