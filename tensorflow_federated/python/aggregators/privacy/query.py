@@ -15,6 +15,7 @@
 
 import abc
 import collections
+from typing import Any, NamedTuple
 
 import dp_accounting
 import tensorflow as tf
@@ -269,6 +270,23 @@ class SumAggregationDPQuery(DPQuery):
     return tf.nest.map_structure(tf.add, sample_state_1, sample_state_2)
 
 
+def event_to_named_tuple(
+    event: dp_accounting.DpEvent | dp_accounting.dp_event.DpEventNamedTuple,
+) -> dp_accounting.dp_event.DpEventNamedTuple:
+  """Converts a `DpEvent` to a `NamedTuple` if it is not already one."""
+  return (
+      event.to_named_tuple()
+      if isinstance(event, dp_accounting.DpEvent)
+      else event
+  )
+
+
+class _GaussianDpEventNamedTuple(NamedTuple):
+  module_name: str
+  class_name: str
+  noise_multiplier: Any
+
+
 class GaussianSumQuery(SumAggregationDPQuery):
   """Implements DPQuery interface for Gaussian sum queries.
 
@@ -335,8 +353,17 @@ class GaussianSumQuery(SumAggregationDPQuery):
       return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)
 
     result = tf.nest.map_structure(add_noise, sample_state)
-    noise_multiplier = global_state.stddev / global_state.l2_norm_clip
-    event = dp_accounting.GaussianDpEvent(noise_multiplier)
+    # Cannot pass symbolic tensors or NaN to DpEvents.
+    noise_multiplier = tf.where(
+        tf.equal(global_state.l2_norm_clip, 0.0),
+        tf.constant(float('inf'), dtype=tf.float32),
+        global_state.stddev / global_state.l2_norm_clip,
+    )
+    event = _GaussianDpEventNamedTuple(
+        module_name=dp_accounting.GaussianDpEvent.__module__,
+        class_name=dp_accounting.GaussianDpEvent.__name__,
+        noise_multiplier=noise_multiplier,
+    )
 
     return result, global_state, event
 

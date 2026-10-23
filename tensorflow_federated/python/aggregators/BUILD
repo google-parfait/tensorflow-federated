@@ -175,6 +175,7 @@ py_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "@federated_language//federated_language",
         "@pypi//absl_py",
+        "@pypi//dp_accounting",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],

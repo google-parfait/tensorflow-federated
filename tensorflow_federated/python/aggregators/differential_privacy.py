@@ -519,7 +519,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
 
     dp_event_type = get_noised_result.type_signature.result[2]
     convert_dp_event = tensorflow_computation.tf_computation(
-        lambda event: event.to_named_tuple(), dp_event_type
+        dp_query.event_to_named_tuple, dp_event_type
     )
 
     @federated_language.federated_computation()

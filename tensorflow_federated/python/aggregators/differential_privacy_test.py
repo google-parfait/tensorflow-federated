@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import dp_accounting
 import federated_language
 import numpy as np
 import tensorflow as tf
@@ -267,9 +268,9 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         type_conversions.type_to_tf_tensor_specs(value_type)
     )
     query_state = _test_dp_query.initial_global_state()
-    expected_dp_event = _test_dp_query.get_noised_result(
-        initial_sample_state, query_state
-    )[2]
+    expected_dp_event = dp_accounting.DpEvent.from_named_tuple(
+        _test_dp_query.get_noised_result(initial_sample_state, query_state)[2]
+    )
     self.assertEqual(event, expected_dp_event)
 
   def test_error_when_extracting_from_initial_state(self):

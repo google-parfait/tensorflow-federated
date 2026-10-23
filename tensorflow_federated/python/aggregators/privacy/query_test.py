@@ -66,6 +66,21 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
     expected = [0.0, 0.0]
     self.assertAllClose(query_result, expected)
 
+  @parameterized.named_parameters(
+      ('nonzero_clip', 5.0, 1.0, 0.2),
+      ('zero_clip_nonzero_stddev', 0.0, 1.0, float('inf')),
+      ('zero_clip_zero_stddev', 0.0, 0.0, float('inf')),
+  )
+  def test_gaussian_sum_dp_event(
+      self, l2_norm_clip, stddev, expected_noise_multiplier
+  ):
+    query = dp_query.GaussianSumQuery(l2_norm_clip=l2_norm_clip, stddev=stddev)
+    global_state = query.initial_global_state()
+    sample_state = query.initial_sample_state(tf.constant([1.0, 2.0]))
+    _, _, event = query.get_noised_result(sample_state, global_state)
+    self.assertEqual(event.class_name, 'GaussianDpEvent')
+    self.assertAllClose(event.noise_multiplier, expected_noise_multiplier)
+
   def test_gaussian_sum_with_noise(self):
     record1, record2 = 2.71828, 3.14159
     stddev = 1.0

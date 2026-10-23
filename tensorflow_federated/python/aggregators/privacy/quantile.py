@@ -14,12 +14,20 @@
 """Implements DPQuery interface for quantile estimator."""
 
 import collections
+from collections.abc import Sequence
+from typing import NamedTuple
 
 import dp_accounting
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators.privacy import query
 from tensorflow_federated.python.aggregators.privacy import tree
+
+
+class _ComposedDpEventNamedTuple(NamedTuple):
+  module_name: str
+  class_name: str
+  events: Sequence[dp_accounting.dp_event.DpEventNamedTuple]
 
 
 class QuantileEstimatorQuery(query.SumAggregationDPQuery):
@@ -410,7 +418,15 @@ class QuantileAdaptiveClipSumQuery(query.SumAggregationDPQuery):
         new_quantile_estimator_state,
     )
 
-    event = dp_accounting.ComposedDpEvent(events=[sum_event, quantile_event])
+    # Cannot pass symbolic tensors to DpEvents.
+    event = _ComposedDpEventNamedTuple(
+        module_name=dp_accounting.ComposedDpEvent.__module__,
+        class_name=dp_accounting.ComposedDpEvent.__name__,
+        events=[
+            query.event_to_named_tuple(sum_event),
+            query.event_to_named_tuple(quantile_event),
+        ],
+    )
     return noised_vectors, new_global_state, event
 
   def derive_metrics(self, global_state):
@@ -563,7 +579,15 @@ class QAdaClipTreeResSumQuery(query.SumAggregationDPQuery):
     new_global_state = self._GlobalState(
         global_state.noise_multiplier, sum_state, quantile_estimator_state
     )
-    event = dp_accounting.ComposedDpEvent(events=[sum_event, quantile_event])
+    # Cannot pass symbolic tensors to DpEvents.
+    event = _ComposedDpEventNamedTuple(
+        module_name=dp_accounting.ComposedDpEvent.__module__,
+        class_name=dp_accounting.ComposedDpEvent.__name__,
+        events=[
+            query.event_to_named_tuple(sum_event),
+            query.event_to_named_tuple(quantile_event),
+        ],
+    )
     return noised_vectors, new_global_state, event
 
   def reset_state(self, noised_results, global_state):
