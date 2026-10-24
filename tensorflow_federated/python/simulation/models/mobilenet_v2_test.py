@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import keras
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.models import mobilenet_v2
@@ -75,7 +76,7 @@ class MobileNetModelTest(tf.test.TestCase):
 
   def test_constructs_keras_model(self):
     model = mobilenet_v2.create_mobilenet_v2(input_shape=(100, 100, 50))
-    self.assertIsInstance(model, tf.keras.Model)
+    self.assertIsInstance(model, keras.Model)
 
   def test_alpha_changes_num_model_parameters(self):
     model1 = mobilenet_v2.create_mobilenet_v2(
@@ -97,8 +98,8 @@ class MobileNetModelTest(tf.test.TestCase):
     model2 = mobilenet_v2.create_mobilenet_v2(
         input_shape=(224, 224, 3), num_groups=4, num_classes=1000
     )
-    self.assertIsInstance(model1, tf.keras.Model)
-    self.assertIsInstance(model2, tf.keras.Model)
+    self.assertIsInstance(model1, keras.Model)
+    self.assertIsInstance(model2, keras.Model)
     self.assertEqual(model1.count_params(), model2.count_params())
 
   def test_pooling_does_not_change_num_model_parameters(self):
@@ -108,8 +109,8 @@ class MobileNetModelTest(tf.test.TestCase):
     model2 = mobilenet_v2.create_mobilenet_v2(
         input_shape=(224, 224, 3), pooling='max', num_classes=1000
     )
-    self.assertIsInstance(model1, tf.keras.Model)
-    self.assertIsInstance(model2, tf.keras.Model)
+    self.assertIsInstance(model1, keras.Model)
+    self.assertIsInstance(model2, keras.Model)
     self.assertEqual(model1.count_params(), model2.count_params())
 
   def test_dropout_increases_num_model_layers(self):

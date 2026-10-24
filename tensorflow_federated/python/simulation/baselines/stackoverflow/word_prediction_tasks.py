@@ -13,12 +13,12 @@
 # limitations under the License.
 """Library for creating word prediction tasks on Stack Overflow."""
 
+import collections
 from typing import Optional
 
-import tensorflow as tf
+import keras
 
-from tensorflow_federated.python.learning.models import keras_utils
-from tensorflow_federated.python.learning.models import variable
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import keras_metrics
@@ -107,22 +107,22 @@ def create_word_prediction_task_from_datasets(
   eos_token = special_tokens.end_of_sentence
 
   def metrics_builder():
-    return [
-        keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
-        keras_metrics.MaskedCategoricalAccuracy(
+    return collections.OrderedDict(
+        num_tokens=keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
+        accuracy=keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy', masked_tokens=[pad_token]
         ),
-        keras_metrics.MaskedCategoricalAccuracy(
+        accuracy_without_out_of_vocab=keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy_without_out_of_vocab',
             masked_tokens=[pad_token] + oov_tokens,
         ),
         # Notice that the beginning of sentence token never appears in the
         # ground truth label.
-        keras_metrics.MaskedCategoricalAccuracy(
+        accuracy_without_out_of_vocab_or_end_of_sentence=keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy_without_out_of_vocab_or_end_of_sentence',
             masked_tokens=[pad_token, eos_token] + oov_tokens,
         ),
-    ]
+    )
 
   # The total vocabulary size is the number of words in the vocabulary, plus
   # the number of out-of-vocabulary tokens, plus three tokens used for
@@ -131,17 +131,16 @@ def create_word_prediction_task_from_datasets(
       vocab_size + special_tokens.get_number_of_special_tokens()
   )
 
-  def model_fn() -> variable.VariableModel:
-    return keras_utils.from_keras_model(
-        keras_model=word_prediction_models.create_recurrent_model(
-            vocab_size=extended_vocab_size
-        ),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        input_spec=task_datasets.element_type_structure,
-        metrics=metrics_builder(),
-    )
+  model = functional.functional_model_from_keras(
+      keras_model=word_prediction_models.create_recurrent_model(
+          vocab_size=extended_vocab_size
+      ),
+      loss_fn=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+      input_spec=task_datasets.element_type_structure,
+      metrics_constructor=metrics_builder,
+  )
 
-  return baseline_task.BaselineTask(task_datasets, model_fn)
+  return baseline_task.BaselineTask(task_datasets, model)
 
 
 def create_word_prediction_task(
