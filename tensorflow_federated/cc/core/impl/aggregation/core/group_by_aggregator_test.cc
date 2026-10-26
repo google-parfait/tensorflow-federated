@@ -301,7 +301,6 @@ TEST_P(GroupByAggregatorTest, AggregateOnlyEmptyTensorsSucceeds) {
 
   EXPECT_THAT(group_by_aggregator->Accumulate({&key, &t1}), IsOk());
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*group_by_aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -331,7 +330,6 @@ TEST_P(GroupByAggregatorTest, DenseAggregation_Succeeds) {
 
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys, &t3}), IsOk());
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*group_by_aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -357,15 +355,13 @@ TEST_P(GroupByAggregatorTest, AccumulateEmptyInputDoesNotAffectResult) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys, &t2}), IsOk());
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys, &t3}), IsOk());
 
-  // Now accumulate an empty input. This will increase NumInputs to 4 but
-  // otherwise has no effect on the result.
+  // Now accumulate an empty input. This has no effect on the result.
   Tensor empty_keys(std::vector<std::string>{});
   Tensor empty_tensor(std::vector<int32_t>{});
   EXPECT_THAT(group_by_aggregator->Accumulate({&empty_keys, &empty_tensor}),
               IsOk());
 
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(4));
 
   if (GetParam()) {
     auto serialized_state = std::move(*group_by_aggregator).Serialize();
@@ -411,7 +407,6 @@ TEST_P(GroupByAggregatorTest, DifferentKeysPerAccumulate_Succeeds) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys3, &t3}), IsOk());
   // Totals: [9, 46, 41, 2, 7]
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*group_by_aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -448,7 +443,6 @@ TEST_P(GroupByAggregatorTest, DifferentShapesPerAccumulate_Succeeds) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys3, &t3}), IsOk());
   // Totals: [8, 17, 33, 4, 3]
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*group_by_aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -484,7 +478,6 @@ TEST_P(GroupByAggregatorTest, Accumulate_MultipleValueTensors_Succeeds) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys2, &tA2, &tB2}), IsOk());
   // Totals: [9, 26, 27, 2], [28, 10, 14, 8]
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(2));
 
   if (GetParam()) {
     auto serialized_state = std::move(*group_by_aggregator).Serialize();
@@ -516,7 +509,6 @@ TEST_P(GroupByAggregatorTest, Accumulate_NoValueTensors_Succeeds) {
   Tensor keys2({"one", "zero", "one", "three"});
   EXPECT_THAT(group_by_aggregator->Accumulate({&keys2}), IsOk());
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(2));
 
   if (GetParam()) {
     auto serialized_state = std::move(*group_by_aggregator).Serialize();
@@ -571,7 +563,6 @@ TEST_P(GroupByAggregatorTest, Accumulate_MultipleKeyTensors_Succeeds) {
               IsOk());
   // Totals: [9, 46, 41, 2, 7]
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*group_by_aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -614,7 +605,6 @@ TEST_P(GroupByAggregatorTest,
               IsOk());
   // Totals: [9, 26, 27, 2]
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(2));
 
   if (GetParam()) {
     auto serialized_state = std::move(*group_by_aggregator).Serialize();
@@ -656,7 +646,6 @@ TEST_P(GroupByAggregatorTest,
   EXPECT_THAT(group_by_aggregator->Accumulate({&size_keys, &animal_keys, &t}),
               IsOk());
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(2));
 
   if (GetParam()) {
     auto serialized_state = std::move(*group_by_aggregator).Serialize();
@@ -696,7 +685,6 @@ TEST_P(GroupByAggregatorTest, Accumulate_NoKeyTensors) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&t3}), IsOk());
 
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*group_by_aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -735,7 +723,6 @@ TEST_P(GroupByAggregatorTest, Merge_Succeeds) {
 
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(5));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -768,7 +755,6 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleValueTensors_Succeeds) {
   EXPECT_THAT(aggregator1->Accumulate({&keys2, &tA2, &tB2}), IsOk());
   // aggregator1 totals: [9, 26, 27, 2], [28, 10, 14, 8]
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(2));
 
   // Create a second aggregator and accumulate an input with overlapping
   // keys.
@@ -816,7 +802,6 @@ TEST_P(GroupByAggregatorTest, Merge_NoValueTensors_Succeeds) {
   Tensor keys2({"one", "zero", "one", "three"});
   EXPECT_THAT(aggregator1->Accumulate({&keys2}), IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(2));
 
   // Create a second aggregator and accumulate an input with overlapping
   // keys.
@@ -891,7 +876,6 @@ TEST_P(GroupByAggregatorTest, Merge_MultipleKeyTensors_Succeeds) {
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   // Merged totals: [9, 46, 41, 2, 7]
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -952,7 +936,6 @@ TEST_P(GroupByAggregatorTest,
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   // Merged totals: [9, 46, 41, 2, 7]
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -994,7 +977,6 @@ TEST_P(GroupByAggregatorTest, Merge_NoKeyTensors) {
   // Merge the two aggregators together.
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -1031,7 +1013,6 @@ TEST_P(GroupByAggregatorTest, MergeThisOutputReceivedNoInputsSucceeds) {
   // Merge aggregator2 into aggregator1 which has not received any inputs.
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(2));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -1077,7 +1058,6 @@ TEST_P(GroupByAggregatorTest, MergeThisOutputReceivedOnlyEmptyInputsSucceeds) {
   // Merge aggregator2 into aggregator1 which has not received any inputs.
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -1118,7 +1098,6 @@ TEST_P(GroupByAggregatorTest, MergeOtherAggregatorReceivedNoInputsSucceeds) {
   // Merge with aggregator2 which has not received any inputs.
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(2));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -1165,7 +1144,6 @@ TEST_P(GroupByAggregatorTest,
   // Merge with aggregator2 which has only received empty inputs.
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -2486,7 +2464,6 @@ TEST(GroupByAggregatorTest, Partition_MultipleKeyTensors_Succeeds) {
   EXPECT_THAT(group_by_aggregator->Accumulate({&sizeKeys3, &animalKeys3, &t3}),
               IsOk());
   EXPECT_THAT(group_by_aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(group_by_aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*group_by_aggregator).Report();
   EXPECT_THAT(result, IsOk());

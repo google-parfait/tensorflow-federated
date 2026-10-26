@@ -104,8 +104,7 @@ absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateGroupingFederatedSum(
              ? std::make_unique<GroupingFederatedSum<OutputT, OutputT>>()
              : std::make_unique<GroupingFederatedSum<OutputT, OutputT>>(
                    MutableVectorData<OutputT>::CreateFromEncodedContent(
-                       aggregator_state->vector_data()),
-                   aggregator_state->num_inputs());
+                       aggregator_state->vector_data()));
 }
 
 template <>
@@ -182,16 +181,14 @@ class GroupingFederatedSumFactory final
                    ? std::make_unique<GroupingFederatedSum<int32_t, int64_t>>()
                    : std::make_unique<GroupingFederatedSum<int32_t, int64_t>>(
                          MutableVectorData<int64_t>::CreateFromEncodedContent(
-                             aggregator_state->vector_data()),
-                         aggregator_state->num_inputs());
+                             aggregator_state->vector_data()));
       } else if (input_spec.dtype() == DataType::DT_FLOAT &&
                  output_spec.dtype() == DataType::DT_DOUBLE) {
         return aggregator_state == nullptr
                    ? std::make_unique<GroupingFederatedSum<float, double>>()
                    : std::make_unique<GroupingFederatedSum<float, double>>(
                          MutableVectorData<double>::CreateFromEncodedContent(
-                             aggregator_state->vector_data()),
-                         aggregator_state->num_inputs());
+                             aggregator_state->vector_data()));
       } else {
         return absl::InvalidArgumentError(absl::StrCat(
             "GroupingFederatedSumFactory: Input and output tensors have "

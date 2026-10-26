@@ -63,8 +63,7 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed,
+      double epsilon, double delta, int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributors_to_groups = {},
       int max_string_length = kDefaultMaxStringLength)
@@ -72,9 +71,9 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
             input_key_specs, output_key_specs, intrinsics,
             std::make_unique<CompositeKeyCombiner>(CreateKeyTypes(
                 input_key_specs.size(), input_key_specs, *output_key_specs)),
-            std::move(aggregators), num_inputs, epsilon, delta,
-            max_groups_contributed, min_contributors_to_group,
-            contributors_to_groups, max_string_length) {}
+            std::move(aggregators), epsilon, delta, max_groups_contributed,
+            min_contributors_to_group, contributors_to_groups,
+            max_string_length) {}
   double GetEpsilonPerAgg() { return epsilon_per_agg(); }
   double GetDeltaPerAgg() { return delta_per_agg(); }
   absl::StatusOr<int64_t> SerializeSensitivity() {
@@ -131,9 +130,8 @@ MockDPGroupByAggregator CreateMockForTestingEpsilonAndDeltaSplit(
     aggregators.push_back(nullptr);
   }
   return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
-                                 &intrinsics, std::move(aggregators),
-                                 /*num_inputs=*/0, epsilon, delta,
-                                 /*max_groups_contributed=*/1);
+                                 &intrinsics, std::move(aggregators), epsilon,
+                                 delta, /*max_groups_contributed=*/1);
 }
 
 // First batch of tests: ensure that epsilon is split when appropriate
@@ -192,7 +190,7 @@ TEST(DPGroupByAggregatorTest, StringLengthCheck) {
       dp_histogram_testing::CreateTensorSpec("key_out", DT_STRING));
   MockDPGroupByAggregator top_aggregator(
       input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
-      /*num_inputs=*/0, /*epsilon=*/0.1, /*delta=*/0.1,
+      /*epsilon=*/0.1, /*delta=*/0.1,
       /*max_groups_contributed=*/1, std::nullopt, {}, /*max_string_length=*/9);
 
   // Finally we show that a long string is rejected but a short one is accepted.
@@ -245,10 +243,10 @@ MockDPGroupByAggregator CreateMockForTestingPadding(
       dp_histogram_testing::CreateTensorSpec("key1_out", DT_STRING));
   output_key_specs.push_back(
       dp_histogram_testing::CreateTensorSpec("key2_out", DT_STRING));
-  return MockDPGroupByAggregator(
-      input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
-      /*num_inputs=*/0, epsilon, delta, max_groups_contributed, std::nullopt,
-      {}, max_string_length);
+  return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
+                                 &intrinsics, std::move(aggregators), epsilon,
+                                 delta, max_groups_contributed, std::nullopt,
+                                 {}, max_string_length);
 }
 TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysTwoSums) {
   std::vector<Intrinsic> intrinsics;

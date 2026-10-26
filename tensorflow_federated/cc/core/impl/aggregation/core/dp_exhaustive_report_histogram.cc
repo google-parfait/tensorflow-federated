@@ -78,12 +78,11 @@ DPExhaustiveReportHistogram::DPExhaustiveReportHistogram(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    int num_inputs, double epsilon, double delta,
-    int64_t max_groups_contributed, TensorSpan domain_tensors,
-    int max_string_length)
+    double epsilon, double delta, int64_t max_groups_contributed,
+    TensorSpan domain_tensors, int max_string_length)
     : DPGroupByAggregator(input_key_specs, output_key_specs, intrinsics,
                           std::move(key_combiner), std::move(aggregators),
-                          num_inputs, epsilon, delta, max_groups_contributed,
+                          epsilon, delta, max_groups_contributed,
                           /*min_contributors_to_group=*/std::nullopt,
                           /*contributor_counts=*/{}, max_string_length),
       domain_tensors_(domain_tensors) {}
@@ -95,14 +94,13 @@ DPExhaustiveReportHistogram::Create(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    int num_inputs, double epsilon, double delta,
-    int64_t max_groups_contributed, TensorSpan domain_tensors,
-    int max_string_length) {
+    double epsilon, double delta, int64_t max_groups_contributed,
+    TensorSpan domain_tensors, int max_string_length) {
   std::unique_ptr<DPExhaustiveReportHistogram> aggregator =
       absl::WrapUnique(new DPExhaustiveReportHistogram(
           input_key_specs, output_key_specs, intrinsics,
-          std::move(key_combiner), std::move(aggregators), num_inputs, epsilon,
-          delta, max_groups_contributed, domain_tensors, max_string_length));
+          std::move(key_combiner), std::move(aggregators), epsilon, delta,
+          max_groups_contributed, domain_tensors, max_string_length));
 
   // If epsilon is too large, we are done here (no noise addition).
   if (aggregator->epsilon_per_agg() >= kEpsilonThreshold) {

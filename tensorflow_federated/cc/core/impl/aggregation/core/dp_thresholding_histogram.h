@@ -70,8 +70,7 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed,
+      double epsilon, double delta, int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributor_counts = {},
       int max_string_length = kDefaultMaxStringLength);
@@ -94,8 +93,7 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed,
+      double epsilon, double delta, int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group,
       std::vector<int> contributor_counts,
       int max_string_length = kDefaultMaxStringLength);

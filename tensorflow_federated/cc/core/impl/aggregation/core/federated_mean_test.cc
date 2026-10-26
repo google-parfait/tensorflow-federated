@@ -60,7 +60,6 @@ TEST_P(FederatedMeanTest, ValidateInputs_FailsWithNegativeWeight) {
     aggregator = DeserializeTensorAggregator(federated_mean_intrinsic,
                                              serialized_state.value())
                      .value();
-    EXPECT_THAT(aggregator->GetNumInputs(), Eq(0));
   }
 }
 
@@ -81,7 +80,6 @@ TEST_P(FederatedMeanTest, ValidateInputs_FailsWithTooManyWeights) {
     aggregator = DeserializeTensorAggregator(federated_mean_intrinsic,
                                              serialized_state.value())
                      .value();
-    EXPECT_THAT(aggregator->GetNumInputs(), Eq(0));
   }
 }
 
@@ -107,7 +105,6 @@ TEST_P(FederatedMeanTest, ScalarAggregation_Succeeds) {
 
   EXPECT_THAT(aggregator->Accumulate(v3), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -144,7 +141,6 @@ TEST_P(FederatedMeanTest, WeightedScalarAggregation_Succeeds) {
 
   EXPECT_THAT(aggregator->Accumulate({&v3, &w3}), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -185,7 +181,6 @@ TEST_P(FederatedMeanTest, DenseAggregation_Succeeds) {
 
   EXPECT_THAT(aggregator->Accumulate(v3), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -229,7 +224,6 @@ TEST_P(FederatedMeanTest, WeightedDenseAggregation_Succeeds) {
 
   EXPECT_THAT(aggregator->Accumulate({&v3, &w3}), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -274,7 +268,6 @@ TEST_P(FederatedMeanTest, Merge_Succeeds) {
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   EXPECT_THAT(aggregator2->CanReport(), IsFalse());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -321,7 +314,6 @@ TEST_P(FederatedMeanTest, WeightedDenseMerge_Succeeds) {
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   EXPECT_THAT(aggregator2->CanReport(), IsFalse());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());

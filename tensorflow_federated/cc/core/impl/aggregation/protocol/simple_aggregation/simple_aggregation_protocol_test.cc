@@ -1614,8 +1614,6 @@ class FakeAggregator final : public TensorAggregator {
     return outputs;
   }
 
-  int GetNumInputs() const override { return 0; }
-
   absl::StatusOr<std::string> Serialize() && override {
     return absl::UnimplementedError("Unimplemented");
   };

@@ -102,7 +102,6 @@ StatusOr<OutputTensorList> SingleKeySingleAgg(
 
   EXPECT_THAT(acc_status, IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(1));
 
   return std::move(*aggregator).Report();
 }
@@ -286,7 +285,6 @@ StatusOr<OutputTensorList> SingleKeyDoubleAgg(
 
   EXPECT_THAT(acc_status, IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(1));
 
   return std::move(*aggregator).Report();
 }
@@ -380,7 +378,6 @@ StatusOr<OutputTensorList> DoubleKeyDoubleAgg(
 
   EXPECT_THAT(acc_status, IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(1));
 
   return std::move(*aggregator).Report();
 }
@@ -493,7 +490,6 @@ TEST_P(DPThresholdingHistogramTest, NoiseAddedForSmallEpsilons) {
     auto acc_status = dp_aggregator->Accumulate({&keys, &values});
     EXPECT_THAT(acc_status, IsOk());
   }
-  EXPECT_EQ(dp_aggregator->GetNumInputs(), num_inputs);
   EXPECT_TRUE(dp_aggregator->CanReport());
 
   if (GetParam()) {
@@ -546,7 +542,6 @@ TEST_P(DPThresholdingHistogramTest, SingleKeyDropAggregatesWithValueZero) {
     EXPECT_THAT(acc_status, IsOk());
   }
 
-  EXPECT_THAT(dp_aggregator->GetNumInputs(), Eq(num_inputs));
   EXPECT_THAT(dp_aggregator->CanReport(), IsTrue());
 
   if (GetParam()) {
@@ -660,7 +655,6 @@ TEST_P(DPThresholdingHistogramTest,
     EXPECT_THAT(aggregator->Accumulate({&sizeKeys2, &animalKeys2, &t2}),
                 IsOk());
     // Totals: [3, 5, 4, 4]
-    EXPECT_THAT(aggregator->GetNumInputs(), Eq(2 * (i + 1)));
   }
 
   if (GetParam()) {
@@ -1062,7 +1056,6 @@ TEST_P(DPThresholdingHistogramTest,
         IsOk());
   }
 
-  EXPECT_THAT(dp_aggregator->GetNumInputs(), Eq(num_inputs));
   EXPECT_THAT(dp_aggregator->CanReport(), IsTrue());
 
   if (GetParam()) {
@@ -1196,7 +1189,6 @@ TEST_P(DPThresholdingHistogramTest,
         Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({1, 1, 1, 1})));
     TFF_EXPECT_OK(dp_aggregator->Accumulate({&keys, &values}));
   }
-  EXPECT_EQ(dp_aggregator->GetNumInputs(), kNumInputs);
   EXPECT_TRUE(dp_aggregator->CanReport());
 
   if (GetParam()) {

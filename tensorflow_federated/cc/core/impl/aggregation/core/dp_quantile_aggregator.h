@@ -70,7 +70,7 @@ class DPQuantileAggregator final : public DPTensorAggregator {
                              std::make_unique<MutableVectorData<T>>(),
                              input_specs) {}
 
-  inline int GetNumInputs() const override { return num_inputs_; }
+  inline int GetNumInputs() const { return num_inputs_; }
 
   inline int GetBufferSize() const { return buffer_.size(); }
 

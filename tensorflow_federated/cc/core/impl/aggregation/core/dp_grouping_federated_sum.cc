@@ -61,9 +61,8 @@ class DPGroupingFederatedSum final
 
   DPGroupingFederatedSum(InputT linfinity_bound, double l1_bound,
                          double l2_bound,
-                         std::unique_ptr<MutableVectorData<OutputT>> data,
-                         int num_inputs)
-      : OneDimGroupingAggregator<InputT, OutputT>(std::move(data), num_inputs),
+                         std::unique_ptr<MutableVectorData<OutputT>> data)
+      : OneDimGroupingAggregator<InputT, OutputT>(std::move(data)),
         linfinity_bound_(linfinity_bound),
         l1_bound_(l1_bound),
         l2_bound_(l2_bound) {}
@@ -182,8 +181,7 @@ absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateDPGroupingFederatedSum(
              : std::make_unique<DPGroupingFederatedSum<InputT, OutputT>>(
                    linfinity_bound, l1_bound, l2_bound,
                    MutableVectorData<OutputT>::CreateFromEncodedContent(
-                       aggregator_state->vector_data()),
-                   aggregator_state->num_inputs());
+                       aggregator_state->vector_data()));
 }
 
 // Same as above except input and output types are identical.

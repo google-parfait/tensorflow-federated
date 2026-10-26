@@ -196,7 +196,6 @@ TEST(DPExhaustiveReportHistogramTest, NoiseAddedForSmallEpsilons) {
     Tensor value({1, 1});
     EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
   }
-  EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
   EXPECT_TRUE(aggregator->CanReport());
 
   TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*aggregator).Report());
@@ -233,7 +232,6 @@ TEST(DPExhaustiveReportHistogramTest, FloatTest) {
     Tensor value({1.0f, 0.0f});
     EXPECT_THAT(aggregator->Accumulate({&key, &value}), IsOk());
   }
-  EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
   EXPECT_TRUE(aggregator->CanReport());
 
   TFF_ASSERT_OK_AND_ASSIGN(auto report, std::move(*aggregator).Report());

@@ -52,9 +52,6 @@ class TensorAggregator
   // only be called after ValidateInputs() has returned an OK Status.
   absl::Status AccumulateWithoutValidation(InputTensorList tensors);
 
-  // Returns the number of aggregated inputs.
-  virtual int GetNumInputs() const = 0;
-
   // Serializes the internal state of the TensorAggregator as a string.
   virtual absl::StatusOr<std::string> Serialize() && = 0;
 
