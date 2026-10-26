@@ -13,20 +13,20 @@
 # limitations under the License.
 """Libraries for building Stack Overflow next-word prediction models."""
 
-import tensorflow as tf
+import keras
 
 
-class TransposableEmbedding(tf.keras.layers.Layer):
+class TransposableEmbedding(keras.layers.Layer):
   """A Keras layer implementing a transposed projection output layer."""
 
-  def __init__(self, embedding_layer: tf.keras.layers.Embedding):
+  def __init__(self, embedding_layer: keras.layers.Embedding):
     super().__init__()
     self.embeddings = embedding_layer.embeddings
 
-  # Placing `tf.matmul` under the `call` method is important for backpropagating
+  # Placing `matmul` under the `call` method is important for backpropagating
   # the gradients of `self.embeddings` in graph mode.
   def call(self, inputs):
-    return tf.matmul(inputs, self.embeddings, transpose_b=True)
+    return keras.ops.matmul(inputs, keras.ops.transpose(self.embeddings))
 
 
 def create_recurrent_model(
@@ -35,7 +35,7 @@ def create_recurrent_model(
     num_lstm_layers: int = 1,
     lstm_size: int = 670,
     shared_embedding: bool = False,
-) -> tf.keras.Model:
+) -> keras.Model:
   """Constructs a recurrent model with an initial embeding layer.
 
   The resulting model embeds sequences of integer tokens (whose values vary
@@ -57,7 +57,7 @@ def create_recurrent_model(
       final dense layer is instead learned separately.
 
   Returns:
-    An uncompiled `tf.keras.Model`.
+    An uncompiled `keras.Model`.
   """
   if vocab_size < 1:
     raise ValueError('vocab_size must be a positive integer.')
@@ -68,22 +68,22 @@ def create_recurrent_model(
   if lstm_size < 1:
     raise ValueError('lstm_size must be a positive integer.')
 
-  inputs = tf.keras.layers.Input(shape=(None,))
-  input_embedding = tf.keras.layers.Embedding(
+  inputs = keras.layers.Input(shape=(None,))
+  input_embedding = keras.layers.Embedding(
       input_dim=vocab_size, output_dim=embedding_size, mask_zero=True
   )
   embedded = input_embedding(inputs)
   projected = embedded
 
   for _ in range(num_lstm_layers):
-    layer = tf.keras.layers.LSTM(lstm_size, return_sequences=True)
+    layer = keras.layers.LSTM(lstm_size, return_sequences=True)
     processed = layer(projected)
-    projected = tf.keras.layers.Dense(embedding_size)(processed)
+    projected = keras.layers.Dense(embedding_size)(processed)
 
   if shared_embedding:
     transposed_embedding = TransposableEmbedding(input_embedding)
     logits = transposed_embedding(projected)
   else:
-    logits = tf.keras.layers.Dense(vocab_size, activation=None)(projected)
+    logits = keras.layers.Dense(vocab_size, activation=None)(projected)
 
-  return tf.keras.Model(inputs=inputs, outputs=logits)
+  return keras.Model(inputs=inputs, outputs=logits)

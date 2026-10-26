@@ -31,14 +31,13 @@ py_library(
     deps = [
         ":emnist_models",
         ":emnist_preprocessing",
-        "//tensorflow_federated/python/learning/models:keras_utils",
-        "//tensorflow_federated/python/learning/models:variable",
+        "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:emnist",
-        "@pypi//tensorflow",
+        "@pypi//keras",
     ],
 )
 
@@ -61,14 +60,13 @@ py_library(
     deps = [
         ":emnist_models",
         ":emnist_preprocessing",
-        "//tensorflow_federated/python/learning/models:keras_utils",
-        "//tensorflow_federated/python/learning/models:variable",
+        "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:emnist",
-        "@pypi//tensorflow",
+        "@pypi//keras",
     ],
 )
 
@@ -89,7 +87,7 @@ py_test(
 py_library(
     name = "emnist_models",
     srcs = ["emnist_models.py"],
-    deps = ["@pypi//tensorflow"],
+    deps = ["@pypi//keras"],
 )
 
 py_test(

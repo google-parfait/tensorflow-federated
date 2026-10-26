@@ -13,12 +13,12 @@
 # limitations under the License.
 """Library for creating autoencoder tasks on EMNIST."""
 
+import collections
 from typing import Optional
 
-import tensorflow as tf
+import keras
 
-from tensorflow_federated.python.learning.models import keras_utils
-from tensorflow_federated.python.learning.models import variable
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
@@ -70,18 +70,17 @@ def create_autoencoder_task_from_datasets(
       eval_preprocess_fn=eval_preprocess_fn,
   )
 
-  def model_fn() -> variable.VariableModel:
-    return keras_utils.from_keras_model(
-        keras_model=emnist_models.create_autoencoder_model(),
-        loss=tf.keras.losses.MeanSquaredError(),
-        input_spec=task_datasets.element_type_structure,
-        metrics=[
-            tf.keras.metrics.MeanSquaredError(),
-            tf.keras.metrics.MeanAbsoluteError(),
-        ],
-    )
+  model = functional.functional_model_from_keras(
+      keras_model=emnist_models.create_autoencoder_model(),
+      loss_fn=keras.losses.MeanSquaredError(),
+      input_spec=task_datasets.element_type_structure,
+      metrics_constructor=collections.OrderedDict(
+          mean_squared_error=keras.metrics.MeanSquaredError,
+          mean_absolute_error=keras.metrics.MeanAbsoluteError,
+      ),
+  )
 
-  return baseline_task.BaselineTask(task_datasets, model_fn)
+  return baseline_task.BaselineTask(task_datasets, model)
 
 
 def create_autoencoder_task(
