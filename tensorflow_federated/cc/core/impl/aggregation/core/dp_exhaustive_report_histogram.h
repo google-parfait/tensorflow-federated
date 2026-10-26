@@ -17,6 +17,7 @@
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_EXHAUSTIVE_REPORT_HISTOGRAM_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_EXHAUSTIVE_REPORT_HISTOGRAM_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -26,7 +27,7 @@
 #include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -56,6 +57,7 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
 
  protected:
   friend class DPGroupByFactory;
+  friend class DPExhaustiveReportHistogramPeer;
 
   // Create a DPExhaustiveReportHistogram.
   // This function is meant for use by the DPGroupByFactory; most callers
@@ -63,13 +65,15 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
   // the factory, i.e.
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
   //
-  // Takes the same inputs as DPGroupByAggregator, plus `domain_tensors`, a Span
-  // of Tensors where the i-th describes the domain of the i-th grouping key.
+  // Takes the same inputs as DPGroupByAggregator, plus `key_storage` (shared
+  // with `key_combiner`) and `domain_tensors`, a Span of Tensors where the i-th
+  // describes the domain of the i-th grouping key.
   static absl::StatusOr<std::unique_ptr<DPExhaustiveReportHistogram>> Create(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
+      std::shared_ptr<CompositeKeyStorage> key_storage,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
       int num_inputs, double epsilon, double delta,
       int64_t max_groups_contributed, TensorSpan domain_tensors,
@@ -87,6 +91,7 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
+      std::shared_ptr<CompositeKeyStorage> key_storage,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
       int num_inputs, double epsilon, double delta,
       int64_t max_groups_contributed, TensorSpan domain_tensors,
@@ -106,9 +111,17 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
   // Assumes that which_key is in the range [0, domain_tensors_.size()]
   // and that the i-th entry of domain_indices is in the range
   // [0, domain_tensors_[i].num_elements()]
-  bool IncrementDomainIndices(absl::FixedArray<int64_t>& domain_indices,
-                              int64_t which_key = 0);
+  bool IncrementDomainIndices(absl::FixedArray<size_t>& domain_indices,
+                              size_t which_key = 0);
 
+  // Given indices that specify a combination of keys in `domain_tensors_`,
+  // make a CompositeKey out of the data at those indices.
+  // Assumes that `domain_indices` has size `domain_tensors_.size()` and that
+  // the i-th entry is in the range [0, domain_tensors_[i].num_elements()].
+  CompositeKey MakeCompositeKeyFromDomainTensors(
+      const absl::FixedArray<size_t>& domain_indices);
+
+  std::shared_ptr<CompositeKeyStorage> key_storage_;
   TensorSpan domain_tensors_;
 };
 

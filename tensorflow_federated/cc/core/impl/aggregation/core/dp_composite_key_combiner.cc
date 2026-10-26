@@ -43,53 +43,6 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
-namespace {
-// Advances the pointer by T bytes.
-template <typename T>
-void AdvancePtr(void*& ptr) {
-  ptr = static_cast<void*>(static_cast<uint8_t*>(ptr) + sizeof(T));
-}
-
-// In order to MakeCompositeKeyFromDomainTensors, we need a variant of
-// CopyToDest that takes an index. That is, we need to be able to retrieve the
-// datum at a given index of the array that a source_ptr points to, then copy it
-// to a dest_ptr. We do not advance source_ptr because we have indexing.
-template <typename T>
-void IndexedCopyToDest(const void* source_ptr, size_t index, void*& dest_ptr,
-                       absl::node_hash_set<std::string>& intern_pool) {
-  const T& source_data = static_cast<const T*>(source_ptr)[index];
-  // Copy the bytes pointed to by source_ptr to the destination pointed to by
-  // dest_ptr.
-  std::memcpy(dest_ptr, &source_data, sizeof(T));
-  // Advance dest_ptr to the next T.
-  AdvancePtr<T>(dest_ptr);
-}
-
-// Specialization of IndexedCopyToDest for DT_STRING data type that interns the
-// string_view.
-template <>
-void IndexedCopyToDest<string_view>(
-    const void* source_ptr, size_t index, void*& dest_ptr,
-    absl::node_hash_set<std::string>& intern_pool) {
-  const string_view& source_data =
-      static_cast<const string_view*>(source_ptr)[index];
-  // Insert the string into the intern pool if it does not already exist. This
-  // makes a copy of the string so that the intern pool owns the storage.
-  auto it = intern_pool.emplace(source_data).first;
-  // The iterator of a node_hash_set set may be invalidated by inserting more
-  // elements, but the pointer to the underlying element is guaranteed to be
-  // stable.
-  // Thus, get the address of the string after dereferencing the iterator.
-  const std::string* interned_string_ptr = &*it;
-  // The stable address of the string can be interpreted as a 64-bit integer.
-  intptr_t ptr_int = reinterpret_cast<intptr_t>(interned_string_ptr);
-  // Set the destination storage to the integer representation of the string
-  // address.
-  std::memcpy(dest_ptr, &ptr_int, sizeof(intptr_t));
-  // Advance the dest_ptr.
-  AdvancePtr<intptr_t>(dest_ptr);
-}
-}  // namespace
 
 // Class that supports DPCompositeKeyCombiner::AccumulateWithBound. Each call to
 // AccumulateWithBound creates a temporary mapping from composite keys to
@@ -138,8 +91,12 @@ class LocalToGlobalInserter
 
 DPCompositeKeyCombiner::DPCompositeKeyCombiner(
     const std::vector<DataType>& dtypes, int64_t l0_bound,
-    std::optional<DomainSpec> domain_spec)
-    : CompositeKeyCombiner(dtypes),
+    std::optional<DomainSpec> domain_spec,
+    std::shared_ptr<CompositeKeyStorage> storage)
+    : CompositeKeyCombiner(
+          dtypes, storage != nullptr ? std::move(storage)
+                                     : std::make_shared<CompositeKeyStorage>(
+                                           CalculateCompositeKeySize(dtypes))),
       l0_bound_(l0_bound),
       domain_spec_(std::move(domain_spec)),
       bitgen_(absl::BitGen()) {}
@@ -203,62 +160,6 @@ StatusOr<Tensor> DPCompositeKeyCombiner::AccumulateWithBound(
                         std::move(local_ordinals));
 }
 
-// Retrieve the ordinal associated with the composite key formed by the data in
-// domain_tensors at the given indices (or kNoOrdinal if not found).
-int64_t DPCompositeKeyCombiner::GetOrdinal(
-    TensorSpan domain_tensors, const absl::FixedArray<int64_t>& indices) {
-  for (auto index : indices) {
-    TFF_CHECK(index >= 0) << "DPCompositeKeyCombiner::GetOrdinal: Indices must "
-                             "be non-negative.";
-  }
-
-  size_t expected_num_keys = dtypes().size();
-  TFF_CHECK(domain_tensors.size() == expected_num_keys)
-      << "DPCompositeKeyCombiner::GetOrdinal: The number of tensors in the "
-         "output tensor list must match the number of keys expected by the "
-         "CompositeKeyCombiner.";
-  TFF_CHECK(indices.size() == expected_num_keys)
-      << "DPCompositeKeyCombiner::GetOrdinal: The number of indices must match "
-         "the number of keys expected by the CompositeKeyCombiner.";
-
-  CompositeKey composite_key =
-      MakeCompositeKeyFromDomainTensors(domain_tensors, indices);
-  const auto& it = GetCompositeKeys().find(composite_key);
-  return it == GetCompositeKeys().end() ? kNoOrdinal : it->second;
-}
-
-// Populates composite_key with data drawn from domain_tensors. Indices specify
-// which domain elements to copy.
-CompositeKey DPCompositeKeyCombiner::MakeCompositeKeyFromDomainTensors(
-    TensorSpan domain_tensors, const absl::FixedArray<int64_t>& indices) {
-  auto data_type_iter = dtypes().begin();
-  for (auto& domain_tensor : domain_tensors) {
-    // Check that the data types of the input tensors match those provided to
-    // the constructor.
-    TFF_CHECK(*data_type_iter == domain_tensor.dtype())
-        << "DPCompositeKeyCombiner::GetOrdinal: Data types must match. Got "
-        << domain_tensor.dtype() << " but expected " << *data_type_iter;
-    data_type_iter++;
-  }
-
-  auto index_iter = indices.begin();
-  data_type_iter = dtypes().begin();
-  CompositeKey composite_key = NewCompositeKey();
-  void* dest_ptr = composite_key.data();
-  for (auto& domain_tensor : domain_tensors) {
-    // Copy over data from the current tensor at the given index.
-    const void* source_ptr = domain_tensor.data().data();
-    DTYPE_CASES(*data_type_iter, T,
-                IndexedCopyToDest<T>(source_ptr, *index_iter, dest_ptr,
-                                     GetInternPool()));
-
-    // Advance the data-type and tensor iterators.
-    data_type_iter++;
-    index_iter++;
-  }
-  return composite_key;
-}
-
 std::unique_ptr<MutableVectorData<int64_t>>
 DPCompositeKeyCombiner::CreateOrdinals(const InputTensorList& tensors,
                                        size_t num_elements,
@@ -296,15 +197,13 @@ DPCompositeKeyCombiner::CreateInDomainOrdinals(
     // domain specified by domain_spec_.
     bool in_domain = true;
     for (int j = 0; j < iterators.size(); ++j) {
-      const void* itr = iterators[j];
+      const void*& itr = iterators[j];
       DTYPE_CASES(
           *(data_type_iter), T,
-          in_domain =
-              in_domain &&
-              domain_spec_->IsMember<T>(static_cast<const T*>(itr)[i], j)
-                  .value_or(false));
-      DTYPE_CASES(*(data_type_iter++), T,
-                  IndexedCopyToDest<T>(itr, i, key_ptr, GetInternPool()));
+          in_domain = in_domain &&
+                      domain_spec_->IsMember<T>(*static_cast<const T*>(itr), j)
+                          .value_or(false));
+      DTYPE_CASES(*(data_type_iter++), T, CopyToDest<T>(itr, key_ptr));
     }
 
     // If a composite key is not in domain, we do not insert it into the
