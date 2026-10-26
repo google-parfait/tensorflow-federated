@@ -71,8 +71,8 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed, TensorSpan domain_tensors,
+      double epsilon, double delta, int64_t max_groups_contributed,
+      TensorSpan domain_tensors,
       int max_string_length = kDefaultMaxStringLength);
 
   // Checks magnitude of DP budget. If too large, simply releases noiseless
@@ -88,8 +88,8 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed, TensorSpan domain_tensors,
+      double epsilon, double delta, int64_t max_groups_contributed,
+      TensorSpan domain_tensors,
       int max_string_length = kDefaultMaxStringLength);
 
   // When merging two DPExhaustiveReportHistograms, bounding the aggregates will

@@ -77,7 +77,7 @@ class DPGroupByAggregator : public GroupByAggregator {
   // * epsilon: the privacy budget for released aggregations.
   // * delta: the privacy failure parameter for released aggregations.
   // * max_groups_contributed: if all data from a unique privacy unit is in
-  //   a single DPGroupByAggregator::AggregateTensorsInternal call, this is the
+  //   a single DPGroupByAggregator::AggregateTensors call, this is the
   //   max number of composite keys one privacy unit contributes to,
   // * max_string_length: the maximum length of any string datum; defaults to
   //   kDefaultMaxStringLength.
@@ -90,8 +90,7 @@ class DPGroupByAggregator : public GroupByAggregator {
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed,
+      double epsilon, double delta, int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributor_counts = {},
       int max_string_length = kDefaultMaxStringLength);

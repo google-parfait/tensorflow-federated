@@ -121,13 +121,12 @@ DPThresholdingHistogram::DPThresholdingHistogram(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    int num_inputs, double epsilon, double delta,
-    int64_t max_groups_contributed,
+    double epsilon, double delta, int64_t max_groups_contributed,
     std::optional<int> min_contributors_to_group,
     std::vector<int> contributor_counts, int max_string_length)
     : DPGroupByAggregator(input_key_specs, output_key_specs, intrinsics,
                           std::move(key_combiner), std::move(aggregators),
-                          num_inputs, epsilon, delta, max_groups_contributed,
+                          epsilon, delta, max_groups_contributed,
                           min_contributors_to_group,
                           std::move(contributor_counts), max_string_length) {}
 
@@ -139,8 +138,7 @@ DPThresholdingHistogram::Create(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    int num_inputs, double epsilon, double delta,
-    int64_t max_groups_contributed,
+    double epsilon, double delta, int64_t max_groups_contributed,
     std::optional<int> min_contributors_to_group,
     std::vector<int> contributor_counts, int max_string_length) {
   bool need_selector =
@@ -158,7 +156,7 @@ DPThresholdingHistogram::Create(
 
   auto dp_thresholding_histogram = absl::WrapUnique(new DPThresholdingHistogram(
       input_key_specs, output_key_specs, intrinsics, std::move(key_combiner),
-      std::move(aggregators), num_inputs, epsilon_for_aggs, delta_for_aggs,
+      std::move(aggregators), epsilon_for_aggs, delta_for_aggs,
       max_groups_contributed, min_contributors_to_group, contributor_counts,
       max_string_length));
 

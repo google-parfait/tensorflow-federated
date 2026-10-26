@@ -77,10 +77,9 @@ GroupByAggregator::GroupByAggregator(
     const std::vector<Intrinsic>* intrinsics,
     std::unique_ptr<CompositeKeyCombiner> key_combiner,
     std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-    int num_inputs, std::optional<int> min_contributors_to_group,
+    std::optional<int> min_contributors_to_group,
     std::vector<int> contributor_counts)
-    : num_inputs_(num_inputs),
-      num_keys_per_input_(input_key_specs.size()),
+    : num_keys_per_input_(input_key_specs.size()),
       key_combiner_(std::move(key_combiner)),
       intrinsics_(*intrinsics),
       output_key_specs_(*output_key_specs),
@@ -167,17 +166,13 @@ Status GroupByAggregator::MergeWith(TensorAggregator&& other) {
   }
   TFF_RETURN_IF_ERROR((*other_ptr).CheckValid());
   TFF_RETURN_IF_ERROR(other_ptr->IsCompatible(*this));
-  int other_num_inputs = other_ptr->GetNumInputs();
   OutputTensorList other_output_tensors =
       std::move(*other_ptr).TakeOutputsInternal();
   InputTensorList tensors(other_output_tensors.size());
   std::vector<int> other_contributors = other_ptr->GetContributors();
   for (int i = 0; i < other_output_tensors.size(); ++i)
     tensors[i] = &other_output_tensors[i];
-  TFF_RETURN_IF_ERROR(MergeTensorsInternal(std::move(tensors), other_num_inputs,
-                                           other_contributors));
-  num_inputs_ += other_num_inputs;
-  return absl::OkStatus();
+  return MergeTensorsInternal(std::move(tensors), other_contributors);
 }
 
 bool GroupByAggregator::CanReport() const { return CheckValid().ok(); }
@@ -206,8 +201,30 @@ absl::StatusOr<OutputTensorList> GroupByAggregator::Report() && {
 }
 
 Status GroupByAggregator::AggregateTensors(InputTensorList tensors) {
-  TFF_RETURN_IF_ERROR(AggregateTensorsInternal(std::move(tensors)));
-  num_inputs_++;
+  TFF_ASSIGN_OR_RETURN(Tensor ordinals, CreateOrdinalsByGroupingKeys(tensors));
+
+  if (min_contributors_to_group_.has_value()) {
+    TFF_RETURN_IF_ERROR(AddOneContributor(ordinals));
+  }
+
+  int input_index = num_keys_per_input_;
+  for (int i = 0; i < intrinsics_.size(); ++i) {
+    InputTensorList intrinsic_inputs(intrinsics_[i].inputs.size() + 1);
+    intrinsic_inputs[0] = &ordinals;
+    for (int j = 0; j < intrinsics_[i].inputs.size(); ++j) {
+      intrinsic_inputs[j + 1] = tensors[input_index++];
+    }
+    // Accumulate the input tensors into the aggregator.
+    absl::Status aggregation_status =
+        aggregators_[i]->Accumulate(std::move(intrinsic_inputs));
+    // If the aggregation operation fails on a sub-intrinsic, the
+    // key_combiner_ and any previous sub-intrinsics have already been
+    // modified. Thus, exit the program with a CHECK failure rather than a
+    // failed status which might leave the GroupByAggregator in an
+    // inconsistent state.
+    TFF_CHECK(aggregation_status.ok()) << "GroupByAggregator::AggregateTensors "
+                                       << aggregation_status.message();
+  }
   return absl::OkStatus();
 }
 
@@ -323,7 +340,6 @@ Status GroupByAggregator::AddMultipleContributors(
 
 absl::StatusOr<std::string> GroupByAggregator::Serialize() && {
   GroupByAggregatorState state;
-  state.set_num_inputs(num_inputs_);
   // If keys are being used, store the current list of output keys into state.
   if (key_combiner_ != nullptr) {
     OutputTensorList keys = key_combiner_->GetOutputKeys();
@@ -367,7 +383,6 @@ absl::StatusOr<std::vector<std::string>> GroupByAggregator::Partition(
     group_by_aggregator_state.mutable_keys()->Reserve(keys.size());
     group_by_aggregator_state.mutable_nested_aggregators()->Reserve(
         aggregators_.size());
-    group_by_aggregator_state.set_num_inputs(num_inputs_);
   }
   for (const auto& key : keys) {
     TFF_ASSIGN_OR_RETURN(auto partitioned_keys, partitioner.PartitionKeys(key));
@@ -550,38 +565,8 @@ Status GroupByAggregator::ValidateInputs(const InputTensorList& tensors) const {
   return absl::OkStatus();
 }
 
-Status GroupByAggregator::AggregateTensorsInternal(InputTensorList tensors) {
-  TFF_ASSIGN_OR_RETURN(Tensor ordinals, CreateOrdinalsByGroupingKeys(tensors));
-
-  if (min_contributors_to_group_.has_value()) {
-    TFF_RETURN_IF_ERROR(AddOneContributor(ordinals));
-  }
-
-  int input_index = num_keys_per_input_;
-  for (int i = 0; i < intrinsics_.size(); ++i) {
-    InputTensorList intrinsic_inputs(intrinsics_[i].inputs.size() + 1);
-    intrinsic_inputs[0] = &ordinals;
-    for (int j = 0; j < intrinsics_[i].inputs.size(); ++j) {
-      intrinsic_inputs[j + 1] = tensors[input_index++];
-    }
-    // Accumulate the input tensors into the aggregator.
-    absl::Status aggregation_status =
-        aggregators_[i]->Accumulate(std::move(intrinsic_inputs));
-    // If the aggregation operation fails on a sub-intrinsic, the
-    // key_combiner_ and any previous sub-intrinsics have already been
-    // modified. Thus, exit the program with a CHECK failure rather than a
-    // failed status which might leave the GroupByAggregator in an
-    // inconsistent state.
-    TFF_CHECK(aggregation_status.ok())
-        << "GroupByAggregator::AggregateTensorsInternal "
-        << aggregation_status.message();
-  }
-  return absl::OkStatus();
-}
-
 Status GroupByAggregator::MergeTensorsInternal(
-    InputTensorList tensors, int num_merged_inputs,
-    const std::vector<int>& other_contributors) {
+    InputTensorList tensors, const std::vector<int>& other_contributors) {
   if (tensors.size() != num_tensors_per_input_) {
     return absl::InvalidArgumentError(absl::StrCat(
         "GroupByAggregator::MergeTensorsInternal should operate on ",
@@ -625,8 +610,8 @@ Status GroupByAggregator::MergeTensorsInternal(
       intrinsic_inputs[j + 1] = tensors[input_index++];
     }
     // Merge the input tensors into the aggregator.
-    absl::Status aggregation_status = aggregators_[i]->MergeTensors(
-        std::move(intrinsic_inputs), num_merged_inputs);
+    absl::Status aggregation_status =
+        aggregators_[i]->MergeTensors(std::move(intrinsic_inputs));
     // If the aggregation operation fails on a sub-intrinsic, the
     // key_combiner_ and any previous sub-intrinsics have already been
     // modified. Thus, exit the program with a CHECK failure rather than a
@@ -678,7 +663,7 @@ absl::StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeys(
 absl::StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeysForMerge(
     const InputTensorList& inputs) {
   // In this base class, ordinals are made the same way for
-  // MergeTensorsInternal as for AggregateTensorsInternal.
+  // MergeTensorsInternal as for AggregateTensors.
   return CreateOrdinalsByGroupingKeys(inputs);
 }
 
@@ -813,7 +798,7 @@ GroupByFactory::CreateAggregators(
 Status GroupByFactory::PopulateKeyCombinerFromState(
     CompositeKeyCombiner& key_combiner,
     const GroupByAggregatorState& aggregator_state) {
-  if (aggregator_state.num_inputs() == 0) {
+  if (aggregator_state.keys().empty()) {
     return absl::OkStatus();
   }
   std::vector<Tensor> key_tensors(aggregator_state.keys().size());
@@ -899,14 +884,12 @@ GroupByFactory::CreateInternal(
     }
   }
 
-  int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
-
   // Use new rather than make_unique here because the factory function that
   // uses a non-public constructor can't use std::make_unique, and we don't
   // want to add a dependency on absl::WrapUnique.
   return std::unique_ptr<GroupByAggregator>(new GroupByAggregator(
       intrinsic.inputs, &intrinsic.outputs, &intrinsic.nested_intrinsics,
-      std::move(key_combiner), std::move(nested_aggregators), num_inputs,
+      std::move(key_combiner), std::move(nested_aggregators),
       min_contributors_to_group, std::move(contributors_to_groups)));
 }
 

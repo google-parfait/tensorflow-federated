@@ -47,15 +47,11 @@ template <typename T>
 class AggVectorAggregator : public TensorAggregator {
  public:
   AggVectorAggregator(DataType dtype, TensorShape shape)
-      : AggVectorAggregator(dtype, shape, CreateData(shape), 0) {}
+      : AggVectorAggregator(dtype, shape, CreateData(shape)) {}
 
   AggVectorAggregator(DataType dtype, TensorShape shape,
-                      std::unique_ptr<MutableVectorData<T>> data,
-                      int num_inputs)
-      : dtype_(dtype),
-        shape_(std::move(shape)),
-        data_vector_(std::move(data)),
-        num_inputs_(num_inputs) {
+                      std::unique_ptr<MutableVectorData<T>> data)
+      : dtype_(dtype), shape_(std::move(shape)), data_vector_(std::move(data)) {
     TFF_CHECK(internal::TypeTraits<T>::kDataType == dtype)
         << "Incompatible dtype";
   }
@@ -63,13 +59,10 @@ class AggVectorAggregator : public TensorAggregator {
   // Provides mutable access to the aggregator data as a vector<T>
   inline std::vector<T>& data() { return *data_vector_; }
 
-  int GetNumInputs() const override { return num_inputs_; }
-
   absl::Status MergeWith(TensorAggregator&& other) override {
     TFF_RETURN_IF_ERROR(CheckValid());
     TFF_ASSIGN_OR_RETURN(AggVectorAggregator<T> * other_ptr, CastOther(other));
     TFF_RETURN_IF_ERROR((*other_ptr).CheckValid());
-    int64_t other_num_inputs = other.GetNumInputs();
     OutputTensorList output_tensors = std::move(*other_ptr).TakeOutputs();
     TFF_CHECK(output_tensors.size() == 1)
         << "AggVectorAggregator::MergeOutputTensors: AggVectorAggregator "
@@ -83,13 +76,11 @@ class AggVectorAggregator : public TensorAggregator {
     // Delegate the actual aggregation to the specific aggregation
     // intrinsic implementation.
     AggregateVector(output.AsAggVector<T>());
-    num_inputs_ += other_num_inputs;
     return absl::OkStatus();
   }
 
   absl::StatusOr<std::string> Serialize() && override {
     AggVectorAggregatorState aggregator_state;
-    aggregator_state.set_num_inputs(num_inputs_);
     *(aggregator_state.mutable_vector_data()) = data_vector_->EncodeContent();
     return aggregator_state.SerializeAsString();
   }
@@ -118,7 +109,6 @@ class AggVectorAggregator : public TensorAggregator {
     // Delegate the actual aggregation to the specific aggregation
     // intrinsic implementation.
     AggregateVector(tensors[0]->AsAggVector<T>());
-    num_inputs_++;
     return absl::OkStatus();
   }
 
@@ -165,7 +155,6 @@ class AggVectorAggregator : public TensorAggregator {
   const DataType dtype_;
   const TensorShape shape_;
   std::unique_ptr<MutableVectorData<T>> data_vector_;
-  int num_inputs_;
 };
 
 }  // namespace aggregation

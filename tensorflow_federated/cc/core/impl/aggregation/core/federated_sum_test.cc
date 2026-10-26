@@ -82,7 +82,6 @@ TEST(FederatedSumTest, DenseAggregation_Succeeds) {
   EXPECT_THAT(aggregator->Accumulate(t2), IsOk());
   EXPECT_THAT(aggregator->Accumulate(t3), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -106,7 +105,6 @@ TEST(FederatedSumTest, Merge_Succeeds) {
 
   EXPECT_THAT(aggregator1->MergeWith(std::move(*aggregator2)), IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -130,7 +128,6 @@ TEST(FederatedSumTest, SerializeDeserialize_Succeeds) {
           .value();
 
   EXPECT_THAT(deserialized_aggregator->Accumulate(t3), IsOk());
-  EXPECT_THAT(deserialized_aggregator->GetNumInputs(), Eq(3));
   EXPECT_THAT(deserialized_aggregator->CanReport(), IsTrue());
 
   auto result = std::move(*deserialized_aggregator).Report();

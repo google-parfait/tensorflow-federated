@@ -72,10 +72,6 @@ class GroupByAggregator : public TensorAggregator {
   // on compatible types using compatible inner intrinsics.
   absl::Status MergeWith(TensorAggregator&& other) override;
 
-  // Returns the number of inputs that have been accumulated or merged into this
-  // GroupByAggregator.
-  int GetNumInputs() const override { return num_inputs_; }
-
   // Returns the number of contributors that have contributed to each group. The
   // reference is valid for the lifetime of this object.
   const std::vector<int>& GetContributors() const {
@@ -140,8 +136,6 @@ class GroupByAggregator : public TensorAggregator {
   // aggregators: a vector of unique_ptrs to TensorAggregators made by the
   // factory. Used to perform the inner aggregations.
   //
-  // num_inputs: the number of inputs initially represented by the aggregator.
-  //
   // min_contributors_to_group: the minimum number of contributors before a
   // group total can be released (i.e. the threshold for k-thresholding). If not
   // set, no check will be made on the number of contributors to a group before
@@ -160,7 +154,6 @@ class GroupByAggregator : public TensorAggregator {
       const std::vector<Intrinsic>* intrinsics,
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs,
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributor_counts = {});
 
@@ -171,8 +164,7 @@ class GroupByAggregator : public TensorAggregator {
       const std::vector<TensorSpec>& output_key_specs);
 
   // Perform aggregation of the tensors in a single InputTensorList into the
-  // state of this GroupByAggregator and increment the count of aggregated
-  // tensors.
+  // state of this GroupByAggregator.
   //
   // The order in which the tensors must appear in the input is the following:
   // first, the key tensors in the order they appear in the input_tensor_specs,
@@ -209,7 +201,7 @@ class GroupByAggregator : public TensorAggregator {
                                  const std::vector<int>& contributors);
 
   // The virtual function below enables a distinction between creating ordinals
-  // within MergeTensorsInternal and within AggregateTensorsInternal.
+  // within MergeTensorsInternal and within AggregateTensors.
   // Refer to CreateOrdinalsByGroupingKeys for the latter.
   virtual absl::StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs);
@@ -323,14 +315,9 @@ class GroupByAggregator : public TensorAggregator {
                                DataType expected_dtype,
                                const TensorShape& expected_shape) const;
 
-  // Internal implementation to accumulate the input tensors into the state of
-  // this GroupByAggregator.
-  Status AggregateTensorsInternal(InputTensorList tensors);
-
   // Internal implementation to merge the input tensors into the state of this
-  // GroupByAggregator. The num_merged_inputs arg contains the number of inputs
-  // that were pre-accumulated into the tensors input param.
-  Status MergeTensorsInternal(InputTensorList tensors, int num_merged_inputs,
+  // GroupByAggregator.
+  Status MergeTensorsInternal(InputTensorList tensors,
                               const std::vector<int>& other_contributors);
 
   // Internal implementation of TakeOutputs that returns all keys and values,
@@ -356,7 +343,6 @@ class GroupByAggregator : public TensorAggregator {
   Status IsCompatible(const GroupByAggregator& other) const;
 
   bool output_consumed_ = false;
-  int num_inputs_;
   const size_t num_keys_per_input_;
   size_t num_tensors_per_input_;
   std::unique_ptr<CompositeKeyCombiner> key_combiner_;

@@ -491,10 +491,6 @@ TEST_P(CheckpointAggregatorTest, ReportZeroInputs) {
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {0})))
       .WillOnce(Return(absl::OkStatus()));
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 0);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -516,10 +512,6 @@ TEST_P(CheckpointAggregatorTest, ReportOneInput) {
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {2})))
       .WillOnce(Return(absl::OkStatus()));
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 1);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -544,10 +536,6 @@ TEST_P(CheckpointAggregatorTest, ReportTwoInputs) {
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {5})))
       .WillOnce(Return(absl::OkStatus()));
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 2);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -608,10 +596,6 @@ TEST_P(CheckpointAggregatorTest, ReportMultipleTensors) {
   EXPECT_CALL(builder, Add(StrEq("bar_out"),
                            IsTensor<float>({2, 2}, {1.f, 2.f, 3.f, 4.f})))
       .WillOnce(Return(absl::OkStatus()));
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 1);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -630,22 +614,6 @@ TEST(CheckpointAggregatorTest, ReportAfterAbort) {
   aggregator->Abort();
   MockCheckpointBuilder builder;
   EXPECT_THAT(aggregator->Report(builder), StatusIs(ABORTED));
-}
-
-TEST(CheckpointAggregatorTest, GetNumCheckpointsAggregatedAfterReport) {
-  auto aggregator = CreateWithDefaultConfig();
-
-  MockCheckpointBuilder builder;
-  EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {0})))
-      .WillOnce(Return(absl::OkStatus()));
-  TFF_EXPECT_OK(aggregator->Report(builder));
-  EXPECT_THAT(aggregator->GetNumCheckpointsAggregated(), StatusIs(ABORTED));
-}
-
-TEST(CheckpointAggregatorTest, GetNumCheckpointsAggregatedAfterAbort) {
-  auto aggregator = CreateWithDefaultConfig();
-  aggregator->Abort();
-  EXPECT_THAT(aggregator->GetNumCheckpointsAggregated(), StatusIs(ABORTED));
 }
 
 // A fake aggregator that can never report.
@@ -701,91 +669,6 @@ TEST(CheckpointAggregatorTest, ReportWithFailedCanReportPrecondition) {
 
   MockCheckpointBuilder builder;
   EXPECT_THAT(aggregator->Report(builder), StatusIs(FAILED_PRECONDITION));
-}
-
-// A fake aggregator that never increments the number of inputs aggregated.
-class DoesNotIncrementNumInputsAggregator : public AggVectorAggregator<int> {
- public:
-  using AggVectorAggregator<int>::AggVectorAggregator;
-
- private:
-  void AggregateVector(const AggVector<int>& agg_vector) override {}
-  int GetNumInputs() const override { return 0; }
-};
-
-class DoesNotIncrementNumInputsAggregatorFactory
-    : public TensorAggregatorFactory {
- private:
-  absl::StatusOr<std::unique_ptr<TensorAggregator>> Create(
-      const Intrinsic& intrinsic) const override {
-    if (intrinsic.inputs[0].dtype() != DT_INT32) {
-      return absl::InvalidArgumentError("Unsupported dtype: expected DT_INT32");
-    }
-    return std::make_unique<DoesNotIncrementNumInputsAggregator>(
-        intrinsic.inputs[0].dtype(), intrinsic.inputs[0].shape());
-  }
-
-  absl::StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
-      const Intrinsic& intrinsic, std::string serialized_state) const override {
-    return absl::UnimplementedError("Unimplemented");
-  }
-};
-
-TEST(CheckpointAggregatorTest, GetNumCheckpointsAggregatedFailsOnMismatch) {
-  DoesNotIncrementNumInputsAggregatorFactory agg_factory;
-  RegisterAggregatorFactory("does_not_increment_num_inputs_aggregation",
-                            &agg_factory);
-  // Configuration that uses the DoesNotIncrementNumInputsAggregatorFactory
-  // above. This aggregation always returns 0 for the number of inputs
-  // aggregated, even after inputs have been accumulated, which will lead to a
-  // mismatch with tensor aggregators that accurately count the number of inputs
-  // aggregated.
-  Configuration config_message = PARSE_TEXT_PROTO(R"pb(
-    intrinsic_configs {
-      intrinsic_uri: "does_not_increment_num_inputs_aggregation"
-      intrinsic_args {
-        input_tensor {
-          name: "foo"
-          dtype: DT_INT32
-          shape { dim_sizes: 3 }
-        }
-      }
-      output_tensors {
-        name: "foo_out"
-        dtype: DT_INT32
-        shape { dim_sizes: 3 }
-      }
-    }
-    intrinsic_configs {
-      intrinsic_uri: "federated_sum"
-      intrinsic_args {
-        input_tensor {
-          name: "bar"
-          dtype: DT_FLOAT
-          shape { dim_sizes: 2 dim_sizes: 2 }
-        }
-      }
-      output_tensors {
-        name: "bar_out"
-        dtype: DT_FLOAT
-        shape { dim_sizes: 2 dim_sizes: 2 }
-      }
-    })pb");
-  auto aggregator = Create(config_message);
-  MockCheckpointParser parser;
-  EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce([] {
-    return Tensor::Create(DT_INT32, {3}, CreateTestData({1, 2, 3}));
-  });
-  EXPECT_CALL(parser, GetTensor(StrEq("bar"))).WillOnce([] {
-    return Tensor::Create(DT_FLOAT, {2, 2},
-                          CreateTestData({1.f, 2.f, 3.f, 4.f}));
-  });
-  TFF_EXPECT_OK(aggregator->Accumulate(parser));
-
-  // The number of aggregated checkpoints is undefined because the inner
-  // aggregators have aggregated different numbers of tensors.
-  EXPECT_THAT(aggregator->GetNumCheckpointsAggregated(),
-              StatusIs(FAILED_PRECONDITION));
 }
 
 TEST_P(CheckpointAggregatorTest, ReportFedSqlZeroInputs) {
@@ -869,10 +752,6 @@ TEST_P(CheckpointAggregatorTest, ReportFedSqlZeroInputs) {
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(builder, Add(StrEq("baz_out"), IsTensor<float>({0}, {})))
       .WillOnce(Return(absl::OkStatus()));
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 0);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -1023,10 +902,6 @@ TEST_P(CheckpointAggregatorTest, ReportFedSqlsOneInput) {
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(builder, Add(StrEq("val1_out"), IsTensor<float>({2}, {.1f, .2f})))
       .WillOnce(Return(absl::OkStatus()));
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 1);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -1065,10 +940,6 @@ TEST_P(CheckpointAggregatorTest, ReportFedSqlsTwoInputs) {
   EXPECT_CALL(builder, Add(StrEq("val1_out"),
                            IsTensor<float>({4}, {.1f, .6f, .3f, .5f})))
       .WillOnce(Return(absl::OkStatus()));
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 2);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -1097,10 +968,6 @@ TEST_P(CheckpointAggregatorTest, ReportFedSqlsEmptyInput) {
   EXPECT_CALL(builder, Add(StrEq("val1_out"), IsTensor<float>({0}, {})))
       .WillOnce(Return(absl::OkStatus()));
 
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 1);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -1143,10 +1010,6 @@ TEST_P(CheckpointAggregatorTest, MergeSuccess) {
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {12})))
       .WillOnce(Return(absl::OkStatus()));
 
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator1->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 2);
   TFF_EXPECT_OK(aggregator1->Report(builder));
 }
 
@@ -1178,10 +1041,6 @@ TEST(CheckpointAggregatorTest, ConcurrentAccumulationSuccess) {
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {55})))
       .WillOnce(Return(absl::OkStatus()));
 
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, kNumInputs);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -1397,10 +1256,6 @@ TEST(CheckpointAggregatorTest,
   EXPECT_CALL(builder,
               Add(StrEq("L1_1_estimated"), IsTensor<double>({}, {0.1}, 0.1)))
       .WillOnce(Return(absl::OkStatus()));
-  absl::StatusOr<int> num_checkpoints_aggregated =
-      aggregator->GetNumCheckpointsAggregated();
-  TFF_EXPECT_OK(num_checkpoints_aggregated);
-  EXPECT_EQ(*num_checkpoints_aggregated, 25000);
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 
@@ -1536,7 +1391,6 @@ TEST_P(CheckpointAggregatorTest, ReportWithMinContributors) {
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(builder, Add(StrEq("value_out"), IsTensor<int64_t>({1}, {40}, 5)))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_THAT(aggregator->GetNumCheckpointsAggregated(), IsOkAndHolds(42));
   TFF_EXPECT_OK(aggregator->Report(builder));
 }
 

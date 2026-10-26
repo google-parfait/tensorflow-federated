@@ -42,14 +42,11 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
   explicit DPTensorAggregatorBundle(
       std::vector<std::unique_ptr<DPTensorAggregator>> aggregators,
       std::vector<int> num_tensors_per_agg, double epsilon_per_agg,
-      double delta_per_agg, int num_inputs = 0);
+      double delta_per_agg);
 
   // Validates the input tensors for Accumulate. Returns an InvalidArgument
   // Status if the input tensors are not valid. Otherwise, returns an Ok Status.
   absl::Status ValidateInputs(const InputTensorList& tensors) const override;
-
-  // Returns the number of aggregated inputs.
-  int GetNumInputs() const override { return num_inputs_; };
 
   // Serialize the internal state of the TensorAggregator as a string.
   absl::StatusOr<std::string> Serialize() && override;
@@ -92,9 +89,6 @@ class DPTensorAggregatorBundle final : public TensorAggregator {
 
   // Budget for each nested aggregator.
   double epsilon_per_agg_, delta_per_agg_;
-
-  // Number of times Accumulate() has been successfully called so far.
-  int num_inputs_;
 
   bool output_consumed_ = false;
 };
