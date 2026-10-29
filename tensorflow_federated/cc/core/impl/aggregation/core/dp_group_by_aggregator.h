@@ -62,11 +62,18 @@ class DPGroupByAggregator : public GroupByAggregator {
   static absl::StatusOr<int64_t> GetContentSize(
       absl::string_view serialized_state);
 
+  // Creates a CompositeKeyStorage for the given key specs, or returns nullptr
+  // if `input_key_specs` is empty.
+  static std::shared_ptr<CompositeKeyStorage> CreateKeyStorage(
+      const std::vector<TensorSpec>& input_key_specs,
+      const std::vector<TensorSpec>& output_key_specs);
+
   // Creates a DP key combiner.
   static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
-      std::optional<DomainSpec> domain_spec = std::nullopt);
+      std::optional<DomainSpec> domain_spec = std::nullopt,
+      std::shared_ptr<CompositeKeyStorage> key_storage = nullptr);
 
   virtual absl::StatusOr<std::string> GetNoiseDescription() const;
 
