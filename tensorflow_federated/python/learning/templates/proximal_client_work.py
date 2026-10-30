@@ -198,7 +198,9 @@ def _build_functional_model_delta_update(
 
       with tf.GradientTape() as tape:
         tape.watch(trainable_weights)
-        batch_output = model.predict_on_batch(model_weights, x, training=True)
+        batch_output, non_trainable_weights = model.forward_pass_on_batch(
+            model_weights, x, training=True
+        )
         batch_loss = model.loss(output=batch_output, label=y)
 
       gradients = tape.gradient(batch_loss, trainable_weights)

@@ -346,11 +346,11 @@ def _build_functional_client_update_fn_for_mime_lite(
         incoming_weights: model_weights_lib.ModelWeights,
         data: tf.data.Dataset,
     ) -> Any:
-      trainable_weights, _ = incoming_weights
+      trainable_weights, initial_non_trainable_weights = incoming_weights
 
       def full_gradient_reduce_fn(state, batch):
         """Sums individual gradients, to be later divided by num_examples."""
-        gradient_sum, num_examples_sum = state
+        gradient_sum, non_trainable_weights, num_examples_sum = state
         if isinstance(batch, Mapping):
           x = batch['x']
           y = batch['y']
@@ -365,8 +365,10 @@ def _build_functional_client_update_fn_for_mime_lite(
 
         with tf.GradientTape() as tape:
           tape.watch(trainable_weights)
-          batch_output = model.predict_on_batch(
-              model_weights=incoming_weights, x=x, training=True
+          batch_output, non_trainable_weights = model.forward_pass_on_batch(
+              model_weights=(trainable_weights, non_trainable_weights),
+              x=x,
+              training=True,
           )
           batch_loss = model.loss(output=batch_output, label=y)
 
@@ -379,7 +381,7 @@ def _build_functional_client_update_fn_for_mime_lite(
             gradients,
         )
         num_examples_sum += tf.cast(batch_num_examples, tf.int64)
-        return gradient_sum, num_examples_sum
+        return gradient_sum, non_trainable_weights, num_examples_sum
 
       def initial_state_for_full_gradient_reduce_fn():
         trainable_specs, _ = weight_tensor_specs
@@ -387,14 +389,20 @@ def _build_functional_client_update_fn_for_mime_lite(
             tf.zeros(spec.shape, spec.dtype) for spec in trainable_specs
         )
         initial_num_examples_sum = tf.constant(0, tf.int64)
-        return initial_gradient_sum, initial_num_examples_sum
+        return (
+            initial_gradient_sum,
+            initial_non_trainable_weights,
+            initial_num_examples_sum,
+        )
 
       # Compute the average gradient over all examples without updating the
       # model.
-      full_gradient, num_examples = dataset_reduce_fn(
-          full_gradient_reduce_fn,
-          data,
-          initial_state_for_full_gradient_reduce_fn,
+      full_gradient, post_full_grad_non_trainable, num_examples = (
+          dataset_reduce_fn(
+              full_gradient_reduce_fn,
+              data,
+              initial_state_for_full_gradient_reduce_fn,
+          )
       )
       full_gradient = tf.nest.map_structure(
           lambda g: tf.math.divide_no_nan(g, tf.cast(num_examples, g.dtype)),
@@ -418,7 +426,7 @@ def _build_functional_client_update_fn_for_mime_lite(
 
         with tf.GradientTape() as tape:
           tape.watch(trainable_weights)
-          batch_output = model.predict_on_batch(
+          batch_output, non_trainable_weights = model.forward_pass_on_batch(
               model_weights=model_weights, x=x, training=True
           )
           batch_loss = model.loss(output=batch_output, label=y)
@@ -444,7 +452,10 @@ def _build_functional_client_update_fn_for_mime_lite(
         return (updated_weights, non_trainable_weights), metrics_state
 
       def initial_training_weights():
-        return incoming_weights, model.initialize_metrics_state()
+        return (
+            (trainable_weights, post_full_grad_non_trainable),
+            model.initialize_metrics_state(),
+        )
 
       model_weights, unfinalized_metrics = dataset_reduce_fn(
           train_reduce_fn, data, initial_training_weights

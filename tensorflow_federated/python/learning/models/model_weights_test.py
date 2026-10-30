@@ -310,6 +310,53 @@ class AssignWeightsToTest(parameterized.TestCase, tf.test.TestCase):
     ).assign_weights_to(model)
     self.assertAllClose(model.trainable_variables, [tf.ones([3]), tf.ones([1])])
 
+  def test_weights_to_keras_3_model_with_dropout_and_non_trainable_weights(
+      self,
+  ):
+    feature_dim = 4
+    dropout_rate = 0.5
+    dropout_seed = 42
+    frozen_dense = keras.layers.Dense(
+        units=1,
+        use_bias=False,
+        trainable=False,
+        kernel_initializer='zeros',
+    )
+    keras_model = keras.Sequential([
+        keras.layers.InputLayer(shape=[feature_dim]),
+        keras.layers.Dropout(dropout_rate, seed=dropout_seed),
+        frozen_dense,
+    ])
+    # `non_trainable_variables` includes both the Dropout `SeedGenerator` state
+    # and the frozen Dense kernel, whereas `non_trainable_weights` includes only
+    # the frozen Dense kernel.
+    self.assertLen(keras_model.non_trainable_variables, 2)
+    self.assertLen(keras_model.non_trainable_weights, 1)
+
+    updated_seed = np.asarray([7, 9], dtype=np.uint32)
+    updated_kernel = np.ones([feature_dim, 1], dtype=np.float32)
+    model_weights.ModelWeights(
+        trainable=(),
+        non_trainable=(updated_seed, updated_kernel),
+    ).assign_weights_to(keras_model)
+    self.assertAllEqual(
+        keras_model.non_trainable_variables[0].numpy(), updated_seed
+    )
+    self.assertAllClose(
+        keras_model.non_trainable_weights[0].numpy(), updated_kernel
+    )
+
+    # Also verify compatibility with legacy `VariableModel` weights that exclude
+    # `SeedGenerator` states.
+    scaled_kernel = np.full([feature_dim, 1], 3.0, dtype=np.float32)
+    model_weights.ModelWeights(
+        trainable=(),
+        non_trainable=(scaled_kernel,),
+    ).assign_weights_to(keras_model)
+    self.assertAllClose(
+        keras_model.non_trainable_weights[0].numpy(), scaled_kernel
+    )
+
 
 class ConvertVariablesToArraysTest(tf.test.TestCase):
 

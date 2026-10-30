@@ -558,6 +558,100 @@ class FunctionalProximalClientWorkExecutionTest(
     output = client_work_process.next(state, client_model_weights, client_data)
     self.assertCountEqual(output.measurements.keys(), ['train'])
 
+  @parameterized.named_parameters(
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+  )
+  def test_functional_client_update_advances_non_trainable_state_across_batches(
+      self, loop_implementation
+  ):
+    feature_dim = 2
+    learning_rate = 0.1
+    delta_l2_regularizer = 0.1
+    base_model = test_models.build_functional_linear_regression(
+        feature_dim=feature_dim
+    )
+    initial_weights = (base_model.initial_weights[0], (np.float32(1.0),))
+
+    @tf.function
+    def forward_pass_on_batch(weights, x, training):
+      preds = base_model.predict_on_batch(
+          (weights[0], ()), x, training=training
+      )
+      (scale,) = weights[1]
+      next_scale = scale + 1.0 if training else scale
+      return preds * scale, (next_scale,)
+
+    stateful_model = functional.FunctionalModel(
+        initial_weights=initial_weights,
+        forward_pass_on_batch_fn=forward_pass_on_batch,
+        loss_fn=base_model.loss,
+        metrics_fns=(
+            base_model.initialize_metrics_state,
+            base_model.update_metrics_state,
+            base_model.finalize_metrics,
+        ),
+        input_spec=base_model.input_spec,
+    )
+    frozen_model = functional.FunctionalModel(
+        initial_weights=initial_weights,
+        predict_on_batch_fn=stateful_model.predict_on_batch,
+        loss_fn=base_model.loss,
+        metrics_fns=(
+            base_model.initialize_metrics_state,
+            base_model.update_metrics_state,
+            base_model.finalize_metrics,
+        ),
+        input_spec=base_model.input_spec,
+    )
+    dataset = create_test_dataset().map(lambda d: (d['x'], d['y']))
+    optimizer = sgdm.build_sgdm(learning_rate=learning_rate)
+
+    stateful_client_tf = (
+        proximal_client_work._build_functional_model_delta_update(
+            model=stateful_model,
+            weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+            delta_l2_regularizer=delta_l2_regularizer,
+            loop_implementation=loop_implementation,
+        )
+    )
+    frozen_client_tf = (
+        proximal_client_work._build_functional_model_delta_update(
+            model=frozen_model,
+            weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+            delta_l2_regularizer=delta_l2_regularizer,
+            loop_implementation=loop_implementation,
+        )
+    )
+    variable_client_tf = (
+        proximal_client_work.build_model_delta_update_with_tff_optimizer(
+            model_fn=lambda: functional.model_from_functional(stateful_model),
+            weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+            delta_l2_regularizer=delta_l2_regularizer,
+            loop_implementation=loop_implementation,
+        )
+    )
+    # Use non-zero initial trainable weights so scaling `preds * scale` changes
+    # the gradients across batches.
+    non_zero_weights = (
+        (
+            np.ones([feature_dim, 1], dtype=np.float32),
+            np.zeros([1], dtype=np.float32),
+        ),
+        (np.float32(1.0),),
+    )
+    stateful_output, _ = stateful_client_tf(
+        optimizer, non_zero_weights, dataset
+    )
+    frozen_output, _ = frozen_client_tf(optimizer, non_zero_weights, dataset)
+    variable_output, _ = variable_client_tf(
+        optimizer,
+        model_weights.ModelWeights(*non_zero_weights),
+        dataset,
+    )
+    self.assertAllClose(stateful_output.update, variable_output.update)
+    self.assertNotAllClose(stateful_output.update, frozen_output.update)
+
 
 if __name__ == '__main__':
   cpp_execution_contexts.set_sync_local_cpp_execution_context()

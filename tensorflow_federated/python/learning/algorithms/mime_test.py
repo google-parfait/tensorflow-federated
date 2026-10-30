@@ -726,6 +726,59 @@ class FunctionalMimeLiteTest(tf.test.TestCase, parameterized.TestCase):
           msg=f'Round {round_num}',
       )
 
+  @tensorflow_test_utils.skip_test_for_multi_gpu
+  def test_functional_with_dropout_matches_variable_model(self):
+    dataset = _create_dataset()
+    feature_dim = 2
+    dropout_rate = 0.5
+    dropout_seed = 42
+    learning_rate = 0.1
+    momentum = 0.9
+    server_lr = 1.0
+
+    keras_model = keras.Sequential([
+        keras.layers.InputLayer(shape=(feature_dim,)),
+        keras.layers.Dropout(dropout_rate, seed=dropout_seed),
+        keras.layers.Dense(
+            units=1, kernel_initializer='ones', bias_initializer='zeros'
+        ),
+    ])
+    functional_model = functional.functional_model_from_keras(
+        keras_model,
+        loss_fn=keras.losses.MeanSquaredError(),
+        input_spec=dataset.element_spec,
+        metrics_constructor=collections.OrderedDict(
+            loss=keras.metrics.MeanSquaredError
+        ),
+    )
+    base_optimizer = sgdm.build_sgdm(learning_rate, momentum)
+    server_optimizer = sgdm.build_sgdm(server_lr)
+
+    functional_learning_process = mime.build_weighted_mime_lite(
+        model_fn=functional_model,
+        base_optimizer=base_optimizer,
+        server_optimizer=server_optimizer,
+    )
+    variable_learning_process = mime.build_weighted_mime_lite(
+        model_fn=lambda: functional.model_from_functional(
+            functional_model,
+            [keras.metrics.MeanSquaredError],
+        ),
+        base_optimizer=base_optimizer,
+        server_optimizer=server_optimizer,
+    )
+
+    functional_state = functional_learning_process.initialize()
+    variable_state = variable_learning_process.initialize()
+    functional_output = functional_learning_process.next(
+        functional_state, [dataset]
+    )
+    variable_output = variable_learning_process.next(variable_state, [dataset])
+    self.assertAllClose(
+        functional_output.state.global_model_weights.trainable,
+        variable_output.state.global_model_weights.trainable,
+    )
+
 
 if __name__ == '__main__':
   cpp_execution_contexts.set_sync_local_cpp_execution_context()

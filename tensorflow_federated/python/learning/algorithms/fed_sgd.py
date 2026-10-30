@@ -231,14 +231,19 @@ def _build_functional_client_update(
 
   @tf.function
   def client_update(initial_weights, dataset):
-    trainable_weights, non_trainable_weights = (
+    trainable_weights, initial_non_trainable_weights = (
         initial_weights.trainable,
         initial_weights.non_trainable,
     )
 
     def reduce_fn(state, batch):
       """Runs prediction and loss on batch and sums the weighted gradients."""
-      accumulated_gradients, metrics_state, num_examples_sum = state
+      (
+          accumulated_gradients,
+          non_trainable_weights,
+          metrics_state,
+          num_examples_sum,
+      ) = state
       if isinstance(batch, Mapping):
         x = batch['x']
         y = batch['y']
@@ -247,7 +252,7 @@ def _build_functional_client_update(
 
       with tf.GradientTape() as tape:
         tape.watch(trainable_weights)
-        batch_output = model.predict_on_batch(
+        batch_output, non_trainable_weights = model.forward_pass_on_batch(
             model_weights=(trainable_weights, non_trainable_weights),
             x=x,
             training=True,
@@ -279,19 +284,21 @@ def _build_functional_client_update(
       )
       return (
           accumulated_gradients,
+          non_trainable_weights,
           metrics_state,
           num_examples_sum + num_examples,
       )
 
     def _zero_initial_state():
-      """Create a tuple of (gradient accumulators, metrics, num examples)."""
+      """Creates initial state for gradient, non-trainable, and metric sums."""
       return (
           tuple(tf.nest.map_structure(tf.zeros_like, trainable_weights)),
+          initial_non_trainable_weights,
           model.initialize_metrics_state(),
           tf.constant(0, dtype=tf.float32),
       )
 
-    gradient_sums, metrics_state, num_examples_sum = dataset_reduce_fn(
+    gradient_sums, _, metrics_state, num_examples_sum = dataset_reduce_fn(
         reduce_fn, dataset, _zero_initial_state
     )
     # We now normalize to compute the average gradient over all examples.

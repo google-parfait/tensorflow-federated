@@ -15,6 +15,7 @@
 
 import collections
 import functools
+from typing import Any
 
 import federated_language
 from federated_language.proto import computation_pb2
@@ -463,6 +464,42 @@ def save_functional_model(
       trainable=False,
   )
 
+  # Serialize forward_pass_on_batch only when a custom forward pass is present
+  # (for example, Keras 3 models with non-trainable weights) so models without
+  # one do not save extra function graphs.
+  if functional_model.has_custom_forward_pass:
+    with tf.Graph().as_default():
+      forward_training, forward_training_type_spec = (
+          _make_concrete_flat_output_fn(
+              functools.partial(
+                  functional_model.forward_pass_on_batch, training=True
+              ),
+              model_weights_tensor_specs,
+              x_spec,
+          )
+      )
+    m.forward_pass_on_batch_training = forward_training
+    m.forward_pass_on_batch_training_type_spec = tf.Variable(
+        forward_training_type_spec.SerializeToString(deterministic=True),
+        trainable=False,
+    )
+
+    with tf.Graph().as_default():
+      forward_inference, forward_inference_type_spec = (
+          _make_concrete_flat_output_fn(
+              functools.partial(
+                  functional_model.forward_pass_on_batch, training=False
+              ),
+              model_weights_tensor_specs,
+              x_spec,
+          )
+      )
+    m.forward_pass_on_batch_inference = forward_inference
+    m.forward_pass_on_batch_inference_type_spec = tf.Variable(
+        forward_inference_type_spec.SerializeToString(deterministic=True),
+        trainable=False,
+    )
+
   output_tensor_specs = _deserialize_type_spec(
       m.predict_on_batch_training_type_spec, tuple
   )
@@ -589,6 +626,35 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
         loaded_module.predict_on_batch_inference_type_spec,
     )
 
+    def unflatten_forward_pass_on_batch_fn(
+        flat_forward_pass_on_batch, serialized_result_type_variable
+    ):
+      result_tensor_specs = _deserialize_type_spec(
+          serialized_result_type_variable, tuple
+      )
+      pack_structure = (result_tensor_specs[0], self._initial_weights[1])
+
+      def forward_pass_on_batch(model_weights, x):
+        result = flat_forward_pass_on_batch(model_weights, x)
+        return tf.nest.pack_sequence_as(pack_structure, result)
+
+      return forward_pass_on_batch
+
+    if hasattr(loaded_module, 'forward_pass_on_batch_training'):
+      self._forward_pass_on_batch_training = unflatten_forward_pass_on_batch_fn(
+          loaded_module.forward_pass_on_batch_training,
+          loaded_module.forward_pass_on_batch_training_type_spec,
+      )
+      self._forward_pass_on_batch_inference = (
+          unflatten_forward_pass_on_batch_fn(
+              loaded_module.forward_pass_on_batch_inference,
+              loaded_module.forward_pass_on_batch_inference_type_spec,
+          )
+      )
+    else:
+      self._forward_pass_on_batch_training = None
+      self._forward_pass_on_batch_inference = None
+
     def unflattern_loss_fn(flat_loss, serialized_result_type_variable):
       result_tensor_specs = _deserialize_type_spec(
           serialized_result_type_variable, float
@@ -666,12 +732,41 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
   def initial_weights(self):
     return self._initial_weights
 
+  @property
+  def has_custom_forward_pass(self) -> bool:
+    """Returns `True` if the SavedModel serialized custom forward-pass graphs."""
+    return self._forward_pass_on_batch_training is not None
+
   def predict_on_batch(self, model_weights, x, training=True):
     """Returns tensor(s) interpretable by the loss function."""
     if training:
       return self._predict_on_batch_training(model_weights=model_weights, x=x)
     else:
       return self._predict_on_batch_inference(model_weights=model_weights, x=x)
+
+  def forward_pass_on_batch(
+      self,
+      model_weights: functional.ModelWeights,
+      x: Any,
+      training: bool = True,
+  ) -> tuple[Any, Any]:
+    """Returns `(predictions, updated_non_trainable_weights)` for batch `x`."""
+    if training:
+      if self._forward_pass_on_batch_training is not None:
+        return self._forward_pass_on_batch_training(
+            model_weights=model_weights, x=x
+        )
+    else:
+      if self._forward_pass_on_batch_inference is not None:
+        return self._forward_pass_on_batch_inference(
+            model_weights=model_weights, x=x
+        )
+    return (
+        self.predict_on_batch(
+            model_weights=model_weights, x=x, training=training
+        ),
+        model_weights[1],
+    )
 
   @property
   def input_spec(self):

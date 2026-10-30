@@ -336,7 +336,7 @@ def build_functional_model_delta_update(
       initial_weights: Any,
       dataset: tf.data.Dataset,
   ):
-    initial_trainable_weights = initial_weights[0]
+    initial_trainable_weights, initial_non_trainable_weights = initial_weights
     trainable_tensor_specs = tf.nest.map_structure(
         tf.TensorSpec.from_tensor,
         tuple(tf.nest.flatten(initial_trainable_weights)),
@@ -356,7 +356,9 @@ def build_functional_model_delta_update(
       with tf.GradientTape() as tape:
         # Must explicitly watch non-tf.Variable tensors.
         tape.watch(trainable_weights)
-        batch_output = model.predict_on_batch(model_weights, x, training=True)
+        batch_output, non_trainable_weights = model.forward_pass_on_batch(
+            model_weights, x, training=True
+        )
         batch_loss = model.loss(output=batch_output, label=y)
 
       gradients = tape.gradient(batch_loss, trainable_weights)
@@ -382,7 +384,7 @@ def build_functional_model_delta_update(
 
     initial_training_state = tf.function(
         lambda: (
-            initial_weights,
+            (initial_trainable_weights, initial_non_trainable_weights),
             optimizer.initialize(trainable_tensor_specs),
             model.initialize_metrics_state(),
             tf.constant(0, tf.int64),  # num_examples

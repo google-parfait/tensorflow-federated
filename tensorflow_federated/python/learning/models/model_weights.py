@@ -110,9 +110,17 @@ class ModelWeights(NamedTuple):
       # tf.keras.Model.*weights are always flat lists and we want to be flexible
       # between sequence types (e.g. tuple/list). `tf.nest` wille error if
       # the types differ.
-      for var, t in zip(model.trainable_weights, self.trainable):
+      for var, t in zip(model.trainable_weights, self.trainable, strict=True):
         var.assign(t)
-      for var, t in zip(model.non_trainable_weights, self.non_trainable):
+      # `FunctionalModel` and `ModelWeights.from_model(keras_model)` include all
+      # `non_trainable_variables` (such as Keras 3 `SeedGenerator` states),
+      # whereas legacy `_KerasModel` (`from_keras_model`) filters out
+      # `SeedGenerator` states to match `non_trainable_weights`.
+      if len(self.non_trainable) == len(model.non_trainable_variables):
+        non_trainable_targets = model.non_trainable_variables
+      else:
+        non_trainable_targets = model.non_trainable_weights
+      for var, t in zip(non_trainable_targets, self.non_trainable, strict=True):
         var.assign(t)
     else:
       tf.nest.map_structure(

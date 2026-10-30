@@ -291,6 +291,80 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
 
+  @parameterized.named_parameters(
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
+  )
+  @tensorflow_test_utils.skip_test_for_multi_gpu
+  def test_functional_client_work_advances_non_trainable_state_across_batches(
+      self, loop_implementation
+  ):
+    feature_dim = 2
+    base_model = test_models.build_functional_linear_regression(
+        feature_dim=feature_dim
+    )
+    initial_weights = (
+        (
+            np.ones([feature_dim, 1], dtype=np.float32),
+            np.zeros([1], dtype=np.float32),
+        ),
+        (np.float32(1.0),),
+    )
+
+    @tf.function
+    def forward_pass_on_batch(weights, x, training):
+      preds = base_model.predict_on_batch(
+          (weights[0], ()), x, training=training
+      )
+      (scale,) = weights[1]
+      next_scale = scale + 1.0 if training else scale
+      return preds * scale, (next_scale,)
+
+    @tf.function
+    def predict_on_batch(weights, x, training):
+      return forward_pass_on_batch(weights, x, training)[0]
+
+    stateful_model = functional.FunctionalModel(
+        initial_weights=initial_weights,
+        predict_on_batch_fn=predict_on_batch,
+        forward_pass_on_batch_fn=forward_pass_on_batch,
+        loss_fn=base_model.loss,
+        metrics_fns=(
+            base_model.initialize_metrics_state,
+            base_model.update_metrics_state,
+            base_model.finalize_metrics,
+        ),
+        input_spec=base_model.input_spec,
+    )
+    frozen_model = functional.FunctionalModel(
+        initial_weights=initial_weights,
+        predict_on_batch_fn=predict_on_batch,
+        loss_fn=base_model.loss,
+        metrics_fns=(
+            base_model.initialize_metrics_state,
+            base_model.update_metrics_state,
+            base_model.finalize_metrics,
+        ),
+        input_spec=base_model.input_spec,
+    )
+    dataset = _dataset()
+    weights = model_weights.ModelWeights(*initial_weights)
+    stateful_update = fed_sgd._build_functional_client_update(
+        stateful_model, loop_implementation=loop_implementation
+    )
+    frozen_update = fed_sgd._build_functional_client_update(
+        frozen_model, loop_implementation=loop_implementation
+    )
+    variable_update = fed_sgd._build_client_update(
+        functional.model_from_functional(stateful_model),
+        loop_implementation=loop_implementation,
+    )
+    stateful_result, _ = stateful_update(weights, dataset)
+    frozen_result, _ = frozen_update(weights, dataset)
+    variable_result, _ = variable_update(weights, dataset)
+    self.assertAllClose(stateful_result.update, variable_result.update)
+    self.assertNotAllClose(stateful_result.update, frozen_result.update)
+
 
 if __name__ == '__main__':
   tf.test.main()

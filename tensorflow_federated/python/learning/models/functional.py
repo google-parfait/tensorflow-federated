@@ -97,7 +97,12 @@ class FunctionalModel:
       self,
       *,  # Require all arguments be named.
       initial_weights: ModelWeights,
-      predict_on_batch_fn: Callable[[ModelWeights, Any, bool], Any],
+      predict_on_batch_fn: Optional[
+          Callable[[ModelWeights, Any, bool], Any]
+      ] = None,
+      forward_pass_on_batch_fn: Optional[
+          Callable[[ModelWeights, Any, bool], tuple[Any, Any]]
+      ] = None,
       loss_fn: Callable[[Any, Any, Any], Any],
       metrics_fns: tuple[
           InitializeMetricsStateFn, UpdateMetricsStateFn, FinalizeMetricsFn
@@ -137,13 +142,25 @@ class FunctionalModel:
         elements are sequences of weights. Weights must be values convertable to
         `tf.Tensor` (e.g. `numpy.ndarray`, Python sequences, etc), but _not_
         `tf.Tensor` values.
-      predict_on_batch_fn: A `tf.function` decorated callable that takes three
-        arguments, `model_weights` the same structure as `initial_weights`, `x`
-        the first element of `batch_input` (or `input_spec`), and `training` a
-        boolean determinig whether the call is during a training pass (e.g. for
-        Dropout, BatchNormalization, etc). It must return either a tensor of
-        predictions or a structure whose first element (as determined by
-        `tf.nest.flatten()`) is a tensor of predictions.
+      predict_on_batch_fn: An optional `tf.function` decorated callable that
+        takes three arguments, `model_weights` the same structure as
+        `initial_weights`, `x` the first element of `batch_input` (or
+        `input_spec`), and `training` a boolean determinig whether the call is
+        during a training pass (e.g. for Dropout, BatchNormalization, etc). It
+        must return either a tensor of predictions or a structure whose first
+        element (as determined by `tf.nest.flatten()`) is a tensor of
+        predictions. When `None`, `predict_on_batch` delegates to
+        `forward_pass_on_batch_fn` and returns its first output element. At
+        least one of `predict_on_batch_fn` or `forward_pass_on_batch_fn` must be
+        supplied.
+      forward_pass_on_batch_fn: An optional `tf.function` decorated callable
+        with the same arguments as `predict_on_batch_fn` that returns a 2-tuple
+        `(predictions, updated_non_trainable_weights)`, where `predictions`
+        matches the output of `predict_on_batch_fn` and
+        `updated_non_trainable_weights` matches the structure of
+        `initial_weights[1]`. When `None`, `forward_pass_on_batch` delegates to
+        `predict_on_batch_fn` and returns `model_weights[1]` without
+        modification.
       loss_fn: A callable that takes three arguments, `output` tensor(s) as
         output of `predict_on_batch` that is interpretable by the loss function,
         `label` the second element of `batch_input`, and optional
@@ -181,8 +198,19 @@ class FunctionalModel:
 
     tf.nest.map_structure(check_non_tf_value, initial_weights)
     self._initial_weights = initial_weights
-    check_tf_function_decorated(predict_on_batch_fn, 'predict_on_batch_fn')
+    if predict_on_batch_fn is None and forward_pass_on_batch_fn is None:
+      raise ValueError(
+          'At least one of `predict_on_batch_fn` or `forward_pass_on_batch_fn`'
+          ' must be supplied.'
+      )
+    if predict_on_batch_fn is not None:
+      check_tf_function_decorated(predict_on_batch_fn, 'predict_on_batch_fn')
     self._predict_on_batch_fn = predict_on_batch_fn
+    if forward_pass_on_batch_fn is not None:
+      check_tf_function_decorated(
+          forward_pass_on_batch_fn, 'forward_pass_on_batch_fn'
+      )
+    self._forward_pass_on_batch_fn = forward_pass_on_batch_fn
     self._loss_fn = loss_fn
     self._input_spec = input_spec
     (
@@ -195,12 +223,34 @@ class FunctionalModel:
   def initial_weights(self) -> ModelWeights:
     return self._initial_weights
 
+  @property
+  def has_custom_forward_pass(self) -> bool:
+    """Returns `True` if a custom `forward_pass_on_batch_fn` was supplied."""
+    return self._forward_pass_on_batch_fn is not None
+
   @tf.function
   def predict_on_batch(
       self, model_weights: ModelWeights, x: Any, training: bool = True
   ):
     """Returns tensor(s) interpretable by the loss function."""
-    return self._predict_on_batch_fn(model_weights, x, training)
+    if self._predict_on_batch_fn is not None:
+      return self._predict_on_batch_fn(model_weights, x, training)
+    assert self._forward_pass_on_batch_fn is not None
+    predictions, _ = self._forward_pass_on_batch_fn(model_weights, x, training)
+    return predictions
+
+  @tf.function
+  def forward_pass_on_batch(
+      self, model_weights: ModelWeights, x: Any, training: bool = True
+  ) -> tuple[Any, Any]:
+    """Returns `(predictions, updated_non_trainable_weights)` for batch `x`."""
+    if self._forward_pass_on_batch_fn is not None:
+      return self._forward_pass_on_batch_fn(model_weights, x, training)
+    assert self._predict_on_batch_fn is not None
+    return (
+        self._predict_on_batch_fn(model_weights, x, training),
+        model_weights[1],
+    )
 
   def loss(
       self, output: Any, label: Any, sample_weight: Optional[Any] = None
@@ -301,11 +351,22 @@ class _ModelFromFunctional(variable.VariableModel):
       y = batch_input['y']
     else:
       x, y = batch_input
-    batch_output = self._functional_model.predict_on_batch(
-        model_weights=tf.nest.map_structure(tf.identity, self._model_weights),
-        x=x,
-        training=training,
+    batch_output, updated_non_trainable = (
+        self._functional_model.forward_pass_on_batch(
+            model_weights=tf.nest.map_structure(
+                tf.identity, self._model_weights
+            ),
+            x=x,
+            training=training,
+        )
     )
+    if self._functional_model.has_custom_forward_pass:
+      for var, new_val in zip(
+          self._non_trainable_variables,
+          updated_non_trainable,
+          strict=True,
+      ):
+        var.assign(new_val)
     batch_loss = self._functional_model.loss(output=batch_output, label=y)
     predictions = tf.nest.flatten(batch_output)[0]
     batch_num_examples = tf.shape(predictions)[0]
@@ -439,15 +500,38 @@ def _functional_model_from_keras_3(
       tuple(v.numpy() for v in keras_model.non_trainable_variables),
   )
 
-  @tf.function
-  def predict_on_batch(
-      model_weights: ModelWeights, x: Any, training: bool = True
-  ) -> Any:
-    trainable, non_trainable = model_weights
-    outputs, _ = keras_model.stateless_call(
-        trainable, non_trainable, x, training=training
-    )
-    return outputs
+  if initial_weights[1]:
+
+    @tf.function
+    def forward_pass_on_batch(
+        model_weights: ModelWeights, x: Any, training: bool = True
+    ) -> tuple[Any, tuple[Any, ...]]:
+      trainable, non_trainable = model_weights
+      outputs, updated_non_trainable = keras_model.stateless_call(
+          trainable, non_trainable, x, training=training
+      )
+      # `keras_model.stateless_call` returns a Python `list` of updated
+      # non-trainable tensors; convert to `tuple` so the returned structure
+      # matches `initial_weights[1]` inside `tf.data.Dataset.reduce` and
+      # `tf.while_loop` states.
+      return outputs, tuple(updated_non_trainable)
+
+    predict_on_batch_fn = None
+    forward_pass_on_batch_fn = forward_pass_on_batch
+  else:
+
+    @tf.function
+    def predict_on_batch(
+        model_weights: ModelWeights, x: Any, training: bool = True
+    ) -> Any:
+      trainable, non_trainable = model_weights
+      outputs, _ = keras_model.stateless_call(
+          trainable, non_trainable, x, training=training
+      )
+      return outputs
+
+    predict_on_batch_fn = predict_on_batch
+    forward_pass_on_batch_fn = None
 
   def loss(
       output: Any, label: Any, sample_weight: Optional[Any] = None
@@ -465,7 +549,8 @@ def _functional_model_from_keras_3(
 
   return FunctionalModel(
       initial_weights=initial_weights,
-      predict_on_batch_fn=predict_on_batch,
+      predict_on_batch_fn=predict_on_batch_fn,
+      forward_pass_on_batch_fn=forward_pass_on_batch_fn,
       loss_fn=loss,
       metrics_fns=metrics_fns,
       input_spec=input_spec,

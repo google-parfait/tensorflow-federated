@@ -659,6 +659,108 @@ class FunctionalModelDeltaClientWorkExecutionTest(
         output.measurements['train']['num_non_finite_clients'], num_clients
     )
 
+  @parameterized.named_parameters(
+      (
+          'dataset_iterator',
+          loop_builder.LoopImplementation.DATASET_ITERATOR,
+      ),
+      (
+          'dataset_reduce',
+          loop_builder.LoopImplementation.DATASET_REDUCE,
+      ),
+  )
+  def test_functional_client_update_advances_dropout_seed_across_batches(
+      self, loop_implementation
+  ):
+    num_batches = 3
+    feature_dim = 4
+    dropout_rate = 0.5
+    dropout_seed = 42
+    learning_rate = 0.1
+    dataset = tf.data.Dataset.from_tensor_slices((
+        np.ones([num_batches, feature_dim], dtype=np.float32),
+        np.zeros([num_batches, 1], dtype=np.float32),
+    )).batch(1)
+
+    def build_keras_model():
+      return keras.Sequential([
+          keras.layers.InputLayer(shape=(feature_dim,)),
+          keras.layers.Dropout(dropout_rate, seed=dropout_seed),
+          keras.layers.Dense(
+              1, kernel_initializer='ones', bias_initializer='zeros'
+          ),
+      ])
+
+    functional_model = functional.functional_model_from_keras(
+        build_keras_model(),
+        loss_fn=keras.losses.MeanSquaredError(),
+        input_spec=dataset.element_spec,
+    )
+
+    @tensorflow_computation.tf_computation
+    def client_update_functional(model_weights, data):
+      model_delta_fn = (
+          model_delta_client_work.build_functional_model_delta_update(
+              model=functional_model,
+              weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+              loop_implementation=loop_implementation,
+          )
+      )
+      return model_delta_fn(
+          sgdm.build_sgdm(learning_rate=learning_rate), model_weights, data
+      )
+
+    client_update_variable = (
+        model_delta_client_work.build_model_delta_update_with_tff_optimizer(
+            model_fn=lambda: functional.model_from_functional(functional_model),
+            weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+            loop_implementation=loop_implementation,
+        )
+    )
+    optimizer = sgdm.build_sgdm(learning_rate=learning_rate)
+    variable_weights = model_weights_lib.ModelWeights.from_model(
+        functional.model_from_functional(functional_model)
+    )
+    # Pass `ModelWeights` directly to verify that
+    # `build_functional_model_delta_update` unpacks `ModelWeights` containers
+    # under both `DATASET_ITERATOR` and `DATASET_REDUCE`.
+    functional_output, _ = client_update_functional(
+        model_weights_lib.ModelWeights(*functional_model.initial_weights),
+        dataset,
+    )
+    variable_output, _ = client_update_variable(
+        optimizer, variable_weights, dataset
+    )
+    self.assertAllClose(functional_output.update, variable_output.update)
+
+    # Verify the 3-batch delta differs from a model whose forward pass leaves
+    # the non-trainable seed frozen at `initial_weights[1]` on every batch.
+    frozen_model = functional.FunctionalModel(
+        initial_weights=functional_model.initial_weights,
+        predict_on_batch_fn=functional_model.predict_on_batch,
+        loss_fn=functional_model.loss,
+        input_spec=functional_model.input_spec,
+    )
+
+    @tensorflow_computation.tf_computation
+    def client_update_frozen(model_weights, data):
+      model_delta_fn = (
+          model_delta_client_work.build_functional_model_delta_update(
+              model=frozen_model,
+              weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+              loop_implementation=loop_implementation,
+          )
+      )
+      return model_delta_fn(
+          sgdm.build_sgdm(learning_rate=learning_rate), model_weights, data
+      )
+
+    frozen_output, _ = client_update_frozen(
+        model_weights_lib.ModelWeights(*frozen_model.initial_weights),
+        dataset,
+    )
+    self.assertNotAllClose(functional_output.update, frozen_output.update)
+
 
 if __name__ == '__main__':
   cpp_execution_contexts.set_sync_local_cpp_execution_context()

@@ -227,16 +227,20 @@ def _build_personalize_fn(optimizer_fn, train_batch_size, test_batch_size):
 
     def train_fn(state, batch):
       """Runs gradient descent on a batch."""
-      opt_state, current_trainable, num_examples_sum = state
+      opt_state, current_trainable, current_non_trainable, num_examples_sum = (
+          state
+      )
       if isinstance(batch, Mapping):
         x = batch['x']
         y = batch['y']
       else:
         x, y = batch
-      current_weights = (current_trainable, non_trainable_weights)
+      current_weights = (current_trainable, current_non_trainable)
       with tf.GradientTape() as tape:
         tape.watch(current_trainable)
-        predictions = model.predict_on_batch(current_weights, x, training=True)
+        predictions, updated_non_trainable = model.forward_pass_on_batch(
+            current_weights, x, training=True
+        )
         loss = model.loss(output=predictions, label=y)
 
       grads = tape.gradient(loss, current_trainable)
@@ -247,22 +251,26 @@ def _build_personalize_fn(optimizer_fn, train_batch_size, test_batch_size):
       return (
           opt_state,
           updated_trainable,
+          updated_non_trainable,
           num_examples_sum + batch_num_examples,
       )
 
     # Train a personalized model.
     batched_train_data = train_data.batch(train_batch_size)
-    _, trained_trainable, num_examples_sum = dataset_reduce_fn(
-        reduce_fn=train_fn,
-        dataset=batched_train_data,
-        initial_state_fn=lambda: (
-            optimizer.initialize(trainable_specs),
-            trainable_weights,
-            tf.constant(0),
-        ),
+    _, trained_trainable, trained_non_trainable, num_examples_sum = (
+        dataset_reduce_fn(
+            reduce_fn=train_fn,
+            dataset=batched_train_data,
+            initial_state_fn=lambda: (
+                optimizer.initialize(trainable_specs),
+                trainable_weights,
+                non_trainable_weights,
+                tf.constant(0),
+            ),
+        )
     )
 
-    trained_weights = (trained_trainable, non_trainable_weights)
+    trained_weights = (trained_trainable, trained_non_trainable)
     results = collections.OrderedDict()
     results['num_examples'] = num_examples_sum
     results['test_outputs'] = _evaluate_fn(
@@ -645,6 +653,57 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(len(results['baseline_metrics']['loss']), 1)
     self.assertAllEqual(len(results['batch_size_1']['test_outputs']['loss']), 1)
     self.assertAllEqual(len(results['batch_size_2']['test_outputs']['loss']), 1)
+
+  def test_functional_personalize_fn_advances_dropout_seed_across_batches(self):
+    feature_dim = 2
+    dropout_rate = 0.5
+    dropout_seed = 42
+    learning_rate = 0.5
+    batch_size = 1
+    input_spec = collections.OrderedDict(
+        x=tf.TensorSpec(shape=[None, feature_dim], dtype=tf.float32),
+        y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+    )
+    keras_model = keras.Sequential([
+        keras.layers.InputLayer(shape=(feature_dim,)),
+        keras.layers.Dropout(dropout_rate, seed=dropout_seed),
+        keras.layers.Dense(
+            1, kernel_initializer='ones', bias_initializer='zeros'
+        ),
+    ])
+    stateful_model = functional.functional_model_from_keras(
+        keras_model,
+        input_spec=input_spec,
+        loss_fn=keras.losses.MeanSquaredError(),
+    )
+    frozen_model = functional.FunctionalModel(
+        initial_weights=stateful_model.initial_weights,
+        predict_on_batch_fn=stateful_model.predict_on_batch,
+        loss_fn=stateful_model.loss,
+        input_spec=input_spec,
+    )
+    p13n_fn_dict = collections.OrderedDict(
+        batch_size_1=lambda: _build_personalize_fn(
+            optimizer_fn=lambda: sgdm.build_sgdm(learning_rate),
+            train_batch_size=batch_size,
+            test_batch_size=batch_size,
+        )
+    )
+    stateful_eval = p13n_eval.build_personalization_eval_computation(
+        stateful_model, p13n_fn_dict, _evaluate_fn
+    )
+    frozen_eval = p13n_eval.build_personalization_eval_computation(
+        frozen_model, p13n_fn_dict, _evaluate_fn
+    )
+    client_inputs = [_create_client_input(train_scale=1.0, test_scale=1.0)]
+    stateful_results = stateful_eval(
+        stateful_model.initial_weights, client_inputs
+    )
+    frozen_results = frozen_eval(frozen_model.initial_weights, client_inputs)
+    self.assertNotAllClose(
+        stateful_results['batch_size_1']['test_outputs']['loss'],
+        frozen_results['batch_size_1']['test_outputs']['loss'],
+    )
 
   def test_construction_calls_model_fn(self):
     # Assert that the the process building does not call `model_fn` too many

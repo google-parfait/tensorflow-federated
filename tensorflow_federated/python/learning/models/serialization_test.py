@@ -816,6 +816,104 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
           ),
       )
 
+  def test_save_and_load_functional_model_without_custom_forward_pass(self):
+    dataset = get_dataset()
+    functional_model = create_test_functional_model(
+        input_spec=dataset.element_spec
+    )
+    self.assertFalse(functional_model.has_custom_forward_pass)
+    path = self.get_temp_dir()
+    serialization.save_functional_model(functional_model, path)
+    raw_loaded = tf.saved_model.load(path)
+    self.assertFalse(hasattr(raw_loaded, 'forward_pass_on_batch_training'))
+
+    loaded_model = serialization.load_functional_model(path)
+    self.assertFalse(loaded_model.has_custom_forward_pass)
+    example_batch = next(iter(dataset))
+    for training in [True, False]:
+      predictions, updated_non_trainable = loaded_model.forward_pass_on_batch(
+          model_weights=loaded_model.initial_weights,
+          x=example_batch[0],
+          training=training,
+      )
+      self.assertAllClose(predictions, [[0.0]] * 5)
+      self.assertEmpty(updated_non_trainable)
+
+  def test_save_and_load_keras_3_dropout_model_advances_seed(self):
+    feature_dim = 8
+    batch_size = 16
+    dropout_rate = 0.5
+    dropout_seed = 42
+    input_spec = (
+        tf.TensorSpec(shape=[None, feature_dim], dtype=tf.float32),
+        tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+    )
+    keras_model = keras.Sequential([
+        keras.layers.InputLayer(shape=[feature_dim]),
+        keras.layers.Dropout(dropout_rate, seed=dropout_seed),
+        keras.layers.Dense(
+            1, kernel_initializer='ones', bias_initializer='zeros'
+        ),
+    ])
+    functional_model = functional.functional_model_from_keras(
+        keras_model,
+        loss_fn=keras.losses.MeanSquaredError(),
+        input_spec=input_spec,
+    )
+    path = self.get_temp_dir()
+    serialization.save_functional_model(functional_model, path)
+    loaded_model = serialization.load_functional_model(path)
+    self.assertTrue(loaded_model.has_custom_forward_pass)
+
+    ones_batch = tf.ones([batch_size, feature_dim], dtype=tf.float32)
+    orig_preds_1, orig_nt_1 = functional_model.forward_pass_on_batch(
+        functional_model.initial_weights, ones_batch, training=True
+    )
+    orig_preds_2, orig_nt_2 = functional_model.forward_pass_on_batch(
+        (functional_model.initial_weights[0], orig_nt_1),
+        ones_batch,
+        training=True,
+    )
+
+    loaded_preds_1, loaded_nt_1 = loaded_model.forward_pass_on_batch(
+        loaded_model.initial_weights, ones_batch, training=True
+    )
+    loaded_preds_2, loaded_nt_2 = loaded_model.forward_pass_on_batch(
+        (loaded_model.initial_weights[0], loaded_nt_1),
+        ones_batch,
+        training=True,
+    )
+
+    self.assertAllClose(loaded_preds_1, orig_preds_1)
+    self.assertAllClose(loaded_preds_2, orig_preds_2)
+    self.assertAllEqual(loaded_nt_1[0], orig_nt_1[0])
+    self.assertAllEqual(loaded_nt_2[0], orig_nt_2[0])
+    self.assertNotAllClose(loaded_preds_1, loaded_preds_2)
+
+    _, eval_nt = loaded_model.forward_pass_on_batch(
+        (loaded_model.initial_weights[0], loaded_nt_2),
+        ones_batch,
+        training=False,
+    )
+    self.assertAllEqual(eval_nt[0], loaded_nt_2[0])
+
+    # Also verify `loaded_model.forward_pass_on_batch` inside a
+    # `@tff.tensorflow.computation`.
+    @tensorflow_computation.tf_computation
+    def _run_two_training_batches():
+      batch_x = tf.ones([batch_size, feature_dim], dtype=tf.float32)
+      preds_1, nt_1 = loaded_model.forward_pass_on_batch(
+          loaded_model.initial_weights, batch_x, training=True
+      )
+      preds_2, _ = loaded_model.forward_pass_on_batch(
+          (loaded_model.initial_weights[0], nt_1), batch_x, training=True
+      )
+      return preds_1, preds_2
+
+    comp_preds_1, comp_preds_2 = _run_two_training_batches()
+    self.assertAllClose(comp_preds_1, orig_preds_1)
+    self.assertAllClose(comp_preds_2, orig_preds_2)
+
 
 if __name__ == '__main__':
   cpp_execution_contexts.set_sync_local_cpp_execution_context()

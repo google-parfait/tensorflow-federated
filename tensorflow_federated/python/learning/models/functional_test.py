@@ -187,6 +187,33 @@ class FunctionalModelErrorsTest(tf.test.TestCase):
           loss_fn=loss,
           input_spec=input_spec,
       )
+    with self.assertRaisesRegex(
+        functional.CallableNotTensorFlowFunctionError,
+        'forward_pass_on_batch_fn does not have a `get_concrete_function`',
+    ):
+      functional.FunctionalModel(
+          initial_weights=initial_weights(),
+          predict_on_batch_fn=predict_on_batch,
+          forward_pass_on_batch_fn=lambda weights, x, training: (
+              predict_on_batch(weights, x, training),
+              weights[1],
+          ),
+          loss_fn=loss,
+          input_spec=input_spec,
+      )
+
+  def test_fail_missing_predict_and_forward_pass(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    with self.assertRaisesRegex(
+        ValueError,
+        'At least one of `predict_on_batch_fn` or `forward_pass_on_batch_fn`',
+    ):
+      functional.FunctionalModel(
+          initial_weights=initial_weights(),
+          loss_fn=loss,
+          input_spec=input_spec,
+      )
 
 
 class FunctionalModelTest(tf.test.TestCase):
@@ -201,12 +228,85 @@ class FunctionalModelTest(tf.test.TestCase):
         loss_fn=loss,
         input_spec=input_spec,
     )
+    self.assertFalse(functional_model.has_custom_forward_pass)
     self.assertAllClose(
         functional_model.predict_on_batch(
             functional_model.initial_weights, example_batch[0]
         ),
         [[0.0]] * 5,
     )
+    predictions, updated_non_trainable = functional_model.forward_pass_on_batch(
+        functional_model.initial_weights, example_batch[0]
+    )
+    self.assertAllClose(predictions, [[0.0]] * 5)
+    self.assertEmpty(updated_non_trainable)
+
+  def test_forward_pass_on_batch_custom(self):
+    dataset = create_test_dataset()
+    example_batch = next(iter(dataset))
+    input_spec = dataset.element_spec
+    trainable_vars, _ = initial_weights()
+    weights_with_counter = (trainable_vars, (np.int32(0),))
+
+    @tf.function
+    def forward_pass_with_counter(model_weights, x, training):
+      preds = predict_on_batch(model_weights, x, training)
+      (step,) = model_weights[1]
+      if training:
+        next_step = step + 1
+      else:
+        next_step = step
+      return preds, (next_step,)
+
+    functional_model = functional.FunctionalModel(
+        initial_weights=weights_with_counter,
+        forward_pass_on_batch_fn=forward_pass_with_counter,
+        loss_fn=loss,
+        input_spec=input_spec,
+    )
+    self.assertTrue(functional_model.has_custom_forward_pass)
+    self.assertAllClose(
+        functional_model.predict_on_batch(
+            functional_model.initial_weights, example_batch[0], training=True
+        ),
+        [[0.0]] * 5,
+    )
+    preds_train, updated_train = functional_model.forward_pass_on_batch(
+        functional_model.initial_weights, example_batch[0], training=True
+    )
+    self.assertAllClose(preds_train, [[0.0]] * 5)
+    self.assertAllEqual(updated_train, (1,))
+    preds_eval, updated_eval = functional_model.forward_pass_on_batch(
+        (trainable_vars, updated_train), example_batch[0], training=False
+    )
+    self.assertAllClose(preds_eval, [[0.0]] * 5)
+    self.assertAllEqual(updated_eval, (1,))
+
+  def test_model_from_functional_with_list_non_trainable_weights(self):
+    dataset = create_test_dataset()
+    example_batch = next(iter(dataset))
+    input_spec = dataset.element_spec
+    trainable_vars, _ = initial_weights()
+    weights_with_list_counter = (trainable_vars, [np.int32(0)])
+
+    @tf.function
+    def forward_pass_with_list_counter(model_weights, x, training):
+      preds = predict_on_batch(model_weights, x, training)
+      (step,) = model_weights[1]
+      next_step = step + 1 if training else step
+      return preds, [next_step]
+
+    functional_model = functional.FunctionalModel(
+        initial_weights=weights_with_list_counter,
+        forward_pass_on_batch_fn=forward_pass_with_list_counter,
+        loss_fn=loss,
+        input_spec=input_spec,
+    )
+    tff_model = functional.model_from_functional(functional_model)
+    tff_model.forward_pass(example_batch, training=True)
+    self.assertAllEqual(tff_model.non_trainable_variables, (1,))
+    tff_model.forward_pass(example_batch, training=True)
+    self.assertAllEqual(tff_model.non_trainable_variables, (2,))
 
   def test_loss(self):
     dataset = create_test_dataset()
@@ -449,6 +549,36 @@ class ModelFromFunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
         self.assertAllClose(
             tff_model_batch_num_examples, functional_model_batch_num_examples
         )
+
+  def test_tff_model_from_functional_updates_non_trainable_variables(self):
+    dataset = create_test_dataset()
+    trainable_vars, _ = initial_weights()
+
+    @tf.function
+    def forward_pass_with_counter(model_weights, x, training):
+      preds = predict_on_batch(model_weights, x, training)
+      (step,) = model_weights[1]
+      if training:
+        next_step = step + 1
+      else:
+        next_step = step
+      return preds, (next_step,)
+
+    functional_model = functional.FunctionalModel(
+        initial_weights=(trainable_vars, (np.int32(0),)),
+        predict_on_batch_fn=predict_on_batch,
+        forward_pass_on_batch_fn=forward_pass_with_counter,
+        loss_fn=loss,
+        input_spec=dataset.element_spec,
+    )
+    tff_model = functional.model_from_functional(functional_model)
+    example_batch = next(iter(dataset))
+    tff_model.forward_pass(example_batch, training=True)
+    self.assertAllEqual(tff_model.non_trainable_variables, (1,))
+    tff_model.forward_pass(example_batch, training=True)
+    self.assertAllEqual(tff_model.non_trainable_variables, (2,))
+    tff_model.forward_pass(example_batch, training=False)
+    self.assertAllEqual(tff_model.non_trainable_variables, (2,))
 
   def test_tff_model_from_functional_converges(self):
     dataset = create_test_dataset()
@@ -790,6 +920,11 @@ class FunctionalModelFromKerasTest(tf.test.TestCase, parameterized.TestCase):
           x=x_spec,
       )
       self.assert_variableless_function(
+          functional_model.forward_pass_on_batch,
+          model_weights=model_weights_tensor_spec,
+          x=x_spec,
+      )
+      self.assert_variableless_function(
           tf.function(functional_model.loss),
           output=batch_output_tensor_spec_structure,
           label=y_spec,
@@ -909,9 +1044,13 @@ class FunctionalModelFromKerasTest(tf.test.TestCase, parameterized.TestCase):
   def test_keras_3_model_with_dropout_succeeds(self):
     dataset = create_test_dataset()
     example_batch = next(iter(dataset))
+    feature_dim = 3
+    batch_size = 16
+    dropout_rate = 0.5
+    dropout_seed = 42
     keras_model = keras.Sequential([
-        keras.layers.InputLayer(shape=(3,)),
-        keras.layers.Dropout(0.5, seed=42),
+        keras.layers.InputLayer(shape=(feature_dim,)),
+        keras.layers.Dropout(dropout_rate, seed=dropout_seed),
         keras.layers.Dense(
             1, kernel_initializer='ones', bias_initializer='zeros'
         ),
@@ -921,14 +1060,47 @@ class FunctionalModelFromKerasTest(tf.test.TestCase, parameterized.TestCase):
         loss_fn=keras.losses.MeanSquaredError(),
         input_spec=dataset.element_spec,
     )
+    self.assertTrue(functional_model.has_custom_forward_pass)
     self.assertLen(functional_model.initial_weights[0], 2)
     self.assertLen(functional_model.initial_weights[1], 1)
+    model_weights_tensor_spec = tf.nest.map_structure(
+        lambda n: tf.TensorSpec(n.shape, tf.dtypes.as_dtype(n.dtype)),
+        functional_model.initial_weights,
+    )
+    with tf.Graph().as_default():
+      self.assert_variableless_function(
+          functional_model.forward_pass_on_batch,
+          model_weights=model_weights_tensor_spec,
+          x=dataset.element_spec[0],
+      )
     self.assertAllClose(
         functional_model.predict_on_batch(
             functional_model.initial_weights, example_batch[0], training=False
         ),
         keras_model(example_batch[0], training=False),
     )
+
+    # Verify consecutive training batches advance the SeedGenerator state and
+    # apply distinct dropout masks that match eager Keras execution.
+    ones_batch = tf.ones([batch_size, feature_dim], dtype=tf.float32)
+    trainable, non_trainable_0 = functional_model.initial_weights
+    preds_1, non_trainable_1 = functional_model.forward_pass_on_batch(
+        (trainable, non_trainable_0), ones_batch, training=True
+    )
+    preds_2, non_trainable_2 = functional_model.forward_pass_on_batch(
+        (trainable, non_trainable_1), ones_batch, training=True
+    )
+    self.assertNotAllEqual(non_trainable_0[0], non_trainable_1[0])
+    self.assertNotAllEqual(non_trainable_1[0], non_trainable_2[0])
+    self.assertNotAllClose(preds_1, preds_2)
+    self.assertAllClose(preds_1, keras_model(ones_batch, training=True))
+    self.assertAllClose(preds_2, keras_model(ones_batch, training=True))
+
+    # Inference mode does not advance SeedGenerator state.
+    _, eval_non_trainable = functional_model.forward_pass_on_batch(
+        (trainable, non_trainable_2), ones_batch, training=False
+    )
+    self.assertAllEqual(non_trainable_2[0], eval_non_trainable[0])
 
   def test_keras_3_model_converted_in_graph_fails(self):
     keras_model = create_test_keras_model(keras_module=keras, input_shape=(3,))
