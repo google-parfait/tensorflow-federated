@@ -14,12 +14,11 @@
 """End-to-end example testing Federated Averaging with CNN and RNN."""
 
 import collections
-from collections.abc import Callable
 import functools
-from typing import NamedTuple
 
 from absl.testing import parameterized
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -33,24 +32,25 @@ def _create_test_cnn_model():
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
   max_pool = functools.partial(
-      tf.keras.layers.MaxPooling2D,
+      keras.layers.MaxPooling2D,
       pool_size=(2, 2),
       padding='same',
       data_format=data_format,
   )
   conv2d = functools.partial(
-      tf.keras.layers.Conv2D,
+      keras.layers.Conv2D,
       kernel_size=5,
       padding='same',
       data_format=data_format,
-      activation=tf.nn.relu,
+      activation='relu',
   )
-  model = tf.keras.models.Sequential([
-      conv2d(filters=32, input_shape=input_shape),
+  model = keras.models.Sequential([
+      keras.Input(shape=input_shape),
+      conv2d(filters=32),
       max_pool(),
-      tf.keras.layers.Flatten(),
-      tf.keras.layers.Dense(10, kernel_initializer='zeros'),
-      tf.keras.layers.Activation(tf.nn.softmax),
+      keras.layers.Flatten(),
+      keras.layers.Dense(10, kernel_initializer='zeros'),
+      keras.layers.Activation('softmax'),
   ])
 
   return model
@@ -76,138 +76,110 @@ def _setup_local_context():
 
 
 def _tff_learning_model_fn():
-  """Constructs a test `tff.learning.models.VariableModel`."""
+  """Constructs a test `tff.learning.models.FunctionalModel`."""
   keras_model = _create_test_cnn_model()
-  loss = tf.keras.losses.SparseCategoricalCrossentropy()
-  metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
+  loss = keras.losses.SparseCategoricalCrossentropy()
   input_spec = collections.OrderedDict(
       x=tf.TensorSpec([None, 28, 28, 1], tf.float32),
       y=tf.TensorSpec([None], tf.int32),
   )
-  return tff.learning.models.from_keras_model(
-      keras_model=keras_model, input_spec=input_spec, loss=loss, metrics=metrics
+  return tff.learning.models.functional_model_from_keras(
+      keras_model=keras_model,
+      loss_fn=loss,
+      input_spec=input_spec,
+      metrics_constructor=collections.OrderedDict(
+          loss=keras.metrics.SparseCategoricalCrossentropy,
+          sparse_categorical_accuracy=keras.metrics.SparseCategoricalAccuracy,
+          num_examples=tff.learning.metrics.NumExamplesCounter,
+          num_batches=tff.learning.metrics.NumBatchesCounter,
+      ),
   )
 
 
-class MnistVariables(NamedTuple):
-  weights: float
-  bias: float
-  num_examples: int
-  loss_sum: float
-  accuracy_sum: float
-
-
-def _create_mnist_variables():
-  return MnistVariables(
-      weights=tf.Variable(
+def create_mnist_functional_model() -> tff.learning.models.FunctionalModel:
+  """Creates a custom `FunctionalModel` for MNIST."""
+  initial_weights = (
+      (
           np.zeros(dtype=np.float32, shape=(784, 10)),
-          name='weights',
-          trainable=True,
+          np.zeros(dtype=np.float32, shape=(10,)),
       ),
-      bias=tf.Variable(
-          np.zeros(dtype=np.float32, shape=(10)), name='bias', trainable=True
-      ),
-      num_examples=tf.Variable(0.0, name='num_examples', trainable=False),
-      loss_sum=tf.Variable(0.0, name='loss_sum', trainable=False),
-      accuracy_sum=tf.Variable(0.0, name='accuracy_sum', trainable=False),
+      (),
   )
-
-
-def _mnist_inference(variables, inputs):
-  logits = tf.nn.softmax(tf.matmul(inputs, variables.weights) + variables.bias)
-  predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
-  return logits, predictions
-
-
-def _mnist_forward_pass(variables, batch):
-  y, predictions = _mnist_inference(variables, batch['x'])
-  flat_labels = tf.reshape(batch['y'], [-1])
-  loss = -tf.reduce_mean(
-      tf.reduce_sum(tf.one_hot(flat_labels, 10) * tf.math.log(y), axis=[1])
-  )
-  accuracy = tf.reduce_mean(
-      tf.cast(tf.equal(predictions, flat_labels), tf.float32)
-  )
-  num_examples = tf.cast(tf.size(batch['y']), tf.float32)
-  variables.num_examples.assign_add(num_examples)
-  variables.loss_sum.assign_add(loss * num_examples)
-  variables.accuracy_sum.assign_add(accuracy * num_examples)
-  return tff.learning.models.BatchOutput(
-      loss=loss, predictions=predictions, num_examples=num_examples
-  )
-
-
-class MnistModel(tff.learning.models.VariableModel):
-
-  def __init__(self):
-    self._variables = _create_mnist_variables()
-
-  @property
-  def trainable_variables(self):
-    return [self._variables.weights, self._variables.bias]
-
-  @property
-  def non_trainable_variables(self):
-    return []
-
-  @property
-  def weights(self):
-    return tff.learning.models.ModelWeights(
-        trainable=self.trainable_variables,
-        non_trainable=self.non_trainable_variables,
-    )
-
-  @property
-  def local_variables(self):
-    return [
-        self._variables.num_examples,
-        self._variables.loss_sum,
-        self._variables.accuracy_sum,
-    ]
-
-  @property
-  def input_spec(self):
-    return collections.OrderedDict(
-        x=tf.TensorSpec([None, 784], tf.float32),
-        y=tf.TensorSpec([None, 1], tf.int32),
-    )
 
   @tf.function
-  def predict_on_batch(self, batch, training=True):
+  def predict_on_batch(model_weights, x, training=True):
     del training  # Unused.
-    return _mnist_inference(self._variables, batch)
+    trainable_weights, _ = model_weights
+    weights, bias = trainable_weights
+    logits = tf.nn.softmax(tf.matmul(x, weights) + bias)
+    predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
+    return logits, predictions
 
   @tf.function
-  def forward_pass(self, batch, training=True):
-    del training
-    return _mnist_forward_pass(self._variables, batch)
-
-  @tf.function
-  def report_local_unfinalized_metrics(
-      self,
-  ) -> collections.OrderedDict[str, list[tf.Tensor]]:
-    """Creates an `collections.OrderedDict` of metric names to unfinalized values."""
-    return collections.OrderedDict(
-        num_examples=[self._variables.num_examples],
-        loss=[self._variables.loss_sum, self._variables.num_examples],
-        accuracy=[self._variables.accuracy_sum, self._variables.num_examples],
-    )
-
-  def metric_finalizers(
-      self,
-  ) -> collections.OrderedDict[str, Callable[[list[tf.Tensor]], tf.Tensor]]:
-    """Creates an `collections.OrderedDict` of metric names to finalizers."""
-    return collections.OrderedDict(
-        num_examples=tf.function(func=lambda x: x[0]),
-        loss=tf.function(func=lambda x: x[0] / x[1]),
-        accuracy=tf.function(func=lambda x: x[0] / x[1]),
+  def loss_fn(output, label, sample_weight=None):
+    del sample_weight  # Unused.
+    logits, _ = output
+    flat_labels = tf.reshape(label, [-1])
+    return -tf.reduce_mean(
+        tf.reduce_sum(
+            tf.one_hot(flat_labels, 10) * tf.math.log(logits), axis=[1]
+        )
     )
 
   @tf.function
-  def reset_metrics(self):
-    """Resets metrics variables to initial value."""
-    for var in self.local_variables:
-      var.assign(tf.zeros_like(var))
+  def initialize_metrics_state():
+    return collections.OrderedDict(
+        num_examples=(tf.constant(0.0, tf.float32),),
+        loss=(tf.constant(0.0, tf.float32), tf.constant(0.0, tf.float32)),
+        accuracy=(tf.constant(0.0, tf.float32), tf.constant(0.0, tf.float32)),
+    )
+
+  @tf.function
+  def update_metrics_state(state, labels, batch_output, sample_weight=None):
+    del sample_weight  # Unused.
+    _, predictions = batch_output.predictions
+    flat_labels = tf.reshape(labels, [-1])
+    accuracy = tf.reduce_mean(
+        tf.cast(tf.equal(predictions, flat_labels), tf.float32)
+    )
+    num_examples = tf.cast(batch_output.num_examples, tf.float32)
+    return collections.OrderedDict(
+        num_examples=(state['num_examples'][0] + num_examples,),
+        loss=(
+            state['loss'][0] + batch_output.loss * num_examples,
+            state['loss'][1] + num_examples,
+        ),
+        accuracy=(
+            state['accuracy'][0] + accuracy * num_examples,
+            state['accuracy'][1] + num_examples,
+        ),
+    )
+
+  @tf.function
+  def finalize_metrics(state):
+    return collections.OrderedDict(
+        num_examples=state['num_examples'][0],
+        loss=tf.math.divide_no_nan(state['loss'][0], state['loss'][1]),
+        accuracy=tf.math.divide_no_nan(
+            state['accuracy'][0], state['accuracy'][1]
+        ),
+    )
+
+  input_spec = collections.OrderedDict(
+      x=tf.TensorSpec([None, 784], tf.float32),
+      y=tf.TensorSpec([None, 1], tf.int32),
+  )
+  return tff.learning.models.FunctionalModel(
+      initial_weights=initial_weights,
+      predict_on_batch_fn=predict_on_batch,
+      loss_fn=loss_fn,
+      metrics_fns=(
+          initialize_metrics_state,
+          update_metrics_state,
+          finalize_metrics,
+      ),
+      input_spec=input_spec,
+  )
 
 
 def _create_client_data():
@@ -296,7 +268,7 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     train_data = [client_data()]
 
     trainer = simple_fedavg_tff.build_federated_averaging_process(
-        MnistModel, use_sequence_reduce=use_sequence_reduce
+        create_mnist_functional_model, use_sequence_reduce=use_sequence_reduce
     )
     state = trainer.initialize()
 
@@ -315,15 +287,18 @@ def _server_init(model, optimizer):
   """Returns initial `ServerState`.
 
   Args:
-    model: A `tff.learning.models.VariableModel`.
+    model: A `tff.learning.models.FunctionalModel`.
     optimizer: A `tf.train.Optimizer`.
 
   Returns:
     A `ServerState` namedtuple.
   """
-  simple_fedavg_tff._initialize_optimizer_vars(model, optimizer)
+  model_weights = simple_fedavg_tf.get_model_weights(model)
+  simple_fedavg_tff._initialize_optimizer_vars(model_weights, optimizer)
   return simple_fedavg_tf.ServerState(
-      model=model.weights, optimizer_state=optimizer.variables(), round_num=0
+      model=model_weights,
+      optimizer_state=optimizer.variables(),
+      round_num=0,
   )
 
 
@@ -334,13 +309,12 @@ class ServerTest(tf.test.TestCase):
     model = model_fn()
     optimizer = optimizer_fn()
     state = _server_init(model, optimizer)
-    weights_delta = tf.nest.map_structure(
-        tf.ones_like, model.trainable_variables
-    )
+    model_weights = state.model
+    weights_delta = tf.nest.map_structure(tf.ones_like, model_weights.trainable)
 
     for _ in range(2):
       state = simple_fedavg_tf.server_update(
-          model, optimizer, state, weights_delta
+          model, model_weights, optimizer, state, weights_delta
       )
 
     model_vars = self.evaluate(state.model)
@@ -352,24 +326,25 @@ class ServerTest(tf.test.TestCase):
     self.assertAllClose(train_vars, [np.ones_like(v) * 0.2 for v in train_vars])
 
   def test_self_contained_example_custom_model(self):
-    self._assert_server_update_with_all_ones(MnistModel)
+    self._assert_server_update_with_all_ones(create_mnist_functional_model)
 
 
 class ClientTest(tf.test.TestCase):
 
   def test_self_contained_example(self):
     client_data = _create_client_data()
-    model = MnistModel()
+    model = create_mnist_functional_model()
+    model_weights = simple_fedavg_tf.get_model_weights(model)
     optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=0.01)
     losses = []
     for r in range(2):
       optimizer = optimizer_fn()
-      simple_fedavg_tff._initialize_optimizer_vars(model, optimizer)
+      simple_fedavg_tff._initialize_optimizer_vars(model_weights, optimizer)
       server_message = simple_fedavg_tf.BroadcastMessage(
-          model_weights=model.weights, round_num=r
+          model_weights=model_weights, round_num=r
       )
       outputs = simple_fedavg_tf.client_update(
-          model, client_data(), server_message, optimizer
+          model, model_weights, client_data(), server_message, optimizer
       )
       losses.append(
           tf.math.divide_no_nan(
@@ -381,38 +356,46 @@ class ClientTest(tf.test.TestCase):
 
 
 def _create_test_rnn_model(
-    vocab_size: int = 6, sequence_length: int = 5, mask_zero: bool = True
-) -> tf.keras.Model:
+    vocab_size: int = 6, mask_zero: bool = True
+) -> keras.Model:
   """A simple RNN model for test."""
-  model = tf.keras.Sequential()
+  model = keras.Sequential()
   model.add(
-      tf.keras.layers.Embedding(
+      keras.layers.Embedding(
           input_dim=vocab_size,
-          input_length=sequence_length,
           output_dim=8,
           mask_zero=mask_zero,
       )
   )
   model.add(
-      tf.keras.layers.LSTM(
+      keras.layers.LSTM(
           units=16,
           kernel_initializer='he_normal',
           return_sequences=True,
           stateful=False,
       )
   )
-  model.add(tf.keras.layers.Dense(vocab_size))
+  model.add(keras.layers.Dense(vocab_size))
   return model
 
 
-def _rnn_model_fn() -> tff.learning.models.VariableModel:
+def _rnn_model_fn() -> tff.learning.models.FunctionalModel:
   keras_model = _create_test_rnn_model()
-  loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+  loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
   input_spec = collections.OrderedDict(
       x=tf.TensorSpec([None, 5], tf.int32), y=tf.TensorSpec([None, 5], tf.int32)
   )
-  return tff.learning.models.from_keras_model(
-      keras_model=keras_model, input_spec=input_spec, loss=loss
+  return tff.learning.models.functional_model_from_keras(
+      keras_model=keras_model,
+      loss_fn=loss,
+      input_spec=input_spec,
+      metrics_constructor=collections.OrderedDict(
+          loss=functools.partial(
+              keras.metrics.SparseCategoricalCrossentropy, from_logits=True
+          ),
+          num_examples=tff.learning.metrics.NumExamplesCounter,
+          num_batches=tff.learning.metrics.NumBatchesCounter,
+      ),
   )
 
 
@@ -435,7 +418,7 @@ class RNNTest(tf.test.TestCase):
     global_model_type, client_datasets_type = (
         it_process.next.type_signature.parameter
     )
-    model_type = tff.learning.models.weights_type_from_model(_rnn_model_fn)
+    model_type = tff.learning.models.weights_type_from_model(_rnn_model_fn())
     self.assertEqual(
         global_model_type,
         federated_language.FederatedType(
@@ -465,7 +448,7 @@ class RNNTest(tf.test.TestCase):
     it_process = simple_fedavg_tff.build_federated_averaging_process(
         _rnn_model_fn,
         client_optimizer_fn=functools.partial(
-            tf.keras.optimizers.SGD, learning_rate=0.01
+            tf.keras.optimizers.legacy.SGD, learning_rate=0.01
         ),
     )
     server_state = it_process.initialize()

@@ -15,6 +15,7 @@
 import collections
 
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -29,28 +30,28 @@ def construct_example_training_comp() -> tff.learning.templates.LearningProcess:
       y=tf.TensorSpec(shape=[None, 1], dtype=tf.int32),
   )
 
-  def model_fn():
-    """Constructs keras model."""
-    keras_model = tf.keras.models.Sequential(
-        [
-            tf.keras.layers.Dense(
-                1,
-                activation=tf.nn.softmax,
-                kernel_initializer='zeros',
-                input_shape=(2,),
-            )
-        ]
-    )
-
-    return tff.learning.models.from_keras_model(
-        keras_model,
-        input_spec=input_spec,
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
-    )
+  keras_model = keras.models.Sequential([
+      keras.Input(shape=(2,)),
+      keras.layers.Dense(
+          1,
+          activation='softmax',
+          kernel_initializer='zeros',
+      ),
+  ])
+  model = tff.learning.models.functional_model_from_keras(
+      keras_model,
+      input_spec=input_spec,
+      loss_fn=keras.losses.SparseCategoricalCrossentropy(),
+      metrics_constructor=collections.OrderedDict(
+          sparse_categorical_accuracy=keras.metrics.SparseCategoricalAccuracy,
+          loss=keras.metrics.SparseCategoricalCrossentropy,
+          num_examples=tff.learning.metrics.NumExamplesCounter,
+          num_batches=tff.learning.metrics.NumBatchesCounter,
+      ),
+  )
 
   return tff.learning.algorithms.build_weighted_fed_avg(
-      model_fn,
+      model,
       client_optimizer_fn=tff.learning.optimizers.build_sgdm(
           learning_rate=0.01
       ),
@@ -84,9 +85,6 @@ class MapReduceFormTest(tf.test.TestCase):
         '        float32[1]\n'
         '      >,\n'
         '      non_trainable=<>\n'
-        '    >,\n'
-        '    <\n'
-        '      learning_rate=float32\n'
         '    >\n'
         '  >\n'
         '> -> <\n'

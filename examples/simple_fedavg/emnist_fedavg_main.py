@@ -23,6 +23,7 @@ import functools
 
 from absl import app
 from absl import flags
+import keras
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -52,7 +53,7 @@ FLAGS = flags.FLAGS
 
 def evaluate(keras_model, test_dataset):
   """Evaluate the acurracy of a keras model on a test dataset."""
-  metric = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
+  metric = keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
   for batch in test_dataset:
     predictions = keras_model(batch['x'])
     metric.update_state(y_true=batch['y'], y_pred=predictions)
@@ -108,41 +109,46 @@ def create_original_fedavg_cnn_model(only_digits=True):
       dataset.
 
   Returns:
-    An uncompiled `tf.keras.Model`.
+    An uncompiled `keras.Model`.
   """
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
   max_pool = functools.partial(
-      tf.keras.layers.MaxPooling2D,
+      keras.layers.MaxPooling2D,
       pool_size=(2, 2),
       padding='same',
       data_format=data_format,
   )
   conv2d = functools.partial(
-      tf.keras.layers.Conv2D,
+      keras.layers.Conv2D,
       kernel_size=5,
       padding='same',
       data_format=data_format,
-      activation=tf.nn.relu,
+      activation='relu',
   )
-  model = tf.keras.models.Sequential([
-      conv2d(filters=32, input_shape=input_shape),
+  model = keras.models.Sequential([
+      keras.Input(shape=input_shape),
+      conv2d(filters=32),
       max_pool(),
       conv2d(filters=64),
       max_pool(),
-      tf.keras.layers.Flatten(),
-      tf.keras.layers.Dense(512, activation=tf.nn.relu),
-      tf.keras.layers.Dense(10 if only_digits else 62),
+      keras.layers.Flatten(),
+      keras.layers.Dense(512, activation='relu'),
+      keras.layers.Dense(10 if only_digits else 62),
   ])
   return model
 
 
 def server_optimizer_fn():
-  return tf.keras.optimizers.SGD(learning_rate=FLAGS.server_learning_rate)
+  return tf.keras.optimizers.legacy.SGD(
+      learning_rate=FLAGS.server_learning_rate
+  )
 
 
 def client_optimizer_fn():
-  return tf.keras.optimizers.SGD(learning_rate=FLAGS.client_learning_rate)
+  return tf.keras.optimizers.legacy.SGD(
+      learning_rate=FLAGS.client_learning_rate
+  )
 
 
 def main(argv):
@@ -154,13 +160,19 @@ def main(argv):
   def tff_model_fn():
     """Constructs a fully initialized model for use in federated averaging."""
     keras_model = create_original_fedavg_cnn_model(only_digits=True)
-    loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-    metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
-    return tff.learning.models.from_keras_model(
+    loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    return tff.learning.models.functional_model_from_keras(
         keras_model,
-        loss=loss,
-        metrics=metrics,
+        loss_fn=loss,
         input_spec=train_data.element_type_structure,
+        metrics_constructor=collections.OrderedDict(
+            sparse_categorical_accuracy=keras.metrics.SparseCategoricalAccuracy,
+            loss=functools.partial(
+                keras.metrics.SparseCategoricalCrossentropy, from_logits=True
+            ),
+            num_examples=tff.learning.metrics.NumExamplesCounter,
+            num_batches=tff.learning.metrics.NumBatchesCounter,
+        ),
     )
 
   iterative_process = simple_fedavg_tff.build_federated_averaging_process(

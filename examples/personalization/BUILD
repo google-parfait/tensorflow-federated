@@ -12,6 +12,7 @@ py_library(
     srcs = ["p13n_utils.py"],
     deps = [
         "//tensorflow_federated",
+        "@federated_language//federated_language",
         "@pypi//tensorflow",
     ],
 )
@@ -22,6 +23,7 @@ py_test(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],
@@ -34,6 +36,7 @@ py_binary(
         ":p13n_utils",
         "//tensorflow_federated",
         "@pypi//absl_py",
+        "@pypi//keras",
         "@pypi//numpy",
         "@pypi//tensorflow",
     ],

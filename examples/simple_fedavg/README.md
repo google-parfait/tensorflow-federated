@@ -35,49 +35,48 @@ This EMNIST example can easily be adapted for experimental changes:
 *   In the driver file
     [emnist_fedavg_main](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py),
     we can change the
-    [dataset](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L49-L79),
+    [dataset](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py),
     the
-    [neural network architecture](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L82-L122),
+    [neural network architecture](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py),
     the
-    [server_optimizer](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L125-L126),
+    [server_optimizer](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py),
     and the
-    [client_optimizer](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L129-L130)
-    for cutomized applications. Note that we need a
-    [model wrapper](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L151-152),
+    [client_optimizer](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py)
+    for customized applications. Note that we need a
+    [model wrapper](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py),
     and build an
-    [iterative process](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L154-L155)
-    with TFF. We define a stand-alone model wrapper for keras models in
-    [simple_fedavg_tf](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L39-L81),
-    which can be substituted with `tff.learning.models.VariableModel` by calling
-    `tff.learning.models.from_keras_model`. Note that the inner
-    [keras_model](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L174)
-    of `tff.learning.models.VariableModel` may not be directly accessible for
+    [iterative process](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py)
+    with TFF. We construct a `tff.learning.models.FunctionalModel` from a Keras
+    model by calling `tff.learning.models.functional_model_from_keras`. Note
+    that the inner
+    [keras_model](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py)
+    of `tff.learning.models.FunctionalModel` is not directly accessible for
     evaluation.
 
 *   In the TF function file
     [simple_fedavg_tf](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py),
     we have more control over the local computations performed in optimization
     process. In each round, on the server side, we will update the
-    [ServerState](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L102-L113)
+    [ServerState](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py)
     in
-    [server_update](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L131-L141)
+    [server_update](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py)
     function; we then build a
-    [BroadcastMessage](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L116-L128)
+    [BroadcastMessage](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py)
     with the
-    [build_server_broadcast_message](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L165-L181)
+    [build_server_broadcast_message](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py)
     function to prepare for broadcasting from server to clients; on the client
     side, we perform local updates with the
-    [client_update](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L184-L222)
+    [client_update](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py)
     function and return
-    [ClientOutput](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L84-L99)
+    [ClientOutput](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py)
     to be sent back to server. Note that server_optimizer defined in
-    [emnist_fedavg_main](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L125-L126)
+    [emnist_fedavg_main](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py)
     is used in
-    [server_update](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L131-L141)
+    [server_update](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py)
     function; client_optimizer defined in
-    [emnist_fedavg_main](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py#L129-L130)
+    [emnist_fedavg_main](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py)
     is used in
-    [client_update](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py#L184-L222).
+    [client_update](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py).
     These functions are used as local computation building blocks in the overall
     TFF computation, which handles the broadcasting and aggregation between
     server and clients.
@@ -85,7 +84,7 @@ This EMNIST example can easily be adapted for experimental changes:
 *   In the TFF file
     [simple_fedavg_tff](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tff.py),
     we have control over the orchestration strategy. We take the
-    [weighted average](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tff.py#L132-L133)
+    [weighted average](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tff.py)
     of client updates to update the model kept in server state. More detailed
     instruction on the usage of TFF functions `federated_broadcast`,
     `federated_map`, and `federated_mean` can be found in the
@@ -110,7 +109,7 @@ code for your research:
 1.  Implement a model that uses L2 regularization. You will need to change the
     model definition in
     [emnist_fedavg_main](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/emnist_fedavg_main.py)
-    and add Keras regularization losses in the `KerasModelWrapper` class in
+    and add regularization losses to the loss computation in
     [simple_fedavg_tf](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/simple_fedavg/simple_fedavg_tf.py).
 
 1.  Implement a decaying learning rate schedule on the clients based on the

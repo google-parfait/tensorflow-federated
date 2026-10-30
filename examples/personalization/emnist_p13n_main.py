@@ -17,6 +17,7 @@ import collections
 import functools
 
 from absl import app
+import keras
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -31,7 +32,9 @@ def _get_emnist_datasets() -> (
   """Pre-process EMNIST-62 dataset for FedAvg and personalization."""
 
   def element_fn(element):
-    return (tf.expand_dims(element['pixels'], axis=-1), element['label'])
+    return collections.OrderedDict(
+        x=tf.expand_dims(element['pixels'], axis=-1), y=element['label']
+    )
 
   def preprocess_train_data(dataset):
     """Pre-process the dataset for training the global model."""
@@ -93,7 +96,7 @@ def _get_emnist_datasets() -> (
   return federated_train_data, federated_p13n_data
 
 
-def _create_conv_dropout_model(only_digits: bool = True) -> tf.keras.Model:
+def _create_conv_dropout_model(only_digits: bool = True) -> keras.Model:
   """A convolutional model to use for EMNIST experiments.
 
   Args:
@@ -102,29 +105,27 @@ def _create_conv_dropout_model(only_digits: bool = True) -> tf.keras.Model:
       dataset.
 
   Returns:
-    A `tf.keras.Model`.
+    A `keras.Model`.
   """
   data_format = 'channels_last'
 
-  model = tf.keras.models.Sequential([
-      tf.keras.layers.Conv2D(
+  model = keras.models.Sequential([
+      keras.Input(shape=(28, 28, 1)),
+      keras.layers.Conv2D(
           32,
           kernel_size=(3, 3),
           activation='relu',
           data_format=data_format,
-          input_shape=(28, 28, 1),
       ),
-      tf.keras.layers.Conv2D(
+      keras.layers.Conv2D(
           64, kernel_size=(3, 3), activation='relu', data_format=data_format
       ),
-      tf.keras.layers.MaxPool2D(pool_size=(2, 2), data_format=data_format),
-      tf.keras.layers.Dropout(0.25),
-      tf.keras.layers.Flatten(),
-      tf.keras.layers.Dense(128, activation='relu'),
-      tf.keras.layers.Dropout(0.5),
-      tf.keras.layers.Dense(
-          10 if only_digits else 62, activation=tf.nn.softmax
-      ),
+      keras.layers.MaxPool2D(pool_size=(2, 2), data_format=data_format),
+      keras.layers.Dropout(0.25),
+      keras.layers.Flatten(),
+      keras.layers.Dense(128, activation='relu'),
+      keras.layers.Dropout(0.5),
+      keras.layers.Dense(10 if only_digits else 62, activation='softmax'),
   ])
 
   return model
@@ -137,15 +138,19 @@ def main(argv):
   # Create datasets for training global and personalized models.
   federated_train_data, federated_p13n_data = _get_emnist_datasets()
 
-  def model_fn() -> tff.learning.models.VariableModel:
-    """Build a `tff.learning.models.VariableModel` for training EMNIST."""
-    keras_model = _create_conv_dropout_model(only_digits=False)
-    return tff.learning.models.from_keras_model(
-        keras_model=keras_model,
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        input_spec=federated_train_data[0].element_spec,
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
-    )
+  # Build a `tff.learning.models.FunctionalModel` for training EMNIST.
+  keras_model = _create_conv_dropout_model(only_digits=False)
+  model = tff.learning.models.functional_model_from_keras(
+      keras_model=keras_model,
+      loss_fn=keras.losses.SparseCategoricalCrossentropy(),
+      input_spec=federated_train_data[0].element_spec,
+      metrics_constructor=collections.OrderedDict(
+          sparse_categorical_accuracy=keras.metrics.SparseCategoricalAccuracy,
+          loss=keras.metrics.SparseCategoricalCrossentropy,
+          num_examples=tff.learning.metrics.NumExamplesCounter,
+          num_batches=tff.learning.metrics.NumBatchesCounter,
+      ),
+  )
 
   # Build a standard federated averaging process for training the global model.
   client_opt = tff.learning.optimizers.build_sgdm(learning_rate=0.02)
@@ -153,7 +158,7 @@ def main(argv):
       learning_rate=1.0, momentum=0.9
   )
   learning_process = tff.learning.algorithms.build_weighted_fed_avg(
-      model_fn=model_fn,
+      model_fn=model,
       client_optimizer_fn=client_opt,
       server_optimizer_fn=server_opt,
   )
@@ -168,12 +173,12 @@ def main(argv):
   # a no-argument function which, when being called, returns a `tf.function`
   # that represents a personalization strategy. Customers can define arbitrary
   # personalization strategis (i.e., `tf.function`s) that take a
-  # `tff.learning.models.VariableModel`, an unbatched `tf.data.Dataset` for
-  # train, an unbatched `tf.data.Dataset` for test, (and an extra `context`
-  # object), and returns the personalization metrics (see `build_personalize_fn`
-  # for an example).
+  # `tff.learning.models.FunctionalModel`, initial `model_weights`, an unbatched
+  # `tf.data.Dataset` for train, an unbatched `tf.data.Dataset` for test, (and
+  # an extra `context` object), and returns the personalization metrics (see
+  # `build_personalize_fn` for an example).
   personalize_fn_dict = collections.OrderedDict()
-  sgd_opt = lambda: tf.keras.optimizers.SGD(learning_rate=0.02)
+  sgd_opt = tff.learning.optimizers.build_sgdm(learning_rate=0.02)
   personalize_fn_dict['sgd'] = functools.partial(
       build_personalize_fn,
       optimizer_fn=sgd_opt,
@@ -181,7 +186,7 @@ def main(argv):
       num_epochs=3,
       num_epochs_per_eval=1,
   )
-  adam_opt = lambda: tf.keras.optimizers.Adam(learning_rate=0.002)
+  adam_opt = tff.learning.optimizers.build_adam(learning_rate=0.002)
   personalize_fn_dict['adam'] = functools.partial(
       build_personalize_fn,
       optimizer_fn=adam_opt,
@@ -195,7 +200,7 @@ def main(argv):
   # `federated_language.Computation` with the following type signature:
   # <model_weights@SERVER, datasets@CLIENTS> -> personalization_metrics@SERVER.
   p13n_eval = tff.learning.algorithms.build_personalization_eval_computation(
-      model_fn=model_fn,
+      model_fn=model,
       personalize_fn_dict=personalize_fn_dict,
       baseline_evaluate_fn=evaluate_fn,
       max_num_clients=100,

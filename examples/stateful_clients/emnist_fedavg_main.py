@@ -21,6 +21,7 @@ import functools
 
 from absl import app
 from absl import flags
+import keras
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -101,45 +102,50 @@ def create_original_fedavg_cnn_model(only_digits=True):
       dataset.
 
   Returns:
-    An uncompiled `tf.keras.Model`.
+    An uncompiled `keras.Model`.
   """
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
 
   max_pool = functools.partial(
-      tf.keras.layers.MaxPooling2D,
+      keras.layers.MaxPooling2D,
       pool_size=(2, 2),
       padding='same',
       data_format=data_format,
   )
   conv2d = functools.partial(
-      tf.keras.layers.Conv2D,
+      keras.layers.Conv2D,
       kernel_size=5,
       padding='same',
       data_format=data_format,
-      activation=tf.nn.relu,
+      activation='relu',
   )
 
-  model = tf.keras.models.Sequential([
-      conv2d(filters=32, input_shape=input_shape),
+  model = keras.models.Sequential([
+      keras.Input(shape=input_shape),
+      conv2d(filters=32),
       max_pool(),
       conv2d(filters=64),
       max_pool(),
-      tf.keras.layers.Flatten(),
-      tf.keras.layers.Dense(512, activation=tf.nn.relu),
-      tf.keras.layers.Dense(10 if only_digits else 62),
-      tf.keras.layers.Activation(tf.nn.softmax),
+      keras.layers.Flatten(),
+      keras.layers.Dense(512, activation='relu'),
+      keras.layers.Dense(10 if only_digits else 62),
+      keras.layers.Activation('softmax'),
   ])
 
   return model
 
 
 def server_optimizer_fn():
-  return tf.keras.optimizers.SGD(learning_rate=FLAGS.server_learning_rate)
+  return tf.keras.optimizers.legacy.SGD(
+      learning_rate=FLAGS.server_learning_rate
+  )
 
 
 def client_optimizer_fn():
-  return tf.keras.optimizers.SGD(learning_rate=FLAGS.client_learning_rate)
+  return tf.keras.optimizers.legacy.SGD(
+      learning_rate=FLAGS.client_learning_rate
+  )
 
 
 def main(argv):
@@ -151,7 +157,7 @@ def main(argv):
   def tff_model_fn():
     """Constructs a fully initialized model for use in federated averaging."""
     keras_model = create_original_fedavg_cnn_model(only_digits=True)
-    loss = tf.keras.losses.SparseCategoricalCrossentropy()
+    loss = keras.losses.SparseCategoricalCrossentropy()
     return stateful_fedavg_tf.KerasModelWrapper(
         keras_model, test_data.element_spec, loss
     )
@@ -174,7 +180,7 @@ def main(argv):
   )
   server_state = iterative_process.initialize()
 
-  metric = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
+  metric = keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
   model = tff_model_fn()
   for round_num in range(FLAGS.total_rounds):
     sampled_clients = np.random.choice(

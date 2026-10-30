@@ -34,14 +34,13 @@ import tensorflow_federated as tff
 from examplesstateful_clients import stateful_fedavg_tf
 
 
-def _initialize_optimizer_vars(model, optimizer):
+def _initialize_optimizer_vars(model_weights, optimizer):
   """Creates optimizer variables to assign the optimizer's state."""
   # Create zero gradients to force an update that doesn't modify.
   # Force eagerly constructing the optimizer variables. Normally Keras lazily
   # creates the variables on first usage of the optimizer. Optimizers such as
   # Adam, Adagrad, or using momentum need to create a new set of variables shape
   # like the model weights.
-  model_weights = stateful_fedavg_tf.get_model_weights(model)
   zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
   optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
   assert optimizer.variables()
@@ -50,13 +49,18 @@ def _initialize_optimizer_vars(model, optimizer):
 def build_federated_averaging_process(
     model_fn,
     client_state_fn,
-    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
-    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
+    server_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(
+        learning_rate=1.0
+    ),
+    client_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(
+        learning_rate=0.1
+    ),
 ):
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    model_fn: A `tff.learning.models.FunctionalModel`, `KerasModelWrapper`, or a
+      no-arg function that returns one.
     client_state_fn: A no-arg function that returns a
       `stateful_fedavg_tf.ClientState`.
     server_optimizer_fn: A no-arg function that returns a
@@ -69,15 +73,27 @@ def build_federated_averaging_process(
   """
   del client_state_fn  # Unused.
 
-  whimsy_model = model_fn()
+  whimsy_model = model_fn() if callable(model_fn) else model_fn
+  is_functional_model = isinstance(
+      whimsy_model, tff.learning.models.FunctionalModel
+  )
+
+  def _get_model():
+    # `FunctionalModel` is stateless and can be reused across computations.
+    # `KerasModelWrapper` creates `tf.Variable`s that must live in the active
+    # `tff.tensorflow.computation` graph.
+    if is_functional_model:
+      return whimsy_model
+    return model_fn() if callable(model_fn) else model_fn
 
   @tff.tensorflow.computation
   def server_init_tf():
-    model = model_fn()
+    model = _get_model()
+    model_weights = stateful_fedavg_tf.get_model_weights(model)
     server_optimizer = server_optimizer_fn()
-    _initialize_optimizer_vars(model, server_optimizer)
+    _initialize_optimizer_vars(model_weights, server_optimizer)
     return stateful_fedavg_tf.ServerState(
-        model_weights=stateful_fedavg_tf.get_model_weights(model),
+        model_weights=model_weights,
         optimizer_state=server_optimizer.variables(),
         round_num=0,
         total_iters_count=0,
@@ -101,11 +117,17 @@ def build_federated_averaging_process(
       client_state_type.iters_count,
   )
   def server_update_fn(server_state, model_delta, total_iters_count):
-    model = model_fn()
+    model = _get_model()
+    model_weights = stateful_fedavg_tf.get_model_weights(model)
     server_optimizer = server_optimizer_fn()
-    _initialize_optimizer_vars(model, server_optimizer)
+    _initialize_optimizer_vars(model_weights, server_optimizer)
     return stateful_fedavg_tf.server_update(
-        model, server_optimizer, server_state, model_delta, total_iters_count
+        model,
+        model_weights,
+        server_optimizer,
+        server_state,
+        model_delta,
+        total_iters_count,
     )
 
   @tff.tensorflow.computation(server_state_type)
@@ -120,10 +142,16 @@ def build_federated_averaging_process(
       tf_dataset_type, client_state_type, server_message_type
   )
   def client_update_fn(tf_dataset, client_state, server_message):
-    model = model_fn()
+    model = _get_model()
+    model_weights = stateful_fedavg_tf.get_model_weights(model)
     client_optimizer = client_optimizer_fn()
     return stateful_fedavg_tf.client_update(
-        model, tf_dataset, client_state, server_message, client_optimizer
+        model,
+        model_weights,
+        tf_dataset,
+        client_state,
+        server_message,
+        client_optimizer,
     )
 
   federated_server_state_type = federated_language.FederatedType(

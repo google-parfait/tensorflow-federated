@@ -13,11 +13,11 @@
 # limitations under the License.
 """An implementation of the FedAvg algorithm with stateful clients.
 
-The TF functions for sever and client udpates.
+The TF functions for server and client updates.
 """
 
 import collections
-from typing import Any, NamedTuple, Union
+from typing import Any, NamedTuple
 
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -27,14 +27,15 @@ ModelOutputs = collections.namedtuple('ModelOutputs', 'loss')
 
 
 def get_model_weights(
-    model: Union[tff.learning.models.VariableModel, 'KerasModelWrapper']
-) -> Union[tff.learning.models.ModelWeights, ModelWeights]:
-  """Gets the appropriate ModelWeights object based on the model type."""
-  if isinstance(model, tff.learning.models.VariableModel):
-    return tff.learning.models.ModelWeights.from_model(model)
-  else:
-    # Using simple_fedavg custom Keras wrapper.
-    return model.weights
+    model: 'tff.learning.models.FunctionalModel | KerasModelWrapper',
+) -> tff.learning.models.ModelWeights | ModelWeights:
+  """Gets the appropriate `ModelWeights` object based on the model type."""
+  if isinstance(model, tff.learning.models.FunctionalModel):
+    return tff.learning.models.ModelWeights(
+        trainable=tuple(tf.Variable(w) for w in model.initial_weights[0]),
+        non_trainable=tuple(tf.Variable(w) for w in model.initial_weights[1]),
+    )
+  return model.weights
 
 
 class KerasModelWrapper:
@@ -44,11 +45,11 @@ class KerasModelWrapper:
     """A wrapper class that provides necessary API handles for TFF.
 
     Args:
-      keras_model: A `tf.keras.Model` to be trained.
-      input_spec: Metadata of dataset that desribes the input tensors, which
+      keras_model: A `keras.Model` to be trained.
+      input_spec: Metadata of dataset that describes the input tensors, which
         will be converted to `federated_language.Type` specifying the expected
         type of input and output of the model.
-      loss: A `tf.keras.losses.Loss` instance to be used for training.
+      loss: A `keras.losses.Loss` instance to be used for training.
     """
     self.keras_model = keras_model
     self.input_spec = input_spec
@@ -71,9 +72,13 @@ class KerasModelWrapper:
 
   @property
   def weights(self):
+    # On the TensorFlow backend, `keras.Variable.value` returns the underlying
+    # `tf.Variable`.
     return ModelWeights(
-        trainable=self.keras_model.trainable_variables,
-        non_trainable=self.keras_model.non_trainable_variables,
+        trainable=[v.value for v in self.keras_model.trainable_variables],
+        non_trainable=[
+            v.value for v in self.keras_model.non_trainable_variables
+        ],
     )
 
   def from_weights(self, model_weights):
@@ -90,7 +95,7 @@ class KerasModelWrapper:
 
 
 def keras_evaluate(model, test_data, metric):
-  metric.reset_states()
+  metric.reset_state()
   for batch in test_data:
     preds = model(batch['x'], training=False)
     metric.update_state(y_true=batch['y'], y_pred=preds)
@@ -119,10 +124,8 @@ class ClientOutput(NamedTuple):
        variables.
   -   `client_weight`: Weight to be used in a weighted mean when
        aggregating `weights_delta`.
-  -   `model_output`: A structure matching
-      `tff.learning.models.VariableModel.report_local_unfinalized_metrics`,
-      reflecting the
-       results of training on the input dataset.
+  -   `model_output`: A structure reflecting the results of training on the
+       input dataset.
   -   `client_state`: The updated `ClientState`.
   """
 
@@ -165,12 +168,19 @@ class BroadcastMessage(NamedTuple):
 
 @tf.function
 def server_update(
-    model, server_optimizer, server_state, weights_delta, total_iters_count
+    model,
+    model_weights,
+    server_optimizer,
+    server_state,
+    weights_delta,
+    total_iters_count,
 ):
   """Updates `server_state` based on `weights_delta`.
 
   Args:
-    model: A `KerasModelWrapper` or `tff.learning.models.VariableModel`.
+    model: A `KerasModelWrapper` or `tff.learning.models.FunctionalModel`.
+    model_weights: A `ModelWeights` structure containing the model's
+      `tf.Variable`s.
     server_optimizer: A `tf.keras.optimizers.Optimizer`. If the optimizer
       creates variables, they must have already been created.
     server_state: A `ServerState`, the state to be updated.
@@ -181,8 +191,8 @@ def server_update(
   Returns:
     An updated `ServerState`.
   """
+  del model  # Unused.
   # Initialize the model with the current state.
-  model_weights = get_model_weights(model)
   tf.nest.map_structure(
       lambda v, t: v.assign(t), model_weights, server_state.model_weights
   )
@@ -228,21 +238,28 @@ def build_server_broadcast_message(server_state):
 
 @tf.function
 def client_update(
-    model, dataset, client_state, server_message, client_optimizer
+    model,
+    model_weights,
+    dataset,
+    client_state,
+    server_message,
+    client_optimizer,
 ):
-  """Performans client local training of `model` on `dataset`.
+  """Performs client local training of `model` on `dataset`.
 
   Args:
-    model: A `tff.learning.models.VariableModel`.
-    dataset: A 'tf.data.Dataset'.
-    client_state: A 'ClientState'.
+    model: A `tff.learning.models.FunctionalModel` or `KerasModelWrapper`.
+    model_weights: A `ModelWeights` structure containing the model's
+      `tf.Variable`s.
+    dataset: A `tf.data.Dataset` yielding mapping batches with keys `'x'` and
+      `'y'`.
+    client_state: A `ClientState`.
     server_message: A `BroadcastMessage` from server.
     client_optimizer: A `tf.keras.optimizers.Optimizer`.
 
   Returns:
-    A 'ClientOutput`.
+    A `ClientOutput`.
   """
-  model_weights = get_model_weights(model)
   initial_weights = server_message.model_weights
   tf.nest.map_structure(
       lambda v, t: v.assign(t), model_weights, initial_weights
@@ -252,13 +269,33 @@ def client_update(
   loss_sum = tf.constant(0, dtype=tf.float32)
   iters_count = tf.convert_to_tensor(client_state.iters_count)
   for batch in dataset:
+    x = batch['x']
+    y = batch['y']
     with tf.GradientTape() as tape:
-      outputs = model.forward_pass(batch)
-    grads = tape.gradient(outputs.loss, model_weights.trainable)
+      if isinstance(model, tff.learning.models.FunctionalModel):
+        predictions, updated_non_trainable = model.forward_pass_on_batch(
+            model_weights=(
+                model_weights.trainable,
+                model_weights.non_trainable,
+            ),
+            x=x,
+            training=True,
+        )
+        loss = model.loss(output=predictions, label=y)
+      else:
+        updated_non_trainable = None
+        loss = model.forward_pass(batch).loss
+    if updated_non_trainable is not None:
+      tf.nest.map_structure(
+          lambda v, t: v.assign(t),
+          model_weights.non_trainable,
+          updated_non_trainable,
+      )
+    grads = tape.gradient(loss, model_weights.trainable)
     client_optimizer.apply_gradients(zip(grads, model_weights.trainable))
-    batch_size = tf.shape(batch['x'])[0]
+    batch_size = tf.shape(x)[0]
     num_examples += batch_size
-    loss_sum += outputs.loss * tf.cast(batch_size, tf.float32)
+    loss_sum += loss * tf.cast(batch_size, tf.float32)
     iters_count += 1
 
   weights_delta = tf.nest.map_structure(

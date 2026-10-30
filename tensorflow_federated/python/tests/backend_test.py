@@ -17,6 +17,7 @@ import collections
 from absl.testing import absltest
 from absl.testing import parameterized
 import federated_language
+import keras
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -573,6 +574,8 @@ class KerasIntegrationTest(parameterized.TestCase):
 
   @test_contexts.with_contexts(*test_contexts.get_all_contexts())
   def test_keras_model_with_activity_regularization_runs_fedavg(self):
+    # Note: `functional_model_from_keras` does not yet include layer or activity
+    # regularization losses (see b/156629927).
     self.skipTest('b/171358068')
 
     num_clients = 5
@@ -591,23 +594,24 @@ class KerasIntegrationTest(parameterized.TestCase):
     input_spec = train_data[0].element_spec
     input_dim = x_train.shape[1]
 
-    def model_fn():
-      model = tf.keras.models.Sequential([
-          tf.keras.layers.InputLayer(input_shape=(input_dim,)),
-          tf.keras.layers.Dense(
-              50, activity_regularizer=tf.keras.regularizers.l1(0.1)
-          ),
-          tf.keras.layers.Dense(input_dim, activation='sigmoid'),
-      ])
-      tff_model = tff.learning.models.from_keras_model(
-          keras_model=model,
-          input_spec=input_spec,
-          loss=tf.keras.losses.MeanSquaredError(),
-      )
-      return tff_model
+    model = keras.models.Sequential([
+        keras.Input(shape=(input_dim,)),
+        keras.layers.Dense(50, activity_regularizer=keras.regularizers.l1(0.1)),
+        keras.layers.Dense(input_dim, activation='sigmoid'),
+    ])
+    tff_model = tff.learning.models.functional_model_from_keras(
+        keras_model=model,
+        input_spec=input_spec,
+        loss_fn=keras.losses.MeanSquaredError(),
+        metrics_constructor=collections.OrderedDict(
+            loss=keras.metrics.MeanSquaredError,
+            num_examples=tff.learning.metrics.NumExamplesCounter,
+            num_batches=tff.learning.metrics.NumBatchesCounter,
+        ),
+    )
 
     trainer = tff.learning.algorithms.build_weighted_fed_avg(
-        model_fn, client_optimizer_fn=tff.learning.optimizers.build_sgdm(0.1)
+        tff_model, client_optimizer_fn=tff.learning.optimizers.build_sgdm(0.1)
     )
 
     state = trainer.initialize()
