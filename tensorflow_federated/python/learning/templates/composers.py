@@ -286,13 +286,15 @@ def compose_learning_process(
 
   # LearningProcess.__init__ does some basic type checking. Here we do more
   # specific type checking to validate that the second arg of `next` is a
-  # CLIENTS-placed structure of sequences.
+  # CLIENTS-placed structure of sequences, or a CLIENTS-placed tensor client
+  # dataset.
   next_fn = composed_learning_process.next
   next_fn_param = next_fn.type_signature.parameter
+  client_data_type = next_fn_param[1]  # pyrefly: ignore[bad-index, unsupported-operation]
+  if type_checks.is_client_placed_tensor_dataset(client_data_type):
+    return composed_learning_process
   try:
-    type_checks.check_is_client_placed_structure_of_sequences(
-        next_fn_param[1],  # pyrefly: ignore[bad-index, unsupported-operation]
-    )
+    type_checks.check_is_client_placed_structure_of_sequences(client_data_type)
   except type_checks.ClientSequenceTypeError as type_error:
     raise TypeError(
         'The learning process composition produced a `next` function with type '

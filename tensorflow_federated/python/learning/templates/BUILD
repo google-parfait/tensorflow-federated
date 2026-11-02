@@ -265,6 +265,7 @@ py_library(
     srcs = ["model_delta_client_work.py"],
     deps = [
         ":client_works",
+        ":type_checks",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
@@ -291,7 +292,9 @@ py_test(
     deps = [
         ":client_works",
         ":model_delta_client_work",
+        ":type_checks",
         "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:serialization_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_types",
         "//tensorflow_federated/python/core/templates:measured_process",

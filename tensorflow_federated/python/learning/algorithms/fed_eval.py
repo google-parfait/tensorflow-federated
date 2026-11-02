@@ -36,6 +36,7 @@ from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
+from tensorflow_federated.python.learning.templates import model_delta_client_work
 
 _AggregationProcess = aggregation_process.AggregationProcess
 
@@ -158,30 +159,82 @@ def _build_functional_local_evaluation(
     metrics_state = model.initialize_metrics_state()
 
     for batch in iter(dataset):
-      if isinstance(batch, Mapping):
-        x = batch['x']
-        y = batch['y']
-      else:
-        x, y = batch
-
-      batch_output = model.predict_on_batch(weights, x, training=False)
-      batch_loss = model.loss(output=batch_output, label=y)
-      predictions = tf.nest.flatten(batch_output)[0]
-      batch_num_examples = tf.shape(predictions)[0]
-
-      # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
-      metrics_state = model.update_metrics_state(
-          metrics_state,
-          batch_output=variable.BatchOutput(
-              loss=batch_loss,
-              predictions=batch_output,
-              num_examples=batch_num_examples,
-          ),
-          labels=y,
+      metrics_state = _functional_eval_step(
+          model, weights, metrics_state, batch
       )
 
     unfinalized_metrics = metrics_state
     return unfinalized_metrics
+
+  return local_eval
+
+
+def _functional_eval_step(
+    model: functional.FunctionalModel,
+    weights,
+    metrics_state,
+    batch,
+):
+  """Updates `metrics_state` with the predictions of `model` on `batch`."""
+  if isinstance(batch, Mapping):
+    x = batch['x']
+    y = batch['y']
+  else:
+    x, y = batch
+
+  batch_output = model.predict_on_batch(weights, x, training=False)
+  batch_loss = model.loss(output=batch_output, label=y)
+  predictions = tf.nest.flatten(batch_output)[0]
+  batch_num_examples = tf.shape(predictions)[0]
+
+  # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
+  return model.update_metrics_state(
+      metrics_state,
+      batch_output=variable.BatchOutput(
+          loss=batch_loss,
+          predictions=batch_output,
+          num_examples=batch_num_examples,
+      ),
+      labels=y,
+  )
+
+
+def _build_tensor_functional_local_evaluation(
+    model: functional.FunctionalModel,
+    model_weights_type: federated_language.StructType,
+    tensor_dataset_type: federated_language.Type,
+) -> federated_language.framework.Computation:
+  """Creates client evaluation logic for tensor client datasets.
+
+  This is the same as `_build_functional_local_evaluation`, but the client data
+  is a tensor client dataset and not a `tf.data.Dataset`. The evaluation loop
+  is a `tf.while_loop` over the leading (batch index) axis. The graph does not
+  contain `tf.data.Dataset`, variant or iterator ops.
+
+  Args:
+    model: A `tff.learning.models.FunctionalModel`.
+    model_weights_type: The `federated_language.Type` of the model parameters
+      that will be used in the forward pass.
+    tensor_dataset_type: The type of the tensor client dataset. See
+      `model_delta_client_work.tensor_dataset_type_from_input_spec`.
+
+  Returns:
+    A `federated_language.Computation` that accepts model parameters and a
+    tensor client dataset, and returns the unfinalized evaluation metrics.
+  """
+
+  @tensorflow_computation.tf_computation(
+      model_weights_type, tensor_dataset_type
+  )
+  @tf.function
+  def local_eval(weights, tensor_dataset):
+
+    def reduce_fn(metrics_state, batch):
+      return _functional_eval_step(model, weights, metrics_state, batch)
+
+    return model_delta_client_work.reduce_tensor_dataset(
+        reduce_fn, tensor_dataset, model.initialize_metrics_state()
+    )
 
   return local_eval
 
@@ -275,6 +328,7 @@ def _build_functional_fed_eval_client_work(
     model: functional.FunctionalModel,
     metrics_aggregation_process: Optional[_AggregationProcess],
     model_weights_type: federated_language.StructType,
+    use_tensor_dataset: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
 
@@ -289,12 +343,25 @@ def _build_functional_fed_eval_client_work(
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]),
   )
   tuple_weights_type = (weights_type.trainable, weights_type.non_trainable)
-  batch_type = tensorflow_types.to_type(model.input_spec)
-  local_eval = _build_functional_local_evaluation(
-      model,
-      tuple_weights_type,  # pyrefly: ignore[bad-argument-type]
-      batch_type,  # pyrefly: ignore[bad-argument-type]
-  )
+  if use_tensor_dataset:
+    client_data_type = (
+        model_delta_client_work.tensor_dataset_type_from_input_spec(
+            model.input_spec
+        )
+    )
+    local_eval = _build_tensor_functional_local_evaluation(
+        model,
+        tuple_weights_type,  # pyrefly: ignore[bad-argument-type]
+        client_data_type,
+    )
+  else:
+    batch_type = tensorflow_types.to_type(model.input_spec)
+    client_data_type = federated_language.SequenceType(batch_type)
+    local_eval = _build_functional_local_evaluation(
+        model,
+        tuple_weights_type,  # pyrefly: ignore[bad-argument-type]
+        batch_type,  # pyrefly: ignore[bad-argument-type]
+    )
 
   if metrics_aggregation_process is None:
     unfinalized_metrics_type = local_eval.type_signature.result
@@ -315,9 +382,7 @@ def _build_functional_fed_eval_client_work(
   def init_fn():
     return metrics_aggregation_process.initialize()
 
-  @tensorflow_computation.tf_computation(
-      model_weights_type, federated_language.SequenceType(batch_type)
-  )
+  @tensorflow_computation.tf_computation(model_weights_type, client_data_type)
   def client_update_computation(model_weights, client_data):
     # Switch to the tuple expected by FunctionalModel.
     tuple_weights = (model_weights.trainable, model_weights.non_trainable)
@@ -329,8 +394,7 @@ def _build_functional_fed_eval_client_work(
           model_weights_type, federated_language.CLIENTS
       ),
       federated_language.FederatedType(
-          federated_language.SequenceType(batch_type),
-          federated_language.CLIENTS,
+          client_data_type, federated_language.CLIENTS
       ),
   )
   def next_fn(state, model_weights, client_data):
@@ -370,6 +434,7 @@ def build_fed_eval(
         aggregation_process.AggregationProcess
     ] = None,
     loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
+    use_tensor_dataset: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated evaluation.
 
@@ -431,6 +496,13 @@ def build_fed_eval(
       used.
     loop_implementation: Changes the implementation of the training loop
       generated. See `tff.learning.LoopImplementation` for more details.
+    use_tensor_dataset: If `True`, the client data is a tensor client dataset
+      and not a `tf.data.Dataset`. A tensor client dataset is an `OrderedDict`
+      with a `data` structure of `[num_batches, batch_size, ...]` tensors, a
+      `valid_example_mask` of shape `[num_batches, batch_size]` and a scalar
+      `num_valid_batches`. The evaluation loop is then a `tf.while_loop` over
+      the leading (batch index) axis. This is only supported for a
+      `tff.learning.models.FunctionalModel`. Defaults to `False`.
 
   Returns:
     A `tff.learning.templates.LearningProcess` performs federated evaluation on
@@ -471,7 +543,15 @@ def build_fed_eval(
 
   if not callable(model_fn):
     client_work = _build_functional_fed_eval_client_work(
-        model_fn, metrics_aggregation_process, model_weights_type
+        model_fn,
+        metrics_aggregation_process,
+        model_weights_type,
+        use_tensor_dataset=use_tensor_dataset,
+    )
+  elif use_tensor_dataset:
+    raise TypeError(
+        '`use_tensor_dataset=True` requires `model_fn` to be a '
+        '`tff.learning.models.FunctionalModel`. Got a callable.'
     )
   else:
     client_work = _build_fed_eval_client_work(

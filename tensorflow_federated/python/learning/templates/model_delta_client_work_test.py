@@ -23,6 +23,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_backend import serialization_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.templates import measured_process
@@ -36,6 +37,7 @@ from tensorflow_federated.python.learning.models import model_weights as model_w
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import model_delta_client_work
+from tensorflow_federated.python.learning.templates import type_checks
 
 
 class ModelDeltaClientWorkComputationTest(
@@ -760,6 +762,851 @@ class FunctionalModelDeltaClientWorkExecutionTest(
         dataset,
     )
     self.assertNotAllClose(functional_output.update, frozen_output.update)
+
+
+_TENSOR_DATASET_BATCH_SIZE = 3
+_TENSOR_DATASET_FEATURE_DIM = 2
+_TENSOR_DATASET_LEARNING_RATE = 0.1
+# Substrings (lower case) of op types that must not be in the graphs of a
+# computation that uses tensor client datasets.
+_FORBIDDEN_OP_TYPE_SUBSTRINGS = ('dataset', 'iterator', 'variant')
+_WHILE_OP_TYPES = frozenset(['While', 'StatelessWhile'])
+
+
+def _create_examples(num_examples: int) -> tuple[np.ndarray, np.ndarray]:
+  rng = np.random.default_rng(seed=num_examples)
+  x = rng.uniform(size=[num_examples, _TENSOR_DATASET_FEATURE_DIM])
+  y = rng.uniform(size=[num_examples, 1])
+  return x.astype(np.float32), y.astype(np.float32)
+
+
+def _create_batched_dataset(x: np.ndarray, y: np.ndarray) -> tf.data.Dataset:
+  return tf.data.Dataset.from_tensor_slices(
+      collections.OrderedDict(x=x, y=y)
+  ).batch(_TENSOR_DATASET_BATCH_SIZE, drop_remainder=False)
+
+
+def _create_tensor_dataset(
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    num_batches: int | None = None,
+    pad_value: float = 0.0,
+) -> collections.OrderedDict[str, object]:
+  """Returns the tensor client dataset of `_create_batched_dataset(x, y)`.
+
+  Args:
+    x: The features, with the shape `[num_examples, feature_dim]`.
+    y: The labels, with the shape `[num_examples, 1]`.
+    num_batches: The size of the leading (batch index) axis. If `None`, this is
+      the number of valid batches. Must not be less than the number of valid
+      batches.
+    pad_value: The value of the padding examples.
+  """
+  num_examples = x.shape[0]
+  num_valid_batches = -(-num_examples // _TENSOR_DATASET_BATCH_SIZE)
+  if num_batches is None:
+    num_batches = num_valid_batches
+  if num_batches < num_valid_batches:
+    raise ValueError(f'{num_batches=} is less than {num_valid_batches=}.')
+  num_padded_examples = num_batches * _TENSOR_DATASET_BATCH_SIZE
+
+  def pad_and_reshape(array):
+    padded = np.full(
+        [num_padded_examples, *array.shape[1:]], pad_value, dtype=array.dtype
+    )
+    padded[:num_examples] = array
+    return padded.reshape(
+        [num_batches, _TENSOR_DATASET_BATCH_SIZE, *array.shape[1:]]
+    )
+
+  valid_example_mask = np.arange(num_padded_examples) < num_examples
+  return collections.OrderedDict([
+      (
+          model_delta_client_work.TENSOR_DATASET_DATA_KEY,
+          collections.OrderedDict(x=pad_and_reshape(x), y=pad_and_reshape(y)),
+      ),
+      (
+          model_delta_client_work.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+          valid_example_mask.reshape([num_batches, _TENSOR_DATASET_BATCH_SIZE]),
+      ),
+      (
+          model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+          np.int32(num_valid_batches),
+      ),
+  ])
+
+
+def _tensor_dataset_input_spec() -> collections.OrderedDict[str, tf.TensorSpec]:
+  return collections.OrderedDict(
+      x=tf.TensorSpec([None, _TENSOR_DATASET_FEATURE_DIM], tf.float32),
+      y=tf.TensorSpec([None, 1], tf.float32),
+  )
+
+
+def _create_tensor_dataset_functional_model() -> functional.FunctionalModel:
+
+  def build_metrics_fn():
+    return collections.OrderedDict(
+        loss=keras.metrics.MeanSquaredError(),
+        num_examples=counters.NumExamplesCounter(),
+        num_batches=counters.NumBatchesCounter(),
+    )
+
+  return functional.functional_model_from_keras(
+      model_examples.build_linear_regression_keras_functional_model(
+          feature_dims=_TENSOR_DATASET_FEATURE_DIM
+      ),
+      loss_fn=keras.losses.MeanSquaredError(),
+      input_spec=_tensor_dataset_input_spec(),
+      metrics_constructor=build_metrics_fn,
+  )
+
+
+def _get_tensorflow_op_types(
+    comp: federated_language.framework.ConcreteComputation,
+) -> set[str]:
+  """Returns the op types of all TensorFlow graphs in `comp`.
+
+  The op types include the ops in the function libraries of the graphs.
+
+  Args:
+    comp: The computation to inspect.
+  """
+  op_types = set()
+
+  def visit(building_block):
+    if not isinstance(
+        building_block, federated_language.framework.CompiledComputation
+    ):
+      return
+    proto = building_block.to_proto()
+    if proto.WhichOneof('computation') != 'tensorflow':
+      return
+    graph_def = serialization_utils.unpack_graph_def(proto.tensorflow.graph_def)
+    nodes = itertools.chain(
+        graph_def.node, *[f.node_def for f in graph_def.library.function]
+    )
+    op_types.update(node.op for node in nodes)
+
+  federated_language.framework.visit_postorder(comp.to_building_block(), visit)
+  return op_types
+
+
+def _get_forbidden_op_types(op_types: set[str]) -> list[str]:
+  return sorted(
+      op_type
+      for op_type in op_types
+      if any(s in op_type.lower() for s in _FORBIDDEN_OP_TYPE_SUBSTRINGS)
+  )
+
+
+# Parameters `(name, num_examples, num_batches)` for the tensor client dataset
+# tests. If `num_batches` is `None`, the tensor client dataset has no padding
+# batches.
+_TENSOR_DATASET_CASES = (
+    ('full_batches', 6, None),
+    ('partial_last_batch', 7, None),
+    ('padding_batches', 7, 5),
+    ('single_partial_batch', 2, None),
+    ('zero_examples_no_batches', 0, None),
+    ('zero_examples_padding_batches', 0, 2),
+)
+# The subset of `_TENSOR_DATASET_CASES` that the TFF runtime can pass as a
+# `tf.data.Dataset` argument. The runtime does not accept a dataset with a
+# partial batch or with no elements.
+_RUNTIME_DATASET_CASES = (
+    ('full_batches', 6, None),
+    ('full_batches_and_padding_batches', 6, 4),
+    ('single_full_batch', 3, None),
+)
+_WEIGHTING_CASES = (
+    ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+    ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES),
+)
+
+
+class TensorDatasetTypeTest(tf.test.TestCase):
+
+  def test_type_from_dict_input_spec_with_unknown_batch_size(self):
+    actual_type = model_delta_client_work.tensor_dataset_type_from_input_spec(
+        _tensor_dataset_input_spec()
+    )
+
+    expected_type = federated_language.StructType([
+        (
+            model_delta_client_work.TENSOR_DATASET_DATA_KEY,
+            federated_language.StructType([
+                (
+                    'x',
+                    federated_language.TensorType(
+                        np.float32, [None, None, _TENSOR_DATASET_FEATURE_DIM]
+                    ),
+                ),
+                (
+                    'y',
+                    federated_language.TensorType(np.float32, [None, None, 1]),
+                ),
+            ]),
+        ),
+        (
+            model_delta_client_work.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+            federated_language.TensorType(np.bool_, [None, None]),
+        ),
+        (
+            model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+            federated_language.TensorType(np.int32),
+        ),
+    ])
+    self.assertTrue(
+        actual_type.is_equivalent_to(expected_type),
+        msg=f'{actual_type} is not equivalent to {expected_type}',
+    )
+
+  def test_type_from_tuple_input_spec_with_fixed_batch_size(self):
+    input_spec = (
+        tf.TensorSpec([_TENSOR_DATASET_BATCH_SIZE, 4], tf.float32),
+        tf.TensorSpec([_TENSOR_DATASET_BATCH_SIZE], tf.int64),
+    )
+
+    actual_type = model_delta_client_work.tensor_dataset_type_from_input_spec(
+        input_spec
+    )
+
+    expected_type = federated_language.StructType([
+        (
+            model_delta_client_work.TENSOR_DATASET_DATA_KEY,
+            federated_language.StructType([
+                (
+                    None,
+                    federated_language.TensorType(
+                        np.float32, [None, _TENSOR_DATASET_BATCH_SIZE, 4]
+                    ),
+                ),
+                (
+                    None,
+                    federated_language.TensorType(
+                        np.int64, [None, _TENSOR_DATASET_BATCH_SIZE]
+                    ),
+                ),
+            ]),
+        ),
+        (
+            model_delta_client_work.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+            federated_language.TensorType(np.bool_, [None, None]),
+        ),
+        (
+            model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+            federated_language.TensorType(np.int32),
+        ),
+    ])
+    self.assertTrue(
+        actual_type.is_equivalent_to(expected_type),
+        msg=f'{actual_type} is not equivalent to {expected_type}',
+    )
+
+  def test_type_is_not_equivalent_to_sequence_type(self):
+    input_spec = _tensor_dataset_input_spec()
+
+    actual_type = model_delta_client_work.tensor_dataset_type_from_input_spec(
+        input_spec
+    )
+
+    sequence_type = federated_language.SequenceType(
+        tensorflow_types.to_type(input_spec)
+    )
+    self.assertFalse(actual_type.is_equivalent_to(sequence_type))
+
+  def test_type_is_client_placed_tensor_dataset(self):
+    actual_type = model_delta_client_work.tensor_dataset_type_from_input_spec(
+        _tensor_dataset_input_spec()
+    )
+
+    self.assertTrue(
+        type_checks.is_client_placed_tensor_dataset(
+            federated_language.FederatedType(
+                actual_type, federated_language.CLIENTS
+            )
+        )
+    )
+
+  def test_keys_match_type_checks_keys(self):
+    self.assertEqual(
+        model_delta_client_work.TENSOR_DATASET_DATA_KEY,
+        type_checks.TENSOR_DATASET_DATA_KEY,
+    )
+    self.assertEqual(
+        model_delta_client_work.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+        type_checks.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+    )
+    self.assertEqual(
+        model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+        type_checks.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+    )
+
+
+class ReduceTensorDatasetTest(tf.test.TestCase, parameterized.TestCase):
+
+  def _reduce_and_count(self, tensor_dataset):
+    """Returns `(num_batches, num_examples, x_sum)` of the reduced batches."""
+
+    def reduce_fn(state, batch):
+      num_batches, num_examples, x_sum = state
+      return (
+          num_batches + 1,
+          num_examples + tf.shape(batch['x'])[0],
+          x_sum + tf.reduce_sum(batch['x'], axis=0),
+      )
+
+    initial_state = (
+        tf.constant(0, tf.int32),
+        tf.constant(0, tf.int32),
+        tf.zeros([_TENSOR_DATASET_FEATURE_DIM], tf.float32),
+    )
+
+    @tf.function
+    def reduce(tensor_dataset):
+      return model_delta_client_work.reduce_tensor_dataset(
+          reduce_fn, tensor_dataset, initial_state
+      )
+
+    return self.evaluate(reduce(tensor_dataset))
+
+  @parameterized.named_parameters(
+      (name, num_examples, num_batches)
+      for name, num_examples, num_batches in _TENSOR_DATASET_CASES
+  )
+  def test_reduce_skips_padding(self, num_examples, num_batches):
+    x, y = _create_examples(num_examples)
+    # The padding is NaN, so the sum is NaN if the reduction reads padding.
+    tensor_dataset = _create_tensor_dataset(
+        x, y, num_batches=num_batches, pad_value=np.nan
+    )
+
+    num_reduced_batches, num_reduced_examples, x_sum = self._reduce_and_count(
+        tensor_dataset
+    )
+
+    expected_num_batches = len(list(_create_batched_dataset(x, y)))
+    self.assertEqual(num_reduced_batches, expected_num_batches)
+    self.assertEqual(num_reduced_examples, num_examples)
+    self.assertAllClose(x_sum, np.sum(x, axis=0))
+
+  def test_reduce_gives_same_batches_as_dataset(self):
+    x, y = _create_examples(7)
+    tensor_dataset = _create_tensor_dataset(x, y, num_batches=4)
+    batches = []
+
+    def reduce_fn(state, batch):
+      batches.append(batch)
+      return state
+
+    # In eager mode, `tf.while_loop` calls the body once for each iteration.
+    model_delta_client_work.reduce_tensor_dataset(
+        reduce_fn, tensor_dataset, tf.constant(0)
+    )
+
+    expected_batches = list(_create_batched_dataset(x, y))
+    self.assertLen(batches, len(expected_batches))
+    for batch, expected_batch in zip(batches, expected_batches):
+      self.assertAllClose(batch, expected_batch)
+
+  def test_reduce_stops_at_num_valid_batches(self):
+    x, y = _create_examples(6)
+    tensor_dataset = _create_tensor_dataset(x, y)
+    tensor_dataset[
+        model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY
+    ] = np.int32(1)
+
+    num_reduced_batches, num_reduced_examples, x_sum = self._reduce_and_count(
+        tensor_dataset
+    )
+
+    self.assertEqual(num_reduced_batches, 1)
+    self.assertEqual(num_reduced_examples, _TENSOR_DATASET_BATCH_SIZE)
+    self.assertAllClose(x_sum, np.sum(x[:_TENSOR_DATASET_BATCH_SIZE], axis=0))
+
+  def test_reduce_does_not_read_past_last_batch(self):
+    x, y = _create_examples(6)
+    tensor_dataset = _create_tensor_dataset(x, y)
+    tensor_dataset[
+        model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY
+    ] = np.int32(10)
+
+    num_reduced_batches, num_reduced_examples, x_sum = self._reduce_and_count(
+        tensor_dataset
+    )
+
+    self.assertEqual(num_reduced_batches, 2)
+    self.assertEqual(num_reduced_examples, 6)
+    self.assertAllClose(x_sum, np.sum(x, axis=0))
+
+  def test_reduce_skips_all_masked_batches(self):
+    x, y = _create_examples(6)
+    # Two valid batches, then two padding batches. `num_valid_batches` includes
+    # the padding batches, so the loop must skip them with the mask.
+    tensor_dataset = _create_tensor_dataset(
+        x, y, num_batches=4, pad_value=np.nan
+    )
+    tensor_dataset[
+        model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY
+    ] = np.int32(4)
+
+    num_reduced_batches, num_reduced_examples, x_sum = self._reduce_and_count(
+        tensor_dataset
+    )
+
+    self.assertEqual(num_reduced_batches, 2)
+    self.assertEqual(num_reduced_examples, 6)
+    self.assertAllClose(x_sum, np.sum(x, axis=0))
+
+
+class TensorFunctionalModelDeltaClientWorkComputationTest(
+    tf.test.TestCase, parameterized.TestCase
+):
+
+  @parameterized.named_parameters(*_WEIGHTING_CASES)
+  def test_next_has_expected_client_data_type(self, weighting):
+    model = _create_tensor_dataset_functional_model()
+
+    process = (
+        model_delta_client_work.build_tensor_functional_model_delta_client_work(
+            model=model,
+            optimizer=sgdm.build_sgdm(learning_rate=1.0),
+            client_weighting=weighting,
+        )
+    )
+
+    client_data_type = process.next.type_signature.parameter['client_data']
+    self.assertIsInstance(client_data_type, federated_language.FederatedType)
+    self.assertEqual(client_data_type.placement, federated_language.CLIENTS)
+    member_type = client_data_type.member
+    data_type = member_type[model_delta_client_work.TENSOR_DATASET_DATA_KEY]
+    self.assertEqual(data_type['x'].dtype, np.float32)
+    self.assertEqual(
+        data_type['x'].shape, (None, None, _TENSOR_DATASET_FEATURE_DIM)
+    )
+    self.assertEqual(data_type['y'].dtype, np.float32)
+    self.assertEqual(data_type['y'].shape, (None, None, 1))
+    mask_type = member_type[
+        model_delta_client_work.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY
+    ]
+    self.assertEqual(mask_type.dtype, np.bool_)
+    self.assertEqual(mask_type.shape, (None, None))
+    num_valid_batches_type = member_type[
+        model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY
+    ]
+    self.assertEqual(num_valid_batches_type.dtype, np.int32)
+    self.assertEqual(num_valid_batches_type.shape, ())
+    self.assertTrue(
+        member_type.is_equivalent_to(
+            model_delta_client_work.tensor_dataset_type_from_input_spec(
+                model.input_spec
+            )
+        )
+    )
+
+  @parameterized.named_parameters(*_WEIGHTING_CASES)
+  def test_type_signatures_match_dataset_client_work(self, weighting):
+    model = _create_tensor_dataset_functional_model()
+    optimizer = sgdm.build_sgdm(learning_rate=1.0)
+
+    tensor_process = (
+        model_delta_client_work.build_tensor_functional_model_delta_client_work(
+            model=model, optimizer=optimizer, client_weighting=weighting
+        )
+    )
+    dataset_process = (
+        model_delta_client_work.build_functional_model_delta_client_work(
+            model=model, optimizer=optimizer, client_weighting=weighting
+        )
+    )
+
+    # Only the type of the client data is different.
+    self.assertTrue(
+        tensor_process.initialize.type_signature.is_equivalent_to(
+            dataset_process.initialize.type_signature
+        )
+    )
+    self.assertTrue(
+        tensor_process.next.type_signature.result.is_equivalent_to(
+            dataset_process.next.type_signature.result
+        )
+    )
+    tensor_parameter = tensor_process.next.type_signature.parameter
+    dataset_parameter = dataset_process.next.type_signature.parameter
+    for name in ('state', 'weights'):
+      self.assertTrue(
+          tensor_parameter[name].is_equivalent_to(dataset_parameter[name])
+      )
+    self.assertFalse(
+        tensor_parameter['client_data'].is_equivalent_to(
+            dataset_parameter['client_data']
+        )
+    )
+
+  def test_raises_with_non_functional_model(self):
+    with self.assertRaises(TypeError):
+      model_delta_client_work.build_tensor_functional_model_delta_client_work(
+          model=create_model,
+          optimizer=sgdm.build_sgdm(learning_rate=1.0),
+          client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+      )
+
+  def test_graph_has_while_loop_and_no_dataset_ops(self):
+    process = (
+        model_delta_client_work.build_tensor_functional_model_delta_client_work(
+            model=_create_tensor_dataset_functional_model(),
+            optimizer=sgdm.build_sgdm(learning_rate=1.0),
+            client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        )
+    )
+
+    op_types = _get_tensorflow_op_types(process.next)
+
+    self.assertEmpty(_get_forbidden_op_types(op_types))
+    self.assertNotEmpty(op_types & _WHILE_OP_TYPES)
+
+  def test_dataset_client_work_graph_has_dataset_ops(self):
+    # Make sure that `_get_tensorflow_op_types` finds the ops of the client
+    # computation. Thus the test above can detect dataset ops.
+    process = model_delta_client_work.build_functional_model_delta_client_work(
+        model=_create_tensor_dataset_functional_model(),
+        optimizer=sgdm.build_sgdm(learning_rate=1.0),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    )
+
+    op_types = _get_tensorflow_op_types(process.next)
+
+    self.assertNotEmpty(_get_forbidden_op_types(op_types))
+
+
+class TensorFunctionalModelDeltaClientWorkExecutionTest(
+    tf.test.TestCase, parameterized.TestCase
+):
+
+  def _build_in_graph_dataset_client_update(self, model, weighting):
+    """Returns the reference client update for the examples `(x, y)`.
+
+    The TFF runtime cannot accept a `tf.data.Dataset` argument that has a
+    partial batch or no elements. Thus the reference computation accepts the
+    examples and makes the batched `tf.data.Dataset` in the graph.
+
+    Args:
+      model: A `tff.learning.models.FunctionalModel`.
+      weighting: A `tff.learning.ClientWeighting` value.
+    """
+
+    # Note: we must wrap in a `tf_computation` for the correct graph-context
+    # processing of Keras models wrapped as FunctionalModel.
+    @tensorflow_computation.tf_computation
+    def dataset_client_update(model_weights, x, y):
+      dataset = tf.data.Dataset.from_tensor_slices(
+          collections.OrderedDict(x=x, y=y)
+      ).batch(_TENSOR_DATASET_BATCH_SIZE, drop_remainder=False)
+      client_update = model_delta_client_work.build_functional_model_delta_update(
+          model=model,
+          weighting=weighting,
+          loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
+      )
+      return client_update(
+          sgdm.build_sgdm(learning_rate=_TENSOR_DATASET_LEARNING_RATE),
+          model_weights,
+          dataset,
+      )
+
+    return dataset_client_update
+
+  def _build_tensor_client_update(self, model, weighting):
+
+    @tensorflow_computation.tf_computation
+    def tensor_client_update(model_weights, tensor_dataset):
+      client_update = (
+          model_delta_client_work.build_tensor_functional_model_delta_update(
+              model=model, weighting=weighting
+          )
+      )
+      return client_update(
+          sgdm.build_sgdm(learning_rate=_TENSOR_DATASET_LEARNING_RATE),
+          model_weights,
+          tensor_dataset,
+      )
+
+    return tensor_client_update
+
+  def _assert_update_is_not_trivial(self, client_result, num_examples):
+    update_norm = np.linalg.norm(
+        np.concatenate([np.ravel(u) for u in client_result.update])
+    )
+    if num_examples > 0:
+      self.assertGreater(update_norm, 0.0)
+    else:
+      self.assertEqual(update_norm, 0.0)
+
+  def _assert_expected_update_weight(
+      self, client_result, weighting, num_examples
+  ):
+    if weighting == client_weight_lib.ClientWeighting.NUM_EXAMPLES:
+      self.assertAllClose(client_result.update_weight, float(num_examples))
+    else:
+      self.assertAllClose(client_result.update_weight, 1.0)
+
+  @parameterized.named_parameters(
+      (f'{weighting_name}_{case_name}', weighting, num_examples, num_batches)
+      for (weighting_name, weighting), (
+          case_name,
+          num_examples,
+          num_batches,
+      ) in itertools.product(_WEIGHTING_CASES, _RUNTIME_DATASET_CASES)
+  )
+  def test_client_work_matches_dataset_client_work(
+      self, weighting, num_examples, num_batches
+  ):
+    model = _create_tensor_dataset_functional_model()
+    x, y = _create_examples(num_examples)
+    tensor_process = (
+        model_delta_client_work.build_tensor_functional_model_delta_client_work(
+            model=model,
+            optimizer=sgdm.build_sgdm(
+                learning_rate=_TENSOR_DATASET_LEARNING_RATE
+            ),
+            client_weighting=weighting,
+        )
+    )
+    dataset_process = (
+        model_delta_client_work.build_functional_model_delta_client_work(
+            model=model,
+            optimizer=sgdm.build_sgdm(
+                learning_rate=_TENSOR_DATASET_LEARNING_RATE
+            ),
+            client_weighting=weighting,
+        )
+    )
+    client_model_weights = [model.initial_weights]
+
+    tensor_output = tensor_process.next(
+        tensor_process.initialize(),
+        client_model_weights,
+        [_create_tensor_dataset(x, y, num_batches=num_batches)],
+    )
+    dataset_output = dataset_process.next(
+        dataset_process.initialize(),
+        client_model_weights,
+        [_create_batched_dataset(x, y)],
+    )
+
+    tensor_result = tensor_output.result[0]
+    dataset_result = dataset_output.result[0]
+    self.assertAllClose(tensor_result.update, dataset_result.update)
+    self.assertAllClose(
+        tensor_result.update_weight, dataset_result.update_weight
+    )
+    self.assertAllClose(tensor_output.measurements, dataset_output.measurements)
+    self._assert_expected_update_weight(tensor_result, weighting, num_examples)
+    self._assert_update_is_not_trivial(tensor_result, num_examples)
+    train_metrics = tensor_output.measurements['train']
+    self.assertEqual(train_metrics['num_examples'], num_examples)
+    self.assertEqual(
+        train_metrics['num_batches'],
+        -(-num_examples // _TENSOR_DATASET_BATCH_SIZE),
+    )
+    self.assertEqual(train_metrics['num_non_finite_clients'], 0)
+
+  @parameterized.named_parameters(
+      (
+          f'{weighting_name}_{case_name}_{pad_name}',
+          weighting,
+          num_examples,
+          num_batches,
+          pad_value,
+      )
+      for (weighting_name, weighting), (
+          case_name,
+          num_examples,
+          num_batches,
+      ), (pad_name, pad_value) in itertools.product(
+          _WEIGHTING_CASES,
+          _TENSOR_DATASET_CASES,
+          (('zero_padding', 0.0), ('nan_padding', np.nan)),
+      )
+  )
+  def test_client_update_matches_dataset_client_update(
+      self, weighting, num_examples, num_batches, pad_value
+  ):
+    model = _create_tensor_dataset_functional_model()
+    x, y = _create_examples(num_examples)
+    tensor_client_update = self._build_tensor_client_update(model, weighting)
+    dataset_client_update = self._build_in_graph_dataset_client_update(
+        model, weighting
+    )
+
+    # If the padding is NaN and the client update reads the padding, the update
+    # is not finite, and the update weight is zero.
+    tensor_result, tensor_metrics = tensor_client_update(
+        model.initial_weights,
+        _create_tensor_dataset(
+            x, y, num_batches=num_batches, pad_value=pad_value
+        ),
+    )
+    dataset_result, dataset_metrics = dataset_client_update(
+        model.initial_weights, x, y
+    )
+
+    self.assertAllClose(tensor_result.update, dataset_result.update)
+    self.assertAllClose(
+        tensor_result.update_weight, dataset_result.update_weight
+    )
+    self.assertAllClose(tensor_metrics, dataset_metrics)
+    self._assert_expected_update_weight(tensor_result, weighting, num_examples)
+    self._assert_update_is_not_trivial(tensor_result, num_examples)
+    self.assertEqual(
+        tensor_metrics[model_delta_client_work.NUM_NON_FINITE_CLIENTS_KEY], 0
+    )
+    self.assertEqual(np.sum(tensor_metrics['num_examples']), num_examples)
+    self.assertEqual(
+        np.sum(tensor_metrics['num_batches']),
+        -(-num_examples // _TENSOR_DATASET_BATCH_SIZE),
+    )
+
+  @parameterized.named_parameters(
+      (f'{weighting_name}_{case_name}', weighting, num_examples, num_batches)
+      for (weighting_name, weighting), (
+          case_name,
+          num_examples,
+          num_batches,
+      ) in itertools.product(_WEIGHTING_CASES, _TENSOR_DATASET_CASES)
+  )
+  def test_client_work_matches_dataset_client_update(
+      self, weighting, num_examples, num_batches
+  ):
+    model = _create_tensor_dataset_functional_model()
+    x, y = _create_examples(num_examples)
+    tensor_process = (
+        model_delta_client_work.build_tensor_functional_model_delta_client_work(
+            model=model,
+            optimizer=sgdm.build_sgdm(
+                learning_rate=_TENSOR_DATASET_LEARNING_RATE
+            ),
+            client_weighting=weighting,
+        )
+    )
+    dataset_client_update = self._build_in_graph_dataset_client_update(
+        model, weighting
+    )
+
+    tensor_output = tensor_process.next(
+        tensor_process.initialize(),
+        [model.initial_weights],
+        [_create_tensor_dataset(x, y, num_batches=num_batches)],
+    )
+    dataset_result, dataset_metrics = dataset_client_update(
+        model.initial_weights, x, y
+    )
+
+    tensor_result = tensor_output.result[0]
+    self.assertAllClose(tensor_result.update, dataset_result.update)
+    self.assertAllClose(
+        tensor_result.update_weight, dataset_result.update_weight
+    )
+    # With one client, the summed metrics are the metrics of the client. The
+    # loss is a mean: the first element of the state is the sum of the losses,
+    # and the second element is the number of examples.
+    loss_sum, loss_count = dataset_metrics['loss']
+    expected_loss = loss_sum / loss_count if loss_count > 0 else 0.0
+    train_metrics = tensor_output.measurements['train']
+    self.assertAllClose(train_metrics['loss'], expected_loss)
+    self.assertEqual(
+        train_metrics['num_examples'], np.sum(dataset_metrics['num_examples'])
+    )
+    self.assertEqual(
+        train_metrics['num_batches'], np.sum(dataset_metrics['num_batches'])
+    )
+    self.assertEqual(train_metrics['num_non_finite_clients'], 0)
+
+  def test_all_masked_and_non_prefix_masked_batches_match_dataset(self):
+    num_examples = 7
+    model = _create_tensor_dataset_functional_model()
+    x, y = _create_examples(num_examples)
+    # The rows of the tensor client dataset are:
+    #   0: examples 0, 1, 2.
+    #   1: only padding. The loop must skip this batch.
+    #   2: examples 3, 4, 5.
+    #   3: padding, example 6, padding. The mask is not a prefix.
+    # Thus the valid batches are the same as `_create_batched_dataset(x, y)`.
+    # The padding is NaN, so the update is not finite if the loop reads it.
+    num_batches = 4
+    data_x = np.full(
+        [num_batches, _TENSOR_DATASET_BATCH_SIZE, _TENSOR_DATASET_FEATURE_DIM],
+        np.nan,
+        np.float32,
+    )
+    data_y = np.full(
+        [num_batches, _TENSOR_DATASET_BATCH_SIZE, 1], np.nan, np.float32
+    )
+    mask = np.zeros([num_batches, _TENSOR_DATASET_BATCH_SIZE], np.bool_)
+    data_x[0], data_y[0], mask[0] = x[0:3], y[0:3], True
+    data_x[2], data_y[2], mask[2] = x[3:6], y[3:6], True
+    data_x[3, 1], data_y[3, 1], mask[3, 1] = x[6], y[6], True
+    tensor_dataset = collections.OrderedDict([
+        (
+            model_delta_client_work.TENSOR_DATASET_DATA_KEY,
+            collections.OrderedDict(x=data_x, y=data_y),
+        ),
+        (model_delta_client_work.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY, mask),
+        (
+            model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+            np.int32(num_batches),
+        ),
+    ])
+    weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
+    tensor_client_update = self._build_tensor_client_update(model, weighting)
+    dataset_client_update = self._build_in_graph_dataset_client_update(
+        model, weighting
+    )
+
+    tensor_result, tensor_metrics = tensor_client_update(
+        model.initial_weights, tensor_dataset
+    )
+    dataset_result, dataset_metrics = dataset_client_update(
+        model.initial_weights, x, y
+    )
+
+    self.assertAllClose(tensor_result.update, dataset_result.update)
+    self.assertAllClose(
+        tensor_result.update_weight, dataset_result.update_weight
+    )
+    self.assertAllClose(tensor_metrics, dataset_metrics)
+    self.assertAllClose(tensor_result.update_weight, float(num_examples))
+    self.assertEqual(
+        tensor_metrics[model_delta_client_work.NUM_NON_FINITE_CLIENTS_KEY], 0
+    )
+    # The skipped batch does not count.
+    self.assertEqual(np.sum(tensor_metrics['num_batches']), 3)
+
+  def test_metrics_output_with_non_finite_updates(self):
+    model = _create_tensor_dataset_functional_model()
+    process = (
+        model_delta_client_work.build_tensor_functional_model_delta_client_work(
+            model=model,
+            optimizer=sgdm.build_sgdm(learning_rate=1.0),
+            client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        )
+    )
+    trainable_weights, non_trainable_weights = model.initial_weights
+    bad_trainable_weights = tuple(
+        np.full_like(w, np.nan) for w in trainable_weights
+    )
+    x, y = _create_examples(7)
+
+    output = process.next(
+        process.initialize(),
+        [(bad_trainable_weights, non_trainable_weights)],
+        [_create_tensor_dataset(x, y)],
+    )
+
+    self.assertEqual(output.result[0].update_weight, 0.0)
+    self.assertEqual(output.measurements['train']['num_examples'], 0)
+    self.assertEqual(output.measurements['train']['num_non_finite_clients'], 1)
 
 
 if __name__ == '__main__':

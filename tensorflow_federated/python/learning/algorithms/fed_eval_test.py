@@ -14,16 +14,19 @@
 
 import collections
 import functools
+import itertools
 from typing import Any
 from unittest import mock
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import federated_language
 import keras
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_backend import serialization_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import type_conversions
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
@@ -42,7 +45,7 @@ from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
-
+from tensorflow_federated.python.learning.templates import model_delta_client_work
 
 # Convenience aliases.
 FederatedType = federated_language.FederatedType
@@ -595,6 +598,312 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
       fed_eval.build_fed_eval(
           functional_model, metrics_aggregation_process='not_a_process'
       )
+
+
+_BATCH_SIZE = 3
+_FEATURE_DIM = 2
+# Substrings (lower case) of op types that must not be in the graphs of a
+# computation that uses tensor client datasets.
+_FORBIDDEN_OP_TYPE_SUBSTRINGS = ('dataset', 'iterator', 'variant')
+_WHILE_OP_TYPES = frozenset(['While', 'StatelessWhile'])
+# Pairs of `(num_examples, num_batches)` of the clients. If `num_batches` is
+# `None`, the tensor client dataset has no padding batches. The TFF runtime
+# does not accept a `tf.data.Dataset` argument with a partial batch or with no
+# elements, so the clients that are compared with a `tf.data.Dataset` have only
+# full batches.
+_CLIENT_CASES = ((6, 4), (6, None), (3, None), (9, 5))
+# Clients with partial batches and with no examples. These are compared with
+# metrics that numpy computes.
+_PARTIAL_CLIENT_CASES = ((7, 5), (2, None), (0, 2), (0, None), (6, None))
+_MODEL_WEIGHT_VALUE = 0.5
+
+
+def _create_examples(num_examples: int) -> tuple[np.ndarray, np.ndarray]:
+  rng = np.random.default_rng(seed=num_examples)
+  x = rng.uniform(size=[num_examples, _FEATURE_DIM])
+  y = rng.uniform(size=[num_examples, 1])
+  return x.astype(np.float32), y.astype(np.float32)
+
+
+def _create_batched_dataset(x: np.ndarray, y: np.ndarray) -> tf.data.Dataset:
+  return tf.data.Dataset.from_tensor_slices(
+      collections.OrderedDict(x=x, y=y)
+  ).batch(_BATCH_SIZE, drop_remainder=False)
+
+
+def _create_tensor_dataset(
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    num_batches: int | None = None,
+    pad_value: float = 0.0,
+) -> collections.OrderedDict[str, object]:
+  """Returns the tensor client dataset of `_create_batched_dataset(x, y)`."""
+  num_examples = x.shape[0]
+  num_valid_batches = -(-num_examples // _BATCH_SIZE)
+  if num_batches is None:
+    num_batches = num_valid_batches
+  num_padded_examples = num_batches * _BATCH_SIZE
+
+  def pad_and_reshape(array):
+    padded = np.full(
+        [num_padded_examples, *array.shape[1:]], pad_value, dtype=array.dtype
+    )
+    padded[:num_examples] = array
+    return padded.reshape([num_batches, _BATCH_SIZE, *array.shape[1:]])
+
+  valid_example_mask = np.arange(num_padded_examples) < num_examples
+  return collections.OrderedDict([
+      (
+          model_delta_client_work.TENSOR_DATASET_DATA_KEY,
+          collections.OrderedDict(x=pad_and_reshape(x), y=pad_and_reshape(y)),
+      ),
+      (
+          model_delta_client_work.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+          valid_example_mask.reshape([num_batches, _BATCH_SIZE]),
+      ),
+      (
+          model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+          np.int32(num_valid_batches),
+      ),
+  ])
+
+
+def _create_functional_model() -> functional.FunctionalModel:
+
+  def build_metrics_fn():
+    return collections.OrderedDict(
+        loss=keras.metrics.MeanSquaredError(),
+        num_examples=counters.NumExamplesCounter(),
+        num_batches=counters.NumBatchesCounter(),
+    )
+
+  return functional.functional_model_from_keras(
+      model_examples.build_linear_regression_keras_functional_model(
+          feature_dims=_FEATURE_DIM
+      ),
+      loss_fn=keras.losses.MeanSquaredError(),
+      input_spec=collections.OrderedDict(
+          x=tf.TensorSpec([None, _FEATURE_DIM], tf.float32),
+          y=tf.TensorSpec([None, 1], tf.float32),
+      ),
+      metrics_constructor=build_metrics_fn,
+  )
+
+
+def _get_tensorflow_op_types(
+    comp: federated_language.framework.ConcreteComputation,
+) -> set[str]:
+  """Returns the op types of all TensorFlow graphs in `comp`."""
+  op_types = set()
+
+  def visit(building_block):
+    if not isinstance(
+        building_block, federated_language.framework.CompiledComputation
+    ):
+      return
+    proto = building_block.to_proto()
+    if proto.WhichOneof('computation') != 'tensorflow':
+      return
+    graph_def = serialization_utils.unpack_graph_def(proto.tensorflow.graph_def)
+    nodes = itertools.chain(
+        graph_def.node, *[f.node_def for f in graph_def.library.function]
+    )
+    op_types.update(node.op for node in nodes)
+
+  federated_language.framework.visit_postorder(comp.to_building_block(), visit)
+  return op_types
+
+
+def _get_forbidden_op_types(op_types: set[str]) -> list[str]:
+  return sorted(
+      op_type
+      for op_type in op_types
+      if any(s in op_type.lower() for s in _FORBIDDEN_OP_TYPE_SUBSTRINGS)
+  )
+
+
+class TensorDatasetFedEvalProcessTest(tf.test.TestCase, parameterized.TestCase):
+  """Tests federated evaluation with `use_tensor_dataset=True`."""
+
+  def test_raises_on_variable_model_fn(self):
+    with self.assertRaisesRegex(TypeError, 'use_tensor_dataset'):
+      fed_eval.build_fed_eval(TestModel, use_tensor_dataset=True)
+
+  def test_does_not_raise_on_variable_model_fn_without_tensor_dataset(self):
+    fed_eval.build_fed_eval(TestModel, use_tensor_dataset=False)
+
+  def test_next_has_expected_client_data_type(self):
+    model = _create_functional_model()
+
+    tensor_process = fed_eval.build_fed_eval(model, use_tensor_dataset=True)
+    dataset_process = fed_eval.build_fed_eval(model)
+
+    tensor_next_type = tensor_process.next.type_signature
+    dataset_next_type = dataset_process.next.type_signature
+    client_data_type = tensor_next_type.parameter['client_data']
+    self.assertIsInstance(client_data_type, FederatedType)
+    self.assertEqual(client_data_type.placement, federated_language.CLIENTS)
+    expected_member_type = StructType([
+        (
+            model_delta_client_work.TENSOR_DATASET_DATA_KEY,
+            StructType([
+                ('x', TensorType(np.float32, [None, None, _FEATURE_DIM])),
+                ('y', TensorType(np.float32, [None, None, 1])),
+            ]),
+        ),
+        (
+            model_delta_client_work.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+            TensorType(np.bool_, [None, None]),
+        ),
+        (
+            model_delta_client_work.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+            TensorType(np.int32),
+        ),
+    ])
+    self.assertTrue(
+        client_data_type.member.is_equivalent_to(expected_member_type),
+        msg=f'{client_data_type.member} != {expected_member_type}',
+    )
+    # Only the type of the client data is different.
+    self.assertTrue(
+        tensor_next_type.parameter['state'].is_equivalent_to(
+            dataset_next_type.parameter['state']
+        )
+    )
+    self.assertTrue(
+        tensor_next_type.result.is_equivalent_to(dataset_next_type.result)
+    )
+
+  def test_graph_has_while_loop_and_no_dataset_ops(self):
+    process = fed_eval.build_fed_eval(
+        _create_functional_model(), use_tensor_dataset=True
+    )
+
+    op_types = _get_tensorflow_op_types(process.next)
+
+    self.assertEmpty(_get_forbidden_op_types(op_types))
+    self.assertNotEmpty(op_types & _WHILE_OP_TYPES)
+
+  def test_dataset_graph_has_dataset_ops(self):
+    # Make sure that `_get_tensorflow_op_types` finds the ops of the client
+    # computation. Thus the test above can detect dataset ops.
+    process = fed_eval.build_fed_eval(_create_functional_model())
+
+    op_types = _get_tensorflow_op_types(process.next)
+
+    self.assertNotEmpty(_get_forbidden_op_types(op_types))
+
+  @parameterized.named_parameters(
+      ('zero_padding', 0.0), ('nan_padding', np.nan)
+  )
+  def test_tensor_dataset_metrics_match_dataset_metrics(self, pad_value):
+    model = _create_functional_model()
+    tensor_process = fed_eval.build_fed_eval(model, use_tensor_dataset=True)
+    dataset_process = fed_eval.build_fed_eval(model)
+    examples = [_create_examples(n) for n, _ in _CLIENT_CASES]
+    tensor_client_data = [
+        _create_tensor_dataset(
+            x, y, num_batches=num_batches, pad_value=pad_value
+        )
+        for (x, y), (_, num_batches) in zip(examples, _CLIENT_CASES)
+    ]
+    dataset_client_data = [_create_batched_dataset(x, y) for x, y in examples]
+    # Use weights that are not zero, so that the loss depends on `x`.
+    model_weights = tf.nest.map_structure(
+        lambda w: np.full_like(w, _MODEL_WEIGHT_VALUE),
+        tensor_process.get_model_weights(tensor_process.initialize()),
+    )
+    tensor_state = tensor_process.set_model_weights(
+        tensor_process.initialize(), model_weights
+    )
+    dataset_state = dataset_process.set_model_weights(
+        dataset_process.initialize(), model_weights
+    )
+
+    tensor_output = tensor_process.next(tensor_state, tensor_client_data)
+    dataset_output = dataset_process.next(dataset_state, dataset_client_data)
+
+    self.assertAllClose(tensor_output.metrics, dataset_output.metrics)
+    eval_metrics = tensor_output.metrics['client_work']['eval'][
+        'current_round_metrics'
+    ]
+    self.assertEqual(
+        eval_metrics['num_examples'], sum(n for n, _ in _CLIENT_CASES)
+    )
+    self.assertEqual(
+        eval_metrics['num_batches'],
+        sum(-(-n // _BATCH_SIZE) for n, _ in _CLIENT_CASES),
+    )
+    self.assertGreater(eval_metrics['loss'], 0.0)
+
+  def _evaluate_tensor_datasets(self, client_cases, pad_value):
+    """Returns the eval metrics and the examples of the clients."""
+    model = _create_functional_model()
+    process = fed_eval.build_fed_eval(model, use_tensor_dataset=True)
+    examples = [_create_examples(n) for n, _ in client_cases]
+    client_data = [
+        _create_tensor_dataset(
+            x, y, num_batches=num_batches, pad_value=pad_value
+        )
+        for (x, y), (_, num_batches) in zip(examples, client_cases)
+    ]
+    model_weights = tf.nest.map_structure(
+        lambda w: np.full_like(w, _MODEL_WEIGHT_VALUE),
+        process.get_model_weights(process.initialize()),
+    )
+    state = process.set_model_weights(process.initialize(), model_weights)
+
+    output = process.next(state, client_data)
+
+    eval_metrics = output.metrics['client_work']['eval'][
+        'current_round_metrics'
+    ]
+    return eval_metrics, examples
+
+  @parameterized.named_parameters(
+      ('zero_padding', 0.0), ('nan_padding', np.nan)
+  )
+  def test_tensor_dataset_metrics_with_partial_and_empty_clients(
+      self, pad_value
+  ):
+    eval_metrics, examples = self._evaluate_tensor_datasets(
+        _PARTIAL_CLIENT_CASES, pad_value
+    )
+
+    # The linear model has all weights equal to `_MODEL_WEIGHT_VALUE`. The
+    # summed MSE metric is the MSE over the examples of all clients.
+    x = np.concatenate([x for x, _ in examples])
+    y = np.concatenate([y for _, y in examples])
+    predictions = (
+        np.sum(x, axis=1, keepdims=True) * _MODEL_WEIGHT_VALUE
+        + _MODEL_WEIGHT_VALUE
+    )
+    expected_loss = np.mean(np.square(predictions - y))
+    self.assertAllClose(eval_metrics['loss'], expected_loss, rtol=1e-5)
+    self.assertEqual(
+        eval_metrics['num_examples'], sum(n for n, _ in _PARTIAL_CLIENT_CASES)
+    )
+    self.assertEqual(
+        eval_metrics['num_batches'],
+        sum(-(-n // _BATCH_SIZE) for n, _ in _PARTIAL_CLIENT_CASES),
+    )
+
+  @parameterized.named_parameters(
+      ('no_batches', None, 0.0),
+      ('zero_padding_batches', 2, 0.0),
+      ('nan_padding_batches', 2, np.nan),
+  )
+  def test_tensor_dataset_metrics_with_only_empty_clients(
+      self, num_batches, pad_value
+  ):
+    eval_metrics, _ = self._evaluate_tensor_datasets(
+        ((0, num_batches), (0, num_batches)), pad_value
+    )
+
+    self.assertAllClose(eval_metrics['loss'], 0.0)
+    self.assertEqual(eval_metrics['num_examples'], 0)
+    self.assertEqual(eval_metrics['num_batches'], 0)
 
 
 if __name__ == '__main__':

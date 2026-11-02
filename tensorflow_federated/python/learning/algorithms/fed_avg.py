@@ -73,6 +73,7 @@ def build_weighted_fed_avg(
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
     measure_timing: bool = False,
+    use_tensor_dataset: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
@@ -155,6 +156,14 @@ def build_weighted_fed_avg(
       generated. See `tff.learning.LoopImplementation` for more details.
     measure_timing: An optional boolean indicating whether to measure full
       on-device time for client work using data dependencies. Defaults to False.
+    use_tensor_dataset: If `True`, the client data is a tensor client dataset
+      and not a `tf.data.Dataset`. A tensor client dataset is an `OrderedDict`
+      with a `data` structure of `[num_batches, batch_size, ...]` tensors, a
+      `valid_example_mask` of shape `[num_batches, batch_size]` and a scalar
+      `num_valid_batches`. The local training loop is then a `tf.while_loop`
+      over the leading (batch index) axis, and `loop_implementation` has no
+      effect. This is only supported for a
+      `tff.learning.models.FunctionalModel`. Defaults to `False`.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -244,7 +253,19 @@ def build_weighted_fed_avg(
   if metrics_aggregator is None:
     metrics_aggregator = metric_aggregator.sum_then_finalize
 
-  if not callable(model_fn):
+  if use_tensor_dataset:
+    if callable(model_fn):
+      raise TypeError(
+          '`use_tensor_dataset=True` requires `model_fn` to be a '
+          '`tff.learning.models.FunctionalModel`. Got a callable.'
+      )
+    client_work = model_delta_client_work.build_tensor_functional_model_delta_client_work(
+        model=model_fn,
+        optimizer=client_optimizer_fn,
+        client_weighting=client_weighting,  # pyrefly: ignore[bad-argument-type]
+        metrics_aggregator=metrics_aggregator,
+    )
+  elif not callable(model_fn):
     client_work = (
         model_delta_client_work.build_functional_model_delta_client_work(
             model=model_fn,

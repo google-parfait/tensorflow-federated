@@ -90,5 +90,126 @@ class TypeChecksTest(tf.test.TestCase):
       type_checks.check_is_client_placed_structure_of_sequences(type_spec)
 
 
-if __name__ == "__main__":
+def _tensor_dataset_member_type(
+    names=(
+        type_checks.TENSOR_DATASET_DATA_KEY,
+        type_checks.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+        type_checks.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+    ),
+    data_type=None,
+) -> federated_language.StructType:
+  """Returns a tensor client dataset type with the element names `names`."""
+  if data_type is None:
+    data_type = federated_language.StructType([
+        ('x', federated_language.TensorType(np.float32, [None, 3, 2])),
+        ('y', federated_language.TensorType(np.float32, [None, 3, 1])),
+    ])
+  element_types = [
+      data_type,
+      federated_language.TensorType(np.bool_, [None, None]),
+      federated_language.TensorType(np.int32),
+  ]
+  return federated_language.StructType(list(zip(names, element_types)))
+
+
+class IsClientPlacedTensorDatasetTest(tf.test.TestCase):
+
+  def test_returns_true_on_client_placed_tensor_dataset(self):
+    type_spec = federated_language.FederatedType(
+        _tensor_dataset_member_type(), federated_language.CLIENTS
+    )
+    self.assertTrue(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_returns_true_on_tensor_data(self):
+    type_spec = federated_language.FederatedType(
+        _tensor_dataset_member_type(
+            data_type=federated_language.TensorType(np.float32, [None, 3, 2])
+        ),
+        federated_language.CLIENTS,
+    )
+    self.assertTrue(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_returns_false_on_wrong_names(self):
+    type_spec = federated_language.FederatedType(
+        _tensor_dataset_member_type(names=('data', 'mask', 'num_batches')),
+        federated_language.CLIENTS,
+    )
+    self.assertFalse(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_returns_false_on_wrong_order(self):
+    type_spec = federated_language.FederatedType(
+        _tensor_dataset_member_type(
+            names=(
+                type_checks.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+                type_checks.TENSOR_DATASET_DATA_KEY,
+                type_checks.TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+            )
+        ),
+        federated_language.CLIENTS,
+    )
+    self.assertFalse(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_returns_false_on_unnamed_elements(self):
+    type_spec = federated_language.FederatedType(
+        _tensor_dataset_member_type(names=(None, None, None)),
+        federated_language.CLIENTS,
+    )
+    self.assertFalse(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_returns_false_on_missing_element(self):
+    member_type = _tensor_dataset_member_type()
+    type_spec = federated_language.FederatedType(
+        federated_language.StructType(list(member_type.items())[:2]),
+        federated_language.CLIENTS,
+    )
+    self.assertFalse(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_returns_false_on_server_placement(self):
+    type_spec = federated_language.FederatedType(
+        _tensor_dataset_member_type(), federated_language.SERVER
+    )
+    self.assertFalse(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_returns_false_on_unplaced_struct(self):
+    self.assertFalse(
+        type_checks.is_client_placed_tensor_dataset(
+            _tensor_dataset_member_type()
+        )
+    )
+
+  def test_returns_false_on_data_that_contains_sequence(self):
+    type_spec = federated_language.FederatedType(
+        _tensor_dataset_member_type(
+            data_type=federated_language.StructType([(
+                'x',
+                federated_language.SequenceType(
+                    federated_language.TensorType(np.float32, [None, 2])
+                ),
+            )])
+        ),
+        federated_language.CLIENTS,
+    )
+    self.assertFalse(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_returns_false_on_client_placed_sequence(self):
+    type_spec = federated_language.FederatedType(
+        federated_language.SequenceType(np.int32), federated_language.CLIENTS
+    )
+    self.assertFalse(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_returns_false_on_client_placed_tensor(self):
+    type_spec = federated_language.FederatedType(
+        federated_language.TensorType(np.int32), federated_language.CLIENTS
+    )
+    self.assertFalse(type_checks.is_client_placed_tensor_dataset(type_spec))
+
+  def test_tensor_dataset_is_not_structure_of_sequences(self):
+    type_spec = federated_language.FederatedType(
+        _tensor_dataset_member_type(), federated_language.CLIENTS
+    )
+    with self.assertRaises(type_checks.ClientSequenceTypeError):
+      type_checks.check_is_client_placed_structure_of_sequences(type_spec)
+
+
+if __name__ == '__main__':
   tf.test.main()

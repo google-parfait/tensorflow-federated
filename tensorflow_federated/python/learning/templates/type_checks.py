@@ -24,6 +24,47 @@ class ClientSequenceTypeError(Exception):
   """Raises when a type is not a structure of sequences placed at `CLIENTS`."""
 
 
+# Keys of the structure that holds a tensor client dataset. See
+# `model_delta_client_work.tensor_dataset_type_from_input_spec`.
+TENSOR_DATASET_DATA_KEY = 'data'
+TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY = 'valid_example_mask'
+TENSOR_DATASET_NUM_VALID_BATCHES_KEY = 'num_valid_batches'
+
+
+def is_client_placed_tensor_dataset(type_spec: federated_language.Type) -> bool:
+  """Returns `True` if `type_spec` is a tensor client dataset at `CLIENTS`.
+
+  A tensor client dataset is a structure with the `TENSOR_DATASET_DATA_KEY`,
+  `TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY` and
+  `TENSOR_DATASET_NUM_VALID_BATCHES_KEY` elements (in this order) that contains
+  only tensors.
+
+  Args:
+    type_spec: A `federated_language.Type`.
+  """
+  if (
+      not isinstance(type_spec, federated_language.FederatedType)
+      or type_spec.placement is not federated_language.CLIENTS
+  ):
+    return False
+  member = type_spec.member
+  if not isinstance(member, federated_language.StructType):
+    return False
+  expected_names = [
+      TENSOR_DATASET_DATA_KEY,
+      TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+      TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+  ]
+  if [name for name, _ in member.items()] != expected_names:
+    return False
+  return federated_language.framework.type_contains_only(
+      member,
+      lambda t: isinstance(
+          t, (federated_language.StructType, federated_language.TensorType)
+      ),
+  )
+
+
 def check_is_client_placed_structure_of_sequences(
     type_spec: federated_language.Type, error_message: Optional[str] = None
 ) -> None:

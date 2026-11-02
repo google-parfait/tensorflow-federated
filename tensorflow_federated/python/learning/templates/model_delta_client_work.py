@@ -40,9 +40,135 @@ from tensorflow_federated.python.learning.models import model_weights as model_w
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
+from tensorflow_federated.python.learning.templates import type_checks
 
 # System metric name for tracking non-finite client deltas.
 NUM_NON_FINITE_CLIENTS_KEY = 'num_non_finite_clients'
+
+# Keys of the structure that holds a tensor client dataset. A tensor client
+# dataset replaces a `tf.data.Dataset` of batches with fixed-rank tensors:
+#
+# *   `TENSOR_DATASET_DATA_KEY`: a structure that matches the model input spec,
+#     where each leaf has the shape `[num_batches, batch_size, ...]`.
+# *   `TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY`: a `tf.bool` tensor with the shape
+#     `[num_batches, batch_size]`. A `True` value marks a real example. A
+#     `False` value marks a padding example.
+# *   `TENSOR_DATASET_NUM_VALID_BATCHES_KEY`: a scalar `tf.int32` tensor. The
+#     training and evaluation loops only process the first `num_valid_batches`
+#     batches.
+TENSOR_DATASET_DATA_KEY = type_checks.TENSOR_DATASET_DATA_KEY
+TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY = (
+    type_checks.TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY
+)
+TENSOR_DATASET_NUM_VALID_BATCHES_KEY = (
+    type_checks.TENSOR_DATASET_NUM_VALID_BATCHES_KEY
+)
+
+
+def tensor_dataset_type_from_input_spec(
+    input_spec: Any,
+) -> federated_language.Type:
+  """Returns the TFF type of a tensor client dataset for a model input spec.
+
+  Each leaf `tf.TensorSpec` of shape `[batch_size, ...]` in `input_spec`
+  becomes a tensor type of shape `[None, batch_size, ...]`. The added leading
+  dimension is the batch index.
+
+  Args:
+    input_spec: The input spec of a model. This is a structure of
+      `tf.TensorSpec` that describes one batch of data.
+
+  Returns:
+    A `federated_language.Type` for the structure that
+    `TENSOR_DATASET_DATA_KEY`, `TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY` and
+    `TENSOR_DATASET_NUM_VALID_BATCHES_KEY` describe.
+  """
+
+  def _add_batch_index_dim(spec: tf.TensorSpec) -> tf.TensorSpec:
+    return tf.TensorSpec(
+        shape=tf.TensorShape([None]).concatenate(spec.shape), dtype=spec.dtype
+    )
+
+  data_spec = tf.nest.map_structure(_add_batch_index_dim, input_spec)
+  return tensorflow_types.to_type(
+      collections.OrderedDict([
+          (TENSOR_DATASET_DATA_KEY, data_spec),
+          (
+              TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY,
+              tf.TensorSpec(shape=[None, None], dtype=tf.bool),
+          ),
+          (
+              TENSOR_DATASET_NUM_VALID_BATCHES_KEY,
+              tf.TensorSpec(shape=[], dtype=tf.int32),
+          ),
+      ])
+  )
+
+
+def reduce_tensor_dataset(
+    reduce_fn: Callable[[Any, Any], Any],
+    tensor_dataset: Mapping[str, Any],
+    initial_state: Any,
+) -> Any:
+  """Reduces the batches of a tensor client dataset with a `tf.while_loop`.
+
+  This is the tensor client dataset equivalent of `tf.data.Dataset.reduce`. The
+  loop iterates over the leading (batch index) axis of the tensors in
+  `tensor_dataset`. The loop does not create `tf.data.Dataset`, variant or
+  iterator ops.
+
+  For each batch, the loop removes the padding examples with
+  `valid_example_mask` before it calls `reduce_fn`. Thus `reduce_fn` gets the
+  same batches that a `tf.data.Dataset` that does not drop the remainder gives.
+  The mask does not have to be a prefix of each batch. The loop skips a batch
+  that has no valid examples, because a forward pass on an empty batch can give
+  a non-finite loss.
+
+  Args:
+    reduce_fn: A callable that accepts `(state, batch)` and returns the new
+      state. The new state must have the same structure, dtypes and shapes as
+      `state`.
+    tensor_dataset: A mapping that contains the `TENSOR_DATASET_DATA_KEY`,
+      `TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY` and
+      `TENSOR_DATASET_NUM_VALID_BATCHES_KEY` keys.
+    initial_state: The initial state of the reduction.
+
+  Returns:
+    The state after `reduce_fn` processes all the valid batches.
+  """
+  data = tensor_dataset[TENSOR_DATASET_DATA_KEY]
+  valid_example_mask = tf.cast(
+      tensor_dataset[TENSOR_DATASET_VALID_EXAMPLE_MASK_KEY], tf.bool
+  )
+  # Do not read past the end of the tensors, even if `num_valid_batches` is
+  # larger than the number of batches.
+  num_batches = tf.minimum(
+      tf.cast(tensor_dataset[TENSOR_DATASET_NUM_VALID_BATCHES_KEY], tf.int32),
+      tf.shape(valid_example_mask)[0],
+  )
+
+  def loop_cond(batch_index, state):
+    del state  # Unused.
+    return batch_index < num_batches
+
+  def loop_body(batch_index, state):
+    batch_mask = valid_example_mask[batch_index]
+    batch = tf.nest.map_structure(
+        lambda t: tf.boolean_mask(t[batch_index], batch_mask), data
+    )
+    new_state = tf.cond(
+        tf.reduce_any(batch_mask),
+        lambda: reduce_fn(state, batch),
+        lambda: state,
+    )
+    return batch_index + 1, new_state
+
+  _, final_state = tf.while_loop(
+      loop_cond,
+      loop_body,
+      (tf.constant(0, dtype=tf.int32), initial_state),
+  )
+  return final_state
 
 
 def augment_metric_finalizers(metric_finalizers):
@@ -330,11 +456,72 @@ def build_functional_model_delta_update(
     A `tf.function`.
   """
 
+  def dataset_loop_fn(reduce_func, dataset, initial_training_state_fn):
+    ds_reduce_fn = loop_builder.build_training_loop(
+        loop_implementation=loop_implementation
+    )
+    return ds_reduce_fn(reduce_func, dataset, initial_training_state_fn)
+
+  return _build_functional_client_update_fn(
+      model, weighting=weighting, loop_fn=dataset_loop_fn
+  )
+
+
+def build_tensor_functional_model_delta_update(
+    model: functional.FunctionalModel,
+    *,
+    weighting: client_weight_lib.ClientWeighting,
+):
+  """Creates client update logic in FedAvg for tensor client datasets.
+
+  This is the same as `build_functional_model_delta_update`, but the client
+  data is a tensor client dataset (see `tensor_dataset_type_from_input_spec`)
+  and not a `tf.data.Dataset`. The local training loop is a `tf.while_loop`
+  over the leading (batch index) axis of the client data. The resulting graph
+  does not contain `tf.data.Dataset`, variant or iterator ops.
+
+  Args:
+    model: A `tff.learning.models.FunctionalModel`.
+    weighting: A `tff.learning.ClientWeighting` value.
+
+  Returns:
+    A `tf.function`.
+  """
+
+  def tensor_loop_fn(reduce_func, tensor_dataset, initial_training_state_fn):
+    return reduce_tensor_dataset(
+        reduce_func, tensor_dataset, initial_training_state_fn()
+    )
+
+  return _build_functional_client_update_fn(
+      model, weighting=weighting, loop_fn=tensor_loop_fn
+  )
+
+
+def _build_functional_client_update_fn(
+    model: functional.FunctionalModel,
+    *,
+    weighting: client_weight_lib.ClientWeighting,
+    loop_fn: Callable[[Any, Any, Callable[[], Any]], Any],
+):
+  """Creates the FedAvg client update `tf.function` with a custom data loop.
+
+  Args:
+    model: A `tff.learning.models.FunctionalModel`.
+    weighting: A `tff.learning.ClientWeighting` value.
+    loop_fn: A callable that accepts `(reduce_func, client_data,
+      initial_training_state_fn)` and returns the final training state after
+      `reduce_func` processes all batches in `client_data`.
+
+  Returns:
+    A `tf.function`.
+  """
+
   @tf.function
   def client_update_fn(
       optimizer: optimizer_base.Optimizer,
       initial_weights: Any,
-      dataset: tf.data.Dataset,
+      dataset: Any,
   ):
     initial_trainable_weights, initial_non_trainable_weights = initial_weights
     trainable_tensor_specs = tf.nest.map_structure(
@@ -391,12 +578,7 @@ def build_functional_model_delta_update(
         )
     )
 
-    ds_reduce_fn = loop_builder.build_training_loop(
-        loop_implementation=loop_implementation
-    )
-    final_training_state = ds_reduce_fn(
-        reduce_func, dataset, initial_training_state
-    )
+    final_training_state = loop_fn(reduce_func, dataset, initial_training_state)
     model_weights, _, metrics_state, num_examples = final_training_state
     trainable_weights, _ = model_weights
     # After all local batches, compute the delta between the trained model
@@ -471,6 +653,97 @@ def build_functional_model_delta_client_work(
   element_type = tensorflow_types.to_type(model.input_spec)
   data_type = federated_language.SequenceType(element_type)
 
+  def client_update_builder():
+    return build_functional_model_delta_update(
+        model=model,
+        weighting=client_weighting,
+        loop_implementation=loop_implementation,
+    )
+
+  return _build_functional_client_work(
+      model=model,
+      optimizer=optimizer,
+      metrics_aggregator=metrics_aggregator,
+      data_type=data_type,
+      client_update_builder=client_update_builder,
+  )
+
+
+def build_tensor_functional_model_delta_client_work(
+    *,
+    model: functional.FunctionalModel,
+    optimizer: optimizer_base.Optimizer,
+    client_weighting: client_weight_lib.ClientWeighting,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+) -> client_works.ClientWorkProcess:
+  """Creates a `ClientWorkProcess` for FedAvg with tensor client datasets.
+
+  This is the same as `build_functional_model_delta_client_work`, but the
+  client data is a tensor client dataset and not a `tf.data.Dataset`. The type
+  of the client data is `tensor_dataset_type_from_input_spec(model.input_spec)`.
+  The local training loop is a `tf.while_loop` over the leading (batch index)
+  axis. The client graphs do not contain `tf.data.Dataset`, variant or iterator
+  ops.
+
+  Args:
+    model: A `tff.learning.models.FunctionalModel` to train.
+    optimizer: A `tff.learning.optimizers.Optimizer` to use for local, on-client
+      optimization.
+    client_weighting:  A `tff.learning.ClientWeighting` value.
+    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
+      `tff.learning.models.VariableModel.metric_finalizers()`) and returns a
+      `federated_language.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+
+  Returns:
+    A `ClientWorkProcess`.
+  """
+  py_typecheck.check_type(model, functional.FunctionalModel)
+  py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
+  py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
+  data_type = tensor_dataset_type_from_input_spec(model.input_spec)
+
+  def client_update_builder():
+    return build_tensor_functional_model_delta_update(
+        model=model, weighting=client_weighting
+    )
+
+  return _build_functional_client_work(
+      model=model,
+      optimizer=optimizer,
+      metrics_aggregator=metrics_aggregator,
+      data_type=data_type,
+      client_update_builder=client_update_builder,
+  )
+
+
+def _build_functional_client_work(
+    *,
+    model: functional.FunctionalModel,
+    optimizer: optimizer_base.Optimizer,
+    metrics_aggregator: Optional[types.MetricsAggregatorType],
+    data_type: federated_language.Type,
+    client_update_builder: Callable[[], Any],
+) -> client_works.ClientWorkProcess:
+  """Creates a `ClientWorkProcess` for FedAvg with a `FunctionalModel`.
+
+  Args:
+    model: A `tff.learning.models.FunctionalModel` to train.
+    optimizer: A `tff.learning.optimizers.Optimizer` to use for local, on-client
+      optimization.
+    metrics_aggregator: A function that takes in the metric finalizers and
+      returns a `federated_language.Computation` for aggregating the unfinalized
+      metrics. If `None`, this is set to
+      `tff.learning.metrics.sum_then_finalize`.
+    data_type: The `federated_language.Type` of the data of one client.
+    client_update_builder: A no-arg callable that returns the client update
+      `tf.function`. The `tf.function` accepts `(optimizer, initial_weights,
+      client_data)`.
+
+  Returns:
+    A `ClientWorkProcess`.
+  """
+
   def ndarray_to_tensorspec(ndarray):
     return tf.TensorSpec(
         shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype)
@@ -490,11 +763,7 @@ def build_functional_model_delta_client_work(
         initial_model_weights.trainable,
         initial_model_weights.non_trainable,
     )
-    client_update = build_functional_model_delta_update(
-        model=model,
-        weighting=client_weighting,
-        loop_implementation=loop_implementation,
-    )
+    client_update = client_update_builder()
     return client_update(optimizer, initial_model_weights, dataset)
 
   @federated_language.federated_computation
