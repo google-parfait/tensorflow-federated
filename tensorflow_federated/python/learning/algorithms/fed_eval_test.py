@@ -18,6 +18,7 @@ from typing import Any
 from unittest import mock
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import federated_language
 import keras
 import numpy as np
@@ -30,6 +31,7 @@ from tensorflow_federated.python.core.environments.tensorflow_frontend import te
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning.algorithms import fed_eval
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
@@ -456,7 +458,7 @@ class FedEvalProcessTest(tf.test.TestCase):
     self.assertEqual(mock_model_fn.call_count, 3)
 
 
-class FunctionalFedEvalProcessTest(tf.test.TestCase):
+class FunctionalFedEvalProcessTest(tf.test.TestCase, parameterized.TestCase):
 
   def create_test_datasets(self) -> tf.data.Dataset:
     dataset1 = tf.data.Dataset.from_tensor_slices(
@@ -477,8 +479,39 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
     with self.assertRaisesRegex(TypeError, 'is not a callable'):
       fed_eval.build_fed_eval(model_fn=0)
 
+  @parameterized.named_parameters(
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
+  )
+  @mock.patch.object(
+      loop_builder,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
+  )
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
+    datasets = self.create_test_datasets()
+    batch_type = tensorflow_types.to_type(datasets[0].element_spec)
+    functional_model = functional.functional_model_from_keras(
+        keras_model=model_examples.build_linear_regression_keras_functional_model(
+            feature_dims=2
+        ),
+        loss_fn=keras.losses.MeanSquaredError(),
+        input_spec=batch_type,
+    )
+    fed_eval.build_fed_eval(
+        model_fn=functional_model,
+        loop_implementation=loop_implementation,
+    )
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
+
+  @parameterized.named_parameters(
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
+  )
   @tensorflow_test_utils.skip_test_for_gpu
-  def test_functional_evaluation_matches_non_functional(self):
+  def test_functional_evaluation_matches_non_functional(
+      self, loop_implementation
+  ):
     datasets = self.create_test_datasets()
     batch_type = tensorflow_types.to_type(datasets[0].element_spec)
     loss_fn = keras.losses.MeanSquaredError
@@ -494,7 +527,9 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
           keras_model, loss=loss_fn(), input_spec=batch_type
       )
 
-    eval_process = fed_eval.build_fed_eval(tff_model_fn)
+    eval_process = fed_eval.build_fed_eval(
+        tff_model_fn, loop_implementation=loop_implementation
+    )
     eval_state = eval_process.initialize()
     eval_output = eval_process.next(eval_state, datasets)
 
@@ -512,7 +547,9 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
         input_spec=batch_type,
         metrics_constructor=build_metrics_fn,
     )
-    functional_eval_process = fed_eval.build_fed_eval(functional_model)
+    functional_eval_process = fed_eval.build_fed_eval(
+        functional_model, loop_implementation=loop_implementation
+    )
     functional_eval_state = functional_eval_process.initialize()
     functional_eval_output = functional_eval_process.next(
         functional_eval_state, datasets

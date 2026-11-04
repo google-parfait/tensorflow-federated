@@ -125,6 +125,7 @@ def _build_functional_local_evaluation(
     batch_type: Union[
         federated_language.StructType, federated_language.TensorType
     ],
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> federated_language.framework.Computation:
   """Creates client evaluation logic for a functional model.
 
@@ -146,6 +147,8 @@ def _build_functional_local_evaluation(
     model_weights_type: The `federated_language.Type` of the model parameters
       that will be used in the forward pass.
     batch_type: The type of one entry in the dataset.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A federated computation (an instance of `federated_language.Computation`)
@@ -158,9 +161,8 @@ def _build_functional_local_evaluation(
   )
   @tf.function
   def local_eval(weights, dataset):
-    metrics_state = model.initialize_metrics_state()
-
-    for batch in iter(dataset):
+    def reduce_fn(state, batch):
+      metrics_state, num_examples = state
       if isinstance(batch, Mapping):
         x = batch['x']
         y = batch['y']
@@ -182,8 +184,22 @@ def _build_functional_local_evaluation(
           ),
           labels=y,
       )
+      return metrics_state, num_examples + tf.cast(batch_num_examples, tf.int64)
 
-    unfinalized_metrics = metrics_state
+    # Track `num_examples` alongside `metrics_state` in the reduction state so
+    # TensorFlow's `ReduceDataset` op receives at least one state tensor even
+    # when `model.initialize_metrics_state()` is empty.
+    dataset_reduce_fn = loop_builder.build_training_loop(
+        loop_implementation=loop_implementation
+    )
+    unfinalized_metrics, _ = dataset_reduce_fn(
+        reduce_fn,
+        dataset,
+        lambda: (
+            model.initialize_metrics_state(),
+            tf.zeros([], dtype=tf.int64),
+        ),
+    )
     return unfinalized_metrics
 
   return local_eval
@@ -278,6 +294,7 @@ def _build_functional_fed_eval_client_work(
     model: functional.FunctionalModel,
     metrics_aggregation_process: Optional[_AggregationProcess],
     model_weights_type: federated_language.StructType,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
 
@@ -297,6 +314,7 @@ def _build_functional_fed_eval_client_work(
       model,
       tuple_weights_type,  # pyrefly: ignore[bad-argument-type]
       batch_type,  # pyrefly: ignore[bad-argument-type]
+      loop_implementation=loop_implementation,
   )
 
   if metrics_aggregation_process is None:
@@ -523,6 +541,7 @@ def build_fed_multi_model_eval(
           model_fn,
           metrics_aggregation_process,
           model_weights_type,
+          loop_implementation=loop_implementation,
       )
     else:
       client_work_processes[model_id] = _build_fed_eval_client_work(
