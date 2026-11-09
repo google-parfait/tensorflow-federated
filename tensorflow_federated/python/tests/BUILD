@@ -79,9 +79,10 @@ py_test(
 
 py_test(
     name = "mergeable_comp_execution_context_integration_test",
-    size = "small",
+    size = "medium",
     timeout = "long",
     srcs = ["mergeable_comp_execution_context_integration_test.py"],
+    shard_count = 4,
     deps = [
         "//tensorflow_federated",
         "@federated_language//federated_language",

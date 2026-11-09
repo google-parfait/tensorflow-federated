@@ -14,11 +14,13 @@ limitations under the License
 ==============================================================================*/
 
 #include <stdint.h>
+
 #include <memory>
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "include/grpcpp/security/server_credentials.h"
+#include "tsl/platform/init_main.h"
 #include "tensorflow_federated/cc/simulation/servers.h"
 
 ABSL_FLAG(int32_t, port, 10000, "Port to run the executor service on");
@@ -37,6 +39,7 @@ ABSL_FLAG(int32_t, max_concurrent_computation_calls, -1,
 namespace tff = ::tensorflow_federated;
 
 int main(int argc, char* argv[]) {
+  tsl::port::InitMain(argv[0], &argc, &argv);
   absl::ParseCommandLine(argc, argv);
   std::shared_ptr<grpc::ServerCredentials> credentials =
       grpc::InsecureServerCredentials();
