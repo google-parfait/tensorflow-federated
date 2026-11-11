@@ -57,14 +57,13 @@ template <typename T>
 void CopyAggregateFromColumn(const Tensor& column_of_aggregates,
                              int64_t ordinal, MutableVectorData<T>& container,
                              NumericalMechanism* mechanism) {
-  T zero = static_cast<T>(0);
-  T noise_to_add =
-      (mechanism == nullptr) ? zero : mechanism->AddNoise(/*result=*/zero);
-
+  T center = (ordinal == kNoOrdinal)
+                 ? static_cast<T>(0)
+                 : column_of_aggregates.AsSpan<T>()[ordinal];
+  // We pass `center` to AddNoise instead of adding AddNoise(0) to `center`
+  // to respect the grid constructed by AddNoise and thereby preserve DP.
   T value_to_push_back =
-      (ordinal == kNoOrdinal)
-          ? noise_to_add
-          : noise_to_add + column_of_aggregates.AsSpan<T>()[ordinal];
+      (mechanism == nullptr) ? center : mechanism->AddNoise(center);
 
   // Add noisy value to the container.
   container.push_back(value_to_push_back);
