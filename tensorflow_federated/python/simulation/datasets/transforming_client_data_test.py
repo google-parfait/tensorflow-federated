@@ -39,8 +39,6 @@ TEST_DATA = {
     ),
 }
 
-TEST_CLIENT_DATA = from_tensor_slices_client_data.TestClientData(TEST_DATA)
-
 
 def _make_transform_expanded(client_id):
   index_str = tf.strings.split(client_id, sep='_', maxsplit=1)[0]
@@ -75,62 +73,76 @@ def test_reduce_client_id(client_id):
   return tf.strings.split(client_id, sep='_')[1]
 
 
-TRANSFORMED_CLIENT_DATA = transforming_client_data.TransformingClientData(
-    TEST_CLIENT_DATA,
-    _make_transform_expanded,
-    test_expand_client_id,
-    test_reduce_client_id,
-)
-
-
 class TransformingClientDataTest(tf.test.TestCase):
 
   def test_client_ids_property(self):
+    test_client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
+    transformed_client_data = transforming_client_data.TransformingClientData(
+        test_client_data,
+        _make_transform_expanded,
+        test_expand_client_id,
+        test_reduce_client_id,
+    )
     num_transformed_clients = len(TEST_DATA) * NUM_EXPANDED_CLIENTS
-    client_ids = TRANSFORMED_CLIENT_DATA.client_ids
+    client_ids = transformed_client_data.client_ids
     self.assertLen(client_ids, num_transformed_clients)
     for client_id in client_ids:
       self.assertIsInstance(client_id, str)
     self.assertListEqual(client_ids, sorted(client_ids))
 
   def test_default_num_transformed_clients(self):
+    test_client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     transformed_client_data = transforming_client_data.TransformingClientData(
-        TEST_CLIENT_DATA, _make_transform_raw
+        test_client_data, _make_transform_raw
     )
     client_ids = transformed_client_data.client_ids
     self.assertCountEqual(client_ids, TEST_DATA.keys())
 
   def test_fail_on_bad_client_id(self):
+    test_client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
+    transformed_client_data = transforming_client_data.TransformingClientData(
+        test_client_data,
+        _make_transform_expanded,
+        test_expand_client_id,
+        test_reduce_client_id,
+    )
     # The following three should be valid.
-    TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('0_CLIENT A')
-    TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('1_CLIENT B')
-    TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('0_CLIENT C')
+    transformed_client_data.create_tf_dataset_for_client('0_CLIENT A')
+    transformed_client_data.create_tf_dataset_for_client('1_CLIENT B')
+    transformed_client_data.create_tf_dataset_for_client('0_CLIENT C')
 
     # This should not be valid: no prefix.
     with self.assertRaisesRegex(
         ValueError, 'is not a client in this ClientData'
     ):
-      TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('CLIENT A')
+      transformed_client_data.create_tf_dataset_for_client('CLIENT A')
 
     # This should not be valid: no corresponding client.
     with self.assertRaisesRegex(
         ValueError, 'is not a client in this ClientData'
     ):
-      TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('0_CLIENT D')
+      transformed_client_data.create_tf_dataset_for_client('0_CLIENT D')
 
     # This should not be valid: index out of range.
     with self.assertRaisesRegex(
         ValueError, 'is not a client in this ClientData'
     ):
-      TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('3_CLIENT B')
+      transformed_client_data.create_tf_dataset_for_client('3_CLIENT B')
 
   def test_dataset_computation(self):
-    for client_id in TRANSFORMED_CLIENT_DATA.client_ids:
-      actual_dataset = TRANSFORMED_CLIENT_DATA.dataset_computation(client_id)
+    test_client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
+    transformed_client_data = transforming_client_data.TransformingClientData(
+        test_client_data,
+        _make_transform_expanded,
+        test_expand_client_id,
+        test_reduce_client_id,
+    )
+    for client_id in transformed_client_data.client_ids:
+      actual_dataset = transformed_client_data.dataset_computation(client_id)
       pattern = r'^(\d*)_(.*)$'
       match = re.search(pattern, client_id)
       client = match.group(2)
-      base_client_dataset = TEST_CLIENT_DATA.create_tf_dataset_for_client(
+      base_client_dataset = test_client_data.create_tf_dataset_for_client(
           client
       )
       expected_dataset = base_client_dataset.map(
