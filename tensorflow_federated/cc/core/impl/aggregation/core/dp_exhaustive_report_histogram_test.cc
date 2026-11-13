@@ -17,17 +17,20 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <initializer_list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/container/fixed_array.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_histogram_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -275,6 +278,67 @@ TEST(DPExhaustiveReportHistogramTest, NoiseDescriptionHasNoThresholding) {
   EXPECT_THAT(
       peer.GetNoiseDescription(),
       IsOkAndHolds(Not(testing::HasSubstr("Any group with fewer than"))));
+}
+
+TEST(DPExhaustiveReportHistogramTest,
+     MakeCompositeKeyFromDomainTensorsAndFindOrdinal_NumericTypes) {
+  Intrinsic intrinsic =
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
+          /*epsilon=*/kEpsilonThreshold, /*delta=*/0.001, /*l0_bound=*/2,
+          /*linfinity_bound=*/10, /*l1_bound=*/-1, /*l2_bound=*/-1,
+          /*key_types=*/{DT_FLOAT, DT_INT32, DT_INT64});
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
+
+  Tensor t1({1.0f, 2.0f});
+  Tensor t2({1, 2});
+  Tensor t3({INT64_C(1), INT64_C(2)});
+  Tensor v({INT64_C(10), INT64_C(20)});
+  TFF_ASSERT_OK(agg->Accumulate({&t1, &t2, &t3, &v}));
+
+  DPExhaustiveReportHistogramPeer peer(std::move(agg));
+
+  // Default numeric domain for each key is {0, 1, 2}.
+  // (0.0, 2, 2) at indices {0, 2, 2} was never accumulated.
+  EXPECT_EQ(peer.FindOrdinal({0, 2, 2}), std::nullopt);
+
+  // (2.0, 2, 2) at indices {2, 2, 2} was accumulated at ordinal 1.
+  std::optional<int64_t> ordinal = peer.FindOrdinal({2, 2, 2});
+  ASSERT_TRUE(ordinal.has_value());
+  OutputTensorList output = peer.GetOutputKeys();
+  EXPECT_TRUE(std::abs(2.0f - output[0].AsSpan<float>()[*ordinal]) < 1e-6);
+  EXPECT_EQ(2, output[1].AsSpan<int32_t>()[*ordinal]);
+  EXPECT_EQ(2, output[2].AsSpan<int64_t>()[*ordinal]);
+}
+
+TEST(DPExhaustiveReportHistogramTest,
+     MakeCompositeKeyFromDomainTensorsAndFindOrdinal_StringTypes) {
+  Intrinsic intrinsic =
+      CreateIntrinsicWithKeyTypes_ExhaustiveReport<int64_t, int64_t>(
+          /*epsilon=*/kEpsilonThreshold, /*delta=*/0.001, /*l0_bound=*/2,
+          /*linfinity_bound=*/10, /*l1_bound=*/-1, /*l2_bound=*/-1,
+          /*key_types=*/{DT_FLOAT, DT_STRING, DT_STRING});
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg, CreateTensorAggregator(intrinsic));
+
+  Tensor t1({1.0f, 2.0f});
+  Tensor t2({"a", "b"});
+  Tensor t3({"b", "c"});
+  Tensor v({INT64_C(10), INT64_C(20)});
+  TFF_ASSERT_OK(agg->Accumulate({&t1, &t2, &t3, &v}));
+
+  DPExhaustiveReportHistogramPeer peer(std::move(agg));
+
+  // Default numeric domain is {0.0, 1.0, 2.0} and string domain is {"a", "b",
+  // "c"}.
+  // (0.0, "b", "c") at indices {0, 1, 2} was never accumulated.
+  EXPECT_EQ(peer.FindOrdinal({0, 1, 2}), std::nullopt);
+
+  // (2.0, "b", "c") at indices {2, 1, 2} was accumulated at ordinal 1.
+  std::optional<int64_t> ordinal = peer.FindOrdinal({2, 1, 2});
+  ASSERT_TRUE(ordinal.has_value());
+  OutputTensorList output = peer.GetOutputKeys();
+  EXPECT_TRUE(std::abs(2.0f - output[0].AsSpan<float>()[*ordinal]) < 1e-6);
+  EXPECT_EQ("b", output[1].AsSpan<string_view>()[*ordinal]);
+  EXPECT_EQ("c", output[2].AsSpan<string_view>()[*ordinal]);
 }
 
 }  // namespace

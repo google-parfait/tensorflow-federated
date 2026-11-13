@@ -392,18 +392,31 @@ absl::StatusOr<int64_t> DPGroupByAggregator::GetContentSize(
   return total_size - characters_to_remove;
 }
 
+std::shared_ptr<CompositeKeyStorage> DPGroupByAggregator::CreateKeyStorage(
+    const std::vector<TensorSpec>& input_key_specs,
+    const std::vector<TensorSpec>& output_key_specs) {
+  if (input_key_specs.empty()) {
+    return nullptr;
+  }
+  return std::make_shared<CompositeKeyStorage>(
+      CompositeKeyCombiner::CalculateCompositeKeySize(
+          GroupByAggregator::CreateKeyTypes(
+              input_key_specs.size(), input_key_specs, output_key_specs)));
+}
+
 std::unique_ptr<DPCompositeKeyCombiner>
 DPGroupByAggregator::CreateDPKeyCombiner(
     const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
-    std::optional<DomainSpec> domain_spec) {
+    std::optional<DomainSpec> domain_spec,
+    std::shared_ptr<CompositeKeyStorage> key_storage) {
   if (input_key_specs.empty()) {
     return nullptr;
   }
   return std::make_unique<DPCompositeKeyCombiner>(
       GroupByAggregator::CreateKeyTypes(input_key_specs.size(), input_key_specs,
                                         output_key_specs),
-      l0_bound, std::move(domain_spec));
+      l0_bound, std::move(domain_spec), std::move(key_storage));
 }
 
 }  // namespace aggregation

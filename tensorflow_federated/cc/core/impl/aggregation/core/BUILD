@@ -201,6 +201,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -218,8 +219,6 @@ cc_library(
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:fixed_array",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
@@ -299,6 +298,7 @@ cc_library(
     deps = [
         ":agg_core_cc_proto",
         ":aggregator",
+        ":composite_key_combiner",
         ":domain_spec",
         ":dp_composite_key_combiner",
         ":dp_exhaustive_report_histogram",
@@ -402,7 +402,7 @@ cc_library(
         ":agg_core_cc_proto",
         ":aggregator",
         ":composite_key_combiner",
-        ":dp_composite_key_combiner",
+        ":domain_spec",
         ":dp_fedsql_constants",
         ":dp_group_by_aggregator",
         ":dp_noise_mechanisms",
@@ -831,6 +831,7 @@ cc_library(
     hdrs = ["dp_histogram_test_utils.h"],
     deps = [
         ":aggregator",
+        ":composite_key_combiner",
         ":dp_exhaustive_report_histogram",
         ":dp_fedsql_constants",
         ":dp_thresholding_histogram",
@@ -839,6 +840,7 @@ cc_library(
         ":tensor",
         ":tensor_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:fixed_array",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
@@ -874,7 +876,7 @@ cc_test(
     srcs = ["dp_exhaustive_report_histogram_test.cc"],
     deps = [
         ":aggregator",
-        ":dp_composite_key_combiner",
+        ":domain_spec",
         ":dp_exhaustive_report_histogram",
         ":dp_fedsql_constants",
         ":dp_group_by_factory",
@@ -886,6 +888,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/container:fixed_array",
     ],
 )
 

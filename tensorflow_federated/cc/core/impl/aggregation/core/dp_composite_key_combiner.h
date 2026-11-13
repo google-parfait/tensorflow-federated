@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -59,7 +60,8 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   // Creates a CompositeKeyCombiner if inputs are valid or crashes otherwise.
   explicit DPCompositeKeyCombiner(
       const std::vector<DataType>& dtypes, int64_t l0_bound = kDefaultL0Bound,
-      std::optional<DomainSpec> domain_spec = std::nullopt);
+      std::optional<DomainSpec> domain_spec = std::nullopt,
+      std::shared_ptr<CompositeKeyStorage> storage = nullptr);
 
   // If an l0_bound_ was not given or number of contributions is <= l0_bound_,
   // call parent's Accumulate. Otherwise, call AccumulateWithBound which will
@@ -78,15 +80,6 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
                                              TensorShape& shape,
                                              size_t num_elements);
 
-  // Given a span of tensors (where each describes a key's domain) and indices
-  // to tensor values, make a CompositeKey out of the data at those indices and
-  // then retrieve the ordinal associated with that composite key (or
-  // kNoOrdinal).
-  // This function will be used within the Report() method of the closed-domain
-  // DP histogram aggregation core.
-  int64_t GetOrdinal(TensorSpan domain_tensors,
-                     const absl::FixedArray<int64_t>& indices);
-
  protected:
   // Overrides base class CreateOrdinals to intercept calls from
   // AccumulateWithBound and check whether to use CreateInDomainOrdinals.
@@ -104,11 +97,6 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   std::unique_ptr<MutableVectorData<int64_t>> CreateInDomainOrdinals(
       const InputTensorList& tensors, size_t num_elements,
       CompositeKeyMap& composite_key_map);
-
-  // Given a span of tensors (where each describes a key's domain) and indices
-  // to tensor values, make a CompositeKey out of the data at those indices.
-  CompositeKey MakeCompositeKeyFromDomainTensors(
-      TensorSpan domain_tensors, const absl::FixedArray<int64_t>& indices);
 
   // Friend class that supports the operations done in
   // DPCompositeKeyCombiner::AccumulateWithBound.

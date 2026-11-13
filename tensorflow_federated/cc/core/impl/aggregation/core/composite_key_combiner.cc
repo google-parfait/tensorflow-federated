@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -30,6 +31,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -47,65 +49,8 @@ namespace {
 
 // Advances the pointer by sizeof(T) bytes.
 template <typename T>
-void AdvancePtr(void*& ptr) {
-  ptr = static_cast<void*>(static_cast<uint8_t*>(ptr) + sizeof(T));
-}
-
-template <typename T>
 void AdvancePtr(const void*& ptr) {
   ptr = static_cast<const void*>(static_cast<const uint8_t*>(ptr) + sizeof(T));
-}
-
-// Copies the bytes pointed to by source_ptr to the destination pointed to by
-// dest_ptr and advances source_ptr and dest_ptr to the next T.
-//
-// The number of bytes copied will be the size of the type T.
-//
-// It is the responsibility of the caller to ensure that source_ptr is only used
-// in subsequent code if it still points to a valid T after being incremented.
-template <typename T>
-inline void CopyToDest(const void*& source_ptr, void*& dest_ptr,
-                       absl::node_hash_set<std::string>& intern_pool) {
-  // Copy the bytes pointed to by source_ptr to the destination pointed to by
-  // dest_ptr.
-  std::memcpy(dest_ptr, source_ptr, sizeof(T));
-  // Advance source_ptr and dest_ptr to the next T.
-  AdvancePtr<T>(source_ptr);
-  AdvancePtr<T>(dest_ptr);
-}
-
-// Specialization of CopyToDest for DT_STRING data type that interns the
-// string_view pointed to by value_ptr. The address of the string in the
-// intern pool is then converted to a 64 bit integer and copied to the
-// destination pointed to by dest_ptr. Finally source_ptr is incremented to the
-// next string_view.
-//
-// It is the responsibility of the caller to ensure that source_ptr is only used
-// in subsequent code if it still points to a valid string_view after being
-// incremented.
-template <>
-inline void CopyToDest<string_view>(
-    const void*& source_ptr, void*& dest_ptr,
-    absl::node_hash_set<std::string>& intern_pool) {
-  auto string_view_ptr = static_cast<const string_view*>(source_ptr);
-  // Insert the string into the intern pool if it does not already exist. This
-  // makes a copy of the string so that the intern pool owns the storage.
-  auto it = intern_pool.emplace(*string_view_ptr).first;
-  // The iterator of a node_hash_set may be invalidated by inserting more
-  // elements, but the pointer to the underlying element is guaranteed to be
-  // stable.
-  // Thus, get the address of the string after dereferencing the iterator.
-  const std::string* interned_string_ptr = &*it;
-  // The stable address of the string can be interpreted as a 64-bit integer.
-  intptr_t ptr_int = reinterpret_cast<intptr_t>(interned_string_ptr);
-  // Set the destination storage to the integer representation of the string
-  // address.
-  std::memcpy(dest_ptr, &ptr_int, sizeof(intptr_t));
-  // Set the source_ptr to point to the next string_view assuming that it points
-  // to an array of string_view.
-  source_ptr = static_cast<const void*>(++string_view_ptr);
-  // Advance the dest_ptr.
-  AdvancePtr<intptr_t>(dest_ptr);
 }
 
 TensorShape GetTensorShapeForSize(size_t size) {
@@ -201,7 +146,10 @@ size_t GetKeySize<string_view>() {
   return sizeof(intptr_t);
 }
 
-size_t CalculateCompositeKeySize(std::vector<DataType> dtypes) {
+}  // namespace
+
+size_t CompositeKeyCombiner::CalculateCompositeKeySize(
+    absl::Span<const DataType> dtypes) {
   size_t composite_key_size = 0;
   for (DataType dtype : dtypes) {
     DTYPE_CASES(dtype, T, composite_key_size += GetKeySize<T>());
@@ -209,14 +157,20 @@ size_t CalculateCompositeKeySize(std::vector<DataType> dtypes) {
   return composite_key_size;
 }
 
-}  // namespace
-
 CompositeKeyCombiner::CompositeKeyCombiner(std::vector<DataType> dtypes)
-    : dtypes_(dtypes),
-      composite_key_size_(CalculateCompositeKeySize(dtypes)),
-      intern_pool_(std::make_shared<InternPool>()),
-      composite_key_store_(composite_key_size_),
-      composite_keys_(composite_key_size_) {}
+    : dtypes_(std::move(dtypes)),
+      storage_(std::make_shared<CompositeKeyStorage>(
+          CalculateCompositeKeySize(dtypes_))),
+      composite_keys_(storage_->key_size()) {}
+
+CompositeKeyCombiner::CompositeKeyCombiner(
+    std::vector<DataType> dtypes, std::shared_ptr<CompositeKeyStorage> storage)
+    : dtypes_(std::move(dtypes)),
+      storage_(std::move(storage)),
+      composite_keys_(storage_->key_size()) {
+  TFF_CHECK(storage_ != nullptr);
+  TFF_CHECK(storage_->key_size() == CalculateCompositeKeySize(dtypes_));
+}
 
 // Returns a single tensor containing the ordinals of the composite keys
 // formed from the InputTensorList.
@@ -255,8 +209,7 @@ CompositeKeyCombiner::CreateOrdinals(const InputTensorList& tensors,
     for (auto& itr : iterators) {
       // Copy the 64-bit representation of the element into the position in the
       // composite key data corresponding to this tensor.
-      DTYPE_CASES(*(data_type_iter++), T,
-                  CopyToDest<T>(itr, key_ptr, *intern_pool_));
+      DTYPE_CASES(*(data_type_iter++), T, CopyToDest<T>(itr, key_ptr));
     }
 
     // Get the ordinal associated with the composite key
@@ -289,11 +242,19 @@ OutputTensorList CompositeKeyCombiner::GetOutputKeys() const {
 
   for (DataType dtype : dtypes_) {
     absl::StatusOr<Tensor> t;
-    DTYPE_CASES(dtype, T, t = GetTensorForType<T>(key_iters, intern_pool_));
+    DTYPE_CASES(dtype, T,
+                t = GetTensorForType<T>(key_iters, storage_->intern_pool()));
     TFF_CHECK(t.status().ok()) << t.status().message();
     output_keys.push_back(std::move(t.value()));
   }
   return output_keys;
+}
+
+std::optional<int64_t> CompositeKeyCombiner::FindOrdinal(
+    CompositeKey key) const {
+  auto it = composite_keys_.find(key);
+  return it == composite_keys_.end() ? std::nullopt
+                                     : std::optional<int64_t>(it->second);
 }
 
 absl::StatusOr<TensorShape> CompositeKeyCombiner::CheckValidAndGetShape(

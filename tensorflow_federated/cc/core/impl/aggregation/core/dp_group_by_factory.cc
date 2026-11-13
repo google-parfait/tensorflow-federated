@@ -33,6 +33,7 @@
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
@@ -415,9 +416,15 @@ DPGroupByFactory::CreateInternal(
     domain_spec = DomainSpec(key_tensors);
   }
 
+  std::shared_ptr<CompositeKeyStorage> key_storage;
+  if (!open_domain) {
+    key_storage = DPGroupByAggregator::CreateKeyStorage(intrinsic.inputs,
+                                                        intrinsic.outputs);
+  }
+
   auto key_combiner = DPGroupByAggregator::CreateDPKeyCombiner(
       intrinsic.inputs, intrinsic.outputs, max_groups_contributed,
-      std::move(domain_spec));
+      std::move(domain_spec), key_storage);
   if (aggregator_state != nullptr && key_combiner != nullptr) {
     TFF_RETURN_IF_ERROR(GroupByFactory::PopulateKeyCombinerFromState(
         *key_combiner, *aggregator_state));
@@ -440,8 +447,9 @@ DPGroupByFactory::CreateInternal(
 
   return DPExhaustiveReportHistogram::Create(
       intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-      std::move(key_combiner), std::move(nested_aggregators), num_inputs,
-      epsilon, delta, max_groups_contributed, key_tensors);
+      std::move(key_combiner), std::move(key_storage),
+      std::move(nested_aggregators), num_inputs, epsilon, delta,
+      max_groups_contributed, key_tensors);
 }
 
 REGISTER_AGGREGATOR_FACTORY(std::string(kDPGroupByUri), DPGroupByFactory);

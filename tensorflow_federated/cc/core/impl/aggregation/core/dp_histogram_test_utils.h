@@ -17,6 +17,7 @@
 #ifndef TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_HISTOGRAM_TEST_UTILS_H_
 #define TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_HISTOGRAM_TEST_UTILS_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -25,12 +26,14 @@
 #include <vector>
 
 #include "googletest/include/gtest/gtest.h"
+#include "absl/container/fixed_array.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_exhaustive_report_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
@@ -60,6 +63,15 @@ class DPExhaustiveReportHistogramPeer {
   }
   absl::StatusOr<std::string> GetNoiseDescription() const {
     return dp_histogram_->GetNoiseDescription();
+  }
+  std::optional<int64_t> FindOrdinal(
+      const absl::FixedArray<size_t>& domain_indices) const {
+    CompositeKey key =
+        dp_histogram_->MakeCompositeKeyFromDomainTensors(domain_indices);
+    return dp_histogram_->key_combiner()->FindOrdinal(key);
+  }
+  OutputTensorList GetOutputKeys() const {
+    return dp_histogram_->key_combiner()->GetOutputKeys();
   }
 
  private:
