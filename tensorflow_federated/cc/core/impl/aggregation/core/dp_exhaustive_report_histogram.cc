@@ -90,11 +90,15 @@ DPExhaustiveReportHistogram::DPExhaustiveReportHistogram(
     int num_inputs, double epsilon, double delta,
     int64_t max_groups_contributed, TensorSpan domain_tensors,
     int max_string_length)
-    : DPGroupByAggregator(input_key_specs, output_key_specs, intrinsics,
-                          std::move(key_combiner), std::move(aggregators),
-                          num_inputs, epsilon, delta, max_groups_contributed,
-                          /*min_contributors_to_group=*/std::nullopt,
-                          /*contributor_counts=*/{}, max_string_length),
+    : DPGroupByAggregator(
+          input_key_specs, output_key_specs, intrinsics,
+          std::move(key_combiner), std::move(aggregators), num_inputs, epsilon,
+          delta, max_groups_contributed,
+          /*min_contributors_to_group=*/std::nullopt,
+          /*contributor_counts=*/{}, max_string_length,
+          domain_tensors.empty()
+              ? std::nullopt
+              : std::optional<DomainSpec>(DomainSpec(domain_tensors))),
       key_storage_(std::move(key_storage)),
       domain_tensors_(domain_tensors) {
   TFF_CHECK(this->key_combiner() != nullptr)
@@ -155,26 +159,6 @@ DPExhaustiveReportHistogram::Create(
     aggregator->AddBundle(std::move(noise_mechanism));
   }
   return aggregator;
-}
-
-StatusOr<Tensor>
-DPExhaustiveReportHistogram::CreateOrdinalsByGroupingKeysForMerge(
-    const InputTensorList& inputs) {
-  if (num_keys_per_input() > 0) {
-    InputTensorList keys(num_keys_per_input());
-    for (int i = 0; i < num_keys_per_input(); ++i) {
-      keys[i] = inputs[i];
-    }
-    // Call the version of Accumulate that has no L0 bounding
-    return key_combiner()->CompositeKeyCombiner::Accumulate(std::move(keys));
-  }
-  // If there are no keys, we should aggregate all elements in a column into one
-  // element, as if there were an imaginary key column with identical values for
-  // all rows.
-  auto ordinals =
-      std::make_unique<MutableVectorData<int64_t>>(inputs[0]->num_elements());
-  return Tensor::Create(internal::TypeTraits<int64_t>::kDataType,
-                        inputs[0]->shape(), std::move(ordinals));
 }
 
 // Advance the indices that specify a composite key. Boolean output indicates if

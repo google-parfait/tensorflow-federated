@@ -170,6 +170,13 @@ class GroupByAggregator : public TensorAggregator {
       size_t num_keys_per_input, const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>& output_key_specs);
 
+  // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
+  // on the input specification. Relies on CreateKeyTypes.
+  static std::unique_ptr<CompositeKeyCombiner> CreateKeyCombiner(
+      const std::vector<TensorSpec>& input_key_specs,
+      const std::vector<TensorSpec>* output_key_specs,
+      std::shared_ptr<CompositeKeyStorage> key_storage = nullptr);
+
   // Perform aggregation of the tensors in a single InputTensorList into the
   // state of this GroupByAggregator and increment the count of aggregated
   // tensors.
@@ -207,12 +214,6 @@ class GroupByAggregator : public TensorAggregator {
   // entry of contributors.
   Status AddMultipleContributors(const Tensor& ordinals,
                                  const std::vector<int>& contributors);
-
-  // The virtual function below enables a distinction between creating ordinals
-  // within MergeTensorsInternal and within AggregateTensorsInternal.
-  // Refer to CreateOrdinalsByGroupingKeys for the latter.
-  virtual absl::StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
-      const InputTensorList& inputs);
 
   absl::StatusOr<std::string> Serialize() && override;
 
@@ -311,12 +312,6 @@ class GroupByAggregator : public TensorAggregator {
       const absl::flat_hash_set<size_t>& survivor_indices);
 
  private:
-  // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
-  // on the input specification. Relies on CreateKeyTypes.
-  static std::unique_ptr<CompositeKeyCombiner> CreateKeyCombiner(
-      const std::vector<TensorSpec>& input_key_specs,
-      const std::vector<TensorSpec>* output_key_specs);
-
   // Checks that the input tensor at the provided index has the expected type
   // and shape.
   Status ValidateIndexedTensor(const Tensor& tensor, size_t input_index,

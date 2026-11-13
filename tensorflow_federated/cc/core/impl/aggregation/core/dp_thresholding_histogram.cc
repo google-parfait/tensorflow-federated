@@ -35,6 +35,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
@@ -124,12 +125,14 @@ DPThresholdingHistogram::DPThresholdingHistogram(
     int num_inputs, double epsilon, double delta,
     int64_t max_groups_contributed,
     std::optional<int> min_contributors_to_group,
-    std::vector<int> contributor_counts, int max_string_length)
+    std::vector<int> contributor_counts, int max_string_length,
+    std::optional<DomainSpec> domain_spec)
     : DPGroupByAggregator(input_key_specs, output_key_specs, intrinsics,
                           std::move(key_combiner), std::move(aggregators),
                           num_inputs, epsilon, delta, max_groups_contributed,
                           min_contributors_to_group,
-                          std::move(contributor_counts), max_string_length) {}
+                          std::move(contributor_counts), max_string_length,
+                          std::move(domain_spec)) {}
 
 // Factory method to create DPThresholdingHistogram
 StatusOr<std::unique_ptr<DPThresholdingHistogram>>
@@ -142,7 +145,8 @@ DPThresholdingHistogram::Create(
     int num_inputs, double epsilon, double delta,
     int64_t max_groups_contributed,
     std::optional<int> min_contributors_to_group,
-    std::vector<int> contributor_counts, int max_string_length) {
+    std::vector<int> contributor_counts, int max_string_length,
+    std::optional<DomainSpec> domain_spec) {
   bool need_selector =
       min_contributors_to_group.has_value() && epsilon < kEpsilonThreshold;
 
@@ -160,7 +164,7 @@ DPThresholdingHistogram::Create(
       input_key_specs, output_key_specs, intrinsics, std::move(key_combiner),
       std::move(aggregators), num_inputs, epsilon_for_aggs, delta_for_aggs,
       max_groups_contributed, min_contributors_to_group, contributor_counts,
-      max_string_length));
+      max_string_length, std::move(domain_spec)));
 
   if (need_selector) {
     double epsilon_for_selector = epsilon - epsilon_for_aggs;
@@ -247,25 +251,6 @@ StatusOr<std::string> DPThresholdingHistogram::GetNoiseDescription() const {
                   " depends on epsilon, delta.\n");
 
   return noise_description;
-}
-
-StatusOr<Tensor> DPThresholdingHistogram::CreateOrdinalsByGroupingKeysForMerge(
-    const InputTensorList& inputs) {
-  if (num_keys_per_input() > 0) {
-    InputTensorList keys(num_keys_per_input());
-    for (int i = 0; i < num_keys_per_input(); ++i) {
-      keys[i] = inputs[i];
-    }
-    // Call the version of Accumulate that has no L0 bounding
-    return key_combiner()->CompositeKeyCombiner::Accumulate(std::move(keys));
-  }
-  // If there are no keys, we should aggregate all elements in a column into one
-  // element, as if there were an imaginary key column with identical values for
-  // all rows.
-  auto ordinals =
-      std::make_unique<MutableVectorData<int64_t>>(inputs[0]->num_elements());
-  return Tensor::Create(internal::TypeTraits<int64_t>::kDataType,
-                        inputs[0]->shape(), std::move(ordinals));
 }
 
 StatusOr<OutputTensorList> DPThresholdingHistogram::NoisyReport() {

@@ -97,12 +97,6 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
       int64_t max_groups_contributed, TensorSpan domain_tensors,
       int max_string_length = kDefaultMaxStringLength);
 
-  // When merging two DPExhaustiveReportHistograms, bounding the aggregates will
-  // destroy accuracy and is not needed for privacy. Hence, this function calls
-  // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
-  absl::StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
-      const InputTensorList& inputs) override;
-
   // Given indices that specify a combination of keys, increment the index
   // corresponding to a particular key. If the index is at the edge of the key's
   // domain, wrap around and recurse to the next key.
