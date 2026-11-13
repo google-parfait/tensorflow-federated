@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -30,22 +31,61 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
+
+namespace {
+
+template <typename T>
+absl::StatusOr<std::vector<size_t>> FilterRowsByKeyColumn(
+    const Tensor& key_tensor, size_t domain_index,
+    const DomainSpec& domain_spec, absl::Span<const size_t> current_survivors) {
+  absl::Span<const T> span = key_tensor.AsSpan<T>();
+  std::vector<size_t> next_survivors;
+  next_survivors.reserve(current_survivors.size());
+  for (size_t row : current_survivors) {
+    TFF_ASSIGN_OR_RETURN(bool is_member,
+                         domain_spec.IsMember<T>(span[row], domain_index));
+    if (is_member) {
+      next_survivors.push_back(row);
+    }
+  }
+  return next_survivors;
+}
+
+template <typename T>
+absl::StatusOr<Tensor> GatherRows(const Tensor& tensor,
+                                  absl::Span<const size_t> row_indices) {
+  absl::Span<const T> src = tensor.AsSpan<T>();
+  auto dst = std::make_unique<MutableVectorData<T>>();
+  dst->reserve(row_indices.size());
+  for (size_t idx : row_indices) {
+    dst->push_back(src[idx]);
+  }
+  return Tensor::Create(tensor.dtype(),
+                        TensorShape{static_cast<int64_t>(row_indices.size())},
+                        std::move(dst));
+}
+
+}  // namespace
+
 DPGroupByAggregator::DPGroupByAggregator(
     const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>* output_key_specs,
@@ -55,7 +95,8 @@ DPGroupByAggregator::DPGroupByAggregator(
     int num_inputs, double epsilon, double delta,
     int64_t max_groups_contributed,
     std::optional<int> min_contributors_to_group,
-    std::vector<int> contributor_counts, int max_string_length)
+    std::vector<int> contributor_counts, int max_string_length,
+    std::optional<DomainSpec> domain_spec)
     : GroupByAggregator(input_key_specs, output_key_specs, intrinsics,
                         std::move(key_combiner), std::move(aggregators),
                         num_inputs, min_contributors_to_group,
@@ -67,7 +108,64 @@ DPGroupByAggregator::DPGroupByAggregator(
       epsilon_per_agg_((epsilon < kEpsilonThreshold
                             ? epsilon / intrinsics->size()
                             : kEpsilonThreshold)),
-      delta_per_agg_(delta / intrinsics->size()) {}
+      delta_per_agg_(delta / intrinsics->size()),
+      domain_spec_(std::move(domain_spec)) {}
+
+Status DPGroupByAggregator::AggregateTensors(InputTensorList tensors) {
+  if (num_keys_per_input() == 0 || tensors.size() == 0 ||
+      tensors[0]->num_elements() == 0) {
+    return GroupByAggregator::AggregateTensors(std::move(tensors));
+  }
+
+  const size_t num_rows = tensors[0]->num_elements();
+  std::vector<size_t> survivor_indices(num_rows);
+  for (size_t i = 0; i < num_rows; ++i) {
+    survivor_indices[i] = i;
+  }
+
+  // Filter rows by domain_spec_ if present.
+  if (domain_spec_.has_value()) {
+    for (size_t j = 0; j < num_keys_per_input(); ++j) {
+      DTYPE_CASES(tensors[j]->dtype(), T,
+                  TFF_ASSIGN_OR_RETURN(
+                      survivor_indices,
+                      FilterRowsByKeyColumn<T>(*tensors[j], j, *domain_spec_,
+                                               survivor_indices)));
+      if (survivor_indices.empty()) {
+        break;
+      }
+    }
+  }
+
+  // Bound the number of contributed rows to max_groups_contributed_.
+  if (max_groups_contributed_ > 0 &&
+      survivor_indices.size() > static_cast<size_t>(max_groups_contributed_)) {
+    std::vector<size_t> sampled_indices(max_groups_contributed_);
+    std::sample(survivor_indices.begin(), survivor_indices.end(),
+                sampled_indices.begin(), max_groups_contributed_, bitgen_);
+    survivor_indices = std::move(sampled_indices);
+  }
+
+  // If all rows survived, pass the original tensors directly.
+  if (survivor_indices.size() == num_rows) {
+    return GroupByAggregator::AggregateTensors(std::move(tensors));
+  }
+
+  // Gather surviving rows across all key and value tensors.
+  std::vector<Tensor> owned_tensors;
+  owned_tensors.reserve(tensors.size());
+  InputTensorList filtered_tensors(tensors.size());
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    Tensor gathered;
+    DTYPE_CASES(tensors[i]->dtype(), T,
+                TFF_ASSIGN_OR_RETURN(
+                    gathered, GatherRows<T>(*tensors[i], survivor_indices)));
+    owned_tensors.push_back(std::move(gathered));
+    filtered_tensors[i] = &owned_tensors.back();
+  }
+
+  return GroupByAggregator::AggregateTensors(std::move(filtered_tensors));
+}
 
 absl::StatusOr<const DPHistogramBundle&> DPGroupByAggregator::GetBundle(
     int i) const {
@@ -402,21 +500,6 @@ std::shared_ptr<CompositeKeyStorage> DPGroupByAggregator::CreateKeyStorage(
       CompositeKeyCombiner::CalculateCompositeKeySize(
           GroupByAggregator::CreateKeyTypes(
               input_key_specs.size(), input_key_specs, output_key_specs)));
-}
-
-std::unique_ptr<DPCompositeKeyCombiner>
-DPGroupByAggregator::CreateDPKeyCombiner(
-    const std::vector<TensorSpec>& input_key_specs,
-    const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
-    std::optional<DomainSpec> domain_spec,
-    std::shared_ptr<CompositeKeyStorage> key_storage) {
-  if (input_key_specs.empty()) {
-    return nullptr;
-  }
-  return std::make_unique<DPCompositeKeyCombiner>(
-      GroupByAggregator::CreateKeyTypes(input_key_specs.size(), input_key_specs,
-                                        output_key_specs),
-      l0_bound, std::move(domain_spec), std::move(key_storage));
 }
 
 }  // namespace aggregation

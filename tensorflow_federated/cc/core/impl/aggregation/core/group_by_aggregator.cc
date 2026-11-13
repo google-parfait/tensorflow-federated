@@ -117,7 +117,8 @@ GroupByAggregator::GroupByAggregator(
 
 std::unique_ptr<CompositeKeyCombiner> GroupByAggregator::CreateKeyCombiner(
     const std::vector<TensorSpec>& input_key_specs,
-    const std::vector<TensorSpec>* output_key_specs) {
+    const std::vector<TensorSpec>* output_key_specs,
+    std::shared_ptr<CompositeKeyStorage> key_storage) {
   // If there are no input keys, support a columnar aggregation that aggregates
   // all the values in each column and produces a single output value per
   // column. This would be equivalent to having identical key values for all
@@ -126,8 +127,13 @@ std::unique_ptr<CompositeKeyCombiner> GroupByAggregator::CreateKeyCombiner(
     return nullptr;
   }
 
-  return std::make_unique<CompositeKeyCombiner>(CreateKeyTypes(
-      input_key_specs.size(), input_key_specs, *output_key_specs));
+  std::vector<DataType> key_types = CreateKeyTypes(
+      input_key_specs.size(), input_key_specs, *output_key_specs);
+  if (key_storage != nullptr) {
+    return std::make_unique<CompositeKeyCombiner>(std::move(key_types),
+                                                  std::move(key_storage));
+  }
+  return std::make_unique<CompositeKeyCombiner>(std::move(key_types));
 }
 
 std::vector<DataType> GroupByAggregator::CreateKeyTypes(
@@ -254,17 +260,8 @@ Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
     return absl::OkStatus();
   }
   int64_t max_ordinal = *absl::c_max_element(ordinals_span);
-  // TODO: b/546244879 - Ordinals should not be negative. We handle them as a
-  // temporary solution, because currently the derived class can pass down
-  // negative ordinals.
-  if (max_ordinal >= 0) {
-    contributors_to_groups_.ExtendTo(max_ordinal + 1);
-  }
-  for (auto& ordinal : ordinals_span) {
-    // TODO: b/546244879 - Ordinals should not be negative.
-    if (ordinal < 0) {
-      continue;
-    }
+  contributors_to_groups_.ExtendTo(max_ordinal + 1);
+  for (const int64_t ordinal : ordinals_span) {
     TFF_RETURN_IF_ERROR(
         contributors_to_groups_.AddToGroup(ordinal, std::nullopt));
   }
@@ -303,20 +300,10 @@ Status GroupByAggregator::AddMultipleContributors(
   }
   auto ordinals_span = ordinals.AsSpan<int64_t>();
   int64_t max_ordinal = *absl::c_max_element(ordinals_span);
-  // TODO: b/546244879 - Ordinals should not be negative. We handle them as a
-  // temporary solution, because currently the derived class can pass down
-  // negative ordinals.
-  if (max_ordinal >= 0) {
-    contributors_to_groups_.ExtendTo(max_ordinal + 1);
-  }
+  contributors_to_groups_.ExtendTo(max_ordinal + 1);
   for (int i = 0; i < num_ordinals; ++i) {
-    int64_t ordinal = ordinals_span[i];
-    // TODO: b/546244879 - Ordinals should not be negative.
-    if (ordinal < 0) {
-      continue;
-    }
     TFF_RETURN_IF_ERROR(contributors_to_groups_.AddCountToContributors(
-        ordinal, other_contributors[i]));
+        ordinals_span[i], other_contributors[i]));
   }
   return absl::OkStatus();
 }
@@ -610,8 +597,7 @@ Status GroupByAggregator::MergeTensorsInternal(
     }
   }
 
-  TFF_ASSIGN_OR_RETURN(Tensor ordinals,
-                       CreateOrdinalsByGroupingKeysForMerge(tensors));
+  TFF_ASSIGN_OR_RETURN(Tensor ordinals, CreateOrdinalsByGroupingKeys(tensors));
 
   if (min_contributors_to_group_.has_value()) {
     TFF_RETURN_IF_ERROR(AddMultipleContributors(ordinals, other_contributors));
@@ -674,12 +660,6 @@ absl::StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeys(
       std::make_unique<MutableVectorData<int64_t>>(inputs[0]->num_elements());
   return Tensor::Create(internal::TypeTraits<int64_t>::kDataType,
                         inputs[0]->shape(), std::move(ordinals));
-}
-absl::StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeysForMerge(
-    const InputTensorList& inputs) {
-  // In this base class, ordinals are made the same way for
-  // MergeTensorsInternal as for AggregateTensorsInternal.
-  return CreateOrdinalsByGroupingKeys(inputs);
 }
 
 Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
@@ -822,7 +802,7 @@ Status GroupByFactory::PopulateKeyCombinerFromState(
     key_tensors[i] = Tensor::FromProto(aggregator_state.keys(i)).value();
     keys[i] = &(key_tensors[i]);
   }
-  return key_combiner.CompositeKeyCombiner::Accumulate(keys).status();
+  return key_combiner.Accumulate(keys).status();
 }
 
 absl::StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::Create(

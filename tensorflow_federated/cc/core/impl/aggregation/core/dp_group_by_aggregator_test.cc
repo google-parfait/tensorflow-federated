@@ -34,9 +34,11 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_histogram_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -44,6 +46,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -67,16 +70,21 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
       int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributors_to_groups = {},
-      int max_string_length = kDefaultMaxStringLength)
+      int max_string_length = kDefaultMaxStringLength,
+      std::optional<DomainSpec> domain_spec = std::nullopt)
       : DPGroupByAggregator(
             input_key_specs, output_key_specs, intrinsics,
             std::make_unique<CompositeKeyCombiner>(CreateKeyTypes(
                 input_key_specs.size(), input_key_specs, *output_key_specs)),
             std::move(aggregators), num_inputs, epsilon, delta,
             max_groups_contributed, min_contributors_to_group,
-            contributors_to_groups, max_string_length) {}
+            contributors_to_groups, max_string_length, std::move(domain_spec)) {
+  }
   double GetEpsilonPerAgg() { return epsilon_per_agg(); }
   double GetDeltaPerAgg() { return delta_per_agg(); }
+  OutputTensorList TakeOutputs() && override {
+    return std::move(*this).GroupByAggregator::TakeOutputs();
+  }
   absl::StatusOr<int64_t> SerializeSensitivity() {
     return DPGroupByAggregator::CalculateSerializeSensitivity();
   }
@@ -573,6 +581,209 @@ TEST(DPGroupByAggregatorTest, NoiseDescriptionFailsForMissingMechanism) {
   EXPECT_THAT(
       aggregator.GetNoiseDescription(),
       StatusIs(FAILED_PRECONDITION, HasSubstr("a mechanism was not set.")));
+}
+
+// Eleventh: AggregateTensors filters by DomainSpec and bounds L0 contributions.
+TEST(DPGroupByAggregatorTest,
+     AggregateTensors_WithL0Bound_SamplesMaxGroupsContributed) {
+  Intrinsic intrinsic = CreateInnerIntrinsic<int32_t, int64_t>(100, -1, -1);
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> inner_agg,
+                           CreateTensorAggregator(intrinsic));
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(std::move(intrinsic));
+  std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
+  aggregators.push_back(std::unique_ptr<OneDimBaseGroupingAggregator>(
+      dynamic_cast<OneDimBaseGroupingAggregator*>(inner_agg.release())));
+
+  std::vector<TensorSpec> input_key_specs = {
+      dp_histogram_testing::CreateTensorSpec("key", DT_STRING)};
+  std::vector<TensorSpec> output_key_specs = {
+      dp_histogram_testing::CreateTensorSpec("key_out", DT_STRING)};
+  MockDPGroupByAggregator top_aggregator(
+      input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
+      /*num_inputs=*/0, /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
+      /*max_groups_contributed=*/2);
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor keys,
+      Tensor::Create(DT_STRING, {4},
+                     CreateTestData<string_view>({"a", "b", "c", "d"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor values,
+      Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({10, 20, 30, 40})));
+  TFF_ASSERT_OK(top_aggregator.Accumulate({&keys, &values}));
+  EXPECT_EQ(top_aggregator.GetNumInputs(), 1);
+
+  OutputTensorList outputs = std::move(top_aggregator).TakeOutputs();
+  ASSERT_EQ(outputs.size(), 2);
+  ASSERT_EQ(outputs[0].num_elements(), 2);
+  ASSERT_EQ(outputs[1].num_elements(), 2);
+  auto key_span = outputs[0].AsSpan<string_view>();
+  auto val_span = outputs[1].AsSpan<int64_t>();
+  EXPECT_NE(key_span[0], key_span[1]);
+  for (int i = 0; i < 2; ++i) {
+    if (key_span[i] == "a") {
+      EXPECT_EQ(val_span[i], 10);
+    } else if (key_span[i] == "b") {
+      EXPECT_EQ(val_span[i], 20);
+    } else if (key_span[i] == "c") {
+      EXPECT_EQ(val_span[i], 30);
+    } else if (key_span[i] == "d") {
+      EXPECT_EQ(val_span[i], 40);
+    } else {
+      FAIL() << "Unexpected key: " << key_span[i];
+    }
+  }
+}
+
+TEST(DPGroupByAggregatorTest,
+     AggregateTensors_WithDomainSpec_FiltersOutNonMembers) {
+  Intrinsic intrinsic = CreateInnerIntrinsic<int32_t, int64_t>(100, -1, -1);
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> inner_agg,
+                           CreateTensorAggregator(intrinsic));
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(std::move(intrinsic));
+  std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
+  aggregators.push_back(std::unique_ptr<OneDimBaseGroupingAggregator>(
+      dynamic_cast<OneDimBaseGroupingAggregator*>(inner_agg.release())));
+
+  std::vector<TensorSpec> input_key_specs = {
+      dp_histogram_testing::CreateTensorSpec("key1", DT_STRING),
+      dp_histogram_testing::CreateTensorSpec("key2", DT_INT64)};
+  std::vector<TensorSpec> output_key_specs = {
+      dp_histogram_testing::CreateTensorSpec("key1_out", DT_STRING),
+      dp_histogram_testing::CreateTensorSpec("key2_out", DT_INT64)};
+  std::vector<Tensor> domain_tensors;
+  domain_tensors.push_back(Tensor({"a", "b"}));
+  domain_tensors.push_back(Tensor({INT64_C(1), INT64_C(2)}));
+  MockDPGroupByAggregator top_aggregator(
+      input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
+      /*num_inputs=*/0, /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
+      /*max_groups_contributed=*/10, /*min_contributors_to_group=*/std::nullopt,
+      /*contributors_to_groups=*/{},
+      /*max_string_length=*/kDefaultMaxStringLength,
+      DomainSpec(domain_tensors));
+
+  // Row 0: ("a", 1) -> in domain
+  // Row 1: ("c", 1) -> key1 out of domain
+  // Row 2: ("b", 3) -> key2 out of domain
+  // Row 3: ("b", 2) -> in domain
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor keys1,
+      Tensor::Create(DT_STRING, {4},
+                     CreateTestData<string_view>({"a", "c", "b", "b"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor keys2,
+      Tensor::Create(DT_INT64, {4}, CreateTestData<int64_t>({1, 1, 3, 2})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor values,
+      Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({10, 20, 30, 40})));
+  TFF_ASSERT_OK(top_aggregator.Accumulate({&keys1, &keys2, &values}));
+  EXPECT_EQ(top_aggregator.GetNumInputs(), 1);
+
+  OutputTensorList outputs = std::move(top_aggregator).TakeOutputs();
+  ASSERT_EQ(outputs.size(), 3);
+  EXPECT_THAT(outputs[0], IsTensor<string_view>({2}, {"a", "b"}));
+  EXPECT_THAT(outputs[1], IsTensor<int64_t>({2}, {1, 2}));
+  EXPECT_THAT(outputs[2], IsTensor<int64_t>({2}, {10, 40}));
+}
+
+TEST(DPGroupByAggregatorTest,
+     AggregateTensors_WithDomainSpecAndL0Bound_FiltersThenSamples) {
+  Intrinsic intrinsic = CreateInnerIntrinsic<int32_t, int64_t>(100, -1, -1);
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> inner_agg,
+                           CreateTensorAggregator(intrinsic));
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(std::move(intrinsic));
+  std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
+  aggregators.push_back(std::unique_ptr<OneDimBaseGroupingAggregator>(
+      dynamic_cast<OneDimBaseGroupingAggregator*>(inner_agg.release())));
+
+  std::vector<TensorSpec> input_key_specs = {
+      dp_histogram_testing::CreateTensorSpec("key", DT_STRING)};
+  std::vector<TensorSpec> output_key_specs = {
+      dp_histogram_testing::CreateTensorSpec("key_out", DT_STRING)};
+  std::vector<Tensor> domain_tensors;
+  domain_tensors.push_back(Tensor({"a", "b", "c"}));
+  MockDPGroupByAggregator top_aggregator(
+      input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
+      /*num_inputs=*/0, /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
+      /*max_groups_contributed=*/2, /*min_contributors_to_group=*/std::nullopt,
+      /*contributors_to_groups=*/{},
+      /*max_string_length=*/kDefaultMaxStringLength,
+      DomainSpec(domain_tensors));
+
+  // "d" is out of domain, leaving 3 valid rows ("a", "b", "c") from which 2
+  // are sampled.
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor keys,
+      Tensor::Create(DT_STRING, {4},
+                     CreateTestData<string_view>({"a", "d", "b", "c"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor values,
+      Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({10, 99, 20, 30})));
+  TFF_ASSERT_OK(top_aggregator.Accumulate({&keys, &values}));
+  EXPECT_EQ(top_aggregator.GetNumInputs(), 1);
+
+  OutputTensorList outputs = std::move(top_aggregator).TakeOutputs();
+  ASSERT_EQ(outputs.size(), 2);
+  ASSERT_EQ(outputs[0].num_elements(), 2);
+  ASSERT_EQ(outputs[1].num_elements(), 2);
+  auto key_span = outputs[0].AsSpan<string_view>();
+  auto val_span = outputs[1].AsSpan<int64_t>();
+  EXPECT_NE(key_span[0], "d");
+  EXPECT_NE(key_span[1], "d");
+  for (int i = 0; i < 2; ++i) {
+    if (key_span[i] == "a") {
+      EXPECT_EQ(val_span[i], 10);
+    } else if (key_span[i] == "b") {
+      EXPECT_EQ(val_span[i], 20);
+    } else if (key_span[i] == "c") {
+      EXPECT_EQ(val_span[i], 30);
+    } else {
+      FAIL() << "Unexpected key: " << key_span[i];
+    }
+  }
+}
+
+TEST(DPGroupByAggregatorTest,
+     AggregateTensors_AllRowsFilteredOut_IncrementsNumInputs) {
+  Intrinsic intrinsic = CreateInnerIntrinsic<int32_t, int64_t>(100, -1, -1);
+  TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> inner_agg,
+                           CreateTensorAggregator(intrinsic));
+  std::vector<Intrinsic> intrinsics;
+  intrinsics.push_back(std::move(intrinsic));
+  std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators;
+  aggregators.push_back(std::unique_ptr<OneDimBaseGroupingAggregator>(
+      dynamic_cast<OneDimBaseGroupingAggregator*>(inner_agg.release())));
+
+  std::vector<TensorSpec> input_key_specs = {
+      dp_histogram_testing::CreateTensorSpec("key", DT_STRING)};
+  std::vector<TensorSpec> output_key_specs = {
+      dp_histogram_testing::CreateTensorSpec("key_out", DT_STRING)};
+  std::vector<Tensor> domain_tensors;
+  domain_tensors.push_back(Tensor({"a", "b"}));
+  MockDPGroupByAggregator top_aggregator(
+      input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
+      /*num_inputs=*/0, /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
+      /*max_groups_contributed=*/2, /*min_contributors_to_group=*/std::nullopt,
+      /*contributors_to_groups=*/{},
+      /*max_string_length=*/kDefaultMaxStringLength,
+      DomainSpec(domain_tensors));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor keys,
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"x", "y"})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor values,
+      Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({10, 20})));
+  TFF_ASSERT_OK(top_aggregator.Accumulate({&keys, &values}));
+  EXPECT_EQ(top_aggregator.GetNumInputs(), 1);
+
+  OutputTensorList outputs = std::move(top_aggregator).TakeOutputs();
+  ASSERT_EQ(outputs.size(), 2);
+  EXPECT_EQ(outputs[0].num_elements(), 0);
+  EXPECT_EQ(outputs[1].num_elements(), 0);
 }
 
 }  // namespace

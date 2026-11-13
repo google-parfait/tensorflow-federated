@@ -1,4 +1,3 @@
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 /*
  * Copyright 2025 Google LLC
  *
@@ -24,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -62,18 +62,13 @@ class DPGroupByAggregator : public GroupByAggregator {
   static absl::StatusOr<int64_t> GetContentSize(
       absl::string_view serialized_state);
 
+  using GroupByAggregator::CreateKeyCombiner;
+
   // Creates a CompositeKeyStorage for the given key specs, or returns nullptr
   // if `input_key_specs` is empty.
   static std::shared_ptr<CompositeKeyStorage> CreateKeyStorage(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>& output_key_specs);
-
-  // Creates a DP key combiner.
-  static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
-      const std::vector<TensorSpec>& input_key_specs,
-      const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
-      std::optional<DomainSpec> domain_spec = std::nullopt,
-      std::shared_ptr<CompositeKeyStorage> key_storage = nullptr);
 
   virtual absl::StatusOr<std::string> GetNoiseDescription() const;
 
@@ -84,10 +79,12 @@ class DPGroupByAggregator : public GroupByAggregator {
   // * epsilon: the privacy budget for released aggregations.
   // * delta: the privacy failure parameter for released aggregations.
   // * max_groups_contributed: if all data from a unique privacy unit is in
-  //   a single DPGroupByAggregator::AggregateTensorsInternal call, this is the
+  //   a single DPGroupByAggregator::AggregateTensors call, this is the
   //   max number of composite keys one privacy unit contributes to,
   // * max_string_length: the maximum length of any string datum; defaults to
   //   kDefaultMaxStringLength.
+  // * domain_spec: optional specification of the domain of the keys; if set,
+  //   keys outside this domain are filtered out during AggregateTensors.
   //
   // The output_key_specs and intrinsics are passed as pointers  as opposed to
   // references because they are required to outlast the DPGroupByAggregator.
@@ -101,7 +98,13 @@ class DPGroupByAggregator : public GroupByAggregator {
       int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributor_counts = {},
-      int max_string_length = kDefaultMaxStringLength);
+      int max_string_length = kDefaultMaxStringLength,
+      std::optional<DomainSpec> domain_spec = std::nullopt);
+
+  // Filters the input tensors by domain_spec_ (if set) and bounds the number of
+  // contributed rows to max_groups_contributed_ via uniform random sampling
+  // before delegating to GroupByAggregator::AggregateTensors.
+  Status AggregateTensors(InputTensorList tensors) override;
 
   // Serializes the aggregator state. Pads the length with a random amount of
   // kPaddingCharacter when DP is enabled. Terminates with a fixed number of
@@ -153,6 +156,8 @@ class DPGroupByAggregator : public GroupByAggregator {
   double epsilon_per_agg_;
   double delta_per_agg_;
   std::vector<DPHistogramBundle> bundles_;
+  std::optional<DomainSpec> domain_spec_;
+  absl::BitGen bitgen_;
 };
 
 }  // namespace aggregation
