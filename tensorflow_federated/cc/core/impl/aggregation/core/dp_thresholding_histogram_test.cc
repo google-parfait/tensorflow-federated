@@ -115,9 +115,9 @@ TEST_P(DPThresholdingHistogramTest, SingleKeySingleAggWithL0Bound) {
     auto intrinsic =
         CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01, 1);
     TFF_ASSERT_OK_AND_ASSIGN(
-        auto result, SingleKeySingleAgg<int64_t>(intrinsic, {4},
-                                                 {"zero", "one", "two", "zero"},
-                                                 {1, 3, 15, 27}, GetParam()));
+        auto result,
+        SingleKeySingleAgg<int64_t>(intrinsic, {3}, {"zero", "one", "two"},
+                                    {28, 3, 15}, GetParam()));
     EXPECT_THAT(result.size(), Eq(2));
 
     // output is either (zero:28) OR (one:3) OR (two:15)
@@ -153,9 +153,9 @@ TEST_P(DPThresholdingHistogramTest, SingleKeySingleAggWithL0LinfinityBounds) {
     auto intrinsic =
         CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01, 1, 12);
     TFF_ASSERT_OK_AND_ASSIGN(
-        auto result, SingleKeySingleAgg<int64_t>(intrinsic, {4},
-                                                 {"zero", "one", "two", "zero"},
-                                                 {1, 3, 15, 27}, GetParam()));
+        auto result,
+        SingleKeySingleAgg<int64_t>(intrinsic, {3}, {"zero", "one", "two"},
+                                    {28, 3, 15}, GetParam()));
     EXPECT_THAT(result.size(), Eq(2));
 
     // output is either (zero:12) OR (one:3) OR (two:12)
@@ -612,7 +612,7 @@ TEST_P(DPThresholdingHistogramTest, NoKeyNoDrop) {
 // labels.
 TEST_P(DPThresholdingHistogramTest,
        Accumulate_MultipleKeyTensors_SomeKeysNotInOutput_Succeeds) {
-  const TensorShape shape = {4};
+  const TensorShape shape = {3};
   Intrinsic intrinsic = {.uri = kDPGroupByUri,
                          .inputs = {CreateTensorSpec("key1", DT_STRING),
                                     CreateTensorSpec("key2", DT_STRING)},
@@ -630,33 +630,29 @@ TEST_P(DPThresholdingHistogramTest,
   TFF_ASSERT_OK_AND_ASSIGN(auto aggregator, CreateTensorAggregator(intrinsic));
   constexpr int num_inputs = 200;
   for (int i = 0; i < num_inputs; i++) {
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor sizeKeys1,
-        Tensor::Create(
-            DT_STRING, shape,
-            CreateTestData<string_view>({"large", "large", "small", "large"})));
-    TFF_ASSERT_OK_AND_ASSIGN(Tensor animalKeys1,
+    TFF_ASSERT_OK_AND_ASSIGN(Tensor sizeKeys1,
                              Tensor::Create(DT_STRING, shape,
                                             CreateTestData<string_view>(
-                                                {"cat", "cat", "cat", "dog"})));
+                                                {"large", "small", "large"})));
     TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor t1,
-        Tensor::Create(DT_INT32, shape, CreateTestData({1, 2, 1, 4})));
+        Tensor animalKeys1,
+        Tensor::Create(DT_STRING, shape,
+                       CreateTestData<string_view>({"cat", "cat", "dog"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor t1, Tensor::Create(DT_INT32, shape, CreateTestData({3, 1, 4})));
     EXPECT_THAT(aggregator->Accumulate({&sizeKeys1, &animalKeys1, &t1}),
                 IsOk());
     // Totals: [3, 1, 4]
-    TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor sizeKeys2,
-        Tensor::Create(
-            DT_STRING, shape,
-            CreateTestData<string_view>({"small", "large", "small", "small"})));
-    TFF_ASSERT_OK_AND_ASSIGN(Tensor animalKeys2,
+    TFF_ASSERT_OK_AND_ASSIGN(Tensor sizeKeys2,
                              Tensor::Create(DT_STRING, shape,
                                             CreateTestData<string_view>(
-                                                {"cat", "cat", "cat", "dog"})));
+                                                {"small", "large", "small"})));
     TFF_ASSERT_OK_AND_ASSIGN(
-        Tensor t2,
-        Tensor::Create(DT_INT32, shape, CreateTestData({2, 0, 2, 4})));
+        Tensor animalKeys2,
+        Tensor::Create(DT_STRING, shape,
+                       CreateTestData<string_view>({"cat", "cat", "dog"})));
+    TFF_ASSERT_OK_AND_ASSIGN(
+        Tensor t2, Tensor::Create(DT_INT32, shape, CreateTestData({4, 0, 4})));
     EXPECT_THAT(aggregator->Accumulate({&sizeKeys2, &animalKeys2, &t2}),
                 IsOk());
     // Totals: [3, 5, 4, 4]
@@ -682,9 +678,8 @@ TEST_P(DPThresholdingHistogramTest,
   ASSERT_EQ(result[0].num_elements(), 4);
 
   // The order of the keys may differ from what is output by GroupByAggregator
-  // ("cat", "cat", "dog", "dog"). This is because DPCompositeKeyCombiner's
-  // AccumulateWithBound function samples l0_bound_ keys from its input; in our
-  // case, sampling 3 keys from 3 keys results in a random permutation.
+  // ("cat", "cat", "dog", "dog") because ShrinkHistogramToSurvivors randomly
+  // shuffles the surviving rows.
   int num_cat = 0;
   int num_dog = 0;
   for (int i = 0; i < 4; i++) {

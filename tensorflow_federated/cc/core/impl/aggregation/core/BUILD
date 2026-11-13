@@ -206,26 +206,6 @@ cc_library(
 )
 
 cc_library(
-    name = "dp_composite_key_combiner",
-    srcs = ["dp_composite_key_combiner.cc"],
-    hdrs = [
-        "dp_composite_key_combiner.h",
-    ],
-    deps = [
-        ":aggregator",
-        ":composite_key_combiner",
-        ":domain_spec",
-        ":tensor",
-        ":tensor_cc_proto",
-        "//tensorflow_federated/cc/core/impl/aggregation/base",
-        "@com_google_absl//absl/container:fixed_array",
-        "@com_google_absl//absl/random",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
     name = "one_dim_grouping_aggregator",
     srcs = ["one_dim_grouping_aggregator.cc"],
     hdrs = [
@@ -300,7 +280,6 @@ cc_library(
         ":aggregator",
         ":composite_key_combiner",
         ":domain_spec",
-        ":dp_composite_key_combiner",
         ":dp_exhaustive_report_histogram",
         ":dp_fedsql_constants",
         ":dp_group_by_aggregator",
@@ -350,17 +329,18 @@ cc_library(
         ":aggregator",
         ":composite_key_combiner",
         ":domain_spec",
-        ":dp_composite_key_combiner",
         ":dp_fedsql_constants",
         ":dp_noise_mechanisms",
         ":group_by_aggregator",
         ":intrinsic",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/random",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -374,6 +354,7 @@ cc_library(
         ":agg_core_cc_proto",
         ":aggregator",
         ":composite_key_combiner",
+        ":domain_spec",
         ":dp_fedsql_constants",
         ":dp_group_by_aggregator",
         ":dp_noise_mechanisms",
@@ -491,7 +472,6 @@ cc_library(
         ":agg_core_cc_proto",
         ":aggregator",
         ":composite_key_combiner",  # buildcleaner: keep
-        ":dp_composite_key_combiner",  # buildcleaner: keep
         ":dp_exhaustive_report_histogram",  # buildcleaner: keep
         ":dp_fedsql_constants",  # buildcleaner: keep
         ":dp_group_by_factory",
@@ -714,24 +694,6 @@ cc_test(
 )
 
 cc_test(
-    name = "dp_composite_key_combiner_test",
-    srcs = ["dp_composite_key_combiner_test.cc"],
-    deps = [
-        ":aggregator",
-        ":domain_spec",
-        ":dp_composite_key_combiner",
-        ":tensor",
-        ":tensor_cc_proto",
-        "//tensorflow_federated/cc/core/impl/aggregation/base",
-        "//tensorflow_federated/cc/core/impl/aggregation/testing",
-        "//tensorflow_federated/cc/testing:oss_test_main",
-        "//tensorflow_federated/cc/testing:status_matchers",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_test(
     name = "tensor_slice_data_test",
     srcs = ["tensor_slice_data_test.cc"],
     deps = [
@@ -809,14 +771,17 @@ cc_test(
     deps = [
         ":aggregator",
         ":composite_key_combiner",
+        ":domain_spec",
         ":dp_fedsql_constants",
         ":dp_group_by_aggregator",
         ":dp_grouping_federated_sum",
         ":dp_histogram_test_utils",
         ":dp_noise_mechanisms",
+        ":group_by_aggregator",
         ":intrinsic",
         ":tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
