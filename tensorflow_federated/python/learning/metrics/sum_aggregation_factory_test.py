@@ -63,20 +63,26 @@ def _tf_mean(x):
 _DEFAULT_FLOAT_FACTORY_KEY = 'None/default_estimation_process/float32'
 _DEFAULT_INT_FACTORY_KEY = '0/1048575/int32'
 
+
 _DEFAULT_FIXED_FLOAT_RANGE = MetricValueRange(
     lower=float(sum_aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
     upper=float(sum_aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
 )
-_DEFAULT_AUTO_TUNED_FLOAT_RANGE = MetricValueRange(
-    lower=None,
-    upper=quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
-        initial_estimate=50.0,
-        target_quantile=0.95,
-        learning_rate=1.0,
-        multiplier=2.0,
-        secure_estimation=True,
-    ),
-)
+
+
+def _create_default_auto_tuned_float_range():
+  return MetricValueRange(
+      lower=None,
+      upper=quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
+          initial_estimate=50.0,
+          target_quantile=0.95,
+          learning_rate=1.0,
+          multiplier=2.0,
+          secure_estimation=True,
+      ),
+  )
+
+
 _DEFAULT_INT_RANGE = MetricValueRange(
     lower=int(sum_aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
     upper=int(sum_aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
@@ -840,14 +846,22 @@ class CreateDefaultSecureSumQuantizationRangesTest(
     self.assertEqual(a.upper, b.upper, msg)
 
   @parameterized.named_parameters(
-      ('float32', TensorType(np.float32, [3]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
-      ('float64', TensorType(np.float64, [1]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
+      (
+          'float32',
+          TensorType(np.float32, [3]),
+          _create_default_auto_tuned_float_range,
+      ),
+      (
+          'float64',
+          TensorType(np.float64, [1]),
+          _create_default_auto_tuned_float_range,
+      ),
       ('int32', TensorType(np.int32, [1]), _DEFAULT_INT_RANGE),
       ('int64', TensorType(np.int64, [3]), _DEFAULT_INT_RANGE),
       (
           '<int64,float32>',
           federated_language.to_type([np.int64, np.float32]),
-          [_DEFAULT_INT_RANGE, _DEFAULT_AUTO_TUNED_FLOAT_RANGE],
+          [_DEFAULT_INT_RANGE, _create_default_auto_tuned_float_range],
       ),
       (
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
@@ -862,7 +876,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           collections.OrderedDict(
               a=_DEFAULT_INT_RANGE,
               b=collections.OrderedDict(
-                  c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+                  c=_create_default_auto_tuned_float_range,
                   d=[_DEFAULT_INT_RANGE, _DEFAULT_INT_RANGE],
               ),
           ),
@@ -872,6 +886,9 @@ class CreateDefaultSecureSumQuantizationRangesTest(
       self, type_spec, expected_range
   ):
     self.addTypeEqualityFunc(MetricValueRange, self.assertAutoTunedBoundEqual)
+    expected_range = tf.nest.map_structure(
+        lambda x: x() if callable(x) else x, expected_range
+    )
     tf.nest.map_structure(
         self.assertEqual,
         sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
@@ -923,14 +940,14 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           TensorType(np.float32, [3]),
           0.1,
           0.5,
-          _DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+          _create_default_auto_tuned_float_range,
       ),
       (
           'float32_int_range',
           TensorType(np.float32, [3]),
           1,
           5,
-          _DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+          _create_default_auto_tuned_float_range,
       ),
       (
           'int32_int_range',
@@ -960,7 +977,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           5,
           [
               MetricValueRange(lower=1, upper=5),
-              _DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+              _create_default_auto_tuned_float_range,
           ],
       ),
       (
@@ -978,7 +995,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           collections.OrderedDict(
               a=MetricValueRange(lower=1, upper=5),
               b=collections.OrderedDict(
-                  c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+                  c=_create_default_auto_tuned_float_range,
                   d=[
                       MetricValueRange(lower=1, upper=5),
                       MetricValueRange(lower=1, upper=5),
@@ -991,6 +1008,9 @@ class CreateDefaultSecureSumQuantizationRangesTest(
       self, type_spec, lower_bound, upper_bound, expected_range
   ):
     self.addTypeEqualityFunc(MetricValueRange, self.assertAutoTunedBoundEqual)
+    expected_range = tf.nest.map_structure(
+        lambda x: x() if callable(x) else x, expected_range
+    )
     tf.nest.map_structure(
         self.assertEqual,
         sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
