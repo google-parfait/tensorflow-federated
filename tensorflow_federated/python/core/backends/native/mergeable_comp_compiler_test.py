@@ -340,6 +340,37 @@ class MergeableCompCompilerTest(absltest.TestCase):
     # 2 * 99 * 100 / 2 + 100
     self.assertEqual(result, 99 * 100 + 100)
 
+  def test_after_merge_does_not_recompute_before_agg_client_work(self):
+    incoming_comp = build_whimsy_computation_with_before_aggregation_work(
+        federated_language.FederatedType(np.int32, federated_language.SERVER),
+        federated_language.FederatedType(
+            [np.int32, np.int32], federated_language.CLIENTS
+        ),
+    )
+    mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
+        incoming_comp
+    )
+
+    clients_placed_intrinsic_uris = []
+
+    def _record_clients_placed_intrinsics(comp):
+      if (
+          isinstance(comp, federated_language.framework.Call)
+          and isinstance(comp.function, federated_language.framework.Intrinsic)
+          and isinstance(comp.type_signature, federated_language.FederatedType)
+          and comp.type_signature.placement is federated_language.CLIENTS
+      ):
+        clients_placed_intrinsic_uris.append(comp.function.uri)
+      return comp, False
+
+    federated_language.framework.transform_postorder(
+        mergeable_form.after_merge.to_building_block(),
+        _record_clients_placed_intrinsics,
+    )
+    # The `@CLIENTS`-placed `federated_map` only feeds the aggregation, so it
+    # should not be duplicated into `after_merge`.
+    self.assertEmpty(clients_placed_intrinsic_uris)
+
 
 if __name__ == '__main__':
   absltest.main()

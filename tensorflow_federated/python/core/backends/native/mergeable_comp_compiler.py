@@ -183,6 +183,13 @@ def compile_to_mergeable_comp_form(
       call_dominant_bb,
       [tensorflow_building_block_factory.create_null_federated_aggregate()],
   )
+  # `force_align_and_split_by_intrinsics` duplicates all locals that do not
+  # depend on the aggregation into both `before_agg` and `after_agg`. Locals
+  # that are not needed to compute the result of each half (e.g. expensive
+  # `@CLIENTS`-placed work feeding only into the aggregation, which would
+  # otherwise be re-executed in `after_merge`) are pruned here.
+  before_agg, _ = tree_transformations.remove_unused_block_locals(before_agg)
+  after_agg, _ = tree_transformations.remove_unused_block_locals(after_agg)
 
   # Construct a report function which accepts the result of merge.
   merge_fn_type = before_agg.type_signature.result['federated_aggregate_param'][  # pyrefly: ignore[bad-index]
