@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -30,6 +31,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
@@ -40,12 +42,37 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
+
+namespace {
+
+// Returns a new 1D Tensor containing only the elements of `tensor` at the
+// given `row_indices`. Used by AggregateTensors to materialize filtered key
+// and value tensors after domain filtering and L0 bounding.
+template <typename T>
+absl::StatusOr<Tensor> GatherRows(const Tensor& tensor,
+                                  absl::Span<const size_t> row_indices) {
+  absl::Span<const T> src = tensor.AsSpan<T>();
+  auto dst = std::make_unique<MutableVectorData<T>>();
+  dst->reserve(row_indices.size());
+  for (size_t idx : row_indices) {
+    dst->push_back(src[idx]);
+  }
+  return Tensor::Create(tensor.dtype(),
+                        TensorShape{static_cast<int64_t>(row_indices.size())},
+                        std::move(dst));
+}
+
+}  // namespace
+
 DPGroupByAggregator::DPGroupByAggregator(
     const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>* output_key_specs,
@@ -68,6 +95,51 @@ DPGroupByAggregator::DPGroupByAggregator(
                             ? epsilon / intrinsics->size()
                             : kEpsilonThreshold)),
       delta_per_agg_(delta / intrinsics->size()) {}
+
+Status DPGroupByAggregator::AggregateTensors(InputTensorList tensors) {
+  if (num_keys_per_input() == 0 || tensors.size() == 0 ||
+      tensors[0]->num_elements() == 0) {
+    return GroupByAggregator::AggregateTensors(std::move(tensors));
+  }
+
+  const size_t num_rows = tensors[0]->num_elements();
+  std::vector<size_t> survivor_indices(num_rows);
+  for (size_t i = 0; i < num_rows; ++i) {
+    survivor_indices[i] = i;
+  }
+
+  // Allow derived classes to filter rows before L0 bounding (e.g. by domain).
+  TFF_RETURN_IF_ERROR(FilterSurvivors(tensors, survivor_indices));
+
+  // Bound the number of contributed rows to max_groups_contributed_.
+  if (max_groups_contributed_ > 0 &&
+      survivor_indices.size() > static_cast<size_t>(max_groups_contributed_)) {
+    std::vector<size_t> sampled_indices(max_groups_contributed_);
+    std::sample(survivor_indices.begin(), survivor_indices.end(),
+                sampled_indices.begin(), max_groups_contributed_, bitgen_);
+    survivor_indices = std::move(sampled_indices);
+  }
+
+  // If all rows survived, pass the original tensors directly.
+  if (survivor_indices.size() == num_rows) {
+    return GroupByAggregator::AggregateTensors(std::move(tensors));
+  }
+
+  // Gather surviving rows across all key and value tensors.
+  std::vector<Tensor> owned_tensors;
+  owned_tensors.reserve(tensors.size());
+  InputTensorList filtered_tensors(tensors.size());
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    Tensor gathered;
+    DTYPE_CASES(tensors[i]->dtype(), T,
+                TFF_ASSIGN_OR_RETURN(
+                    gathered, GatherRows<T>(*tensors[i], survivor_indices)));
+    owned_tensors.push_back(std::move(gathered));
+    filtered_tensors[i] = &owned_tensors.back();
+  }
+
+  return GroupByAggregator::AggregateTensors(std::move(filtered_tensors));
+}
 
 absl::StatusOr<const DPHistogramBundle&> DPGroupByAggregator::GetBundle(
     int i) const {

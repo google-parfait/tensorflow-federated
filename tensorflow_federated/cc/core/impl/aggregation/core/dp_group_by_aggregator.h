@@ -1,4 +1,3 @@
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 /*
  * Copyright 2025 Google LLC
  *
@@ -17,6 +16,7 @@
 #ifndef TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_GROUP_BY_AGGREGATOR_H_
 #define TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_GROUP_BY_AGGREGATOR_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -24,11 +24,13 @@
 #include <utility>
 #include <vector>
 
+#include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
@@ -78,13 +80,15 @@ class DPGroupByAggregator : public GroupByAggregator {
   virtual absl::StatusOr<std::string> GetNoiseDescription() const;
 
  protected:
+  friend class DPGroupByFactory;
+
   // Constructs a DPGroupByAggregator. Only intended for use by child classes.
   //
   // Takes the same inputs as GroupByAggregator, in addition to:
   // * epsilon: the privacy budget for released aggregations.
   // * delta: the privacy failure parameter for released aggregations.
   // * max_groups_contributed: if all data from a unique privacy unit is in
-  //   a single DPGroupByAggregator::AggregateTensorsInternal call, this is the
+  //   a single DPGroupByAggregator::AggregateTensors call, this is the
   //   max number of composite keys one privacy unit contributes to,
   // * max_string_length: the maximum length of any string datum; defaults to
   //   kDefaultMaxStringLength.
@@ -102,6 +106,19 @@ class DPGroupByAggregator : public GroupByAggregator {
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributor_counts = {},
       int max_string_length = kDefaultMaxStringLength);
+
+  // Filters `survivor_indices` in place before L0 bounding. By default, all
+  // rows survive. Derived classes with a closed domain override this to remove
+  // rows whose keys are not in the domain.
+  virtual Status FilterSurvivors(const InputTensorList& tensors,
+                                 std::vector<size_t>& survivor_indices) const {
+    return absl::OkStatus();
+  }
+
+  // Filters the input tensors via FilterSurvivors and bounds the number of
+  // contributed rows to max_groups_contributed_ via uniform random sampling
+  // before delegating to GroupByAggregator::AggregateTensors.
+  Status AggregateTensors(InputTensorList tensors) override;
 
   // Serializes the aggregator state. Pads the length with a random amount of
   // kPaddingCharacter when DP is enabled. Terminates with a fixed number of
@@ -153,6 +170,7 @@ class DPGroupByAggregator : public GroupByAggregator {
   double epsilon_per_agg_;
   double delta_per_agg_;
   std::vector<DPHistogramBundle> bundles_;
+  absl::BitGen bitgen_;
 };
 
 }  // namespace aggregation

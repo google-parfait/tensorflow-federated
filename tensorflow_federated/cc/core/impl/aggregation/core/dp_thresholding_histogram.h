@@ -27,6 +27,7 @@
 #include "algorithms/partition-selection.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -74,10 +75,8 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
       int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributor_counts = {},
-      int max_string_length = kDefaultMaxStringLength);
-
-  // Returns either nullptr or a unique_ptr to a CompositeKeyCombiner, depending
-  // on the input specification
+      int max_string_length = kDefaultMaxStringLength,
+      TensorSpan domain_tensors = {});
 
   // Applies NoiseAndThreshold to the noiseless aggregate.
   absl::StatusOr<OutputTensorList> NoisyReport() override;
@@ -85,9 +84,8 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
   // Adds information about the thresholding to the noise description.
   absl::StatusOr<std::string> GetNoiseDescription() const override;
 
- private:
-  // Constructs a DPThresholdingHistogram. Only called by the Create() method
-  // above.
+  // Constructs a DPThresholdingHistogram. Intended for use by Create() and
+  // derived classes (e.g. DPClosedDomainGroupByAggregator).
   DPThresholdingHistogram(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
@@ -100,12 +98,7 @@ class DPThresholdingHistogram : public DPGroupByAggregator {
       std::vector<int> contributor_counts,
       int max_string_length = kDefaultMaxStringLength);
 
-  // When merging two DPThresholdingHistograms, norm bounding the aggregates
-  // will destroy accuracy and is not needed for privacy. Hence, this function
-  // calls CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
-  absl::StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
-      const InputTensorList& inputs) override;
-
+ private:
   std::unique_ptr<
       differential_privacy::NearTruncatedGeometricPartitionSelection>
       selector_;

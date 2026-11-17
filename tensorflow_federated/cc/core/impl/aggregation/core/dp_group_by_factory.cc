@@ -36,7 +36,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_exhaustive_report_histogram.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
@@ -409,25 +408,26 @@ DPGroupByFactory::CreateInternal(
   TFF_ASSIGN_OR_RETURN(nested_aggregators, GroupByFactory::CreateAggregators(
                                                intrinsic, aggregator_state));
 
-  // Create the DP key combiner, and only populate the key combiner with state
-  // if there are keys.
-  std::optional<DomainSpec> domain_spec;
-  if (!key_tensors.empty()) {
-    domain_spec = DomainSpec(key_tensors);
-  }
-
+  // Create the key combiner, and only populate the key combiner with state if
+  // there are keys.
   std::shared_ptr<CompositeKeyStorage> key_storage;
-  if (!open_domain) {
-    key_storage = DPGroupByAggregator::CreateKeyStorage(intrinsic.inputs,
-                                                        intrinsic.outputs);
-  }
-
-  auto key_combiner = DPGroupByAggregator::CreateDPKeyCombiner(
-      intrinsic.inputs, intrinsic.outputs, max_groups_contributed,
-      std::move(domain_spec), key_storage);
-  if (aggregator_state != nullptr && key_combiner != nullptr) {
-    TFF_RETURN_IF_ERROR(GroupByFactory::PopulateKeyCombinerFromState(
-        *key_combiner, *aggregator_state));
+  std::unique_ptr<CompositeKeyCombiner> key_combiner;
+  if (!intrinsic.inputs.empty()) {
+    std::vector<DataType> key_types = DPGroupByAggregator::CreateKeyTypes(
+        intrinsic.inputs.size(), intrinsic.inputs, intrinsic.outputs);
+    if (open_domain) {
+      key_combiner =
+          std::make_unique<CompositeKeyCombiner>(std::move(key_types));
+    } else {
+      key_storage = std::make_shared<CompositeKeyStorage>(
+          CompositeKeyCombiner::CalculateCompositeKeySize(key_types));
+      key_combiner = std::make_unique<CompositeKeyCombiner>(
+          std::move(key_types), key_storage);
+    }
+    if (aggregator_state != nullptr) {
+      TFF_RETURN_IF_ERROR(GroupByFactory::PopulateKeyCombinerFromState(
+          *key_combiner, *aggregator_state));
+    }
   }
 
   int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
@@ -442,7 +442,7 @@ DPGroupByFactory::CreateInternal(
         intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
         std::move(key_combiner), std::move(nested_aggregators), num_inputs,
         epsilon, delta, max_groups_contributed, min_contributors_to_group,
-        contributor_counts);
+        contributor_counts, kDefaultMaxStringLength, key_tensors);
   }
 
   return DPExhaustiveReportHistogram::Create(

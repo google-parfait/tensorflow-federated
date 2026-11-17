@@ -28,6 +28,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_closed_domain_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
@@ -50,7 +51,8 @@ namespace aggregation {
 // the input data.
 //
 // This class is not thread safe.
-class DPExhaustiveReportHistogram : public DPGroupByAggregator {
+class DPExhaustiveReportHistogram
+    : public DPClosedDomainGroupByAggregator<DPGroupByAggregator> {
  public:
   // Accessor to the tensors that specify the domain of each key.
   const TensorSpan& domain_tensors() const { return domain_tensors_; }
@@ -96,12 +98,6 @@ class DPExhaustiveReportHistogram : public DPGroupByAggregator {
       int num_inputs, double epsilon, double delta,
       int64_t max_groups_contributed, TensorSpan domain_tensors,
       int max_string_length = kDefaultMaxStringLength);
-
-  // When merging two DPExhaustiveReportHistograms, bounding the aggregates will
-  // destroy accuracy and is not needed for privacy. Hence, this function calls
-  // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
-  absl::StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
-      const InputTensorList& inputs) override;
 
   // Given indices that specify a combination of keys, increment the index
   // corresponding to a particular key. If the index is at the edge of the key's
