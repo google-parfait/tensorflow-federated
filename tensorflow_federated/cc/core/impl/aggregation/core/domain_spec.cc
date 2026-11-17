@@ -19,44 +19,11 @@
 #include <memory>
 #include <vector>
 
-#include "absl/container/flat_hash_set.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
-
-// Templated implementation of ColumnDomainSpec, IsMember will run in constant
-// time via a hash table.
-template <typename T>
-class TypedColumnDomainSpec : public ColumnDomainSpec {
- public:
-  explicit TypedColumnDomainSpec(const Tensor& domain_tensor)
-      : tensor_dtype_(internal::TypeTraits<T>::kDataType) {
-    auto agg_vector = domain_tensor.AsAggVector<T>();
-    domain_set_.reserve(domain_tensor.num_elements());
-    for (auto [index, value] : agg_vector) {
-      domain_set_.insert(value);
-    }
-  }
-
-  absl::StatusOr<bool> IsMember(const void* datum_ptr,
-                                DataType dtype) const override {
-    if (dtype != tensor_dtype_) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "ColumnDomainSpec::IsMember: DataType (", dtype,
-          ") does not match internal tensor_dtype (", tensor_dtype_, ")."));
-    }
-    return domain_set_.contains(*static_cast<const T*>(datum_ptr));
-  }
-
- private:
-  DataType tensor_dtype_;
-  absl::flat_hash_set<T> domain_set_;
-};
 
 DomainSpec::DomainSpec(TensorSpan domain_tensors) {
   for (const auto& tensor : domain_tensors) {

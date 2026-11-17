@@ -105,6 +105,28 @@ TEST(DomainSpecTest, IsMember_OutOfBoundsIndex_ReturnsInvalidArgument) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
+TEST(DomainSpecTest, GetColumnDomain_ValidatesOnceAndChecksMembership) {
+  TFF_ASSERT_OK_AND_ASSIGN(
+      Tensor t1,
+      Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({10, 20, 30})));
+  std::vector<Tensor> tensors;
+  tensors.push_back(std::move(t1));
+  DomainSpec domain_spec(TensorSpan{tensors});
+
+  TFF_ASSERT_OK_AND_ASSIGN(const TypedColumnDomainSpec<int32_t>* col_domain,
+                           domain_spec.GetColumnDomain<int32_t>(0));
+  EXPECT_TRUE(col_domain->IsMember(10));
+  EXPECT_TRUE(col_domain->IsMember(30));
+  EXPECT_FALSE(col_domain->IsMember(15));
+
+  EXPECT_THAT(domain_spec.GetColumnDomain<float>(0),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(domain_spec.GetColumnDomain<int32_t>(-1),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(domain_spec.GetColumnDomain<int32_t>(1),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated

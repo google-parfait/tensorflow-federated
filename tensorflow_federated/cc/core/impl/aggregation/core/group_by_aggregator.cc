@@ -115,21 +115,6 @@ GroupByAggregator::GroupByAggregator(
   }
 }
 
-std::unique_ptr<CompositeKeyCombiner> GroupByAggregator::CreateKeyCombiner(
-    const std::vector<TensorSpec>& input_key_specs,
-    const std::vector<TensorSpec>* output_key_specs) {
-  // If there are no input keys, support a columnar aggregation that aggregates
-  // all the values in each column and produces a single output value per
-  // column. This would be equivalent to having identical key values for all
-  // rows.
-  if (input_key_specs.empty()) {
-    return nullptr;
-  }
-
-  return std::make_unique<CompositeKeyCombiner>(CreateKeyTypes(
-      input_key_specs.size(), input_key_specs, *output_key_specs));
-}
-
 std::vector<DataType> GroupByAggregator::CreateKeyTypes(
     size_t num_keys_per_input, const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>& output_key_specs) {
@@ -610,8 +595,7 @@ Status GroupByAggregator::MergeTensorsInternal(
     }
   }
 
-  TFF_ASSIGN_OR_RETURN(Tensor ordinals,
-                       CreateOrdinalsByGroupingKeysForMerge(tensors));
+  TFF_ASSIGN_OR_RETURN(Tensor ordinals, CreateOrdinalsByGroupingKeys(tensors));
 
   if (min_contributors_to_group_.has_value()) {
     TFF_RETURN_IF_ERROR(AddMultipleContributors(ordinals, other_contributors));
@@ -674,12 +658,6 @@ absl::StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeys(
       std::make_unique<MutableVectorData<int64_t>>(inputs[0]->num_elements());
   return Tensor::Create(internal::TypeTraits<int64_t>::kDataType,
                         inputs[0]->shape(), std::move(ordinals));
-}
-absl::StatusOr<Tensor> GroupByAggregator::CreateOrdinalsByGroupingKeysForMerge(
-    const InputTensorList& inputs) {
-  // In this base class, ordinals are made the same way for
-  // MergeTensorsInternal as for AggregateTensorsInternal.
-  return CreateOrdinalsByGroupingKeys(inputs);
 }
 
 Status GroupByAggregator::IsCompatible(const GroupByAggregator& other) const {
@@ -883,10 +861,18 @@ GroupByFactory::CreateInternal(
                        CreateAggregators(intrinsic, aggregator_state));
 
   // Create the key combiner, and only populate the key combiner with state if
-  // there are keys. Also populate the contributor counts if there is an
-  // aggregator state and min_contributors_to_group is set.
-  auto key_combiner = GroupByAggregator::CreateKeyCombiner(intrinsic.inputs,
-                                                           &intrinsic.outputs);
+  // there are keys. If there are no input keys, support a columnar aggregation
+  // that aggregates all the values in each column and produces a single output
+  // value per column (equivalent to having identical key values for all rows).
+  // Also populate the contributor counts if there is an aggregator state and
+  // min_contributors_to_group is set.
+  std::unique_ptr<CompositeKeyCombiner> key_combiner;
+  if (!intrinsic.inputs.empty()) {
+    key_combiner = std::make_unique<CompositeKeyCombiner>(
+        GroupByAggregator::CreateKeyTypes(intrinsic.inputs.size(),
+                                          intrinsic.inputs, intrinsic.outputs));
+  }
+
   std::vector<int> contributors_to_groups;
   if (aggregator_state != nullptr) {
     if (key_combiner != nullptr) {
