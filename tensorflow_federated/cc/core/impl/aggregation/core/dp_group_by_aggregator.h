@@ -30,7 +30,6 @@
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
@@ -69,13 +68,6 @@ class DPGroupByAggregator : public GroupByAggregator {
   static std::shared_ptr<CompositeKeyStorage> CreateKeyStorage(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>& output_key_specs);
-
-  // Creates a DP key combiner.
-  static std::unique_ptr<DPCompositeKeyCombiner> CreateDPKeyCombiner(
-      const std::vector<TensorSpec>& input_key_specs,
-      const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
-      std::optional<DomainSpec> domain_spec = std::nullopt,
-      std::shared_ptr<CompositeKeyStorage> key_storage = nullptr);
 
   virtual absl::StatusOr<std::string> GetNoiseDescription() const;
 

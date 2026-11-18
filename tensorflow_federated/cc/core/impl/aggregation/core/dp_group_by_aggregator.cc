@@ -36,7 +36,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
@@ -474,21 +473,6 @@ std::shared_ptr<CompositeKeyStorage> DPGroupByAggregator::CreateKeyStorage(
       CompositeKeyCombiner::CalculateCompositeKeySize(
           GroupByAggregator::CreateKeyTypes(
               input_key_specs.size(), input_key_specs, output_key_specs)));
-}
-
-std::unique_ptr<DPCompositeKeyCombiner>
-DPGroupByAggregator::CreateDPKeyCombiner(
-    const std::vector<TensorSpec>& input_key_specs,
-    const std::vector<TensorSpec>& output_key_specs, int64_t l0_bound,
-    std::optional<DomainSpec> domain_spec,
-    std::shared_ptr<CompositeKeyStorage> key_storage) {
-  if (input_key_specs.empty()) {
-    return nullptr;
-  }
-  return std::make_unique<DPCompositeKeyCombiner>(
-      GroupByAggregator::CreateKeyTypes(input_key_specs.size(), input_key_specs,
-                                        output_key_specs),
-      l0_bound, std::move(domain_spec), std::move(key_storage));
 }
 
 }  // namespace aggregation

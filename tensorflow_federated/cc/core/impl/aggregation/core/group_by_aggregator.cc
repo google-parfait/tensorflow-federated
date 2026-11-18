@@ -239,17 +239,8 @@ Status GroupByAggregator::AddOneContributor(const Tensor& ordinals) {
     return absl::OkStatus();
   }
   int64_t max_ordinal = *absl::c_max_element(ordinals_span);
-  // TODO: b/546244879 - Ordinals should not be negative. We handle them as a
-  // temporary solution, because currently the derived class can pass down
-  // negative ordinals.
-  if (max_ordinal >= 0) {
-    contributors_to_groups_.ExtendTo(max_ordinal + 1);
-  }
-  for (auto& ordinal : ordinals_span) {
-    // TODO: b/546244879 - Ordinals should not be negative.
-    if (ordinal < 0) {
-      continue;
-    }
+  contributors_to_groups_.ExtendTo(max_ordinal + 1);
+  for (const int64_t ordinal : ordinals_span) {
     TFF_RETURN_IF_ERROR(
         contributors_to_groups_.AddToGroup(ordinal, std::nullopt));
   }
@@ -288,20 +279,10 @@ Status GroupByAggregator::AddMultipleContributors(
   }
   auto ordinals_span = ordinals.AsSpan<int64_t>();
   int64_t max_ordinal = *absl::c_max_element(ordinals_span);
-  // TODO: b/546244879 - Ordinals should not be negative. We handle them as a
-  // temporary solution, because currently the derived class can pass down
-  // negative ordinals.
-  if (max_ordinal >= 0) {
-    contributors_to_groups_.ExtendTo(max_ordinal + 1);
-  }
+  contributors_to_groups_.ExtendTo(max_ordinal + 1);
   for (int i = 0; i < num_ordinals; ++i) {
-    int64_t ordinal = ordinals_span[i];
-    // TODO: b/546244879 - Ordinals should not be negative.
-    if (ordinal < 0) {
-      continue;
-    }
     TFF_RETURN_IF_ERROR(contributors_to_groups_.AddCountToContributors(
-        ordinal, other_contributors[i]));
+        ordinals_span[i], other_contributors[i]));
   }
   return absl::OkStatus();
 }
@@ -800,7 +781,7 @@ Status GroupByFactory::PopulateKeyCombinerFromState(
     key_tensors[i] = Tensor::FromProto(aggregator_state.keys(i)).value();
     keys[i] = &(key_tensors[i]);
   }
-  return key_combiner.CompositeKeyCombiner::Accumulate(keys).status();
+  return key_combiner.Accumulate(keys).status();
 }
 
 absl::StatusOr<std::unique_ptr<TensorAggregator>> GroupByFactory::Create(

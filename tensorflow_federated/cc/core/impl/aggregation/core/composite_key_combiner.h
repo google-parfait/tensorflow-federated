@@ -286,7 +286,7 @@ inline void CompositeKeyStorage::CopyToDest<string_view>(
 // This class is not thread safe.
 class CompositeKeyCombiner {
  public:
-  virtual ~CompositeKeyCombiner() = default;
+  ~CompositeKeyCombiner() = default;
 
   // CompositeKeyCombiner is not copyable or moveable.
   CompositeKeyCombiner(const CompositeKeyCombiner&) = delete;
@@ -317,7 +317,7 @@ class CompositeKeyCombiner {
   //
   // The returned tensor is of data type DT_INT64 and the same shape that was
   // provided to the constructor.
-  virtual absl::StatusOr<Tensor> Accumulate(const InputTensorList& tensors);
+  absl::StatusOr<Tensor> Accumulate(const InputTensorList& tensors);
 
   // Obtains the vector of output keys ordered by their representative
   // ordinal.
@@ -348,7 +348,7 @@ class CompositeKeyCombiner {
   absl::StatusOr<TensorShape> CheckValidAndGetShape(
       const InputTensorList& tensors) const;
 
- protected:
+ private:
   // Creates ordinals for composite keys spread across input tensors.
   // Specifically, the i-th entry of the output is the ordinal for the
   // composite key made by combining the i-th entry of the first tensor, the
@@ -357,10 +357,7 @@ class CompositeKeyCombiner {
   // The implementation transfers the bytes of the tensors into a composite key
   // then inserts each composite key into the CompositeKeyMap and obtains an
   // new ordinal for each unique composite key.
-  //
-  // The CompositeKeyMap is explicitly passed in to allow for temporary data
-  // structures to be used in DPCompositeKeyCombiner::AccumulateWithBound.
-  virtual std::unique_ptr<MutableVectorData<int64_t>> CreateOrdinals(
+  std::unique_ptr<MutableVectorData<int64_t>> CreateOrdinals(
       const InputTensorList& tensors, size_t num_elements,
       CompositeKeyMap& composite_key_map);
 
@@ -384,7 +381,6 @@ class CompositeKeyCombiner {
     storage_->CopyToDest<T>(source_ptr, dest_ptr);
   }
 
- private:
   // The data types of the tensors in valid inputs to Accumulate, in this
   // exact order.
   std::vector<DataType> dtypes_;

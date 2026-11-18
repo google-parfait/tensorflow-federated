@@ -128,10 +128,7 @@ class DPGroupingFederatedSum final
           << "Indices in AggVector of ordinals and AggVector of values "
              "are mismatched.";
 
-      // Only aggregate values of valid ordinals.
-      if (ordinal >= 0) {
-        local_histogram[ordinal] += value_it.value();
-      }
+      local_histogram[ordinal] += value_it.value();
 
       value_it++;
     }
