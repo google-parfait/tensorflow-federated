@@ -30,6 +30,7 @@
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/domain_spec.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
