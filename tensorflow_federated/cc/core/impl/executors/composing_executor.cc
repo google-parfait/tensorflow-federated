@@ -1028,7 +1028,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       }
       case ExecutorValue::ValueType::UNPLACED: {
         return tasks.add_task(
-            [value = std::move(value), value_pb, server = server_]() {
+            [server = server_, value = std::move(value), value_pb]() {
               *value_pb = *TFF_TRY(value.unplaced()->Proto(*server));
               return absl::OkStatus();
             });
@@ -1046,9 +1046,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         type_pb->set_all_equal(true);
         type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
             kServerUri.data(), kServerUri.size());
-        return tasks.add_task([value = std::move(value),
-                               ptr = federated_pb->add_value(),
-                               server = server_]() {
+        return tasks.add_task([server = server_, value = std::move(value),
+                               ptr = federated_pb->add_value()]() {
           return server->Materialize(value.server()->ref(), ptr);
         });
       }

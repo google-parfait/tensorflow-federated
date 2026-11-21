@@ -17,10 +17,13 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/aggregation_protocol.h"
 
 #include <pybind11/pybind11.h>
+
 #include <cstdint>
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/native_proto_caster.h"
@@ -59,6 +62,13 @@ PYBIND11_MODULE(aggregation_protocol, m) {
           .def("Complete", &AggregationProtocol::Complete)
           .def("Abort", &AggregationProtocol::Abort)
           .def("GetStatus", &AggregationProtocol::GetStatus)
-          .def("GetResult", &AggregationProtocol::GetResult)
+          .def("GetResult",
+               [](AggregationProtocol* ap) -> absl::StatusOr<py::bytes> {
+                 absl::StatusOr<absl::Cord> result = ap->GetResult();
+                 if (!result.ok()) {
+                   return result.status();
+                 }
+                 return py::bytes(std::string(*result));
+               })
           .def("PollServerMessage", &AggregationProtocol::PollServerMessage);
 }

@@ -35,6 +35,7 @@ py_proto_library(
 py_grpc_library(
     name = "executor_py_pb2_grpc",
     srcs = [":executor_proto"],
+    grpc_library = "@pypi//grpcio",
     deps = [":executor_py_pb2"],
 )
 

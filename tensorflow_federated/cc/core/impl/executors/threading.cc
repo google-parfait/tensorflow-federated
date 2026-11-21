@@ -90,6 +90,9 @@ absl::Status ParallelTasks::add_task(absl::AnyInvocable<absl::Status()> task) {
   absl::AnyInvocable<void()> void_task = [inner = shared_inner_,
                                           task = std::move(task)]() mutable {
     absl::Status result = task();
+    // Destroy `task` and its captures before `remaining_tasks_` hits zero so
+    // executor handles cannot outlive `WaitAll()`.
+    task = nullptr;
     absl::WriterMutexLock lock(inner->mutex_);
     inner->status_.Update(std::move(result));
     inner->remaining_tasks_ -= 1;

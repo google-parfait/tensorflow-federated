@@ -22,6 +22,7 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/strings/string_view.h"
 #include "federated_language/proto/computation.pb.h"
 #include "federated_language/proto/data_type.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -73,6 +74,29 @@ TEST_F(DataExecutorTest, CreateValueResolvesData) {
   OwnedValueId value_id =
       TFF_ASSERT_OK(test_executor_->CreateValue(unresolved_data_value));
   ExpectMaterialize(value_id, resolved_data_value);
+}
+
+TEST_F(DataExecutorTest, CreateValueResolvesDataDisposesWithoutMaterialize) {
+  constexpr absl::string_view kDataUri = "some_data_uri";
+  constexpr int32_t kResolvedTensorValue = 22;
+  constexpr int64_t kTensorDim = 1;
+  federated_language::Type data_type;
+  federated_language::TensorType* tensor_type = data_type.mutable_tensor();
+  tensor_type->set_dtype(federated_language::DataType::DT_INT32);
+  tensor_type->mutable_dims()->Add(kTensorDim);
+  tensor_type->set_unknown_rank(false);
+  v0::Value resolved_data_value = TensorV(kResolvedTensorValue);
+  mock_data_backend_->ExpectResolveToValue(std::string(kDataUri), data_type,
+                                           resolved_data_value);
+  v0::Value unresolved_data_value;
+  federated_language::Computation* unresolved_data_computation =
+      unresolved_data_value.mutable_computation();
+  unresolved_data_computation->mutable_data()->set_uri(kDataUri);
+  *unresolved_data_computation->mutable_type() = data_type;
+  mock_executor_child_->ExpectCreateValue(resolved_data_value);
+  OwnedValueId value_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(unresolved_data_value));
+  (void)value_id;
 }
 
 TEST_F(DataExecutorTest, CreateValueUnknownValuesDelegatesToChild) {

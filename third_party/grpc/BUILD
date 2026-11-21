@@ -4,3 +4,5 @@ package(
 )
 
 licenses(["notice"])
+
+exports_files(["grpc.patch"])

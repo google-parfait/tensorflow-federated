@@ -37,7 +37,6 @@ limitations under the License
 #include "absl/types/span.h"
 #include "absl/utility/utility.h"
 #include "federated_language/proto/computation.pb.h"
-#include "tsl/profiler/lib/traceme.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -264,18 +263,14 @@ class ExecutorBase : public Executor,
   }
 
  protected:
-  // Logs the current method and records its trace to the TensorFlow profiler.
-  std::optional<tsl::profiler::TraceMe> Trace(const char* method_name) {
-    bool enabled = VLOG_IS_ON(1) || tsl::profiler::TraceMe::Active();
-    if (!enabled) {
-      return std::nullopt;
-    }
-    std::string path = absl::StrCat(ExecutorName(), "::", method_name);
-    absl::string_view path_view(path);
-    VLOG(1) << path_view;
-    // Safe to pass in a view here: `TraceMe` internally copies to an owned
-    // `std::string`.
-    return std::make_optional<tsl::profiler::TraceMe>(path_view);
+  struct TraceScope {
+    ~TraceScope() {}
+  };
+
+  // Logs the current method when verbose logging is enabled.
+  TraceScope Trace(const char* method_name) {
+    VLOG(1) << ExecutorName() << "::" << method_name;
+    return TraceScope{};
   }
 
   // Clears all currently tracked values from the executor.
