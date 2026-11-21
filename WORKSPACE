@@ -51,11 +51,24 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz",
 )
 
+# Protobuf (version aligned with TF 2.21: v6.31.1)
+# Must be pinned BEFORE any macros (cc_toolchain_deps, py_repositories,
+# pip_parse, grpc_deps) that might register their own protobuf version.
+http_archive(
+    name = "com_google_protobuf",
+    sha256 = "6e09bbc950ba60c3a7b30280210cd285af8d7d8ed5e0a6ed101c72aff22e8d88",
+    strip_prefix = "protobuf-6.31.1",
+    url = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v6.31.1.zip",
+    repo_mapping = {
+        "@abseil-cpp": "@com_google_absl",
+    },
+)
+
 http_archive(
     name = "com_github_grpc_grpc",
     patch_args = ["-p1"],
     patches = [
-        "@org_tensorflow//third_party/xla/third_party/grpc:grpc.patch",
+        "//third_party/grpc:grpc.patch",
     ],
     sha256 = "dd6a2fa311ba8441bbefd2764c55b99136ff10f7ea42954be96006a2723d33fc",
     strip_prefix = "grpc-1.74.0",
@@ -83,15 +96,16 @@ http_archive(
     url = "https://github.com/google/differential-privacy/archive/refs/tags/v3.0.0.tar.gz",
 )
 
-# com_google_protobuf is defined by python_init_rules() below,
-# using TF 2.21's version and patches.
 
 http_archive(
     name = "eigen",
     build_file = "//third_party:eigen.BUILD",
     sha256 = "1a432ccbd597ea7b9faa1557b1752328d6adc1a3db8969f6fe793ff704be3bf0",
     strip_prefix = "eigen-4c38131a16803130b66266a912029504f2cf23cd",
-    url = "https://gitlab.com/libeigen/eigen/-/archive/4c38131a16803130b66266a912029504f2cf23cd/eigen-4c38131a16803130b66266a912029504f2cf23cd.tar.gz",
+    urls = [
+        "https://storage.googleapis.com/mirror.tensorflow.org/gitlab.com/libeigen/eigen/-/archive/4c38131a16803130b66266a912029504f2cf23cd/eigen-4c38131a16803130b66266a912029504f2cf23cd.tar.gz",
+        "https://gitlab.com/libeigen/eigen/-/archive/4c38131a16803130b66266a912029504f2cf23cd/eigen-4c38131a16803130b66266a912029504f2cf23cd.tar.gz",
+    ],
 )
 
 http_archive(
@@ -111,21 +125,6 @@ http_archive(
     sha256 = "d99f3a4cc88f816391777fc53cdc094d9abd72bdd7a6fe2bdccfa43235f351db",
     strip_prefix = "federated-language-0.5.4",
     url = "https://github.com/google-parfait/federated-language/archive/refs/tags/v0.5.4.tar.gz",
-)
-
-# The version of TensorFlow should match the version in
-# https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
-http_archive(
-    name = "org_tensorflow",
-    patch_args = ["-p1"],
-    patches = [
-        "//third_party/tensorflow:internal_visibility.patch",
-        "//third_party/tensorflow:llvm_url.patch",
-        "//third_party/tensorflow:numpy_headers.patch",
-    ],
-    sha256 = "ef3568bb4865d6c1b2564fb5689c19b6b9a5311572cd1f2ff9198636a8520921",
-    strip_prefix = "tensorflow-2.21.0",
-    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.21.0.tar.gz",
 )
 
 http_archive(
@@ -164,61 +163,57 @@ http_archive(
     url = "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.4.tar.gz",
 )
 
-# Required by com_github_grpc_grpc. This commit is determined by
-# https://github.com/grpc/grpc/blob/v1.50.0/bazel/grpc_deps.bzl#L344.
+# Abseil C++ (version aligned with TF 2.21: LTS 20250814.1)
 http_archive(
-    name = "upb",
-    sha256 = "017a7e8e4e842d01dba5dc8aa316323eee080cd1b75986a7d1f94d87220e6502",
-    strip_prefix = "upb-e4635f223e7d36dfbea3b722a4ca4807a7e882e2",
-    url = "https://github.com/protocolbuffers/upb/archive/e4635f223e7d36dfbea3b722a4ca4807a7e882e2.tar.gz",
+    name = "com_google_absl",
+    sha256 = "d1abe9da2003e6cbbd7619b0ced3e52047422f4f4ac6c66a9bef5d2e99fea837",
+    strip_prefix = "abseil-cpp-d38452e1ee03523a208362186fd42248ff2609f6",
+    url = "https://github.com/abseil/abseil-cpp/archive/d38452e1ee03523a208362186fd42248ff2609f6.tar.gz",
+)
+
+# pybind11_abseil (version aligned with TF 2.21.0)
+http_archive(
+    name = "pybind11_abseil",
+    sha256 = "0223b647b8cc817336a51e787980ebc299c8d5e64c069829bf34b69d72337449",
+    strip_prefix = "pybind11_abseil-2c4932ed6f6204f1656e245838f4f5eae69d2e29",
+    url = "https://github.com/pybind/pybind11_abseil/archive/2c4932ed6f6204f1656e245838f4f5eae69d2e29.tar.gz",
+)
+
+# pybind11_protobuf (version aligned with TF 2.21.0)
+http_archive(
+    name = "pybind11_protobuf",
+    sha256 = "3cf7bf0f23954c5ce6c37f0a215f506efa3035ca06e3b390d67f4cbe684dce23",
+    strip_prefix = "pybind11_protobuf-f02a2b7653bc50eb5119d125842a3870db95d251",
+    url = "https://github.com/pybind/pybind11_protobuf/archive/f02a2b7653bc50eb5119d125842a3870db95d251.zip",
 )
 
 #
-# Transitive dependencies, grouped by direct dependency.
+# rules_python and pip dependencies
 #
 
-load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
-
-tf_workspace3()
-
-# Initialize hermetic Python (following TF 2.21's WORKSPACE pattern).
-# python_init_rules defines rules_python with correct patches from @xla.
-load("@org_tensorflow//third_party/py:python_init_rules.bzl", "python_init_rules")
-
-python_init_rules()
-
-load("@org_tensorflow//third_party/py:python_init_repositories.bzl", "python_init_repositories")
-
-python_init_repositories(
-    default_python_version = "3.12",
-    local_wheel_dist_folder = "dist",
-    local_wheel_inclusion_list = [
-        "tensorflow*",
-        "tf_nightly*",
-    ],
-    local_wheel_workspaces = ["//:WORKSPACE"],
-    requirements = {
-        "3.12": "@org_tensorflow//:requirements_lock_3_12.txt",
-        "3.13": "@org_tensorflow//:requirements_lock_3_13.txt",
-    },
+http_archive(
+    name = "rules_python",
+    sha256 = "9c6e26911a79fbf510a8f06d8eedb40f412023cf7fa6d1461def27116bff022c",
+    strip_prefix = "rules_python-1.1.0",
+    url = "https://github.com/bazel-contrib/rules_python/releases/download/1.1.0/rules_python-1.1.0.tar.gz",
 )
 
-load("@org_tensorflow//third_party/py:python_init_toolchains.bzl", "python_init_toolchains")
+load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_toolchains")
 
-python_init_toolchains()
+py_repositories()
 
-load("@xla//third_party/py:python_repo.bzl", "python_repository")
+python_register_toolchains(
+    name = "python_3_12",
+    ignore_root_user_error = True,
+    python_version = "3.12",
+)
 
-python_repository(name = "python_version_repo")
-
-# TFF's own pip dependencies (separate from TF's).
 load("@rules_python//python:pip.bzl", "package_annotation", "pip_parse")
 
 # Create Bazel cc_library targets for NumPy headers.
 # https://github.com/bazel-contrib/rules_python/issues/259
-numpy_annotations = {
-    "numpy": package_annotation(
-        additive_build_content = """\
+numpy_annotation = package_annotation(
+    additive_build_content = """\
 cc_library(
     name = "numpy_headers_2",
     hdrs = glob(["site-packages/numpy/_core/include/**/*.h"]),
@@ -236,14 +231,53 @@ cc_library(
     # dependencies.
     hdrs = glob(["site-packages/numpy/_core/include/**/*.h"]) +
            glob(["site-packages/numpy/core/include/**/*.h"]),
+    visibility = ["//visibility:public"],
 )
 """,
-    ),
-}
+)
+
+# Create Bazel cc_library targets for TensorFlow C++ headers and framework
+# shared library from the pip package. This replaces the need for
+# building TensorFlow from source for C++ compilation.
+tensorflow_annotation = package_annotation(
+    additive_build_content = """\
+cc_library(
+    name = "tf_header_lib",
+    hdrs = glob(["site-packages/tensorflow/include/**/*"]),
+    strip_include_prefix = "site-packages/tensorflow/include/",
+    visibility = ["//visibility:public"],
+)
+
+# Force `libtensorflow_framework` before `absl/hash` so TFF and TensorFlow
+# share one `MixingHashState::kSeed` while protobuf stays private.
+cc_library(
+    name = "libtensorflow_framework",
+    srcs = select({
+        "@platforms//os:linux": ["site-packages/tensorflow/libtensorflow_framework.so.2"],
+        "@platforms//os:macos": ["site-packages/tensorflow/libtensorflow_framework.2.dylib"],
+    }),
+    deps = ["@com_google_absl//absl/hash"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "libtensorflow_cc",
+    srcs = select({
+        "@platforms//os:linux": ["site-packages/tensorflow/libtensorflow_cc.so.2"],
+        "@platforms//os:macos": ["site-packages/tensorflow/libtensorflow_cc.2.dylib"],
+    }),
+    deps = [":libtensorflow_framework"],
+    visibility = ["//visibility:public"],
+)
+""",
+)
 
 pip_parse(
     name = "pypi",
-    annotations = numpy_annotations,
+    annotations = {
+        "numpy": numpy_annotation,
+        "tensorflow": tensorflow_annotation,
+    },
     extra_pip_args = [
         "--index-url",
         "https://pypi.org/simple",
@@ -256,24 +290,9 @@ load("@pypi//:requirements.bzl", "install_deps")
 
 install_deps()
 
-load("@org_tensorflow//tensorflow:workspace2.bzl", "tf_workspace2")
-
-tf_workspace2()
-
-load("@org_tensorflow//tensorflow:workspace1.bzl", "tf_workspace1")
-
-tf_workspace1(with_rules_cc = False)
-
-load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
-
-tf_workspace0()
-
-load(
-    "@xla//third_party/py:python_wheel.bzl",
-    "python_wheel_version_suffix_repository",
-)
-
-python_wheel_version_suffix_repository(name = "tf_wheel_version_suffix")
+#
+# CUDA and GPU dependencies
+#
 
 load(
     "@rules_ml_toolchain//gpu/cuda:cuda_json_init_repository.bzl",
@@ -322,12 +341,37 @@ load(
 
 nccl_configure(name = "local_config_nccl")
 
-load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
-protobuf_deps()
 
-# Unable to load the `grpc_extra_deps` from gRPC because they conflict with the
-# dependencies required by TensorFlow.
+# Register rules_proto 6.0.2 explicitly before grpc_deps() so protobuf and gRPC
+# rules resolve against a consistent rules_proto archive.
+http_archive(
+    name = "rules_proto",
+    sha256 = "6fb6767d1bef535310547e03247f7518b03487740c11b6c6adb7952033fe1295",
+    strip_prefix = "rules_proto-6.0.2",
+    urls = [
+        "https://github.com/bazelbuild/rules_proto/archive/refs/tags/6.0.2.tar.gz",
+    ],
+)
+
+
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
+
+# Define @system_python before grpc_extra_deps() / protobuf_deps() so
+# @com_google_protobuf//python:proto_api (used by pybind11_protobuf) compiles
+# against hermetic Python headers instead of host /usr/include/python*.
+load("//third_party:system_python.bzl", "hermetic_system_python")
+
+hermetic_system_python(name = "system_python")
+
+# grpc_deps() registers bazel_features 1.14.0 but doesn't call its deps
+# function. rules_proto 6.0.2 needs bazel_features to be fully initialized.
+load("@bazel_features//:deps.bzl", "bazel_features_deps")
+
+bazel_features_deps()
+
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+
+grpc_extra_deps()

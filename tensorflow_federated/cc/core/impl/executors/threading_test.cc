@@ -19,6 +19,7 @@ limitations under the License
 #include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -143,6 +144,65 @@ TEST_F(ThreadPoolTest, ThreadRunWithThreadPoolMoveOnly) {
   EXPECT_EQ(future.get(), "hello world from pool");
 }
 
+TEST(ThreadRunTest, DetachedThreadReturnsExpectedValue) {
+  constexpr int32_t kExpectedValue = 42;
+  std::shared_future<int32_t> future =
+      ThreadRun([expected = kExpectedValue]() { return expected; });
+  future.wait();
+  EXPECT_EQ(future.get(), kExpectedValue);
+}
+
+TEST(ThreadRunTest, DestroysResultBeforeCallableWhenFutureDroppedEarly) {
+  constexpr int32_t kKeepaliveValue = 7;
+
+  struct ResultObserver {
+    explicit ResultObserver(std::weak_ptr<int32_t> weak_keepalive,
+                            std::atomic<bool>* callable_alive,
+                            absl::Notification* destroyed)
+        : state(std::make_shared<State>(std::move(weak_keepalive),
+                                        callable_alive, destroyed)) {}
+
+    struct State {
+      State(std::weak_ptr<int32_t> weak_keepalive,
+            std::atomic<bool>* callable_alive, absl::Notification* destroyed)
+          : weak_keepalive(std::move(weak_keepalive)),
+            callable_alive(callable_alive),
+            destroyed(destroyed) {}
+      ~State() {
+        callable_alive->store(!weak_keepalive.expired(),
+                              std::memory_order_release);
+        destroyed->Notify();
+      }
+      std::weak_ptr<int32_t> weak_keepalive;
+      std::atomic<bool>* callable_alive;
+      absl::Notification* destroyed;
+    };
+
+    std::shared_ptr<State> state;
+  };
+
+  auto callable_keepalive = std::make_shared<int32_t>(kKeepaliveValue);
+  std::weak_ptr<int32_t> weak_keepalive = callable_keepalive;
+  absl::Notification allow_finish;
+  absl::Notification result_destroyed;
+  std::atomic<bool> callable_alive_on_result_dtor{false};
+
+  std::optional<std::shared_future<ResultObserver>> future = ThreadRun(
+      [keepalive = std::move(callable_keepalive), weak_keepalive, &allow_finish,
+       &callable_alive_on_result_dtor, &result_destroyed]() {
+        allow_finish.WaitForNotification();
+        (void)keepalive;
+        return ResultObserver(weak_keepalive, &callable_alive_on_result_dtor,
+                              &result_destroyed);
+      });
+  // Drop caller's future reference before the worker completes so the worker's
+  // promise is the sole owner of ResultObserver.
+  future.reset();
+  allow_finish.Notify();
+  result_destroyed.WaitForNotification();
+  EXPECT_TRUE(callable_alive_on_result_dtor.load(std::memory_order_acquire));
+}
+
 class ParallelTasksTest : public ::testing::Test {};
 
 TEST_F(ParallelTasksTest, EmptyIsOk) {
@@ -219,6 +279,35 @@ TEST_F(ParallelTasksTest, MoveOnlyTask) {
   }));
   EXPECT_THAT(tasks.WaitAll(), IsOk());
   EXPECT_EQ(result, 100);
+}
+
+TEST_F(ParallelTasksTest, DestroysTaskCapturesBeforeWaitAllReturns) {
+  constexpr int32_t kCaptureValue = 42;
+  constexpr int32_t kPoolThreads = 1;
+  constexpr int32_t kDetachedIterations = 25;
+
+  for (int32_t i = 0; i < kDetachedIterations; ++i) {
+    auto capture = std::make_shared<int32_t>(kCaptureValue);
+    std::weak_ptr<int32_t> weak_capture = capture;
+    ParallelTasks detached_tasks;
+    TFF_ASSERT_OK(detached_tasks.add_task([capture = std::move(capture)]() {
+      (void)capture;
+      return absl::OkStatus();
+    }));
+    EXPECT_THAT(detached_tasks.WaitAll(), IsOk());
+    EXPECT_TRUE(weak_capture.expired());
+  }
+
+  ThreadPool pool(kPoolThreads, /*name=*/"capture_test");
+  auto pooled_capture = std::make_shared<int32_t>(kCaptureValue);
+  std::weak_ptr<int32_t> weak_pooled_capture = pooled_capture;
+  ParallelTasks pooled_tasks(&pool);
+  TFF_ASSERT_OK(pooled_tasks.add_task([capture = std::move(pooled_capture)]() {
+    (void)capture;
+    return absl::OkStatus();
+  }));
+  EXPECT_THAT(pooled_tasks.WaitAll(), IsOk());
+  EXPECT_TRUE(weak_pooled_capture.expired());
 }
 
 }  // namespace

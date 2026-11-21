@@ -15,16 +15,20 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 
+#include <algorithm>
 #include <complex>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "Eigen/Core"
 #include "federated_language/proto/array.pb.h"
 #include "federated_language/proto/computation.pb.h"
@@ -32,7 +36,7 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/tensor_testutil.h"
+#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
@@ -41,6 +45,45 @@ limitations under the License
 
 namespace tensorflow_federated {
 namespace {
+
+template <typename T>
+tensorflow::Tensor AsScalar(const T& val) {
+  tensorflow::Tensor ret(tensorflow::DataTypeToEnum<T>::value, {});
+  ret.scalar<T>()() = val;
+  return ret;
+}
+
+template <typename T>
+tensorflow::Tensor AsTensor(absl::Span<const T> vals,
+                            const tensorflow::TensorShape& shape) {
+  tensorflow::Tensor ret(tensorflow::DataTypeToEnum<T>::value, shape);
+  auto flat = ret.flat<T>();
+  CHECK_EQ(flat.size(), vals.size());
+  std::copy_n(vals.data(), vals.size(), flat.data());
+  return ret;
+}
+
+template <typename TensorType>
+void TensorToProtoContent(const TensorType& tensor,
+                          tensorflow::TensorProto* proto) {
+  if constexpr (std::is_same_v<decltype(tensor.AsProtoTensorContent(proto)),
+                               bool>) {
+    ASSERT_TRUE(tensor.AsProtoTensorContent(proto));
+  } else {
+    tensor.AsProtoTensorContent(proto);
+  }
+}
+
+void ExpectTensorEqual(const tensorflow::Tensor& actual,
+                       const tensorflow::Tensor& expected) {
+  EXPECT_EQ(actual.dtype(), expected.dtype());
+  EXPECT_EQ(actual.shape(), expected.shape());
+  tensorflow::TensorProto actual_proto;
+  ASSERT_NO_FATAL_FAILURE(TensorToProtoContent(actual, &actual_proto));
+  tensorflow::TensorProto expected_proto;
+  ASSERT_NO_FATAL_FAILURE(TensorToProtoContent(expected, &expected_proto));
+  EXPECT_THAT(actual_proto, testing::EqualsProto(expected_proto));
+}
 
 TEST(TensorShapeFromArrayShapeTest, TestReturnsTensorShape_fully_defined) {
   const federated_language::ArrayShape& shape_pb =
@@ -156,70 +199,70 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::ValuesIn<ArrayFromTensorTestCase>({
         {
             "bool",
-            tensorflow::test::AsScalar(true),
+            AsScalar(true),
             testing::CreateArray(federated_language::DataType::DT_BOOL,
                                  testing::CreateArrayShape({}), {true})
                 .value(),
         },
         {
             "int8",
-            tensorflow::test::AsScalar<int8_t>(1),
+            AsScalar<int8_t>(1),
             testing::CreateArray(federated_language::DataType::DT_INT8,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
         },
         {
             "int16",
-            tensorflow::test::AsScalar<int16_t>(1),
+            AsScalar<int16_t>(1),
             testing::CreateArray(federated_language::DataType::DT_INT16,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
         },
         {
             "int32",
-            tensorflow::test::AsScalar<int32_t>(1),
+            AsScalar<int32_t>(1),
             testing::CreateArray(federated_language::DataType::DT_INT32,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
         },
         {
             "int64",
-            tensorflow::test::AsScalar<int64_t>(1),
+            AsScalar<int64_t>(1),
             testing::CreateArray(federated_language::DataType::DT_INT64,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
         },
         {
             "uint8",
-            tensorflow::test::AsScalar<uint8_t>(1),
+            AsScalar<uint8_t>(1),
             testing::CreateArray(federated_language::DataType::DT_UINT8,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
         },
         {
             "uint16",
-            tensorflow::test::AsScalar<uint16_t>(1),
+            AsScalar<uint16_t>(1),
             testing::CreateArray(federated_language::DataType::DT_UINT16,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
         },
         {
             "uint32",
-            tensorflow::test::AsScalar<uint32_t>(1),
+            AsScalar<uint32_t>(1),
             testing::CreateArray(federated_language::DataType::DT_UINT32,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
         },
         {
             "uint64",
-            tensorflow::test::AsScalar<uint64_t>(1),
+            AsScalar<uint64_t>(1),
             testing::CreateArray(federated_language::DataType::DT_UINT64,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
         },
         {
             "float16",
-            tensorflow::test::AsScalar(Eigen::half{1.0}),
+            AsScalar(Eigen::half{1.0}),
             testing::CreateArray(federated_language::DataType::DT_HALF,
                                  testing::CreateArrayShape({}),
                                  {Eigen::half{1.0}})
@@ -227,21 +270,21 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "float32",
-            tensorflow::test::AsScalar<float>(1.0),
+            AsScalar<float>(1.0),
             testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                  testing::CreateArrayShape({}), {1.0})
                 .value(),
         },
         {
             "float64",
-            tensorflow::test::AsScalar<double>(1.0),
+            AsScalar<double>(1.0),
             testing::CreateArray(federated_language::DataType::DT_DOUBLE,
                                  testing::CreateArrayShape({}), {1.0})
                 .value(),
         },
         {
             "complex64",
-            tensorflow::test::AsScalar(tensorflow::complex64{1.0, 1.0}),
+            AsScalar(tensorflow::complex64{1.0, 1.0}),
             testing::CreateArray(federated_language::DataType::DT_COMPLEX64,
                                  testing::CreateArrayShape({}),
                                  {std::complex<float>(1.0, 1.0)})
@@ -249,7 +292,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "complex128",
-            tensorflow::test::AsScalar(tensorflow::complex128{1.0, 1.0}),
+            AsScalar(tensorflow::complex128{1.0, 1.0}),
             testing::CreateArray(federated_language::DataType::DT_COMPLEX128,
                                  testing::CreateArrayShape({}),
                                  {std::complex<double>(1.0, 1.0)})
@@ -257,7 +300,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "bfloat16",
-            tensorflow::test::AsScalar(Eigen::bfloat16{1.0}),
+            AsScalar(Eigen::bfloat16{1.0}),
             testing::CreateArray(federated_language::DataType::DT_BFLOAT16,
                                  testing::CreateArrayShape({}),
                                  {Eigen::bfloat16{1.0}})
@@ -265,15 +308,15 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "string",
-            tensorflow::test::AsScalar<tensorflow::tstring>("a"),
+            AsScalar<tensorflow::tstring>("a"),
             testing::CreateArray(federated_language::DataType::DT_STRING,
                                  testing::CreateArrayShape({}), {"a"})
                 .value(),
         },
         {
             "array",
-            tensorflow::test::AsTensor<int32_t>(
-                {1, 2, 3, 4, 5, 6}, tensorflow::TensorShape({2, 3})),
+            AsTensor<int32_t>({1, 2, 3, 4, 5, 6},
+                              tensorflow::TensorShape({2, 3})),
             testing::CreateArray(federated_language::DataType::DT_INT32,
                                  testing::CreateArrayShape({2, 3}),
                                  {1, 2, 3, 4, 5, 6})
@@ -298,7 +341,7 @@ TEST_P(TensorFromArrayTest, TestReturnsTensor) {
   const tensorflow::Tensor& actual_tensor =
       TFF_ASSERT_OK(TensorFromArray(test_case.array_pb));
 
-  tensorflow::test::ExpectEqual(actual_tensor, test_case.expected_tensor);
+  ExpectTensorEqual(actual_tensor, test_case.expected_tensor);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -309,63 +352,63 @@ INSTANTIATE_TEST_SUITE_P(
             testing::CreateArray(federated_language::DataType::DT_BOOL,
                                  testing::CreateArrayShape({}), {true})
                 .value(),
-            tensorflow::test::AsScalar(true),
+            AsScalar(true),
         },
         {
             "int8",
             testing::CreateArray(federated_language::DataType::DT_INT8,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
-            tensorflow::test::AsScalar<int8_t>(1),
+            AsScalar<int8_t>(1),
         },
         {
             "int16",
             testing::CreateArray(federated_language::DataType::DT_INT16,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
-            tensorflow::test::AsScalar<int16_t>(1),
+            AsScalar<int16_t>(1),
         },
         {
             "int32",
             testing::CreateArray(federated_language::DataType::DT_INT32,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
-            tensorflow::test::AsScalar<int32_t>(1),
+            AsScalar<int32_t>(1),
         },
         {
             "int64",
             testing::CreateArray(federated_language::DataType::DT_INT64,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
-            tensorflow::test::AsScalar<int64_t>(1),
+            AsScalar<int64_t>(1),
         },
         {
             "uint8",
             testing::CreateArray(federated_language::DataType::DT_UINT8,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
-            tensorflow::test::AsScalar<uint8_t>(1),
+            AsScalar<uint8_t>(1),
         },
         {
             "uint16",
             testing::CreateArray(federated_language::DataType::DT_UINT16,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
-            tensorflow::test::AsScalar<uint16_t>(1),
+            AsScalar<uint16_t>(1),
         },
         {
             "uint32",
             testing::CreateArray(federated_language::DataType::DT_UINT32,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
-            tensorflow::test::AsScalar<uint32_t>(1),
+            AsScalar<uint32_t>(1),
         },
         {
             "uint64",
             testing::CreateArray(federated_language::DataType::DT_UINT64,
                                  testing::CreateArrayShape({}), {1})
                 .value(),
-            tensorflow::test::AsScalar<uint64_t>(1),
+            AsScalar<uint64_t>(1),
         },
         {
             "float16",
@@ -373,21 +416,21 @@ INSTANTIATE_TEST_SUITE_P(
                                  testing::CreateArrayShape({}),
                                  {Eigen::half{1.0}})
                 .value(),
-            tensorflow::test::AsScalar(Eigen::half{1.0}),
+            AsScalar(Eigen::half{1.0}),
         },
         {
             "float32",
             testing::CreateArray(federated_language::DataType::DT_FLOAT,
                                  testing::CreateArrayShape({}), {1.0})
                 .value(),
-            tensorflow::test::AsScalar<float>(1.0),
+            AsScalar<float>(1.0),
         },
         {
             "float64",
             testing::CreateArray(federated_language::DataType::DT_DOUBLE,
                                  testing::CreateArrayShape({}), {1.0})
                 .value(),
-            tensorflow::test::AsScalar<double>(1.0),
+            AsScalar<double>(1.0),
         },
         {
             "complex64",
@@ -395,7 +438,7 @@ INSTANTIATE_TEST_SUITE_P(
                                  testing::CreateArrayShape({}),
                                  {std::complex<float>(1.0, 1.0)})
                 .value(),
-            tensorflow::test::AsScalar(tensorflow::complex64{1.0, 1.0}),
+            AsScalar(tensorflow::complex64{1.0, 1.0}),
         },
         {
             "complex128",
@@ -403,7 +446,7 @@ INSTANTIATE_TEST_SUITE_P(
                                  testing::CreateArrayShape({}),
                                  {std::complex<double>(1.0, 1.0)})
                 .value(),
-            tensorflow::test::AsScalar(tensorflow::complex128{1.0, 1.0}),
+            AsScalar(tensorflow::complex128{1.0, 1.0}),
         },
         {
             "bfloat16",
@@ -411,14 +454,14 @@ INSTANTIATE_TEST_SUITE_P(
                                  testing::CreateArrayShape({}),
                                  {Eigen::bfloat16{1.0}})
                 .value(),
-            tensorflow::test::AsScalar(Eigen::bfloat16{1.0}),
+            AsScalar(Eigen::bfloat16{1.0}),
         },
         {
             "string",
             testing::CreateArray(federated_language::DataType::DT_STRING,
                                  testing::CreateArrayShape({}), {"a"})
                 .value(),
-            tensorflow::test::AsScalar<tensorflow::tstring>("a"),
+            AsScalar<tensorflow::tstring>("a"),
         },
         {
             "array",
@@ -426,8 +469,8 @@ INSTANTIATE_TEST_SUITE_P(
                                  testing::CreateArrayShape({2, 3}),
                                  {1, 2, 3, 4, 5, 6})
                 .value(),
-            tensorflow::test::AsTensor<int32_t>(
-                {1, 2, 3, 4, 5, 6}, tensorflow::TensorShape({2, 3})),
+            AsTensor<int32_t>({1, 2, 3, 4, 5, 6},
+                              tensorflow::TensorShape({2, 3})),
         },
     }),
     [](const ::testing::TestParamInfo<TensorFromArrayTest::ParamType>& info) {
@@ -460,7 +503,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::ValuesIn<ArrayContentFromTensorTestCase>({
         {
             "bool",
-            tensorflow::test::AsScalar(true),
+            AsScalar(true),
             testing::CreateArrayContent(federated_language::DataType::DT_BOOL,
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001"))
@@ -468,7 +511,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "int8",
-            tensorflow::test::AsScalar<int8_t>(1),
+            AsScalar<int8_t>(1),
             testing::CreateArrayContent(federated_language::DataType::DT_INT8,
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001"))
@@ -476,7 +519,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "int16",
-            tensorflow::test::AsScalar<int16_t>(1),
+            AsScalar<int16_t>(1),
             testing::CreateArrayContent(federated_language::DataType::DT_INT16,
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001\000"))
@@ -484,7 +527,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "int32",
-            tensorflow::test::AsScalar<int32_t>(1),
+            AsScalar<int32_t>(1),
             testing::CreateArrayContent(federated_language::DataType::DT_INT32,
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001\000\000\000"))
@@ -492,7 +535,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "int64",
-            tensorflow::test::AsScalar<int64_t>(1),
+            AsScalar<int64_t>(1),
             testing::CreateArrayContent(
                 federated_language::DataType::DT_INT64,
                 testing::CreateArrayShape({}),
@@ -501,7 +544,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "uint8",
-            tensorflow::test::AsScalar<uint8_t>(1),
+            AsScalar<uint8_t>(1),
             testing::CreateArrayContent(federated_language::DataType::DT_UINT8,
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001"))
@@ -509,7 +552,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "uint16",
-            tensorflow::test::AsScalar<uint16_t>(1),
+            AsScalar<uint16_t>(1),
             testing::CreateArrayContent(federated_language::DataType::DT_UINT16,
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001\000"))
@@ -517,7 +560,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "uint32",
-            tensorflow::test::AsScalar<uint32_t>(1),
+            AsScalar<uint32_t>(1),
             testing::CreateArrayContent(federated_language::DataType::DT_UINT32,
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001\000\000\000"))
@@ -525,7 +568,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "uint64",
-            tensorflow::test::AsScalar<uint64_t>(1),
+            AsScalar<uint64_t>(1),
             testing::CreateArrayContent(
                 federated_language::DataType::DT_UINT64,
                 testing::CreateArrayShape({}),
@@ -534,7 +577,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "float16",
-            tensorflow::test::AsScalar(Eigen::half{1.0}),
+            AsScalar(Eigen::half{1.0}),
             testing::CreateArrayContent(federated_language::DataType::DT_HALF,
                                         testing::CreateArrayShape({}),
                                         CONTENT("\000<"))
@@ -542,7 +585,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "float32",
-            tensorflow::test::AsScalar<float>(1.0),
+            AsScalar<float>(1.0),
             testing::CreateArrayContent(federated_language::DataType::DT_FLOAT,
                                         testing::CreateArrayShape({}),
                                         CONTENT("\000\000\200?"))
@@ -550,7 +593,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "float64",
-            tensorflow::test::AsScalar<double>(1.0),
+            AsScalar<double>(1.0),
             testing::CreateArrayContent(
                 federated_language::DataType::DT_DOUBLE,
                 testing::CreateArrayShape({}),
@@ -559,7 +602,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "complex64",
-            tensorflow::test::AsScalar(tensorflow::complex64{1.0, 1.0}),
+            AsScalar(tensorflow::complex64{1.0, 1.0}),
             testing::CreateArrayContent(
                 federated_language::DataType::DT_COMPLEX64,
                 testing::CreateArrayShape({}),
@@ -568,7 +611,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "complex128",
-            tensorflow::test::AsScalar(tensorflow::complex128{1.0, 1.0}),
+            AsScalar(tensorflow::complex128{1.0, 1.0}),
             testing::CreateArrayContent(
                 federated_language::DataType::DT_COMPLEX128,
                 testing::CreateArrayShape({}),
@@ -578,7 +621,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "bfloat16",
-            tensorflow::test::AsScalar(Eigen::bfloat16{1.0}),
+            AsScalar(Eigen::bfloat16{1.0}),
             testing::CreateArrayContent(
                 federated_language::DataType::DT_BFLOAT16,
                 testing::CreateArrayShape({}), CONTENT("\200?"))
@@ -586,8 +629,8 @@ INSTANTIATE_TEST_SUITE_P(
         },
         {
             "array",
-            tensorflow::test::AsTensor<int32_t>(
-                {1, 2, 3, 4, 5, 6}, tensorflow::TensorShape({2, 3})),
+            AsTensor<int32_t>({1, 2, 3, 4, 5, 6},
+                              tensorflow::TensorShape({2, 3})),
             testing::CreateArrayContent(
                 federated_language::DataType::DT_INT32,
                 testing::CreateArrayShape({2, 3}),
@@ -614,7 +657,7 @@ TEST_P(TensorFromArrayContentTest, TestReturnsTensor) {
   const tensorflow::Tensor& actual_tensor =
       TFF_ASSERT_OK(TensorFromArrayContent(test_case.array_pb));
 
-  tensorflow::test::ExpectEqual(actual_tensor, test_case.expected_tensor);
+  ExpectTensorEqual(actual_tensor, test_case.expected_tensor);
 }
 
 #define CONTENT(s) absl::string_view(s, sizeof(s) - 1)
@@ -628,7 +671,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001"))
                 .value(),
-            tensorflow::test::AsScalar(true),
+            AsScalar(true),
         },
         {
             "int8",
@@ -636,7 +679,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001"))
                 .value(),
-            tensorflow::test::AsScalar<int8_t>(1),
+            AsScalar<int8_t>(1),
         },
         {
             "int16",
@@ -644,7 +687,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001\000"))
                 .value(),
-            tensorflow::test::AsScalar<int16_t>(1),
+            AsScalar<int16_t>(1),
         },
         {
             "int32",
@@ -652,7 +695,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001\000\000\000"))
                 .value(),
-            tensorflow::test::AsScalar<int32_t>(1),
+            AsScalar<int32_t>(1),
         },
         {
             "int64",
@@ -661,7 +704,7 @@ INSTANTIATE_TEST_SUITE_P(
                 testing::CreateArrayShape({}),
                 CONTENT("\001\000\000\000\000\000\000\000"))
                 .value(),
-            tensorflow::test::AsScalar<int64_t>(1),
+            AsScalar<int64_t>(1),
         },
         {
             "uint8",
@@ -669,7 +712,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001"))
                 .value(),
-            tensorflow::test::AsScalar<uint8_t>(1),
+            AsScalar<uint8_t>(1),
         },
         {
             "uint16",
@@ -677,7 +720,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001\000"))
                 .value(),
-            tensorflow::test::AsScalar<uint16_t>(1),
+            AsScalar<uint16_t>(1),
         },
         {
             "uint32",
@@ -685,7 +728,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         testing::CreateArrayShape({}),
                                         CONTENT("\001\000\000\000"))
                 .value(),
-            tensorflow::test::AsScalar<uint32_t>(1),
+            AsScalar<uint32_t>(1),
         },
         {
             "uint64",
@@ -694,7 +737,7 @@ INSTANTIATE_TEST_SUITE_P(
                 testing::CreateArrayShape({}),
                 CONTENT("\001\000\000\000\000\000\000\000"))
                 .value(),
-            tensorflow::test::AsScalar<uint64_t>(1),
+            AsScalar<uint64_t>(1),
         },
         {
             "float16",
@@ -702,7 +745,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         testing::CreateArrayShape({}),
                                         CONTENT("\000<"))
                 .value(),
-            tensorflow::test::AsScalar(Eigen::half{1.0}),
+            AsScalar(Eigen::half{1.0}),
         },
         {
             "float32",
@@ -710,7 +753,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         testing::CreateArrayShape({}),
                                         CONTENT("\000\000\200?"))
                 .value(),
-            tensorflow::test::AsScalar<float>(1.0),
+            AsScalar<float>(1.0),
         },
         {
             "float64",
@@ -719,7 +762,7 @@ INSTANTIATE_TEST_SUITE_P(
                 testing::CreateArrayShape({}),
                 CONTENT("\000\000\000\000\000\000\360?"))
                 .value(),
-            tensorflow::test::AsScalar<double>(1.0),
+            AsScalar<double>(1.0),
         },
         {
             "complex64",
@@ -728,7 +771,7 @@ INSTANTIATE_TEST_SUITE_P(
                 testing::CreateArrayShape({}),
                 CONTENT("\000\000\200?\000\000\200?"))
                 .value(),
-            tensorflow::test::AsScalar(tensorflow::complex64{1.0, 1.0}),
+            AsScalar(tensorflow::complex64{1.0, 1.0}),
         },
         {
             "complex128",
@@ -738,7 +781,7 @@ INSTANTIATE_TEST_SUITE_P(
                 CONTENT("\000\000\000\000\000\000\360?"
                         "\000\000\000\000\000\000\360?"))
                 .value(),
-            tensorflow::test::AsScalar(tensorflow::complex128{1.0, 1.0}),
+            AsScalar(tensorflow::complex128{1.0, 1.0}),
         },
         {
             "bfloat16",
@@ -746,7 +789,7 @@ INSTANTIATE_TEST_SUITE_P(
                 federated_language::DataType::DT_BFLOAT16,
                 testing::CreateArrayShape({}), CONTENT("\200?"))
                 .value(),
-            tensorflow::test::AsScalar(Eigen::bfloat16{1.0}),
+            AsScalar(Eigen::bfloat16{1.0}),
         },
         {
             "array",
@@ -756,8 +799,8 @@ INSTANTIATE_TEST_SUITE_P(
                 CONTENT("\001\000\000\000\002\000\000\000\003\000\000\000\004"
                         "\000\000\000\005\000\000\000\006\000\000\000"))
                 .value(),
-            tensorflow::test::AsTensor<int32_t>(
-                {1, 2, 3, 4, 5, 6}, tensorflow::TensorShape({2, 3})),
+            AsTensor<int32_t>({1, 2, 3, 4, 5, 6},
+                              tensorflow::TensorShape({2, 3})),
         },
     }),
     [](const ::testing::TestParamInfo<TensorFromArrayContentTest::ParamType>&

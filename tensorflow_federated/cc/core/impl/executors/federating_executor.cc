@@ -827,7 +827,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       }
       case ExecutorValue::ValueType::UNPLACED: {
         return tasks.add_task(
-            [value = std::move(value), value_pb, server = server_child_]() {
+            [server = server_child_, value = std::move(value), value_pb]() {
               *value_pb = *TFF_TRY(value.unplaced()->Proto(*server));
               return absl::OkStatus();
             });

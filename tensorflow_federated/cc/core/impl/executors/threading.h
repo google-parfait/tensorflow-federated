@@ -97,17 +97,27 @@ template <typename Func,
           typename ReturnValue = typename std::result_of_t<Func()>>
 std::shared_future<ReturnValue> ThreadRun(Func lambda,
                                           ThreadPool* thread_pool = nullptr) {
-  using TaskT = std::packaged_task<ReturnValue()>;
-  TaskT task(std::move(lambda));
-  std::shared_future<ReturnValue> future_ptr(task.get_future());
+  auto promise = std::make_unique<std::promise<ReturnValue>>();
+  std::shared_future<ReturnValue> future(promise->get_future());
+  auto run_task = [promise = std::move(promise),
+                   fn = std::move(lambda)]() mutable {
+    if constexpr (std::is_void_v<ReturnValue>) {
+      fn();
+      promise->set_value();
+    } else {
+      promise->set_value(fn());
+    }
+    // Release the shared state before `fn` is destroyed so any values owned
+    // by the result dispose before executor keepalives or task guards exit.
+    promise.reset();
+  };
   if (thread_pool != nullptr) {
-    thread_pool->Schedule([task = std::move(task)]() mutable { task(); })
-        .IgnoreError();
+    thread_pool->Schedule(std::move(run_task)).IgnoreError();
   } else {
-    std::thread th(std::move(task));
+    std::thread th(std::move(run_task));
     th.detach();
   }
-  return future_ptr;
+  return future;
 }
 
 // Awaits the result of a ValueFuture, usually a future returning a
