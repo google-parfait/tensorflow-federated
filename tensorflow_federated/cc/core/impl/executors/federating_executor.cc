@@ -102,7 +102,10 @@ class UnplacedInner {
         return ExtractProto();
       }
       // Materialize the value from the underlying executor into a proto.
-      auto proto_or_status =
+      if (!embedded_.value().ok()) {
+        return embedded_.value().status();
+      }
+      absl::StatusOr<v0::Value> proto_or_status =
           server.Materialize(embedded_.value().value()->ref());
       if (proto_or_status.ok()) {
         proto_ =
@@ -132,7 +135,11 @@ class UnplacedInner {
         return ExtractEmbedded();
       }
       // Embed the proto into the underlying executor to get an ID.
-      auto id_or_status = server.CreateValue(*proto_.value().value());
+      if (!proto_.value().ok()) {
+        return proto_.value().status();
+      }
+      absl::StatusOr<OwnedValueId> id_or_status =
+          server.CreateValue(*proto_.value().value());
       if (id_or_status.ok()) {
         embedded_ = ShareValueId(std::move(id_or_status.value()));
       } else {
@@ -172,14 +179,36 @@ class UnplacedInner {
 // shared_ptr wrappers) so that `ExecutorValue` can be cheaply copied.
 using Unplaced = std::shared_ptr<UnplacedInner>;
 using Server = std::shared_ptr<OwnedValueId>;
-using Clients = std::shared_ptr<std::vector<std::shared_ptr<OwnedValueId>>>;
+
+struct ClientsData {
+  bool all_equal = false;
+  uint32_t num_clients = 0;
+  std::vector<OwnedValueId> values;
+  std::shared_ptr<OwnedValueId> shared_all_equal = nullptr;
+
+  uint32_t size() const { return num_clients; }
+  bool empty() const { return num_clients == 0; }
+
+  ValueId ref(uint32_t client_index) const {
+    if (shared_all_equal != nullptr) {
+      return shared_all_equal->ref();
+    }
+    if (all_equal) {
+      return values[0].ref();
+    }
+    return values[client_index].ref();
+  }
+};
+using Clients = std::shared_ptr<ClientsData>;
 using Structure = std::shared_ptr<std::vector<ExecutorValue>>;
 using ValueVariant =
     std::variant<Unplaced, Server, Clients, Structure, enum FederatedIntrinsic>;
 
 inline Clients NewClients(uint32_t num_clients) {
-  auto v = std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>();
-  v->reserve(num_clients);
+  auto v = std::make_shared<ClientsData>();
+  v->all_equal = false;
+  v->num_clients = num_clients;
+  v->values.reserve(num_clients);
   return v;
 }
 
@@ -191,43 +220,43 @@ class ExecutorValue {
  public:
   enum class ValueType { UNPLACED, SERVER, CLIENTS, STRUCTURE, INTRINSIC };
 
-  inline static ExecutorValue CreateUnplaced(
-      ::tensorflow_federated::Unplaced id) {
+  static ExecutorValue CreateUnplaced(::tensorflow_federated::Unplaced id) {
     return ExecutorValue(std::move(id), ValueType::UNPLACED);
   }
-  inline const Unplaced& unplaced() const { return std::get<Unplaced>(value_); }
-  inline static ExecutorValue CreateServerPlaced(Server id) {
+  const Unplaced& unplaced() const { return std::get<Unplaced>(value_); }
+  static ExecutorValue CreateServerPlaced(Server id) {
     return ExecutorValue(std::move(id), ValueType::SERVER);
   }
-  inline const Server& server() const { return std::get<Server>(value_); }
-  inline const Clients& clients() const {
+  const Server& server() const { return std::get<Server>(value_); }
+  const Clients& clients() const {
     return std::get<::tensorflow_federated::Clients>(value_);
   }
-  inline static ExecutorValue CreateClientsPlaced(Clients client_values) {
+  static ExecutorValue CreateClientsPlaced(Clients client_values) {
     return ExecutorValue(std::move(client_values), ValueType::CLIENTS);
   }
   // Convenience constructor from an un-shared_ptr vector.
-  inline static ExecutorValue CreateClientsPlaced(
-      std::vector<std::shared_ptr<OwnedValueId>>&& client_values) {
-    return CreateClientsPlaced(
-        std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>(
-            std::move(client_values)));
+  static ExecutorValue CreateClientsPlaced(
+      std::vector<OwnedValueId>&& client_values) {
+    auto data = std::make_shared<ClientsData>();
+    data->all_equal = false;
+    data->num_clients = client_values.size();
+    data->values = std::move(client_values);
+    return CreateClientsPlaced(std::move(data));
   }
-  inline const Structure& structure() const {
+  const Structure& structure() const {
     return std::get<::tensorflow_federated::Structure>(value_);
   }
-  inline static ExecutorValue CreateStructure(Structure elements) {
+  static ExecutorValue CreateStructure(Structure elements) {
     return ExecutorValue(std::move(elements), ValueType::STRUCTURE);
   }
-  inline static ExecutorValue CreateFederatedIntrinsic(
-      FederatedIntrinsic intrinsic) {
+  static ExecutorValue CreateFederatedIntrinsic(FederatedIntrinsic intrinsic) {
     return ExecutorValue(intrinsic, ValueType::INTRINSIC);
   }
-  inline enum FederatedIntrinsic intrinsic() const {
+  enum FederatedIntrinsic intrinsic() const {
     return std::get<enum FederatedIntrinsic>(value_);
   }
 
-  inline ValueType type() const { return type_; }
+  ValueType type() const { return type_; }
 
   absl::Status CheckArgumentType(ValueType expected_type,
                                  absl::string_view argument_identifier) const {
@@ -288,14 +317,20 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   }
 
   ExecutorValue ClientsAllEqualValue(
-      const std::shared_ptr<OwnedValueId>& value) const {
-    // All-equal-ness is not stored by this executor. Instead, we create
-    // `num_clients_` non-all-equal references to the same value. This
-    // prevents optimization of the uncommon "materialize a broadcasted
-    // value" case, but allows for simpler handling of values throughout.
-    return ExecutorValue::CreateClientsPlaced(
-        std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>(
-            num_clients_, value));
+      std::shared_ptr<OwnedValueId> value) const {
+    auto data = std::make_shared<ClientsData>();
+    data->all_equal = true;
+    data->num_clients = num_clients_;
+    data->shared_all_equal = std::move(value);
+    return ExecutorValue::CreateClientsPlaced(std::move(data));
+  }
+
+  ExecutorValue ClientsAllEqualValue(OwnedValueId value) const {
+    auto data = std::make_shared<ClientsData>();
+    data->all_equal = true;
+    data->num_clients = num_clients_;
+    data->values.push_back(std::move(value));
+    return ExecutorValue::CreateClientsPlaced(std::move(data));
   }
 
   Clients NewClients() {
@@ -312,14 +347,14 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       case FederatedKind::CLIENTS: {
         Clients values = NewClients();
         for (const auto& value_pb : federated.value()) {
-          values->emplace_back(
-              ShareValueId(TFF_TRY(client_child_->CreateValue(value_pb))));
+          values->values.emplace_back(
+              TFF_TRY(client_child_->CreateValue(value_pb)));
         }
         return ExecutorValue::CreateClientsPlaced(std::move(values));
       }
       case FederatedKind::CLIENTS_ALL_EQUAL: {
-        return ClientsAllEqualValue(ShareValueId(
-            TFF_TRY(client_child_->CreateValue(federated.value(0)))));
+        return ClientsAllEqualValue(
+            TFF_TRY(client_child_->CreateValue(federated.value(0))));
       }
     }
   }
@@ -417,7 +452,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       }
       case ExecutorValue::ValueType::UNPLACED: {
         ValueId fn_id =
-            function.unplaced()->Embedded(*server_child_).value()->ref();
+            TFF_TRY(function.unplaced()->Embedded(*server_child_))->ref();
         std::optional<std::shared_ptr<OwnedValueId>> arg_owner;
         std::optional<ValueId> arg_id = std::nullopt;
         if (argument.has_value()) {
@@ -440,62 +475,59 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
 
   // Embeds `arg` containing structures of server-placed values into the
   // `child_` executor.
-  absl::StatusOr<std::shared_ptr<OwnedValueId>> ZipStructIntoServer(
-      const ExecutorValue& arg) {
-    switch (arg.type()) {
-      case ExecutorValue::ValueType::SERVER: {
-        return arg.server();
-      }
-      case ExecutorValue::ValueType::STRUCTURE: {
-        std::vector<std::shared_ptr<OwnedValueId>> owned_element_ids;
-        owned_element_ids.reserve(arg.structure()->size());
-        for (const auto& element : *arg.structure()) {
-          owned_element_ids.push_back(TFF_TRY(ZipStructIntoServer(element)));
-        }
-        std::vector<ValueId> element_ids;
-        element_ids.reserve(arg.structure()->size());
-        for (const auto& owned_id : owned_element_ids) {
-          element_ids.push_back(owned_id->ref());
-        }
-        return ShareValueId(TFF_TRY(server_child_->CreateStruct(element_ids)));
-      }
-      default: {
+  absl::StatusOr<OwnedValueId> ZipStructIntoServer(const ExecutorValue& arg) {
+    if (arg.type() != ExecutorValue::ValueType::STRUCTURE) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Cannot `", kFederatedZipAtServerUri,
+          "` a structure containing a value of kind ", arg.type()));
+    }
+    std::vector<OwnedValueId> intermediate_owners;
+    std::vector<ValueId> element_ids;
+    element_ids.reserve(arg.structure()->size());
+    for (const auto& element : *arg.structure()) {
+      if (element.type() == ExecutorValue::ValueType::SERVER) {
+        element_ids.push_back(element.server()->ref());
+      } else if (element.type() == ExecutorValue::ValueType::STRUCTURE) {
+        OwnedValueId child_struct = TFF_TRY(ZipStructIntoServer(element));
+        element_ids.push_back(child_struct.ref());
+        intermediate_owners.push_back(std::move(child_struct));
+      } else {
         return absl::InvalidArgumentError(absl::StrCat(
             "Cannot `", kFederatedZipAtServerUri,
-            "` a structure containing a value of kind ", arg.type()));
+            "` a structure containing a value of kind ", element.type()));
       }
     }
+    return server_child_->CreateStruct(element_ids);
   }
 
   // Embeds `arg` containing structures of client-placed values into the
   // `child_` executor. The resulting structure on `child_` will contain all
   // values for the client corresponding to `client_index`.
-  absl::StatusOr<std::shared_ptr<OwnedValueId>> ZipStructIntoClient(
-      const ExecutorValue& arg, uint32_t client_index) {
-    switch (arg.type()) {
-      case ExecutorValue::ValueType::CLIENTS: {
-        return (*arg.clients())[client_index];
-      }
-      case ExecutorValue::ValueType::STRUCTURE: {
-        std::vector<std::shared_ptr<OwnedValueId>> owned_element_ids;
-        owned_element_ids.reserve(arg.structure()->size());
-        for (const auto& element : *arg.structure()) {
-          owned_element_ids.push_back(
-              TFF_TRY(ZipStructIntoClient(element, client_index)));
-        }
-        std::vector<ValueId> element_ids;
-        element_ids.reserve(arg.structure()->size());
-        for (const auto& owned_id : owned_element_ids) {
-          element_ids.push_back(owned_id->ref());
-        }
-        return ShareValueId(TFF_TRY(client_child_->CreateStruct(element_ids)));
-      }
-      default: {
+  absl::StatusOr<OwnedValueId> ZipStructIntoClient(const ExecutorValue& arg,
+                                                   uint32_t client_index) {
+    if (arg.type() != ExecutorValue::ValueType::STRUCTURE) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Cannot `", kFederatedZipAtClientsUri,
+          "` a structure containing a value of kind ", arg.type()));
+    }
+    std::vector<OwnedValueId> intermediate_owners;
+    std::vector<ValueId> element_ids;
+    element_ids.reserve(arg.structure()->size());
+    for (const auto& element : *arg.structure()) {
+      if (element.type() == ExecutorValue::ValueType::CLIENTS) {
+        element_ids.push_back(element.clients()->ref(client_index));
+      } else if (element.type() == ExecutorValue::ValueType::STRUCTURE) {
+        OwnedValueId child_struct =
+            TFF_TRY(ZipStructIntoClient(element, client_index));
+        element_ids.push_back(child_struct.ref());
+        intermediate_owners.push_back(std::move(child_struct));
+      } else {
         return absl::InvalidArgumentError(absl::StrCat(
             "Cannot `", kFederatedZipAtClientsUri,
-            "` a structure containing a value of kind ", arg.type()));
+            "` a structure containing a value of kind ", element.type()));
       }
     }
+    return client_child_->CreateStruct(element_ids);
   }
 
   absl::StatusOr<ExecutorValue> CallFederatedIntrinsic(
@@ -517,8 +549,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         auto embedded = TFF_TRY(Embed(arg, client_child_));
         Clients client_values = NewClients();
         for (int i = 0; i < num_clients_; i++) {
-          client_values->emplace_back(ShareValueId(TFF_TRY(
-              client_child_->CreateCall(embedded->ref(), std::nullopt))));
+          client_values->values.emplace_back(TFF_TRY(
+              client_child_->CreateCall(embedded->ref(), std::nullopt)));
         }
         return ExecutorValue::CreateClientsPlaced(std::move(client_values));
       }
@@ -539,6 +571,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
           return absl::InvalidArgumentError(
               "Failed to get accumulate function.");
         }
+        std::shared_ptr<v0::Value> accumulate_proto =
+            TFF_TRY(accumulate_val_or.value());
         // `merge` is unused (argument four).
         const auto& report = arg.structure()->at(4);
         auto report_child_id = TFF_TRY(Embed(report, server_child_));
@@ -547,11 +581,11 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         std::optional<OwnedValueId> current_owner = std::nullopt;
         auto zero_val_id_owner = TFF_TRY(client_child_->CreateValue(zero_val));
         ValueId current = zero_val_id_owner.ref();
-        auto accumulate_child_id = TFF_TRY(
-            client_child_->CreateValue(*(accumulate_val_or.value()->get())));
-        for (const auto& client_val_id : *value.clients()) {
+        OwnedValueId accumulate_child_id =
+            TFF_TRY(client_child_->CreateValue(*accumulate_proto));
+        for (uint32_t i = 0; i < num_clients_; ++i) {
           auto acc_arg = TFF_TRY(
-              client_child_->CreateStruct({current, client_val_id->ref()}));
+              client_child_->CreateStruct({current, value.clients()->ref(i)}));
           current_owner =
               TFF_TRY(client_child_->CreateCall(accumulate_child_id, acc_arg));
           current = current_owner.value().ref();
@@ -572,7 +606,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         v0::Value server_val;
         TFF_TRY(server_child_->Materialize(arg.server()->ref(), &server_val));
         return ClientsAllEqualValue(
-            ShareValueId(TFF_TRY(client_child_->CreateValue(server_val))));
+            TFF_TRY(client_child_->CreateValue(server_val)));
       }
       case FederatedIntrinsic::MAP: {
         auto traceme = Trace("CallFederatedMap");
@@ -593,14 +627,16 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
                 "function has probably already been embedded in a child "
                 "executor for some reason.");
           }
-          auto child_fn = TFF_TRY(
-              client_child_->CreateValue(*(child_fn_val.value()->get())));
+          std::shared_ptr<v0::Value> child_fn_proto =
+              TFF_TRY(child_fn_val.value());
+          OwnedValueId child_fn =
+              TFF_TRY(client_child_->CreateValue(*child_fn_proto));
           Clients results = NewClients();
           for (int i = 0; i < num_clients_; i++) {
-            auto client_arg = data.clients()->at(i)->ref();
-            auto result =
+            ValueId client_arg = data.clients()->ref(i);
+            OwnedValueId result =
                 TFF_TRY(client_child_->CreateCall(child_fn, client_arg));
-            results->emplace_back(ShareValueId(std::move(result)));
+            results->values.emplace_back(std::move(result));
           }
           return ExecutorValue::CreateClientsPlaced(std::move(results));
         } else if (data.type() == ExecutorValue::ValueType::SERVER) {
@@ -632,7 +668,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
             select_fn.CheckArgumentType(ExecutorValue::ValueType::UNPLACED,
                                         "`federated_select`'s `select_fn`"));
         ValueId select_fn_child_id =
-            select_fn.unplaced()->Embedded(*server_child_).value()->ref();
+            TFF_TRY(select_fn.unplaced()->Embedded(*server_child_))->ref();
         return CallFederatedSelect(keys_child_ids, server_val_child_id,
                                    select_fn_child_id);
       }
@@ -640,14 +676,14 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         auto traceme = Trace("CallIntrinsicZipClients");
         Clients results = NewClients();
         for (uint32_t i = 0; i < num_clients_; i++) {
-          results->push_back(TFF_TRY(ZipStructIntoClient(arg, i)));
+          results->values.push_back(TFF_TRY(ZipStructIntoClient(arg, i)));
         }
         return ExecutorValue::CreateClientsPlaced(std::move(results));
       }
       case FederatedIntrinsic::ZIP_AT_SERVER: {
         auto traceme = Trace("CallIntrinsicZipServer");
         return ExecutorValue::CreateServerPlaced(
-            TFF_TRY(ZipStructIntoServer(arg)));
+            ShareValueId(TFF_TRY(ZipStructIntoServer(arg))));
       }
     }
   }
@@ -691,20 +727,20 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
           TFF_TRY(server_child_->CreateCall(args_into_sequence_id, slices));
       v0::Value dataset_pb;
       TFF_TRY(server_child_->Materialize(dataset.ref(), &dataset_pb));
-      client_datasets->push_back(
-          ShareValueId(TFF_TRY(client_child_->CreateValue(dataset_pb))));
+      client_datasets->values.push_back(
+          TFF_TRY(client_child_->CreateValue(dataset_pb)));
     }
     return ExecutorValue::CreateClientsPlaced(std::move(client_datasets));
   }
 
   absl::StatusOr<KeyData> MaterializeKeys(const Clients& keys_child_ids) {
     KeyData keys;
-    keys.for_clients.reserve(keys_child_ids->size());
-    for (const auto& keys_child_id : *keys_child_ids) {
+    keys.for_clients.reserve(keys_child_ids->num_clients);
+    for (uint32_t i = 0; i < keys_child_ids->num_clients; ++i) {
       // TODO: b/209504748 - Make federating_executor value a future so that
       // these materialize calls don't block.
       v0::Value keys_for_client_pb =
-          TFF_TRY(client_child_->Materialize(keys_child_id->ref()));
+          TFF_TRY(client_child_->Materialize(keys_child_ids->ref(i)));
       federated_language::Array array_pb = keys_for_client_pb.array();
       if (array_pb.dtype() != federated_language::DataType::DT_INT32) {
         return absl::InvalidArgumentError(
@@ -818,8 +854,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         type_pb->set_all_equal(false);
         type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
             kClientsUri.data(), kClientsUri.size());
-        for (const auto& client_value : *value.clients()) {
-          TFF_TRY(CreateChildMaterializeTask(client_value->ref(),
+        for (uint32_t i = 0; i < value.clients()->num_clients; ++i) {
+          TFF_TRY(CreateChildMaterializeTask(value.clients()->ref(i),
                                              federated_pb->add_value(),
                                              client_child_, tasks));
         }

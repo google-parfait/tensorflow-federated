@@ -75,6 +75,7 @@ cc_library(
         ":executor",
         ":federated_intrinsics",
         ":status_macros",
+        ":task",
         ":threading",
         ":value_validation",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -143,7 +144,7 @@ cc_library(
         ":data_backend",
         ":executor",
         ":status_macros",
-        ":threading",
+        ":task",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
@@ -610,6 +611,7 @@ cc_library(
         ":executor",
         ":status_conversion",
         ":status_macros",
+        ":task",
         ":threading",
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -662,6 +664,7 @@ cc_library(
         ":sequence_intrinsics",
         ":status_macros",
         ":struct_traversal_order",
+        ":task",
         ":threading",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/base:core_headers",
@@ -780,6 +783,7 @@ cc_library(
         ":federated_intrinsics",
         ":status_conversion",
         ":status_macros",
+        ":task",
         ":threading",
         ":type_utils",
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
@@ -888,6 +892,7 @@ cc_library(
         ":executor",
         ":session_provider",
         ":status_macros",
+        ":task",
         ":tensorflow_utils",
         ":threading",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -1054,6 +1059,37 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
+    name = "task",
+    hdrs = ["task.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":status_macros",
+        ":threading",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/synchronization",
+    ],
+)
+
+cc_test(
+    name = "task_test",
+    timeout = "short",
+    srcs = ["task_test.cc"],
+    deps = [
+        ":task",
+        ":threading",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 

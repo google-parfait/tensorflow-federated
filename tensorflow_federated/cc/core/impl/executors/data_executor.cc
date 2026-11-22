@@ -28,16 +28,16 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/data_backend.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/cc/core/impl/executors/threading.h"
+#include "tensorflow_federated/cc/core/impl/executors/task.h"
 
 namespace tensorflow_federated {
 
 namespace {
 
 using SharedId = std::shared_ptr<const OwnedValueId>;
-using ValueFuture = std::shared_future<absl::StatusOr<SharedId>>;
+using ValueTask = SharedTask<absl::StatusOr<SharedId>>;
 
-class DataExecutor : public ExecutorBase<ValueFuture> {
+class DataExecutor : public ExecutorBase<ValueTask> {
  public:
   DataExecutor(std::shared_ptr<Executor> child,
                std::shared_ptr<DataBackend> data_backend)
@@ -49,7 +49,7 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
     return kExecutorName;
   }
 
-  absl::StatusOr<ValueFuture> CreateExecutorValue(
+  absl::StatusOr<ValueTask> CreateExecutorValue(
       const v0::Value& value_pb) final {
     if (value_pb.has_computation() && value_pb.computation().has_data()) {
       // Note: `value_pb` is copied here in order to ensure that it remains
@@ -57,78 +57,140 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
       // be relatively small and inexpensive (currently just a URI).
       federated_language::Data data = value_pb.computation().data();
       federated_language::Type data_type = value_pb.computation().type();
-      return ThreadRun([this, data = std::move(data),
-                        data_type = std::move(data_type),
-                        this_keepalive =
-                            shared_from_this()]() -> absl::StatusOr<SharedId> {
-        Trace("DataExecutor::DataBackend::ResolveToValue");
-        v0::Value resolved_value;
-        TFF_TRY(data_backend_->ResolveToValue(data, data_type, resolved_value));
-        OwnedValueId child_value = TFF_TRY(child_->CreateValue(resolved_value));
-        return std::make_shared<OwnedValueId>(std::move(child_value));
-      });
+      return ScheduleTask(
+          /*pool=*/nullptr,
+          [](std::shared_ptr<Executor> child,
+             std::shared_ptr<DataBackend> data_backend,
+             federated_language::Data d,
+             federated_language::Type dt) -> Task<absl::StatusOr<SharedId>> {
+            v0::Value resolved_value;
+            absl::Status resolve_status =
+                data_backend->ResolveToValue(d, dt, resolved_value);
+            if (!resolve_status.ok()) {
+              co_return resolve_status;
+            }
+            absl::StatusOr<OwnedValueId> child_value =
+                child->CreateValue(resolved_value);
+            if (!child_value.ok()) {
+              co_return child_value.status();
+            }
+            co_return std::make_shared<const OwnedValueId>(
+                std::move(child_value).value());
+          }(child_, data_backend_, std::move(data), std::move(data_type)));
     } else {
       OwnedValueId child_value = TFF_TRY(child_->CreateValue(value_pb));
-      return ReadyFuture(
+      return MakeReadySharedTask<absl::StatusOr<SharedId>>(
           std::make_shared<const OwnedValueId>(std::move(child_value)));
     }
   }
 
-  absl::StatusOr<ValueFuture> CreateCall(
-      ValueFuture function_future,
-      std::optional<ValueFuture> argument_future) final {
-    std::vector<ValueFuture> futures = {function_future};
-    if (argument_future.has_value()) {
-      futures.push_back(std::move(*argument_future));
+  absl::StatusOr<ValueTask> CreateCall(
+      ValueTask function_task, std::optional<ValueTask> argument_task) final {
+    if (function_task.is_ready() &&
+        (!argument_task.has_value() || argument_task->is_ready())) {
+      const absl::StatusOr<SharedId>& fn_res = SyncWait(function_task);
+      if (!fn_res.ok()) {
+        return MakeReadySharedTask<absl::StatusOr<SharedId>>(fn_res.status());
+      }
+      if (argument_task.has_value()) {
+        const absl::StatusOr<SharedId>& arg_res = SyncWait(*argument_task);
+        if (!arg_res.ok()) {
+          return MakeReadySharedTask<absl::StatusOr<SharedId>>(
+              arg_res.status());
+        }
+      }
     }
-    return Map(
-        std::move(futures),
-        [this, this_keepalive = shared_from_this()](
-            std::vector<SharedId> values) -> absl::StatusOr<SharedId> {
-          // `values` holds the resolved `futures`, either
-          // `{function}` or `{function, argument}`.
-          ValueId function_id = values[0]->ref();
-          std::optional<ValueId> argument_id = std::nullopt;
-          if (values.size() == 2) {
-            argument_id = values[1]->ref();
+    return ScheduleTask(
+        /*pool=*/nullptr,
+        [](std::shared_ptr<Executor> child, ValueTask fn,
+           std::optional<ValueTask> arg) -> Task<absl::StatusOr<SharedId>> {
+          absl::StatusOr<SharedId> fn_val = co_await fn;
+          if (!fn_val.ok()) {
+            co_return fn_val.status();
           }
-          OwnedValueId child_value =
-              TFF_TRY(child_->CreateCall(function_id, argument_id));
-          return std::make_shared<const OwnedValueId>(std::move(child_value));
-        });
+          ValueId function_id = (*fn_val)->ref();
+          std::optional<ValueId> argument_id = std::nullopt;
+          if (arg.has_value()) {
+            absl::StatusOr<SharedId> arg_val = co_await *arg;
+            if (!arg_val.ok()) {
+              co_return arg_val.status();
+            }
+            argument_id = (*arg_val)->ref();
+          }
+          absl::StatusOr<OwnedValueId> child_value =
+              child->CreateCall(function_id, argument_id);
+          if (!child_value.ok()) {
+            co_return child_value.status();
+          }
+          co_return std::make_shared<const OwnedValueId>(
+              std::move(child_value).value());
+        }(child_, std::move(function_task), std::move(argument_task)));
   }
 
-  absl::StatusOr<ValueFuture> CreateStruct(
-      std::vector<ValueFuture> member_futures) final {
-    return Map(
-        std::move(member_futures),
-        [this, this_keepalive = shared_from_this()](
-            std::vector<SharedId> members) -> absl::StatusOr<SharedId> {
+  absl::StatusOr<ValueTask> CreateStruct(
+      std::vector<ValueTask> member_tasks) final {
+    for (const ValueTask& task : member_tasks) {
+      if (task.is_ready()) {
+        const absl::StatusOr<SharedId>& res = SyncWait(task);
+        if (!res.ok()) {
+          return MakeReadySharedTask<absl::StatusOr<SharedId>>(res.status());
+        }
+      }
+    }
+    return ScheduleTask(
+        /*pool=*/nullptr,
+        [](std::shared_ptr<Executor> child,
+           std::vector<ValueTask> members) -> Task<absl::StatusOr<SharedId>> {
           std::vector<ValueId> ids;
           ids.reserve(members.size());
-          for (const auto& member : members) {
-            ids.push_back(member->ref());
+          for (ValueTask& member_task : members) {
+            absl::StatusOr<SharedId> member = co_await member_task;
+            if (!member.ok()) {
+              co_return member.status();
+            }
+            ids.push_back((*member)->ref());
           }
-          OwnedValueId child_value = TFF_TRY(child_->CreateStruct(ids));
-          return std::make_shared<const OwnedValueId>(std::move(child_value));
-        });
+          absl::StatusOr<OwnedValueId> child_value = child->CreateStruct(ids);
+          if (!child_value.ok()) {
+            co_return child_value.status();
+          }
+          co_return std::make_shared<const OwnedValueId>(
+              std::move(child_value).value());
+        }(child_, std::move(member_tasks)));
   }
 
-  absl::StatusOr<ValueFuture> CreateSelection(ValueFuture source_future,
-                                              const uint32_t index) final {
-    return Map(
-        std::vector<ValueFuture>({std::move(source_future)}),
-        [index, this, this_keepalive = shared_from_this()](
-            std::vector<SharedId> source_in_vec) -> absl::StatusOr<SharedId> {
-          OwnedValueId child_value =
-              TFF_TRY(child_->CreateSelection(source_in_vec[0]->ref(), index));
-          return std::make_shared<const OwnedValueId>(std::move(child_value));
-        });
+  absl::StatusOr<ValueTask> CreateSelection(ValueTask source_task,
+                                            const uint32_t index) final {
+    if (source_task.is_ready()) {
+      const absl::StatusOr<SharedId>& res = SyncWait(source_task);
+      if (!res.ok()) {
+        return MakeReadySharedTask<absl::StatusOr<SharedId>>(res.status());
+      }
+    }
+    return ScheduleTask(
+        /*pool=*/nullptr,
+        [](std::shared_ptr<Executor> child, ValueTask src,
+           uint32_t idx) -> Task<absl::StatusOr<SharedId>> {
+          absl::StatusOr<SharedId> source = co_await src;
+          if (!source.ok()) {
+            co_return source.status();
+          }
+          absl::StatusOr<OwnedValueId> child_value =
+              child->CreateSelection((*source)->ref(), idx);
+          if (!child_value.ok()) {
+            co_return child_value.status();
+          }
+          co_return std::make_shared<const OwnedValueId>(
+              std::move(child_value).value());
+        }(child_, std::move(source_task), index));
   }
 
-  absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
-    SharedId value = TFF_TRY(Wait(std::move(value_fut)));
-    return child_->Materialize(value->ref(), value_pb);
+  absl::Status Materialize(ValueTask value_task, v0::Value* value_pb) final {
+    const absl::StatusOr<SharedId>& value_res = SyncWait(value_task);
+    if (!value_res.ok()) {
+      return value_res.status();
+    }
+    return child_->Materialize((*value_res)->ref(), value_pb);
   }
 
  private:

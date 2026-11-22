@@ -18,7 +18,6 @@ limitations under the License
 #include <climits>
 #include <cstddef>
 #include <cstdint>
-#include <future>  // NOLINT
 #include <list>
 #include <memory>
 #include <optional>
@@ -45,6 +44,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/task.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
@@ -54,8 +54,7 @@ namespace tensorflow_federated {
 
 class ExecutorValue;
 
-using ValueFuture =
-    std::shared_future<absl::StatusOr<std::shared_ptr<ExecutorValue>>>;
+using ValueFuture = SharedTask<absl::StatusOr<std::shared_ptr<ExecutorValue>>>;
 
 // Create a structure by extracting all the values inside the federated values
 // of a structure.
@@ -534,10 +533,18 @@ StreamingRemoteExecutor::CreateExecutorValueStreaming(
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateExecutorValue(
     const v0::Value& value_pb) {
   TFF_TRY(EnsureInitialized());
-  return ThreadRun([value_pb, this, this_keepalive = shared_from_this()]()
-                       -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-    return TFF_TRY(Wait(TFF_TRY(this->CreateExecutorValueStreaming(value_pb))));
-  });
+  return ScheduleTask(
+      nullptr,
+      [](v0::Value value_pb, std::shared_ptr<StreamingRemoteExecutor> self)
+          -> Task<absl::StatusOr<std::shared_ptr<ExecutorValue>>> {
+        absl::StatusOr<ValueFuture> inner_future_or =
+            self->CreateExecutorValueStreaming(value_pb);
+        if (!inner_future_or.ok()) {
+          co_return inner_future_or.status();
+        }
+        co_return co_await inner_future_or.value();
+      }(value_pb, std::static_pointer_cast<StreamingRemoteExecutor>(
+                      shared_from_this())));
 }
 
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateValueRPC(
@@ -564,102 +571,147 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateValueRPC(
   grpc::ClientContext client_context;
   grpc::Status status = stub_->CreateValue(&client_context, request, &response);
   TFF_TRY(grpc_to_absl(status));
-  return ReadyFuture(std::make_shared<ExecutorValue>(
-      std::move(response.value_ref()), std::move(type_pb), disposal_queue_));
+  return MakeReadySharedTask<absl::StatusOr<std::shared_ptr<ExecutorValue>>>(
+      std::make_shared<ExecutorValue>(std::move(response.value_ref()),
+                                      std::move(type_pb), disposal_queue_));
 }
 
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateCall(
     ValueFuture function, std::optional<ValueFuture> argument) {
   TFF_TRY(EnsureInitialized());
-  return ThreadRun([function = std::move(function),
-                    argument = std::move(argument), executor_pb = executor_pb_,
-                    queue = disposal_queue_, this,
-                    this_keepalive = shared_from_this()]()
-                       -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-    v0::CreateCallRequest request;
-    v0::CreateCallResponse response;
-    grpc::ClientContext context;
-    std::shared_ptr<ExecutorValue> fn = TFF_TRY(Wait(function));
+  return ScheduleTask(
+      nullptr,
+      [](ValueFuture function, std::optional<ValueFuture> argument,
+         v0::ExecutorId executor_pb,
+         std::shared_ptr<v0::ExecutorGroup::StubInterface> stub,
+         std::shared_ptr<DisposalQueue> queue,
+         std::shared_ptr<StreamingRemoteExecutor> this_keepalive)
+          -> Task<absl::StatusOr<std::shared_ptr<ExecutorValue>>> {
+        absl::StatusOr<std::shared_ptr<ExecutorValue>> fn_or =
+            co_await function;
+        if (!fn_or.ok()) {
+          co_return fn_or.status();
+        }
+        std::shared_ptr<ExecutorValue> fn = std::move(fn_or.value());
 
-    *request.mutable_executor() = executor_pb;
-    *request.mutable_function_ref() = fn->Get();
-    if (argument.has_value()) {
-      std::shared_ptr<ExecutorValue> arg_value =
-          TFF_TRY(Wait(argument.value()));
-      *request.mutable_argument_ref() = arg_value->Get();
-    }
+        v0::CreateCallRequest request;
+        *request.mutable_executor() = std::move(executor_pb);
+        *request.mutable_function_ref() = fn->Get();
+        if (argument.has_value()) {
+          absl::StatusOr<std::shared_ptr<ExecutorValue>> arg_or =
+              co_await argument.value();
+          if (!arg_or.ok()) {
+            co_return arg_or.status();
+          }
+          std::shared_ptr<ExecutorValue> arg_value = std::move(arg_or.value());
+          *request.mutable_argument_ref() = arg_value->Get();
+        }
 
-    grpc::Status status = this->stub_->CreateCall(&context, request, &response);
-    TFF_TRY(grpc_to_absl(status));
-    return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                           fn->Type().function().result(),
-                                           std::move(queue));
-  });
+        v0::CreateCallResponse response;
+        grpc::ClientContext context;
+        grpc::Status status = stub->CreateCall(&context, request, &response);
+        if (!status.ok()) {
+          co_return grpc_to_absl(status);
+        }
+        co_return std::make_shared<ExecutorValue>(
+            std::move(response.value_ref()), fn->Type().function().result(),
+            std::move(queue));
+      }(std::move(function), std::move(argument), executor_pb_, stub_,
+          disposal_queue_,
+          std::static_pointer_cast<StreamingRemoteExecutor>(
+              shared_from_this())));
 }
 
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateStruct(
     std::vector<ValueFuture> members) {
   TFF_TRY(EnsureInitialized());
-  return ThreadRun([futures = std::move(members), queue = disposal_queue_, this,
-                    this_keepalive = shared_from_this()]()
-                       -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-    v0::CreateStructRequest request;
-    *request.mutable_executor() = this->executor_pb_;
-    v0::CreateStructResponse response;
-    grpc::ClientContext context;
-    std::vector<std::shared_ptr<ExecutorValue>> values =
-        TFF_TRY(WaitAll(futures));
-    federated_language::Type result_type;
-    federated_language::StructType* struct_type = result_type.mutable_struct_();
-    for (const std::shared_ptr<ExecutorValue>& element : values) {
-      v0::CreateStructRequest_Element struct_elem;
-      *struct_elem.mutable_value_ref() = element->Get();
-      *struct_type->add_element()->mutable_value() = element->Type();
-      request.mutable_element()->Add(std::move(struct_elem));
-    }
-    grpc::Status status =
-        this->stub_->CreateStruct(&context, request, &response);
-    TFF_TRY(grpc_to_absl(status));
-    return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                           std::move(result_type),
-                                           std::move(queue));
-  });
+  return ScheduleTask(
+      nullptr,
+      [](std::vector<ValueFuture> members, v0::ExecutorId executor_pb,
+         std::shared_ptr<v0::ExecutorGroup::StubInterface> stub,
+         std::shared_ptr<DisposalQueue> queue,
+         std::shared_ptr<StreamingRemoteExecutor> this_keepalive)
+          -> Task<absl::StatusOr<std::shared_ptr<ExecutorValue>>> {
+        v0::CreateStructRequest request;
+        *request.mutable_executor() = std::move(executor_pb);
+        federated_language::Type result_type;
+        federated_language::StructType* struct_type =
+            result_type.mutable_struct_();
+        for (ValueFuture& member : members) {
+          absl::StatusOr<std::shared_ptr<ExecutorValue>> element_or =
+              co_await member;
+          if (!element_or.ok()) {
+            co_return element_or.status();
+          }
+          const std::shared_ptr<ExecutorValue>& element = element_or.value();
+          v0::CreateStructRequest_Element struct_elem;
+          *struct_elem.mutable_value_ref() = element->Get();
+          *struct_type->add_element()->mutable_value() = element->Type();
+          request.mutable_element()->Add(std::move(struct_elem));
+        }
+
+        v0::CreateStructResponse response;
+        grpc::ClientContext context;
+        grpc::Status status = stub->CreateStruct(&context, request, &response);
+        if (!status.ok()) {
+          co_return grpc_to_absl(status);
+        }
+        co_return std::make_shared<ExecutorValue>(
+            std::move(response.value_ref()), std::move(result_type),
+            std::move(queue));
+      }(std::move(members), executor_pb_, stub_, disposal_queue_,
+          std::static_pointer_cast<StreamingRemoteExecutor>(
+              shared_from_this())));
 }
 
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateSelection(
     ValueFuture value, const uint32_t index) {
   TFF_TRY(EnsureInitialized());
-  return ThreadRun([source = std::move(value), index = index,
-                    queue = disposal_queue_, this,
-                    this_keepalive = shared_from_this()]()
-                       -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-    std::shared_ptr<ExecutorValue> source_value = TFF_TRY(Wait(source));
-    const federated_language::Type& source_type_pb = source_value->Type();
-    if (!source_type_pb.has_struct_()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Error selecting from non-Struct value: ",
-                       source_type_pb.ShortDebugString()));
-    }
-    v0::CreateSelectionRequest request;
-    v0::CreateSelectionResponse response;
-    grpc::ClientContext context;
-    *request.mutable_executor() = this->executor_pb_;
-    *request.mutable_source_ref() = source_value->Get();
-    request.set_index(index);
-    grpc::Status status =
-        this->stub_->CreateSelection(&context, request, &response);
-    const federated_language::Type element_type_pb =
-        source_type_pb.struct_().element(index).value();
-    TFF_TRY(grpc_to_absl(status));
-    return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                           std::move(element_type_pb),
-                                           std::move(queue));
-  });
+  return ScheduleTask(
+      nullptr,
+      [](ValueFuture source, uint32_t index, v0::ExecutorId executor_pb,
+         std::shared_ptr<v0::ExecutorGroup::StubInterface> stub,
+         std::shared_ptr<DisposalQueue> queue,
+         std::shared_ptr<StreamingRemoteExecutor> this_keepalive)
+          -> Task<absl::StatusOr<std::shared_ptr<ExecutorValue>>> {
+        absl::StatusOr<std::shared_ptr<ExecutorValue>> source_or =
+            co_await source;
+        if (!source_or.ok()) {
+          co_return source_or.status();
+        }
+        std::shared_ptr<ExecutorValue> source_value =
+            std::move(source_or.value());
+        const federated_language::Type& source_type_pb = source_value->Type();
+        if (!source_type_pb.has_struct_()) {
+          co_return absl::InvalidArgumentError(
+              absl::StrCat("Error selecting from non-Struct value: ",
+                           source_type_pb.ShortDebugString()));
+        }
+        v0::CreateSelectionRequest request;
+        *request.mutable_executor() = std::move(executor_pb);
+        *request.mutable_source_ref() = source_value->Get();
+        request.set_index(index);
+
+        v0::CreateSelectionResponse response;
+        grpc::ClientContext context;
+        grpc::Status status =
+            stub->CreateSelection(&context, request, &response);
+        if (!status.ok()) {
+          co_return grpc_to_absl(status);
+        }
+        const federated_language::Type element_type_pb =
+            source_type_pb.struct_().element(index).value();
+        co_return std::make_shared<ExecutorValue>(
+            std::move(response.value_ref()), std::move(element_type_pb),
+            std::move(queue));
+      }(std::move(value), index, executor_pb_, stub_, disposal_queue_,
+          std::static_pointer_cast<StreamingRemoteExecutor>(
+              shared_from_this())));
 }
 
 absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
                                                   v0::Value* value_pb) {
-  std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(Wait(value));
+  std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(SyncWait(value));
   switch (value_ref->Type().type_case()) {
     case federated_language::Type::kTensor: {
       return MaterializeRPC(value, value_pb);
@@ -754,7 +806,7 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
 
 absl::Status StreamingRemoteExecutor::MaterializeRPC(ValueFuture value,
                                                      v0::Value* value_pb) {
-  std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(Wait(value));
+  std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(SyncWait(value));
   VLOG(5) << "MaterializeRPC (" << value_ref->Get().ShortDebugString() << "): ["
           << value_ref->Type().ShortDebugString() << "]";
   v0::ComputeRequest request;

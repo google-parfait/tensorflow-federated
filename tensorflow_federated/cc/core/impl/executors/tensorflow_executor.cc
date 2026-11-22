@@ -53,6 +53,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/task.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -792,8 +793,7 @@ absl::StatusOr<ExecutorValue> CallIntrinsic(Intrinsic intrinsic,
   }
 }
 
-using ValueFuture = std::shared_future<absl::StatusOr<ExecutorValue>>;
-
+using ValueFuture = SharedTask<absl::StatusOr<ExecutorValue>>;
 
 class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
  public:
@@ -1008,73 +1008,119 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
     if (synchronous_value_creation_) {
-      return ReadyFuture(TFF_TRY(CreateValueAny(value_pb)));
+      ExecutorValue val = TFF_TRY(CreateValueAny(value_pb));
+      return MakeReadySharedTask<absl::StatusOr<ExecutorValue>>(std::move(val));
     } else {
-      return ThreadRun(
-          [value_pb, this]() -> absl::StatusOr<ExecutorValue> {
-            return TFF_TRY(CreateValueAny(value_pb));
-          },
-          &thread_pool_);
+      auto Coro = [](TensorFlowExecutor* exec,
+                     v0::Value val_pb) -> Task<absl::StatusOr<ExecutorValue>> {
+        co_return exec->CreateValueAny(val_pb);
+      };
+      return ScheduleTask(&thread_pool_, Coro(this, value_pb));
     }
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
       ValueFuture function, std::optional<ValueFuture> argument) final {
-    return ThreadRun(
-        [function = std::move(function),
-         argument = std::move(argument)]() -> absl::StatusOr<ExecutorValue> {
-          ExecutorValue fn = TFF_TRY(Wait(function));
-          std::optional<ExecutorValue> arg = std::nullopt;
-          if (argument.has_value()) {
-            arg = TFF_TRY(Wait(argument.value()));
-          }
-          if (fn.type() == ExecutorValue::ValueType::COMPUTATION) {
-            return fn.computation()->Call(std::move(arg));
-          } else if (fn.type() == ExecutorValue::ValueType::INTRINSIC) {
-            return CallIntrinsic(fn.intrinsic(), std::move(arg));
-          } else {
-            return absl::InvalidArgumentError(absl::StrCat(
-                "Expected `function` argument to "
-                "`TensorFlowExecutor::CreateCall` "
-                "to be a computation or intrinsic, but found type ",
-                fn.type()));
-          }
-        },
-        &thread_pool_);
+    auto Coro = [](ValueFuture fn_future, std::optional<ValueFuture> arg_future)
+        -> Task<absl::StatusOr<ExecutorValue>> {
+      TFF_CO_BIND_OR_RETURN(const ExecutorValue& fn, co_await fn_future);
+      std::optional<ExecutorValue> arg = std::nullopt;
+      if (arg_future.has_value()) {
+        TFF_CO_BIND_OR_RETURN(const ExecutorValue& arg_val,
+                              co_await arg_future.value());
+        arg = arg_val;
+      }
+      if (fn.type() == ExecutorValue::ValueType::COMPUTATION) {
+        co_return fn.computation()->Call(std::move(arg));
+      } else if (fn.type() == ExecutorValue::ValueType::INTRINSIC) {
+        co_return CallIntrinsic(fn.intrinsic(), std::move(arg));
+      } else {
+        co_return absl::InvalidArgumentError(
+            absl::StrCat("Expected `function` argument to "
+                         "`TensorFlowExecutor::CreateCall` "
+                         "to be a computation or intrinsic, but found type ",
+                         fn.type()));
+      }
+    };
+    return ScheduleTask(&thread_pool_,
+                        Coro(std::move(function), std::move(argument)));
   }
+
   absl::StatusOr<ValueFuture> CreateStruct(
       std::vector<ValueFuture> elements) final {
-    return Map(
-        std::move(elements),
-        [](std::vector<ExecutorValue>&& elements)
-            -> absl::StatusOr<ExecutorValue> {
-          return ExecutorValue(std::make_shared<std::vector<ExecutorValue>>(
-              std::move(elements)));
-        },
-        &thread_pool_);
+    bool all_ready =
+        std::all_of(elements.begin(), elements.end(),
+                    [](const ValueFuture& f) { return f.is_ready(); });
+    if (all_ready) {
+      auto resolved_elements = std::make_shared<std::vector<ExecutorValue>>();
+      resolved_elements->reserve(elements.size());
+      for (const ValueFuture& element_future : elements) {
+        const absl::StatusOr<ExecutorValue>& elem_or = SyncWait(element_future);
+        if (!elem_or.ok()) {
+          return elem_or.status();
+        }
+        resolved_elements->push_back(*elem_or);
+      }
+      return MakeReadySharedTask<absl::StatusOr<ExecutorValue>>(
+          ExecutorValue(std::move(resolved_elements)));
+    }
+    auto Coro = [](std::vector<ValueFuture> elems)
+        -> Task<absl::StatusOr<ExecutorValue>> {
+      auto resolved_elements = std::make_shared<std::vector<ExecutorValue>>();
+      resolved_elements->reserve(elems.size());
+      for (const ValueFuture& element_future : elems) {
+        TFF_CO_BIND_OR_RETURN(const ExecutorValue& element,
+                              co_await element_future);
+        resolved_elements->push_back(element);
+      }
+      co_return ExecutorValue(std::move(resolved_elements));
+    };
+    return ScheduleTask(&thread_pool_, Coro(std::move(elements)));
   }
+
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
                                               const uint32_t index) final {
-    return Map(
-        std::vector<ValueFuture>({value}),
-        [index](std::vector<ExecutorValue>&& values)
-            -> absl::StatusOr<ExecutorValue> {
-          ExecutorValue& value = values[0];
-          if (value.type() != ExecutorValue::ValueType::STRUCT) {
-            return absl::InvalidArgumentError(
-                ERR_LOG("Cannot create selection on non-struct value."));
-          }
-          if (value.elements().size() <= index) {
-            return absl::InvalidArgumentError(ERR_LOG(
-                absl::StrCat("Attempted to access index ", index, " of a ",
-                             value.elements().size(), "-length struct.")));
-          }
-          return ExecutorValue(value.elements()[index]);
-        },
-        &thread_pool_);
+    if (value.is_ready()) {
+      const absl::StatusOr<ExecutorValue>& val_or = SyncWait(value);
+      if (!val_or.ok()) {
+        return val_or.status();
+      }
+      const ExecutorValue& val = *val_or;
+      if (val.type() != ExecutorValue::ValueType::STRUCT) {
+        return absl::InvalidArgumentError(
+            ERR_LOG("Cannot create selection on non-struct value."));
+      }
+      if (val.elements().size() <= index) {
+        return absl::InvalidArgumentError(
+            ERR_LOG(absl::StrCat("Attempted to access index ", index, " of a ",
+                                 val.elements().size(), "-length struct.")));
+      }
+      return MakeReadySharedTask<absl::StatusOr<ExecutorValue>>(
+          ExecutorValue(val.elements()[index]));
+    }
+    auto Coro = [](ValueFuture val_future,
+                   uint32_t idx) -> Task<absl::StatusOr<ExecutorValue>> {
+      TFF_CO_BIND_OR_RETURN(const ExecutorValue& val, co_await val_future);
+      if (val.type() != ExecutorValue::ValueType::STRUCT) {
+        co_return absl::InvalidArgumentError(
+            ERR_LOG("Cannot create selection on non-struct value."));
+      }
+      if (val.elements().size() <= idx) {
+        co_return absl::InvalidArgumentError(
+            ERR_LOG(absl::StrCat("Attempted to access index ", idx, " of a ",
+                                 val.elements().size(), "-length struct.")));
+      }
+      co_return ExecutorValue(val.elements()[idx]);
+    };
+    return ScheduleTask(&thread_pool_, Coro(std::move(value), index));
   }
+
   absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
-    ExecutorValue value = TFF_TRY(Wait(std::move(value_fut)));
+    const absl::StatusOr<ExecutorValue>& value_or = SyncWait(value_fut);
+    if (!value_or.ok()) {
+      return value_or.status();
+    }
+    const ExecutorValue& value = *value_or;
     ParallelTasks tasks(&thread_pool_);
     TFF_TRY(MaterializeValue(value, value_pb, tasks));
     TFF_TRY(tasks.WaitAll());

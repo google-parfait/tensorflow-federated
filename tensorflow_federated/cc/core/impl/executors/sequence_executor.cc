@@ -20,7 +20,6 @@ limitations under the License
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <future>  // NOLINT
 #include <memory>
 #include <optional>
 #include <utility>
@@ -41,7 +40,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/struct_traversal_order.h"
-#include "tensorflow_federated/cc/core/impl/executors/threading.h"
+#include "tensorflow_federated/cc/core/impl/executors/task.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -344,12 +343,12 @@ absl::Status CheckLenForUseAsArgument(const SequenceExecutorValue& value,
 
 // We return futures since pulling elements from a sequence may be slow, and
 // otherwise would block.
-using ValueFuture = std::shared_future<absl::StatusOr<SequenceExecutorValue>>;
+using ValueFuture = SharedTask<absl::StatusOr<SequenceExecutorValue>>;
 
 class SequenceExecutor : public ExecutorBase<ValueFuture> {
  public:
   explicit SequenceExecutor(std::shared_ptr<Executor> target_executor)
-      : target_executor_(target_executor) {}
+      : target_executor_(std::move(target_executor)) {}
   ~SequenceExecutor() override = default;
 
   absl::string_view ExecutorName() final { return "SequenceExecutor"; }
@@ -362,8 +361,9 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
         // lazy embedding in the lower-level executor if needed, e.g. in
         // response to a CreateCall, or construction of an iterable from this
         // sequence in the sequence executor itself.
-        return ReadyFuture(SequenceExecutorValue::CreateSequence(
-            std::make_shared<Sequence>(value_pb, target_executor_)));
+        return MakeReadySharedTask<absl::StatusOr<SequenceExecutorValue>>(
+            SequenceExecutorValue::CreateSequence(
+                std::make_shared<Sequence>(value_pb, target_executor_)));
       }
       case v0::Value::kComputation: {
         if (value_pb.computation().has_intrinsic()) {
@@ -372,115 +372,246 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
           absl::StatusOr<SequenceIntrinsic> intrinsic_or_status =
               SequenceIntrinsicFromUri(intrinsic_uri);
           if (intrinsic_or_status.ok()) {
-            return ReadyFuture(SequenceExecutorValue::CreateIntrinsic(
-                SequenceIntrinsic(intrinsic_or_status.value())));
+            return MakeReadySharedTask<absl::StatusOr<SequenceExecutorValue>>(
+                SequenceExecutorValue::CreateIntrinsic(
+                    SequenceIntrinsic(intrinsic_or_status.value())));
           }
         }
       }
         // We fall-through here to let intrinsics possibly meant for
         // lower-level executors pass through.
         ABSL_FALLTHROUGH_INTENDED;
-      default:
-        return ReadyFuture(SequenceExecutorValue::CreateEmbedded(
-            ShareValueId(TFF_TRY(target_executor_->CreateValue(value_pb)))));
+      default: {
+        absl::StatusOr<OwnedValueId> child_val =
+            target_executor_->CreateValue(value_pb);
+        if (!child_val.ok()) {
+          return child_val.status();
+        }
+        return MakeReadySharedTask<absl::StatusOr<SequenceExecutorValue>>(
+            SequenceExecutorValue::CreateEmbedded(
+                ShareValueId(std::move(child_val).value())));
+      }
     }
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
       ValueFuture function, std::optional<ValueFuture> argument) final {
-    std::function<absl::StatusOr<SequenceExecutorValue>()> thread_fn =
-        [function = std::move(function), argument = std::move(argument), this,
-         this_keepalive =
-             shared_from_this()]() -> absl::StatusOr<SequenceExecutorValue> {
-      auto fn = TFF_TRY(Wait(function));
-      if (fn.type() != SequenceExecutorValue::ValueType::INTRINSIC) {
-        Embedded arg_owner;
-        std::optional<ValueId> embedded_arg = std::nullopt;
-        if (argument.has_value()) {
-          arg_owner = TFF_TRY(Embed(TFF_TRY(Wait(argument.value()))));
-          embedded_arg = arg_owner->ref();
-        }
-        return SequenceExecutorValue::CreateEmbedded(ShareValueId(TFF_TRY(
-            target_executor_->CreateCall(fn.embedded()->ref(), embedded_arg))));
+    if (function.is_ready() &&
+        (!argument.has_value() || argument->is_ready())) {
+      const absl::StatusOr<SequenceExecutorValue>& fn_res = SyncWait(function);
+      if (!fn_res.ok()) {
+        return MakeReadySharedTask<absl::StatusOr<SequenceExecutorValue>>(
+            fn_res.status());
       }
-      // We know we are executing a sequence intrinsic; check the argument
-      // has a value.
-      if (!argument.has_value()) {
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Must supply an argument when calling a sequence intrinsic; "
-            "called intrinsic ",
-            SequenceIntrinsicToUri(fn.intrinsic()), " without an argument."));
-      }
-      auto arg = TFF_TRY(Wait(argument.value()));
-      SequenceIntrinsic intrinsic = fn.intrinsic();
-      switch (intrinsic) {
-        case SequenceIntrinsic::REDUCE: {
-          return SequenceExecutorValue::CreateEmbedded(
-              TFF_TRY(ReduceSequence(arg)));
+      if (argument.has_value()) {
+        const absl::StatusOr<SequenceExecutorValue>& arg_res =
+            SyncWait(*argument);
+        if (!arg_res.ok()) {
+          return MakeReadySharedTask<absl::StatusOr<SequenceExecutorValue>>(
+              arg_res.status());
         }
-        case SequenceIntrinsic::MAP: {
-          return SequenceExecutorValue::CreateSequence(
-              TFF_TRY(MapSequence(arg)));
-        }
-        default:
-          return absl::UnimplementedError(
-              absl::StrCat("Unimplemented sequence intrinsic: ",
-                           SequenceIntrinsicToUri(intrinsic)));
       }
-    };
-    return ThreadRun(thread_fn);
+    }
+    return ScheduleTask(
+        /*pool=*/nullptr,
+        [](ValueFuture func, std::optional<ValueFuture> arg,
+           std::shared_ptr<Executor> target_executor,
+           std::shared_ptr<SequenceExecutor> self)
+            -> Task<absl::StatusOr<SequenceExecutorValue>> {
+          absl::StatusOr<SequenceExecutorValue> fn_or = co_await func;
+          if (!fn_or.ok()) {
+            co_return fn_or.status();
+          }
+          SequenceExecutorValue fn = std::move(fn_or).value();
+          if (fn.type() != SequenceExecutorValue::ValueType::INTRINSIC) {
+            Embedded arg_owner;
+            std::optional<ValueId> embedded_arg = std::nullopt;
+            if (arg.has_value()) {
+              absl::StatusOr<SequenceExecutorValue> arg_or = co_await *arg;
+              if (!arg_or.ok()) {
+                co_return arg_or.status();
+              }
+              absl::StatusOr<Embedded> embedded_arg_or =
+                  self->Embed(std::move(arg_or).value());
+              if (!embedded_arg_or.ok()) {
+                co_return embedded_arg_or.status();
+              }
+              arg_owner = std::move(embedded_arg_or).value();
+              embedded_arg = arg_owner->ref();
+            }
+            absl::StatusOr<OwnedValueId> call_res =
+                target_executor->CreateCall(fn.embedded()->ref(), embedded_arg);
+            if (!call_res.ok()) {
+              co_return call_res.status();
+            }
+            co_return SequenceExecutorValue::CreateEmbedded(
+                ShareValueId(std::move(call_res).value()));
+          }
+          // We know we are executing a sequence intrinsic; check the argument
+          // has a value.
+          if (!arg.has_value()) {
+            co_return absl::InvalidArgumentError(absl::StrCat(
+                "Must supply an argument when calling a sequence intrinsic; "
+                "called intrinsic ",
+                SequenceIntrinsicToUri(fn.intrinsic()),
+                " without an argument."));
+          }
+          absl::StatusOr<SequenceExecutorValue> arg_or = co_await *arg;
+          if (!arg_or.ok()) {
+            co_return arg_or.status();
+          }
+          SequenceExecutorValue arg_val = std::move(arg_or).value();
+          SequenceIntrinsic intrinsic = fn.intrinsic();
+          switch (intrinsic) {
+            case SequenceIntrinsic::REDUCE: {
+              absl::StatusOr<std::shared_ptr<OwnedValueId>> reduce_res =
+                  self->ReduceSequence(arg_val);
+              if (!reduce_res.ok()) {
+                co_return reduce_res.status();
+              }
+              co_return SequenceExecutorValue::CreateEmbedded(
+                  std::move(reduce_res).value());
+            }
+            case SequenceIntrinsic::MAP: {
+              absl::StatusOr<std::shared_ptr<Sequence>> map_res =
+                  self->MapSequence(arg_val);
+              if (!map_res.ok()) {
+                co_return map_res.status();
+              }
+              co_return SequenceExecutorValue::CreateSequence(
+                  std::move(map_res).value());
+            }
+            default:
+              co_return absl::UnimplementedError(
+                  absl::StrCat("Unimplemented sequence intrinsic: ",
+                               SequenceIntrinsicToUri(intrinsic)));
+          }
+        }(std::move(function), std::move(argument), target_executor_,
+            std::static_pointer_cast<SequenceExecutor>(shared_from_this())));
   }
 
   absl::StatusOr<ValueFuture> CreateStruct(
       std::vector<ValueFuture> members) final {
-    std::function<absl::StatusOr<SequenceExecutorValue>(
-        std::vector<SequenceExecutorValue>&&)>
-        mapping_fn = [executor = this->target_executor_](
-                         std::vector<SequenceExecutorValue>&& member_elems) {
-          return SequenceExecutorValue::CreateStruct(std::move(member_elems));
-        };
-    return Map(std::move(members), mapping_fn);
+    bool all_ready = true;
+    for (const ValueFuture& member : members) {
+      if (!member.is_ready()) {
+        all_ready = false;
+        break;
+      }
+    }
+    if (all_ready) {
+      std::vector<SequenceExecutorValue> elements;
+      elements.reserve(members.size());
+      for (const ValueFuture& member : members) {
+        const absl::StatusOr<SequenceExecutorValue>& res = SyncWait(member);
+        if (!res.ok()) {
+          return res.status();
+        }
+        elements.push_back(res.value());
+      }
+      return MakeReadySharedTask<absl::StatusOr<SequenceExecutorValue>>(
+          SequenceExecutorValue::CreateStruct(std::move(elements)));
+    }
+    return ScheduleTask(
+        /*pool=*/nullptr,
+        [](std::vector<ValueFuture> member_futures)
+            -> Task<absl::StatusOr<SequenceExecutorValue>> {
+          std::vector<SequenceExecutorValue> elements;
+          elements.reserve(member_futures.size());
+          for (ValueFuture& member_fut : member_futures) {
+            absl::StatusOr<SequenceExecutorValue> elem_or = co_await member_fut;
+            if (!elem_or.ok()) {
+              co_return elem_or.status();
+            }
+            elements.push_back(std::move(elem_or).value());
+          }
+          co_return SequenceExecutorValue::CreateStruct(std::move(elements));
+        }(std::move(members)));
   }
 
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
                                               const uint32_t index) final {
-    std::function<absl::StatusOr<SequenceExecutorValue>(
-        std::vector<SequenceExecutorValue>&&)>
-        mapping_fn = [executor = this->target_executor_,
-                      index](std::vector<SequenceExecutorValue>&& source_vector)
-        -> absl::StatusOr<SequenceExecutorValue> {
-      // We know there is exactly one element here since we will construct
-      // the future-vector which supplies the argument below.
-      SequenceExecutorValue source = source_vector.at(0);
-
+    if (value.is_ready()) {
+      const absl::StatusOr<SequenceExecutorValue>& res = SyncWait(value);
+      if (!res.ok()) {
+        return res.status();
+      }
+      const SequenceExecutorValue& source = res.value();
       switch (source.type()) {
         case SequenceExecutorValue::ValueType::EMBEDDED: {
-          return SequenceExecutorValue::CreateEmbedded(ShareValueId(TFF_TRY(
-              executor->CreateSelection(source.embedded()->ref(), index))));
+          absl::StatusOr<OwnedValueId> sel_res =
+              target_executor_->CreateSelection(source.embedded()->ref(),
+                                                index);
+          if (!sel_res.ok()) {
+            return sel_res.status();
+          }
+          return MakeReadySharedTask<absl::StatusOr<SequenceExecutorValue>>(
+              SequenceExecutorValue::CreateEmbedded(
+                  ShareValueId(std::move(sel_res).value())));
         }
         case SequenceExecutorValue::ValueType::STRUCT: {
-          auto struct_val = source.struct_value();
-
-          if (index < 0 || index >= struct_val->size()) {
-            return absl::InvalidArgumentError(
-                absl::StrCat("Attempted to select an element out-of-bounds of "
-                             "the underlying "
-                             "structure; structure is of length ",
-                             struct_val->size(),
-                             ", but attempted to select element ", index));
+          const std::shared_ptr<std::vector<SequenceExecutorValue>>&
+              struct_val = source.struct_value();
+          if (index >= struct_val->size()) {
+            return absl::InvalidArgumentError(absl::StrCat(
+                "Attempted to select an element out-of-bounds of "
+                "the underlying structure; structure is of length ",
+                struct_val->size(), ", but attempted to select element ",
+                index));
           }
-          return struct_val->at(index);
+          return MakeReadySharedTask<absl::StatusOr<SequenceExecutorValue>>(
+              struct_val->at(index));
         }
         default:
           return absl::InvalidArgumentError(
               "Can only select from embedded or structure values.");
       }
-    };
-    return Map(std::vector<ValueFuture>({value}), mapping_fn);
+    }
+    return ScheduleTask(
+        /*pool=*/nullptr,
+        [](ValueFuture val_fut, uint32_t idx,
+           std::shared_ptr<Executor> executor)
+            -> Task<absl::StatusOr<SequenceExecutorValue>> {
+          absl::StatusOr<SequenceExecutorValue> source_or = co_await val_fut;
+          if (!source_or.ok()) {
+            co_return source_or.status();
+          }
+          SequenceExecutorValue source = std::move(source_or).value();
+          switch (source.type()) {
+            case SequenceExecutorValue::ValueType::EMBEDDED: {
+              absl::StatusOr<OwnedValueId> sel_res =
+                  executor->CreateSelection(source.embedded()->ref(), idx);
+              if (!sel_res.ok()) {
+                co_return sel_res.status();
+              }
+              co_return SequenceExecutorValue::CreateEmbedded(
+                  ShareValueId(std::move(sel_res).value()));
+            }
+            case SequenceExecutorValue::ValueType::STRUCT: {
+              const std::shared_ptr<std::vector<SequenceExecutorValue>>&
+                  struct_val = source.struct_value();
+              if (idx >= struct_val->size()) {
+                co_return absl::InvalidArgumentError(absl::StrCat(
+                    "Attempted to select an element out-of-bounds of "
+                    "the underlying structure; structure is of length ",
+                    struct_val->size(), ", but attempted to select element ",
+                    idx));
+              }
+              co_return struct_val->at(idx);
+            }
+            default:
+              co_return absl::InvalidArgumentError(
+                  "Can only select from embedded or structure values.");
+          }
+        }(std::move(value), index, target_executor_));
   }
 
   absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final {
-    SequenceExecutorValue exec_value = TFF_TRY(Wait(value));
+    const absl::StatusOr<SequenceExecutorValue>& res = SyncWait(value);
+    if (!res.ok()) {
+      return res.status();
+    }
+    const SequenceExecutorValue& exec_value = res.value();
     switch (exec_value.type()) {
       case SequenceExecutorValue::ValueType::EMBEDDED:
       case SequenceExecutorValue::ValueType::SEQUENCE:
@@ -594,7 +725,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
 
 std::shared_ptr<Executor> CreateSequenceExecutor(
     std::shared_ptr<Executor> target_executor) {
-  return std::make_unique<SequenceExecutor>(target_executor);
+  return std::make_shared<SequenceExecutor>(std::move(target_executor));
 }
 
 }  // namespace tensorflow_federated
