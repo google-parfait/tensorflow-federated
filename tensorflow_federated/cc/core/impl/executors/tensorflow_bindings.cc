@@ -22,29 +22,16 @@ limitations under the License
 //     The only logic that may exist here is parameter/result conversions (e.g.
 //     `OwnedValueId` -> `ValueId`, etc).
 
-#include "absl/log/log.h"
-#include "absl/status/status.h"
-#include "federated_language/proto/computation.pb.h"
+#include <cstdint>
+#include <memory>
+
 #include "include/pybind11/cast.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
 #include "include/pybind11/pytypes.h"
-#include "include/pybind11/stl.h"
-#include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
-#include "pybind11_protobuf/native_proto_caster.h"
-#include "tensorflow/c/eager/c_api.h"
-#include "tensorflow/c/safe_ptr.h"
-#include "tensorflow/c/tf_tensor.h"
-#include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/python/lib/core/ndarray_tensor.h"
-#include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
+#include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
-#include "tensorflow_federated/proto/v0/executor.pb.h"
-
-namespace tensorflow {
-absl::Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
-}  // namespace tensorflow
 
 namespace tensorflow_federated {
 
@@ -85,48 +72,3 @@ PYBIND11_MODULE(tensorflow_bindings, m) {
 
 }  // namespace
 }  // namespace tensorflow_federated
-
-namespace pybind11 {
-namespace detail {
-
-template <>
-struct type_caster<tensorflow::Tensor> {
- public:
-  // Macro to create `value` variable which is used in `load` to store the
-  // result of the conversion.
-  PYBIND11_TYPE_CASTER(tensorflow::Tensor, const_name("Tensor"));
-
-  // Pybind11 caster for PyArray (Python) -> tensorflow::Tensor (C++).
-  bool load(handle src, bool) {
-    {
-      tensorflow::Safe_TF_TensorPtr tf_tensor_ptr;
-      absl::Status status = tensorflow::NdarrayToTensor(
-          /*ctx=*/nullptr, src.ptr(), &tf_tensor_ptr);
-      if (!status.ok()) {
-        LOG(ERROR) << status;
-        return false;
-      }
-      status = TF_TensorToTensor(tf_tensor_ptr.get(), &value);
-      if (!status.ok()) {
-        LOG(ERROR) << status;
-        return false;
-      }
-    }
-    tensorflow::ClearDecrefCache();
-    return !PyErr_Occurred();
-  }
-
-  // Convert tensorflow::Tensor (C++) back to a PyArray (Python).
-  static handle cast(const tensorflow::Tensor tensor, return_value_policy,
-                     handle) {
-    PyObject* result = nullptr;
-    absl::Status status = tensorflow::TensorToNdarray(tensor, &result);
-    if (!status.ok()) {
-      PyErr_SetString(PyExc_ValueError, "Failed to create np.ndarray");
-      return nullptr;
-    }
-    return result;
-  }
-};
-}  // namespace detail
-}  // namespace pybind11

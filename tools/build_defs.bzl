@@ -16,13 +16,6 @@
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("@rules_python//python:defs.bzl", "py_test")
 
-def if_static(extra, framework_shared_object = []):  # buildifier: disable=unused-variable
-    return_value = {
-        str(Label("@org_tensorflow//tensorflow:framework_shared_object")): framework_shared_object,
-        "//conditions:default": extra,
-    }
-    return select(return_value)
-
 def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
     """A version of `py_test` that tests both cpu and gpu.
 

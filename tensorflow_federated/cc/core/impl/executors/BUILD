@@ -273,7 +273,6 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/utility",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@tsl//tsl/profiler/lib:traceme",
     ],
 )
 
@@ -860,20 +859,9 @@ pybind_extension(
     name = "tensorflow_bindings",
     srcs = ["tensorflow_bindings.cc"],
     deps = [
+        ":executor",
         ":tensorflow_executor",
-        "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@federated_language//federated_language/proto:computation_cc_proto",
-        "@org_tensorflow//tensorflow/c:safe_ptr",
-        "@org_tensorflow//tensorflow/c:tf_tensor_hdrs",
-        "@org_tensorflow//tensorflow/c/eager:c_api_experimental_hdrs",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor",
-        "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_bridge",
-        "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
-        "@pybind11_protobuf//pybind11_protobuf:native_proto_caster",
     ],
 )
 
@@ -1010,16 +998,17 @@ cc_test(
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
         "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:portable_gif_internal",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/framework:tensor_testutil",
     ],
 )
 
