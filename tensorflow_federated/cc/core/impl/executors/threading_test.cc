@@ -19,6 +19,7 @@ limitations under the License
 #include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,6 +28,7 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/synchronization/blocking_counter.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/synchronization/notification.h"
@@ -143,6 +145,137 @@ TEST_F(ThreadPoolTest, ThreadRunWithThreadPoolMoveOnly) {
   EXPECT_EQ(future.get(), "hello world from pool");
 }
 
+TEST(ThreadRunTest, DetachedThreadReturnsExpectedValue) {
+  constexpr int32_t kExpectedValue = 42;
+  std::shared_future<int32_t> future =
+      ThreadRun([expected = kExpectedValue]() { return expected; });
+  future.wait();
+  EXPECT_EQ(future.get(), kExpectedValue);
+}
+
+TEST(ThreadRunTest, DestroysResultBeforeCallableWhenFutureDroppedEarly) {
+  constexpr int32_t kKeepaliveValue = 7;
+
+  struct ResultObserver {
+    explicit ResultObserver(std::weak_ptr<int32_t> weak_keepalive,
+                            std::atomic<bool>* callable_alive,
+                            absl::Notification* destroyed)
+        : state(std::make_shared<State>(std::move(weak_keepalive),
+                                        callable_alive, destroyed)) {}
+
+    struct State {
+      State(std::weak_ptr<int32_t> weak_keepalive,
+            std::atomic<bool>* callable_alive, absl::Notification* destroyed)
+          : weak_keepalive(std::move(weak_keepalive)),
+            callable_alive(callable_alive),
+            destroyed(destroyed) {}
+      ~State() {
+        callable_alive->store(!weak_keepalive.expired(),
+                              std::memory_order_release);
+        destroyed->Notify();
+      }
+      std::weak_ptr<int32_t> weak_keepalive;
+      std::atomic<bool>* callable_alive;
+      absl::Notification* destroyed;
+    };
+
+    std::shared_ptr<State> state;
+  };
+
+  auto callable_keepalive = std::make_shared<int32_t>(kKeepaliveValue);
+  std::weak_ptr<int32_t> weak_keepalive = callable_keepalive;
+  absl::Notification allow_finish;
+  absl::Notification result_destroyed;
+  std::atomic<bool> callable_alive_on_result_dtor{false};
+
+  std::optional<std::shared_future<ResultObserver>> future = ThreadRun(
+      [keepalive = std::move(callable_keepalive), weak_keepalive, &allow_finish,
+       &callable_alive_on_result_dtor, &result_destroyed]() {
+        allow_finish.WaitForNotification();
+        (void)keepalive;
+        return ResultObserver(weak_keepalive, &callable_alive_on_result_dtor,
+                              &result_destroyed);
+      });
+  // Drop caller's future reference before the worker completes so the worker's
+  // promise is the sole owner of ResultObserver.
+  future.reset();
+  allow_finish.Notify();
+  result_destroyed.WaitForNotification();
+  EXPECT_TRUE(callable_alive_on_result_dtor.load(std::memory_order_acquire));
+}
+
+TEST(ThreadingTest, MapDestroysInputFuturesBeforeCallable) {
+  constexpr int32_t kInputValue = 7;
+  std::optional<std::promise<absl::StatusOr<std::shared_ptr<int32_t>>>>
+      input_promise(std::in_place);
+  std::shared_future<absl::StatusOr<std::shared_ptr<int32_t>>> input_future =
+      input_promise->get_future().share();
+  std::atomic<bool> callable_alive(true);
+  std::atomic<bool> callable_alive_on_input_dtor(false);
+  std::atomic<bool> input_destroyed_during_callable(false);
+  absl::Notification allow_callable_return;
+  absl::Notification input_destroyed;
+  absl::Notification callable_destroyed;
+
+  struct CallableGuard {
+    CallableGuard(std::atomic<bool>* alive, absl::Notification* destroyed)
+        : alive(alive), destroyed(destroyed) {}
+    CallableGuard(const CallableGuard&) = delete;
+    CallableGuard& operator=(const CallableGuard&) = delete;
+    ~CallableGuard() {
+      alive->store(false, std::memory_order_release);
+      destroyed->Notify();
+    }
+
+    std::atomic<bool>* alive;
+    absl::Notification* destroyed;
+  };
+
+  auto input_payload = std::shared_ptr<int32_t>(
+      new int32_t(kInputValue), [&callable_alive, &callable_alive_on_input_dtor,
+                                 &input_destroyed](int32_t* ptr) {
+        callable_alive_on_input_dtor.store(
+            callable_alive.load(std::memory_order_acquire),
+            std::memory_order_release);
+        delete ptr;
+        input_destroyed.Notify();
+      });
+
+  std::vector<std::shared_future<absl::StatusOr<std::shared_ptr<int32_t>>>>
+      inputs = {input_future};
+  std::shared_future<absl::StatusOr<std::shared_ptr<int32_t>>> mapped =
+      TFF_ASSERT_OK(Map(std::move(inputs),
+                        [guard = std::make_shared<CallableGuard>(
+                             &callable_alive, &callable_destroyed),
+                         &allow_callable_return, &input_destroyed,
+                         &input_destroyed_during_callable](
+                            std::vector<std::shared_ptr<int32_t>> vals)
+                            -> absl::StatusOr<std::shared_ptr<int32_t>> {
+                          (void)guard;
+                          int32_t value = *vals[0];
+                          allow_callable_return.WaitForNotification();
+                          vals.clear();
+                          input_destroyed_during_callable.store(
+                              input_destroyed.HasBeenNotified(),
+                              std::memory_order_release);
+                          return std::make_shared<int32_t>(value);
+                        }));
+
+  // Drop the caller's future and promise references so only `Map()` owns the
+  // input payload when the callable unblocks.
+  input_future = {};
+  input_promise->set_value(std::move(input_payload));
+  input_promise.reset();
+  allow_callable_return.Notify();
+
+  std::shared_ptr<int32_t> result = TFF_ASSERT_OK(Wait(mapped));
+  input_destroyed.WaitForNotification();
+  callable_destroyed.WaitForNotification();
+  EXPECT_EQ(*result, kInputValue);
+  EXPECT_TRUE(input_destroyed_during_callable.load(std::memory_order_acquire));
+  EXPECT_TRUE(callable_alive_on_input_dtor.load(std::memory_order_acquire));
+}
+
 class ParallelTasksTest : public ::testing::Test {};
 
 TEST_F(ParallelTasksTest, EmptyIsOk) {
@@ -219,6 +352,35 @@ TEST_F(ParallelTasksTest, MoveOnlyTask) {
   }));
   EXPECT_THAT(tasks.WaitAll(), IsOk());
   EXPECT_EQ(result, 100);
+}
+
+TEST_F(ParallelTasksTest, DestroysTaskCapturesBeforeWaitAllReturns) {
+  constexpr int32_t kCaptureValue = 42;
+  constexpr int32_t kPoolThreads = 1;
+  constexpr int32_t kDetachedIterations = 25;
+
+  for (int32_t i = 0; i < kDetachedIterations; ++i) {
+    auto capture = std::make_shared<int32_t>(kCaptureValue);
+    std::weak_ptr<int32_t> weak_capture = capture;
+    ParallelTasks detached_tasks;
+    TFF_ASSERT_OK(detached_tasks.add_task([capture = std::move(capture)]() {
+      (void)capture;
+      return absl::OkStatus();
+    }));
+    EXPECT_THAT(detached_tasks.WaitAll(), IsOk());
+    EXPECT_TRUE(weak_capture.expired());
+  }
+
+  ThreadPool pool(kPoolThreads, /*name=*/"capture_test");
+  auto pooled_capture = std::make_shared<int32_t>(kCaptureValue);
+  std::weak_ptr<int32_t> weak_pooled_capture = pooled_capture;
+  ParallelTasks pooled_tasks(&pool);
+  TFF_ASSERT_OK(pooled_tasks.add_task([capture = std::move(pooled_capture)]() {
+    (void)capture;
+    return absl::OkStatus();
+  }));
+  EXPECT_THAT(pooled_tasks.WaitAll(), IsOk());
+  EXPECT_TRUE(weak_pooled_capture.expired());
 }
 
 }  // namespace

@@ -19,6 +19,7 @@ limitations under the License
 #include <chrono>  // NOLINT
 #include <cstdint>
 #include <deque>
+#include <exception>
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
@@ -28,6 +29,7 @@ limitations under the License
 #include <utility>
 #include <vector>
 
+#include "absl/base/config.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
@@ -97,17 +99,35 @@ template <typename Func,
           typename ReturnValue = typename std::result_of_t<Func()>>
 std::shared_future<ReturnValue> ThreadRun(Func lambda,
                                           ThreadPool* thread_pool = nullptr) {
-  using TaskT = std::packaged_task<ReturnValue()>;
-  TaskT task(std::move(lambda));
-  std::shared_future<ReturnValue> future_ptr(task.get_future());
+  auto promise = std::make_unique<std::promise<ReturnValue>>();
+  std::shared_future<ReturnValue> future(promise->get_future());
+  auto run_task = [promise = std::move(promise),
+                   fn = std::move(lambda)]() mutable {
+#ifdef ABSL_HAVE_EXCEPTIONS
+    try {
+#endif
+      if constexpr (std::is_void_v<ReturnValue>) {
+        fn();
+        promise->set_value();
+      } else {
+        promise->set_value(fn());
+      }
+#ifdef ABSL_HAVE_EXCEPTIONS
+    } catch (...) {
+      promise->set_exception(std::current_exception());
+    }
+#endif
+    // Release the shared state before `fn` is destroyed so any values owned
+    // by the result dispose before executor keepalives or task guards exit.
+    promise.reset();
+  };
   if (thread_pool != nullptr) {
-    thread_pool->Schedule([task = std::move(task)]() mutable { task(); })
-        .IgnoreError();
+    thread_pool->Schedule(std::move(run_task)).IgnoreError();
   } else {
-    std::thread th(std::move(task));
+    std::thread th(std::move(run_task));
     th.detach();
   }
-  return future_ptr;
+  return future;
 }
 
 // Awaits the result of a ValueFuture, usually a future returning a
@@ -219,10 +239,15 @@ absl::StatusOr<ValueFuture> Map(std::vector<ValueFuture>&& futures, Func lambda,
     return ReadyFuture(TFF_TRY(lambda(GetAll(futures))));
   }
   return ThreadRun(
-      [futures = std::move(futures), lambda = std::move(lambda)]()
+      [lambda = std::move(lambda), futures = std::move(futures)]() mutable
           -> absl::StatusOr<std::remove_const_t<
               std::remove_reference_t<decltype(futures[0].get().value())>>> {
-        return lambda(TFF_TRY(WaitAll(futures)));
+        std::vector<ValueFuture> local_futures = std::move(futures);
+        auto values = TFF_TRY(WaitAll(local_futures));
+        // Clear input futures before calling `lambda` so input values do not
+        // outlive keepalives or task guards captured by `lambda`.
+        local_futures.clear();
+        return lambda(std::move(values));
       },
       thread_pool);
 }

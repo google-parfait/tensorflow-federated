@@ -167,8 +167,10 @@ class LocalCPPExecutionContextTest(absltest.TestCase):
     self.assertEqual(one, 1)
 
   def test_async_execution_context_runs_in_parallel(self):
-    n_parallel_calls = 10
-    sleep_time = 5
+    num_parallel_calls = 4
+    sleep_seconds = 3
+    max_parallel_exec_seconds = 9
+    max_iters_cap = 10
 
     @tensorflow_computation.tf_computation(
         collections.OrderedDict(x=np.int32, y=np.int32)
@@ -178,37 +180,34 @@ class LocalCPPExecutionContextTest(absltest.TestCase):
       init_time = tf.timestamp()
       n_iters = 0
       # This is a busy-sleep; TF exposes no direct sleep ops.
-      while tf.timestamp() - init_time < sleep_time:
+      while tf.timestamp() - init_time < sleep_seconds:
         n_iters += 1
       return (
-          ordered_dict['x'] * ordered_dict['y'] * tf.math.minimum(n_iters, 10)
+          ordered_dict['x']
+          * ordered_dict['y']
+          * tf.math.minimum(n_iters, max_iters_cap)
       )
 
     context = cpp_execution_contexts.create_async_local_cpp_execution_context()
 
     async def multiple_invocations():
-      return await asyncio.gather(
-          *[
-              context.invoke(
-                  sleep_and_multiply, collections.OrderedDict(x=1, y=1)
-              )
-              for _ in range(n_parallel_calls)
-          ]
-      )
+      return await asyncio.gather(*[
+          context.invoke(sleep_and_multiply, collections.OrderedDict(x=1, y=1))
+          for _ in range(num_parallel_calls)
+      ])
 
     loop = asyncio.new_event_loop()
     # This timing-based test seems unfortunate.
     start = time.time()
     result = loop.run_until_complete(multiple_invocations())
     exec_time = time.time() - start
-    # If these calls are 'truly' parallel, this will run in ~5s. If sequential,
-    # 50s. So we experimentally pick a time where flakes should be extremely
-    # rare (0 in 10K on testing).
-    self.assertLess(exec_time, 10)
-    self.assertLen(result, n_parallel_calls)
+    # Four parallel 3s calls take ~3s on >=4 vCPUs (~6s on 2 vCPUs). Sequential
+    # calls take ~12s.
+    self.assertLess(exec_time, max_parallel_exec_seconds)
+    self.assertLen(result, num_parallel_calls)
     for x in result:
-      # 1 * 1 * 10
-      self.assertEqual(x, 10)
+      # 1 * 1 * max_iters_cap
+      self.assertEqual(x, max_iters_cap)
 
   def test_returns_sequence(self):
     @tensorflow_computation.tf_computation

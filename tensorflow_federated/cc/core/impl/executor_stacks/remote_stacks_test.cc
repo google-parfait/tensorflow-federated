@@ -42,18 +42,6 @@ using ::testing::StrictMock;
 
 namespace tensorflow_federated {
 
-std::shared_ptr<StrictMock<MockExecutor>> get_mock_executor() {
-  static auto mock_ex_ = std::make_shared<StrictMock<MockExecutor>>();
-  return mock_ex_;
-}
-
-MockFunction<absl::StatusOr<std::shared_ptr<Executor>>(void)>
-    mock_executor_factory_;
-
-MockFunction<absl::StatusOr<ComposingChild>(
-    std::shared_ptr<grpc::ChannelInterface>, const CardinalityMap&)>
-    mock_composing_child_factory_;
-
 std::shared_ptr<Executor> composing_executor_factory(
     std::shared_ptr<Executor> server, std::vector<ComposingChild> children) {
   return CreateComposingExecutor(server, children);
@@ -87,7 +75,20 @@ class MockGrpcChannelInterface : public grpc::ChannelInterface {
               (grpc_connectivity_state, gpr_timespec), (override));
 };
 
-class RemoteExecutorStackTest : public ::testing::Test {};
+class RemoteExecutorStackTest : public ::testing::Test {
+ protected:
+  std::shared_ptr<StrictMock<MockExecutor>> get_mock_executor() {
+    return mock_ex_;
+  }
+
+  std::shared_ptr<StrictMock<MockExecutor>> mock_ex_ =
+      std::make_shared<StrictMock<MockExecutor>>();
+  MockFunction<absl::StatusOr<std::shared_ptr<Executor>>()>
+      mock_executor_factory_;
+  MockFunction<absl::StatusOr<ComposingChild>(
+      std::shared_ptr<grpc::ChannelInterface>, const CardinalityMap&)>
+      mock_composing_child_factory_;
+};
 
 TEST_F(RemoteExecutorStackTest, UnspecifiedClientsReturnsInvalidArgError) {
   absl::StatusOr<std::shared_ptr<Executor>> status_or_executor =

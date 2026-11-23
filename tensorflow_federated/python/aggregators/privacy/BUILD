@@ -64,6 +64,7 @@ py_library(
 py_test(
     name = "quantile_test",
     srcs = ["quantile_test.py"],
+    shard_count = 2,
     deps = [
         ":quantile",
         ":test_utils",

@@ -1027,11 +1027,11 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         return absl::OkStatus();
       }
       case ExecutorValue::ValueType::UNPLACED: {
-        return tasks.add_task(
-            [value = std::move(value), value_pb, server = server_]() {
-              *value_pb = *TFF_TRY(value.unplaced()->Proto(*server));
-              return absl::OkStatus();
-            });
+        return tasks.add_task([server = server_, value, value_pb]() mutable {
+          ExecutorValue local_value = std::move(value);
+          *value_pb = *TFF_TRY(local_value.unplaced()->Proto(*server));
+          return absl::OkStatus();
+        });
       }
       case ExecutorValue::ValueType::INTRINSIC: {
         return absl::UnimplementedError(
@@ -1046,10 +1046,10 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         type_pb->set_all_equal(true);
         type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
             kServerUri.data(), kServerUri.size());
-        return tasks.add_task([value = std::move(value),
-                               ptr = federated_pb->add_value(),
-                               server = server_]() {
-          return server->Materialize(value.server()->ref(), ptr);
+        return tasks.add_task([server = server_, value,
+                               ptr = federated_pb->add_value()]() mutable {
+          ExecutorValue local_value = std::move(value);
+          return server->Materialize(local_value.server()->ref(), ptr);
         });
       }
       case ExecutorValue::ValueType::STRUCTURE: {

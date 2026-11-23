@@ -22,9 +22,11 @@ limitations under the License
 #include <utility>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/synchronization/mutex.h"
 #include "tensorflow_federated/cc/core/impl/executors/data_backend.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -43,6 +45,63 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
                std::shared_ptr<DataBackend> data_backend)
       : child_(std::move(child)), data_backend_(std::move(data_backend)) {}
 
+  // Wait for active detached tasks and clear tracked futures before destroying
+  // `child_`.
+  ~DataExecutor() override {
+    WaitForTasks();
+    ClearTracked();
+  }
+
+ private:
+  // Tracks active asynchronous closures so the destructor drains them before
+  // destroying `child_` and `data_backend_`.
+  class ActiveTaskGuard {
+   public:
+    explicit ActiveTaskGuard(DataExecutor* executor) : executor_(executor) {
+      executor_->StartTask();
+    }
+    ActiveTaskGuard(const ActiveTaskGuard&) = delete;
+    ActiveTaskGuard& operator=(const ActiveTaskGuard&) = delete;
+    ActiveTaskGuard(ActiveTaskGuard&& other) noexcept
+        : executor_(std::exchange(other.executor_, nullptr)) {}
+    ActiveTaskGuard& operator=(ActiveTaskGuard&& other) noexcept {
+      if (this != &other) {
+        if (executor_ != nullptr) {
+          executor_->FinishTask();
+        }
+        executor_ = std::exchange(other.executor_, nullptr);
+      }
+      return *this;
+    }
+    ~ActiveTaskGuard() {
+      if (executor_ != nullptr) {
+        executor_->FinishTask();
+      }
+    }
+
+   private:
+    DataExecutor* executor_;
+  };
+
+  void StartTask() {
+    absl::MutexLock lock(tasks_mutex_);
+    ++active_tasks_;
+  }
+
+  void FinishTask() {
+    absl::MutexLock lock(tasks_mutex_);
+    --active_tasks_;
+  }
+
+  bool HasNoActiveTasks() const ABSL_SHARED_LOCKS_REQUIRED(tasks_mutex_) {
+    return active_tasks_ == 0;
+  }
+
+  void WaitForTasks() {
+    absl::MutexLock lock(tasks_mutex_);
+    tasks_mutex_.Await(absl::Condition(this, &DataExecutor::HasNoActiveTasks));
+  }
+
  protected:
   absl::string_view ExecutorName() final {
     static constexpr absl::string_view kExecutorName = "DataExecutor";
@@ -59,8 +118,9 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
       federated_language::Type data_type = value_pb.computation().type();
       return ThreadRun([this, data = std::move(data),
                         data_type = std::move(data_type),
-                        this_keepalive =
-                            shared_from_this()]() -> absl::StatusOr<SharedId> {
+                        task_guard = ActiveTaskGuard(
+                            this)]() -> absl::StatusOr<SharedId> {
+        (void)task_guard;
         Trace("DataExecutor::DataBackend::ResolveToValue");
         v0::Value resolved_value;
         TFF_TRY(data_backend_->ResolveToValue(data, data_type, resolved_value));
@@ -83,8 +143,9 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
     }
     return Map(
         std::move(futures),
-        [this, this_keepalive = shared_from_this()](
+        [this, task_guard = ActiveTaskGuard(this)](
             std::vector<SharedId> values) -> absl::StatusOr<SharedId> {
+          (void)task_guard;
           // `values` holds the resolved `futures`, either
           // `{function}` or `{function, argument}`.
           ValueId function_id = values[0]->ref();
@@ -102,8 +163,9 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
       std::vector<ValueFuture> member_futures) final {
     return Map(
         std::move(member_futures),
-        [this, this_keepalive = shared_from_this()](
+        [this, task_guard = ActiveTaskGuard(this)](
             std::vector<SharedId> members) -> absl::StatusOr<SharedId> {
+          (void)task_guard;
           std::vector<ValueId> ids;
           ids.reserve(members.size());
           for (const auto& member : members) {
@@ -118,8 +180,9 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
                                               const uint32_t index) final {
     return Map(
         std::vector<ValueFuture>({std::move(source_future)}),
-        [index, this, this_keepalive = shared_from_this()](
+        [index, this, task_guard = ActiveTaskGuard(this)](
             std::vector<SharedId> source_in_vec) -> absl::StatusOr<SharedId> {
+          (void)task_guard;
           OwnedValueId child_value =
               TFF_TRY(child_->CreateSelection(source_in_vec[0]->ref(), index));
           return std::make_shared<const OwnedValueId>(std::move(child_value));
@@ -134,6 +197,8 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
  private:
   std::shared_ptr<Executor> child_;
   std::shared_ptr<DataBackend> data_backend_;
+  absl::Mutex tasks_mutex_;
+  int32_t active_tasks_ ABSL_GUARDED_BY(tasks_mutex_) = 0;
 };
 
 }  // namespace
