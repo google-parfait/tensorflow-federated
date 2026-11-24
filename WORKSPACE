@@ -56,6 +56,7 @@ http_archive(
     patch_args = ["-p1"],
     patches = [
         "@org_tensorflow//third_party/xla/third_party/grpc:grpc.patch",
+        "//third_party/grpc:grpc.patch",
     ],
     sha256 = "dd6a2fa311ba8441bbefd2764c55b99136ff10f7ea42954be96006a2723d33fc",
     strip_prefix = "grpc-1.74.0",
@@ -91,7 +92,10 @@ http_archive(
     build_file = "//third_party:eigen.BUILD",
     sha256 = "1a432ccbd597ea7b9faa1557b1752328d6adc1a3db8969f6fe793ff704be3bf0",
     strip_prefix = "eigen-4c38131a16803130b66266a912029504f2cf23cd",
-    url = "https://gitlab.com/libeigen/eigen/-/archive/4c38131a16803130b66266a912029504f2cf23cd/eigen-4c38131a16803130b66266a912029504f2cf23cd.tar.gz",
+    urls = [
+        "https://storage.googleapis.com/mirror.tensorflow.org/gitlab.com/libeigen/eigen/-/archive/4c38131a16803130b66266a912029504f2cf23cd/eigen-4c38131a16803130b66266a912029504f2cf23cd.tar.gz",
+        "https://gitlab.com/libeigen/eigen/-/archive/4c38131a16803130b66266a912029504f2cf23cd/eigen-4c38131a16803130b66266a912029504f2cf23cd.tar.gz",
+    ],
 )
 
 http_archive(
