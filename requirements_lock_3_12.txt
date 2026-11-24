@@ -118,7 +118,7 @@ termcolor==3.3.0
     # via tensorflow
 tqdm==4.64.1
     # via -r requirements.in
-typing-extensions==4.6.3
+typing-extensions==4.16.0
     # via
     #   optree
     #   tensorflow

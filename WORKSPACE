@@ -212,6 +212,15 @@ load("@xla//third_party/py:python_repo.bzl", "python_repository")
 python_repository(name = "python_version_repo")
 
 # TFF's own pip dependencies (separate from TF's).
+load("//third_party:python_version.bzl", "hermetic_python_version")
+
+hermetic_python_version(name = "hermetic_python_version")
+
+load(
+    "@hermetic_python_version//:defs.bzl",
+    "PYTHON_VERSION_UNDERSCORE",
+    "REQUIREMENTS_LOCK",
+)
 load("@rules_python//python:pip.bzl", "package_annotation", "pip_parse")
 
 # Create Bazel cc_library targets for NumPy headers.
@@ -248,8 +257,8 @@ pip_parse(
         "--index-url",
         "https://pypi.org/simple",
     ],
-    python_interpreter_target = "@python_3_12_host//:python",
-    requirements_lock = "//:requirements_lock_3_12.txt",
+    python_interpreter_target = "@python_%s_host//:python" % PYTHON_VERSION_UNDERSCORE,
+    requirements_lock = REQUIREMENTS_LOCK,
 )
 
 load("@pypi//:requirements.bzl", "install_deps")
