@@ -77,8 +77,8 @@ class DPExhaustiveReportHistogram
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::shared_ptr<CompositeKeyStorage> key_storage,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed, TensorSpan domain_tensors,
+      double epsilon, double delta, int64_t max_groups_contributed,
+      TensorSpan domain_tensors,
       int max_string_length = kDefaultMaxStringLength);
 
   // Checks magnitude of DP budget. If too large, simply releases noiseless
@@ -95,8 +95,8 @@ class DPExhaustiveReportHistogram
       std::unique_ptr<CompositeKeyCombiner> key_combiner,
       std::shared_ptr<CompositeKeyStorage> key_storage,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed, TensorSpan domain_tensors,
+      double epsilon, double delta, int64_t max_groups_contributed,
+      TensorSpan domain_tensors,
       int max_string_length = kDefaultMaxStringLength);
 
   // Given indices that specify a combination of keys, increment the index

@@ -109,7 +109,6 @@ TEST_P(GroupingFederatedSumTest, DenseAggregationSucceeds) {
 
   EXPECT_THAT(aggregator->Accumulate({&ordinals, &t3}), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -152,7 +151,6 @@ TEST_P(GroupingFederatedSumTest, DenseAggregationCastToLargerTypeSucceeds) {
 
   EXPECT_THAT(aggregator->Accumulate({&ordinals, &t3}), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -199,7 +197,6 @@ TEST_P(GroupingFederatedSumTest,
 
   EXPECT_THAT(aggregator->Accumulate({&ordinals, &t3}), IsOk());
   EXPECT_THAT(aggregator->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator).Report();
   EXPECT_THAT(result, IsOk());
@@ -237,18 +234,15 @@ TEST_P(GroupingFederatedSumTest, MergeSucceeds) {
     aggregator2 = factory->FromProto(GetDefaultIntrinsic(), state2).value();
   }
 
-  int aggregator2_num_inputs = aggregator2->GetNumInputs();
   auto aggregator2_result =
       std::move(std::move(*aggregator2).Report().value()[0]);
   auto ordinals_for_merge =
       Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({0})).value();
   EXPECT_THAT((dynamic_cast<OneDimGroupingAggregator<int32_t, int64_t>*>(
                    aggregator1.get()))
-                  ->MergeTensors({&ordinals_for_merge, &aggregator2_result},
-                                 aggregator2_num_inputs),
+                  ->MergeTensors({&ordinals_for_merge, &aggregator2_result}),
               IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());
@@ -283,18 +277,15 @@ TEST_P(GroupingFederatedSumTest, MergeSucceedsWithNonSharedOrdinals) {
     aggregator2 = factory->FromProto(GetDefaultIntrinsic(), state2).value();
   }
 
-  int aggregator2_num_inputs = aggregator2->GetNumInputs();
   auto aggregator2_result =
       std::move(std::move(*aggregator2).Report().value()[0]);
   auto ordinals_for_merge =
       Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({2})).value();
   EXPECT_THAT((dynamic_cast<OneDimGroupingAggregator<int32_t, int64_t>*>(
                    aggregator1.get()))
-                  ->MergeTensors({&ordinals_for_merge, &aggregator2_result},
-                                 aggregator2_num_inputs),
+                  ->MergeTensors({&ordinals_for_merge, &aggregator2_result}),
               IsOk());
   EXPECT_THAT(aggregator1->CanReport(), IsTrue());
-  EXPECT_THAT(aggregator1->GetNumInputs(), Eq(3));
 
   auto result = std::move(*aggregator1).Report();
   EXPECT_THAT(result, IsOk());

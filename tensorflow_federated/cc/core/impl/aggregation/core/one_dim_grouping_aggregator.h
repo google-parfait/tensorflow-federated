@@ -67,9 +67,7 @@ class OneDimBaseGroupingAggregator : public TensorAggregator {
 
   // Merges intermediate aggregates contained in the tensors param into the
   // current Aggregator instance. Expects a tensors param of size 2, where the
-  // first tensor contains ordinals and the second tensor contains values. The
-  // num_inputs param specifies how many inputs were pre-accumulated into the
-  // tensors input.
+  // first tensor contains ordinals and the second tensor contains values.
   //
   // The provided ordinals should correspond to the key->ordinal mapping used by
   // the GroupByAggregator into which the values are being merged, as opposed to
@@ -79,8 +77,7 @@ class OneDimBaseGroupingAggregator : public TensorAggregator {
   //
   // The actual implementation of the merge operation is to be provided by a
   // derived class.
-  virtual absl::Status MergeTensors(InputTensorList tensors,
-                                    int num_inputs) = 0;
+  virtual absl::Status MergeTensors(InputTensorList tensors) = 0;
 
   // Stores the intermediate state of the OneDimBaseGroupingAggregator as a
   // proto.
@@ -151,20 +148,19 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
   // to the ordinal tensor) should be known in advance and thus this constructor
   // should take in a shape with a single unknown dimension.
   OneDimGroupingAggregator()
-      : OneDimGroupingAggregator(std::make_unique<MutableVectorData<OutputT>>(),
-                                 0) {}
+      : OneDimGroupingAggregator(
+            std::make_unique<MutableVectorData<OutputT>>()) {}
 
-  OneDimGroupingAggregator(std::unique_ptr<MutableVectorData<OutputT>> data,
-                           int num_inputs)
-      : data_vector_(std::move(data)), num_inputs_(num_inputs) {}
+  explicit OneDimGroupingAggregator(
+      std::unique_ptr<MutableVectorData<OutputT>> data)
+      : data_vector_(std::move(data)) {}
 
   // Implementation of the tensor merge operation.
-  absl::Status MergeTensors(InputTensorList tensors, int num_inputs) override {
+  absl::Status MergeTensors(InputTensorList tensors) override {
     merge_context_ = true;
     absl::Status can_merge = ValidateInputs(tensors);
     merge_context_ = false;
     TFF_RETURN_IF_ERROR(can_merge);
-    num_inputs_ += num_inputs;
     AggVector<OutputT> value_vector = tensors[1]->AsAggVector<OutputT>();
     AggVector<int64_t> ordinals_vector = tensors[0]->AsAggVector<int64_t>();
 
@@ -172,8 +168,6 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
     MergeVectorByOrdinals(ordinals_vector, value_vector);
     return absl::OkStatus();
   }
-
-  int GetNumInputs() const override { return num_inputs_; }
 
   Status CheckValid() const override {
     if (data_vector_ == nullptr) {
@@ -220,7 +214,6 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
   // Accumulates the values into the positions in the output tensor which are
   // indicated by the corresponding ordinals.
   Status AggregateTensors(InputTensorList tensors) override {
-    num_inputs_++;
     AggVector<InputT> value_vector = tensors[1]->AsAggVector<InputT>();
     AggVector<int64_t> ordinals_vector = tensors[0]->AsAggVector<int64_t>();
 
@@ -278,7 +271,6 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
   OneDimGroupingAggregatorState CreateStateFromMutableVectorData(
       MutableVectorData<OutputT>&& data) {
     OneDimGroupingAggregatorState aggregator_state;
-    aggregator_state.set_num_inputs(num_inputs_);
     *(aggregator_state.mutable_vector_data()) = data.EncodeContent();
     return aggregator_state;
   }
@@ -295,7 +287,6 @@ class OneDimGroupingAggregator : public OneDimBaseGroupingAggregator {
   }
 
   std::unique_ptr<MutableVectorData<OutputT>> data_vector_;
-  int num_inputs_;
   bool merge_context_ = false;
 };
 

@@ -67,8 +67,7 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
       std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> aggregators,
-      int num_inputs, double epsilon, double delta,
-      int64_t max_groups_contributed,
+      double epsilon, double delta, int64_t max_groups_contributed,
       std::optional<int> min_contributors_to_group = std::nullopt,
       std::vector<int> contributors_to_groups = {},
       int max_string_length = kDefaultMaxStringLength)
@@ -76,9 +75,9 @@ class MockDPGroupByAggregator : public DPGroupByAggregator {
             input_key_specs, output_key_specs, intrinsics,
             std::make_unique<CompositeKeyCombiner>(CreateKeyTypes(
                 input_key_specs.size(), input_key_specs, *output_key_specs)),
-            std::move(aggregators), num_inputs, epsilon, delta,
-            max_groups_contributed, min_contributors_to_group,
-            contributors_to_groups, max_string_length) {}
+            std::move(aggregators), epsilon, delta, max_groups_contributed,
+            min_contributors_to_group, contributors_to_groups,
+            max_string_length) {}
   double GetEpsilonPerAgg() { return epsilon_per_agg(); }
   double GetDeltaPerAgg() { return delta_per_agg(); }
   OutputTensorList TakeOutputs() && override {
@@ -138,9 +137,8 @@ MockDPGroupByAggregator CreateMockForTestingEpsilonAndDeltaSplit(
     aggregators.push_back(nullptr);
   }
   return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
-                                 &intrinsics, std::move(aggregators),
-                                 /*num_inputs=*/0, epsilon, delta,
-                                 /*max_groups_contributed=*/1);
+                                 &intrinsics, std::move(aggregators), epsilon,
+                                 delta, /*max_groups_contributed=*/1);
 }
 
 // First batch of tests: ensure that epsilon is split when appropriate
@@ -199,7 +197,7 @@ TEST(DPGroupByAggregatorTest, StringLengthCheck) {
       dp_histogram_testing::CreateTensorSpec("key_out", DT_STRING));
   MockDPGroupByAggregator top_aggregator(
       input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
-      /*num_inputs=*/0, /*epsilon=*/0.1, /*delta=*/0.1,
+      /*epsilon=*/0.1, /*delta=*/0.1,
       /*max_groups_contributed=*/1, std::nullopt, {}, /*max_string_length=*/9);
 
   // Finally we show that a long string is rejected but a short one is accepted.
@@ -252,10 +250,10 @@ MockDPGroupByAggregator CreateMockForTestingPadding(
       dp_histogram_testing::CreateTensorSpec("key1_out", DT_STRING));
   output_key_specs.push_back(
       dp_histogram_testing::CreateTensorSpec("key2_out", DT_STRING));
-  return MockDPGroupByAggregator(
-      input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
-      /*num_inputs=*/0, epsilon, delta, max_groups_contributed, std::nullopt,
-      {}, max_string_length);
+  return MockDPGroupByAggregator(input_key_specs, &output_key_specs,
+                                 &intrinsics, std::move(aggregators), epsilon,
+                                 delta, max_groups_contributed, std::nullopt,
+                                 {}, max_string_length);
 }
 TEST(DPGroupByAggregatorTest, SerializeSensitivity_TwoKeysTwoSums) {
   std::vector<Intrinsic> intrinsics;
@@ -600,7 +598,7 @@ TEST(DPGroupByAggregatorTest,
       dp_histogram_testing::CreateTensorSpec("key_out", DT_STRING)};
   MockDPGroupByAggregator top_aggregator(
       input_key_specs, &output_key_specs, &intrinsics, std::move(aggregators),
-      /*num_inputs=*/0, /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
+      /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
       /*max_groups_contributed=*/2);
 
   TFF_ASSERT_OK_AND_ASSIGN(
@@ -611,7 +609,6 @@ TEST(DPGroupByAggregatorTest,
       Tensor values,
       Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({10, 20, 30, 40})));
   TFF_ASSERT_OK(top_aggregator.Accumulate({&keys, &values}));
-  EXPECT_EQ(top_aggregator.GetNumInputs(), 1);
 
   OutputTensorList outputs = std::move(top_aggregator).TakeOutputs();
   ASSERT_EQ(outputs.size(), 2);
@@ -658,7 +655,7 @@ TEST(DPGroupByAggregatorTest,
   DPClosedDomainGroupByAggregator<MockDPGroupByAggregator> top_aggregator(
       DomainSpec(domain_tensors), input_key_specs, &output_key_specs,
       &intrinsics, std::move(aggregators),
-      /*num_inputs=*/0, /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
+      /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
       /*max_groups_contributed=*/10);
 
   // Row 0: ("a", 1) -> in domain
@@ -676,7 +673,6 @@ TEST(DPGroupByAggregatorTest,
       Tensor values,
       Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({10, 20, 30, 40})));
   TFF_ASSERT_OK(top_aggregator.Accumulate({&keys1, &keys2, &values}));
-  EXPECT_EQ(top_aggregator.GetNumInputs(), 1);
 
   OutputTensorList outputs = std::move(top_aggregator).TakeOutputs();
   ASSERT_EQ(outputs.size(), 3);
@@ -705,7 +701,7 @@ TEST(DPGroupByAggregatorTest,
   DPClosedDomainGroupByAggregator<MockDPGroupByAggregator> top_aggregator(
       DomainSpec(domain_tensors), input_key_specs, &output_key_specs,
       &intrinsics, std::move(aggregators),
-      /*num_inputs=*/0, /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
+      /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
       /*max_groups_contributed=*/2);
 
   // "d" is out of domain, leaving 3 valid rows ("a", "b", "c") from which 2
@@ -718,7 +714,6 @@ TEST(DPGroupByAggregatorTest,
       Tensor values,
       Tensor::Create(DT_INT32, {4}, CreateTestData<int32_t>({10, 99, 20, 30})));
   TFF_ASSERT_OK(top_aggregator.Accumulate({&keys, &values}));
-  EXPECT_EQ(top_aggregator.GetNumInputs(), 1);
 
   OutputTensorList outputs = std::move(top_aggregator).TakeOutputs();
   ASSERT_EQ(outputs.size(), 2);
@@ -742,7 +737,7 @@ TEST(DPGroupByAggregatorTest,
 }
 
 TEST(DPGroupByAggregatorTest,
-     AggregateTensors_AllRowsFilteredOut_IncrementsNumInputs) {
+     AggregateTensors_AllRowsFilteredOut_ProducesEmptyOutputs) {
   Intrinsic intrinsic = CreateInnerIntrinsic<int32_t, int64_t>(100, -1, -1);
   TFF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<TensorAggregator> inner_agg,
                            CreateTensorAggregator(intrinsic));
@@ -761,7 +756,7 @@ TEST(DPGroupByAggregatorTest,
   DPClosedDomainGroupByAggregator<MockDPGroupByAggregator> top_aggregator(
       DomainSpec(domain_tensors), input_key_specs, &output_key_specs,
       &intrinsics, std::move(aggregators),
-      /*num_inputs=*/0, /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
+      /*epsilon=*/kEpsilonThreshold, /*delta=*/0.1,
       /*max_groups_contributed=*/2);
 
   TFF_ASSERT_OK_AND_ASSIGN(
@@ -771,7 +766,6 @@ TEST(DPGroupByAggregatorTest,
       Tensor values,
       Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({10, 20})));
   TFF_ASSERT_OK(top_aggregator.Accumulate({&keys, &values}));
-  EXPECT_EQ(top_aggregator.GetNumInputs(), 1);
 
   OutputTensorList outputs = std::move(top_aggregator).TakeOutputs();
   ASSERT_EQ(outputs.size(), 2);

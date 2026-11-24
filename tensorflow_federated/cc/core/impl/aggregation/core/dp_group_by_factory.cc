@@ -430,8 +430,6 @@ DPGroupByFactory::CreateInternal(
     }
   }
 
-  int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
-
   if (open_domain) {
     std::vector<int> contributor_counts;
     if (aggregator_state != nullptr) {
@@ -440,16 +438,16 @@ DPGroupByFactory::CreateInternal(
     }
     return DPThresholdingHistogram::Create(
         intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-        std::move(key_combiner), std::move(nested_aggregators), num_inputs,
-        epsilon, delta, max_groups_contributed, min_contributors_to_group,
-        contributor_counts, kDefaultMaxStringLength, key_tensors);
+        std::move(key_combiner), std::move(nested_aggregators), epsilon, delta,
+        max_groups_contributed, min_contributors_to_group, contributor_counts,
+        kDefaultMaxStringLength, key_tensors);
   }
 
   return DPExhaustiveReportHistogram::Create(
       intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
       std::move(key_combiner), std::move(key_storage),
-      std::move(nested_aggregators), num_inputs, epsilon, delta,
-      max_groups_contributed, key_tensors);
+      std::move(nested_aggregators), epsilon, delta, max_groups_contributed,
+      key_tensors);
 }
 
 REGISTER_AGGREGATOR_FACTORY(std::string(kDPGroupByUri), DPGroupByFactory);

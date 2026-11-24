@@ -167,7 +167,7 @@ class FederatedMean final : public TensorAggregator {
     return outputs;
   }
 
-  int GetNumInputs() const override { return num_inputs_; }
+  int GetNumInputs() const { return num_inputs_; }
 
   std::pair<std::unique_ptr<MutableVectorData<V>>, W> GetInternalState() {
     output_consumed_ = true;

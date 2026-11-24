@@ -287,10 +287,9 @@ TEST(DPTensorAggregatorBundleTest, PartiallyCorrectInputDoesNotUpdateState) {
   EXPECT_THAT(accumulate_status.message(),
               HasSubstr("Expected an input of type 1,"  // DT_FLOAT
                         " but got 2"));                 // DT_DOUBLE
-  EXPECT_EQ(aggregator->GetNumInputs(), 0);
 }
 
-// If all n inputs are valid, GetNumInputs() should return n after accumulation.
+// If all n inputs are valid, Accumulate should succeed.
 TEST(DPTensorAggregatorBundleTest, AllCorrectInputs) {
   Intrinsic intrinsic = CreateBundleOfTwo();
   auto status = CreateTensorAggregator(intrinsic);
@@ -303,7 +302,6 @@ TEST(DPTensorAggregatorBundleTest, AllCorrectInputs) {
     auto accumulate_status = aggregator->Accumulate(InputTensorList{&t1, &t2});
     TFF_EXPECT_OK(accumulate_status);
   }
-  EXPECT_EQ(aggregator->GetNumInputs(), 10);
 }
 
 // The third batch of tests concerns merging. Tests of compatibility are also
@@ -385,8 +383,7 @@ TEST(DPTensorAggregatorBundleTest, DifferentInnerAggregatorsIncompatible) {
                 " input type."));
 }
 
-// After a successful merge, num_inputs_ should be the sum of the number of
-// inputs of the pre-merge bundles.
+// Merging two compatible bundles should succeed.
 TEST(DPTensorAggregatorBundleTest, SuccessfulMerge) {
   Intrinsic intrinsic1 = CreateBundleOfTwo();
   auto status1 = CreateTensorAggregator(intrinsic1);
@@ -415,7 +412,7 @@ TEST(DPTensorAggregatorBundleTest, SuccessfulMerge) {
   }
 
   auto merge_status = aggregator2.MergeWith(std::move(aggregator1));
-  EXPECT_EQ(aggregator2.GetNumInputs(), 10);
+  TFF_EXPECT_OK(merge_status);
 }
 
 // The fourth batch of tests concerns serialization and deserialization.
@@ -434,7 +431,7 @@ TEST(DPTensorAggregatorBundleTest, InvalidSerialization) {
 }
 
 // If a string is a valid serialization of a bundle, the bundle should be
-// created with the right number of inputs.
+// created successfully.
 TEST(DPTensorAggregatorBundleTest, ValidSerialization) {
   auto status1 = CreateTensorAggregator(CreateBundleOfTwo());
   TFF_EXPECT_OK(status1);
@@ -454,7 +451,6 @@ TEST(DPTensorAggregatorBundleTest, ValidSerialization) {
       GetAggregatorFactory(kDPTensorAggregatorBundleUri).value();
   auto status2 = factory->Deserialize(CreateBundleOfTwo(), serialized_string);
   TFF_EXPECT_OK(status2);
-  EXPECT_EQ(status2.value()->GetNumInputs(), 4);
 }
 
 // The fifth batch of tests concerns the Report method (calling TakeOutputs).

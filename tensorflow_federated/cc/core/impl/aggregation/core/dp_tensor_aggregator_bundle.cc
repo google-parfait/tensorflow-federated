@@ -42,12 +42,11 @@ namespace aggregation {
 DPTensorAggregatorBundle::DPTensorAggregatorBundle(
     std::vector<std::unique_ptr<DPTensorAggregator>> aggregators,
     std::vector<int> num_tensors_per_agg, double epsilon_per_agg,
-    double delta_per_agg, int num_inputs)
+    double delta_per_agg)
     : aggregators_(std::move(aggregators)),
       num_tensors_per_agg_(std::move(num_tensors_per_agg)),
       epsilon_per_agg_(epsilon_per_agg),
-      delta_per_agg_(delta_per_agg),
-      num_inputs_(num_inputs) {
+      delta_per_agg_(delta_per_agg) {
   num_tensors_per_input_ = std::accumulate(num_tensors_per_agg_.begin(),
                                            num_tensors_per_agg_.end(), 0);
 }
@@ -89,7 +88,6 @@ Status DPTensorAggregatorBundle::AggregateTensors(InputTensorList tensors) {
     TFF_RETURN_IF_ERROR(
         aggregators_[i]->Accumulate(InputTensorList(current_batch)));
   }
-  num_inputs_++;
 
   return absl::OkStatus();
 }
@@ -131,7 +129,6 @@ Status DPTensorAggregatorBundle::MergeWith(TensorAggregator&& other) {
         aggregators_[i]->MergeWith(static_cast<TensorAggregator&&>(
             *std::move(other_ptr->aggregators_[i]))));
   }
-  num_inputs_ += other_ptr->num_inputs_;
 
   return absl::OkStatus();
 }
@@ -154,7 +151,6 @@ OutputTensorList DPTensorAggregatorBundle::TakeOutputs() && {
 
 absl::StatusOr<std::string> DPTensorAggregatorBundle::Serialize() && {
   DPTensorAggregatorBundleState state;
-  state.set_num_inputs(num_inputs_);
   auto* nested_serialized_states = state.mutable_nested_serialized_states();
   for (auto& aggregator : aggregators_) {
     TFF_ASSIGN_OR_RETURN(auto nested_serialized_state,
@@ -187,9 +183,6 @@ DPTensorAggregatorBundleFactory::CreateInternal(
         "DPTensorAggregatorBundleFactory::CreateInternal: Expected at least "
         "one nested intrinsic, got none.");
   }
-
-  int num_inputs =
-      (aggregator_state == nullptr ? 0 : aggregator_state->num_inputs());
 
   // Create the nested aggregators. Along the way, track how many input tensors
   // will be fed into each nested aggregator during Accumulate.
@@ -268,7 +261,7 @@ DPTensorAggregatorBundleFactory::CreateInternal(
 
   return std::make_unique<DPTensorAggregatorBundle>(
       std::move(nested_aggregators), std::move(num_tensors_per_agg),
-      epsilon_per_agg, delta_per_agg, num_inputs);
+      epsilon_per_agg, delta_per_agg);
 }
 REGISTER_AGGREGATOR_FACTORY(kDPTensorAggregatorBundleUri,
                             DPTensorAggregatorBundleFactory);

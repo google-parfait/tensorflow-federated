@@ -129,8 +129,7 @@ class FederatedSumFactory final : public TensorAggregatorFactory {
         aggregator = std::make_unique<FederatedSum<T>>(
             input_spec.dtype(), std::move(input_spec.shape()),
             MutableVectorData<T>::CreateFromEncodedContent(
-                aggregator_state->vector_data()),
-            aggregator_state->num_inputs()));
+                aggregator_state->vector_data())));
     return aggregator;
   }
 };
