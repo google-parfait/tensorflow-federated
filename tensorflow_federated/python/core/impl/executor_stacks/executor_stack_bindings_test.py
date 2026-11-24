@@ -19,6 +19,7 @@ import numpy as np
 
 from tensorflow_federated.python.core.impl.executor_stacks import executor_stack_bindings
 from tensorflow_federated.python.core.impl.executors import executor_bindings
+from tensorflow_federated.python.core.impl.executors import executors_errors
 
 _TARGET_LIST = ['localhost:8000', 'localhost:8001']
 _CARDINALITIES = {federated_language.CLIENTS: 5}
@@ -34,7 +35,7 @@ class ExecutorStackBindingsTest(parameterized.TestCase):
   def test_executor_construction_raises_no_channels_available(
       self, container_constructor
   ):
-    with self.assertRaisesRegex(Exception, 'UNAVAILABLE'):
+    with self.assertRaisesRegex(Exception, 'UNAVAILABLE') as cm:
       executor_stack_bindings.create_remote_executor_stack(
           channels=container_constructor(
               [
@@ -44,6 +45,32 @@ class ExecutorStackBindingsTest(parameterized.TestCase):
           ),
           cardinalities=_CARDINALITIES,
       )
+    self.assertTrue(
+        executors_errors.is_absl_status_retryable_error(cm.exception)
+    )
+
+  def test_streaming_executor_construction_raises_no_channels_available(self):
+    channels = [
+        executor_bindings.create_insecure_grpc_channel(t) for t in _TARGET_LIST
+    ]
+    with self.assertRaisesRegex(Exception, 'UNAVAILABLE') as cm:
+      executor_stack_bindings.create_streaming_remote_executor_stack(
+          channels=channels,
+          cardinalities=_CARDINALITIES,
+      )
+    self.assertTrue(
+        executors_errors.is_absl_status_retryable_error(cm.exception)
+    )
+
+  def test_filter_to_live_channels_returns_empty_for_unreachable_targets(self):
+    channels = [
+        executor_bindings.create_insecure_grpc_channel(t) for t in _TARGET_LIST
+    ]
+    live_channels = executor_stack_bindings.filter_to_live_channels(
+        channels=channels,
+        wait_connected_duration_millis=10,
+    )
+    self.assertEmpty(live_channels)
 
 
 if __name__ == '__main__':

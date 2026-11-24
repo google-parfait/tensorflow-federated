@@ -68,8 +68,7 @@ py_library(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.py"],
     deps = [
-        "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stack_bindings",
-        "//tensorflow_federated/python/core/impl/executors:data_conversions",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
     ],
@@ -81,6 +80,7 @@ py_test(
     deps = [
         ":executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
+        "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//attrs",

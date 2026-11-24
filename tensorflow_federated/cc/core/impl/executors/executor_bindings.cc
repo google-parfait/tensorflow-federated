@@ -26,6 +26,8 @@ limitations under the License
 #include <limits>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -41,7 +43,6 @@ limitations under the License
 #include "include/pybind11/pytypes.h"
 #include "include/pybind11/stl.h"
 #include "pybind11_abseil/absl_casters.h"
-#include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/native_proto_caster.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
@@ -49,7 +50,9 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/remote_executor_stack.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_casters.h"
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -169,6 +172,75 @@ PYBIND11_MODULE(executor_bindings, m) {
             target, grpc::InsecureChannelCredentials(), channel_options);
       },
       pybind11::return_value_policy::take_ownership);
+
+  m.def("filter_to_live_channels", &FilterToLiveChannels, py::arg("channels"),
+        py::arg("wait_connected_duration_millis") = 1000,
+        "Wait and filter channels that are ready or idle.",
+        py::call_guard<py::gil_scoped_release>());
+
+  m.def(
+      "create_remote_executor_stack",
+      [](const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
+         const CardinalityMap& cardinalities,
+         std::shared_ptr<Executor> server_leaf_executor)
+          -> absl::StatusOr<std::shared_ptr<Executor>> {
+        if (server_leaf_executor == nullptr) {
+          return absl::InvalidArgumentError(
+              "server_leaf_executor must not be null.");
+        }
+        ExecutorFn leaf_executor_fn = [server =
+                                           std::move(server_leaf_executor)]()
+            -> absl::StatusOr<std::shared_ptr<Executor>> {
+          return CreateReferenceResolvingExecutor(server);
+        };
+        ComposingChildFn composing_child_fn =
+            [](std::shared_ptr<grpc::ChannelInterface> channel,
+               const CardinalityMap& child_cardinalities)
+            -> absl::StatusOr<ComposingChild> {
+          return ComposingChild::Make(
+              CreateRemoteExecutor(std::move(channel), child_cardinalities),
+              child_cardinalities);
+        };
+        return CreateRemoteExecutorStack(channels, cardinalities,
+                                         std::move(leaf_executor_fn),
+                                         std::move(composing_child_fn));
+      },
+      py::arg("channels"), py::arg("cardinalities"),
+      py::arg("server_leaf_executor"), "Creates a C++ remote execution stack.",
+      py::call_guard<py::gil_scoped_release>());
+
+  m.def(
+      "create_streaming_remote_executor_stack",
+      [](const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
+         const CardinalityMap& cardinalities,
+         std::shared_ptr<Executor> server_leaf_executor)
+          -> absl::StatusOr<std::shared_ptr<Executor>> {
+        if (server_leaf_executor == nullptr) {
+          return absl::InvalidArgumentError(
+              "server_leaf_executor must not be null.");
+        }
+        ExecutorFn leaf_executor_fn = [server =
+                                           std::move(server_leaf_executor)]()
+            -> absl::StatusOr<std::shared_ptr<Executor>> {
+          return CreateReferenceResolvingExecutor(server);
+        };
+        ComposingChildFn composing_child_fn =
+            [](std::shared_ptr<grpc::ChannelInterface> channel,
+               const CardinalityMap& child_cardinalities)
+            -> absl::StatusOr<ComposingChild> {
+          return ComposingChild::Make(
+              CreateStreamingRemoteExecutor(std::move(channel),
+                                            child_cardinalities),
+              child_cardinalities);
+        };
+        return CreateRemoteExecutorStack(channels, cardinalities,
+                                         std::move(leaf_executor_fn),
+                                         std::move(composing_child_fn));
+      },
+      py::arg("channels"), py::arg("cardinalities"),
+      py::arg("server_leaf_executor"),
+      "Creates a C++ streaming remote execution stack.",
+      py::call_guard<py::gil_scoped_release>());
 }
 
 }  // namespace

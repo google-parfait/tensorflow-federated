@@ -13,7 +13,7 @@
 # limitations under the License.
 """Python interface to C++ Executor implementations."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 import federated_language
 
@@ -33,6 +33,7 @@ create_sequence_executor = executor_bindings.create_sequence_executor
 
 # Import executor constructor helpers.
 create_insecure_grpc_channel = executor_bindings.create_insecure_grpc_channel
+filter_to_live_channels = executor_bindings.filter_to_live_channels
 GRPCChannel = executor_bindings.GRPCChannelInterface
 
 
@@ -85,3 +86,31 @@ def create_composing_child(
       data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
   )
   return executor_bindings.create_composing_child(executor, uri_cardinalities)
+
+
+def create_remote_executor_stack(
+    channels: Sequence[GRPCChannel],
+    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
+    server_leaf_executor: executor_bindings.Executor,
+) -> executor_bindings.Executor:
+  """Constructs a remote executor stack with a caller-supplied server leaf."""
+  uri_cardinalities = (
+      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+  )
+  return executor_bindings.create_remote_executor_stack(
+      channels, uri_cardinalities, server_leaf_executor
+  )
+
+
+def create_streaming_remote_executor_stack(
+    channels: Sequence[GRPCChannel],
+    cardinalities: Mapping[federated_language.framework.PlacementLiteral, int],
+    server_leaf_executor: executor_bindings.Executor,
+) -> executor_bindings.Executor:
+  """Constructs a streaming remote executor stack with a server leaf."""
+  uri_cardinalities = (
+      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+  )
+  return executor_bindings.create_streaming_remote_executor_stack(
+      channels, uri_cardinalities, server_leaf_executor
+  )

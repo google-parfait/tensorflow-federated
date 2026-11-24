@@ -29,8 +29,8 @@ limitations under the License
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
 #include "include/pybind11/pytypes.h"
-#include "pybind11_abseil/status_casters.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_casters.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 
 namespace tensorflow_federated {

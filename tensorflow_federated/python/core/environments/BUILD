@@ -17,6 +17,7 @@ package_group(
     includes = [
         "//tensorflow_federated/python/core:core_users",
         "//tensorflow_federated/python/core/backends:backends_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
     ],
     packages = [
         "//tensorflow_federated",

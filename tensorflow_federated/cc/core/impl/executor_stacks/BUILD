@@ -1,4 +1,3 @@
-load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
@@ -19,18 +18,6 @@ package_group(
 )
 
 licenses(["notice"])
-
-pybind_extension(
-    name = "executor_stack_bindings",
-    srcs = ["executor_stack_bindings.cc"],
-    deps = [
-        ":remote_stacks",
-        "//tensorflow_federated/cc/core/impl/executors:cardinalities",
-        "@com_github_grpc_grpc//:grpc++",
-        "@pybind11_abseil//pybind11_abseil:absl_casters",
-        "@pybind11_abseil//pybind11_abseil:status_casters",
-    ],
-)
 
 cc_library(
     name = "local_stacks",
@@ -71,18 +58,14 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "//tensorflow_federated/cc/core/impl/executors:composing_executor",
         "//tensorflow_federated/cc/core/impl/executors:executor",
-        "//tensorflow_federated/cc/core/impl/executors:federating_executor",
         "//tensorflow_federated/cc/core/impl/executors:reference_resolving_executor",
         "//tensorflow_federated/cc/core/impl/executors:remote_executor",
+        "//tensorflow_federated/cc/core/impl/executors:remote_executor_stack",
         "//tensorflow_federated/cc/core/impl/executors:status_macros",
         "//tensorflow_federated/cc/core/impl/executors:streaming_remote_executor",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
-        "//tensorflow_federated/cc/core/impl/executors:threading",
         "@com_github_grpc_grpc//:grpc++",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
     ],
 )
 

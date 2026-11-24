@@ -17,27 +17,16 @@ limitations under the License
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_
 
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <vector>
 
 #include "absl/status/statusor.h"
 #include "include/grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
-#include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/remote_executor_stack.h"
 
 namespace tensorflow_federated {
-
-using ExecutorFn = std::function<absl::StatusOr<std::shared_ptr<Executor>>()>;
-using ComposingChildFn = std::function<absl::StatusOr<ComposingChild>(
-    std::shared_ptr<grpc::ChannelInterface>, const CardinalityMap&)>;
-using ComposingExecutorFn = std::function<std::shared_ptr<Executor>(
-    std::shared_ptr<Executor>, std::vector<ComposingChild>)>;
-
-std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels(
-    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
-    int wait_connected_duration_millis = 1000);
 
 // Creates an executor stack which proxies for a group of remote workers.
 //
@@ -70,16 +59,6 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
 absl::StatusOr<std::shared_ptr<Executor>> CreateStreamingRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     const CardinalityMap& cardinalities);
-
-// Creates an executor stack which proxies for a group of remote workers.
-//
-// This function is an overload for the above, intended to be used for testing.
-// See the documentation above for details.
-absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
-    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
-    const CardinalityMap& cardinalities, ExecutorFn leaf_executor_fn,
-    ComposingChildFn composing_child_fn,
-    ComposingExecutorFn composing_executor_fn = CreateComposingExecutor);
 
 }  // namespace tensorflow_federated
 

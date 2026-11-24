@@ -93,6 +93,13 @@ py_test(
 py_library(
     name = "executor_bindings",
     srcs = ["executor_bindings.py"],
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/core/impl:impl_users",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+        "//tensorflow_federated/python/tests:tests_packages",
+    ],
     deps = [
         ":data_conversions",
         "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
@@ -147,7 +154,6 @@ py_library(
     srcs = ["executors_errors.py"],
     deps = [
         "@federated_language//federated_language",
-        "@pybind11_abseil//pybind11_abseil:status",
         "@pypi//grpcio",
     ],
 )
@@ -209,7 +215,6 @@ py_library(
 py_test(
     name = "remote_executor_grpc_stub_test",
     srcs = ["remote_executor_grpc_stub_test.py"],
-    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     deps = [
         ":remote_executor_grpc_stub",
         ":value_serialization",

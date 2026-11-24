@@ -293,7 +293,9 @@ pybind_extension(
         ":federating_executor",
         ":reference_resolving_executor",
         ":remote_executor",
+        ":remote_executor_stack",
         ":sequence_executor",
+        ":status_casters",
         ":streaming_remote_executor",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_github_grpc_grpc//:grpc++",
@@ -303,7 +305,6 @@ pybind_extension(
         "@com_google_absl//absl/strings",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
-        "@pybind11_abseil//pybind11_abseil:status_casters",
         "@pybind11_protobuf//pybind11_protobuf:native_proto_caster",
     ],
 )
@@ -658,6 +659,27 @@ cc_test(
 )
 
 cc_library(
+    name = "remote_executor_stack",
+    srcs = ["remote_executor_stack.cc"],
+    hdrs = ["remote_executor_stack.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cardinalities",
+        ":composing_executor",
+        ":executor",
+        ":federating_executor",
+        ":reference_resolving_executor",
+        ":status_macros",
+        ":threading",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "sequence_executor",
     srcs = ["sequence_executor.cc"],
     hdrs = ["sequence_executor.h"],
@@ -748,6 +770,23 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
         "@org_tensorflow//tensorflow/core:tensorflow",
+    ],
+)
+
+cc_library(
+    name = "status_casters",
+    hdrs = ["status_casters.h"],
+    features = ["-use_header_modules"],
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stacks_packages",
+    ],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@pybind11",
+        "@rules_python//python/cc:current_py_cc_headers",
     ],
 )
 
@@ -866,8 +905,8 @@ pybind_extension(
     srcs = ["tensorflow_bindings.cc"],
     deps = [
         ":executor",
+        ":status_casters",
         ":tensorflow_executor",
-        "@pybind11_abseil//pybind11_abseil:status_casters",
     ],
 )
 

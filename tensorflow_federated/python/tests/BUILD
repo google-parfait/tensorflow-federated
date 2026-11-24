@@ -108,13 +108,16 @@ py_test(
     name = "remote_runtime_stream_structs_test",
     size = "large",
     srcs = ["remote_runtime_stream_structs_test.py"],
+    data = ["//tensorflow_federated/cc/simulation:worker_binary"],
     tags = ["requires-mem:28g"],
     deps = [
-        ":test_contexts",
         "//tensorflow_federated",
+        "//tensorflow_federated/python/core/backends/native:cpp_execution_contexts",
+        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//numpy",
+        "@pypi//portpicker",
         "@pypi//tensorflow",
     ],
 )

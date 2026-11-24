@@ -12,27 +12,80 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
+from collections.abc import Iterator
+import contextlib
+import os
+import socket
+import subprocess
+import time
 
 from absl.testing import absltest
-from absl.testing import parameterized
 import federated_language
 import numpy as np
+import portpicker
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.tests import test_contexts
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
+from tensorflow_federated.python.core.impl.executors import executor_bindings
+
+_WORKER_HOST = 'localhost'
+_WORKER_STARTUP_TIMEOUT_SECONDS = 30.0
+_WORKER_POLL_INTERVAL_SECONDS = 0.05
+_WORKER_CONNECT_TIMEOUT_SECONDS = 0.1
+_WORKER_SHUTDOWN_TIMEOUT_SECONDS = 10.0
 
 
-_CONTEXTS = [
-    (
-        'native_sync_local_cpp',
-        functools.partial(
-            tff.backends.native.create_sync_local_cpp_execution_context,
-            stream_structs=True,
-        ),
-    ),
-]
+def _worker_binary_path() -> str:
+  return os.path.join(
+      os.path.dirname(__file__), '..', '..', 'cc', 'simulation', 'worker_binary'
+  )
+
+
+def _wait_for_port_ready(
+    process: subprocess.Popen[bytes], port: int, timeout_seconds: float
+) -> None:
+  deadline = time.monotonic() + timeout_seconds
+  while time.monotonic() < deadline:
+    if process.poll() is not None:
+      raise RuntimeError(
+          f'Worker exited prematurely with code {process.returncode}.'
+      )
+    try:
+      with socket.create_connection(
+          (_WORKER_HOST, port), timeout=_WORKER_CONNECT_TIMEOUT_SECONDS
+      ):
+        return
+    except OSError:
+      time.sleep(_WORKER_POLL_INTERVAL_SECONDS)
+  raise TimeoutError(
+      f'Timed out after {timeout_seconds}s waiting for worker on port {port}.'
+  )
+
+
+@contextlib.contextmanager
+def _remote_streaming_cpp_context() -> (
+    Iterator[federated_language.framework.SyncExecutionContext]
+):
+  port = portpicker.pick_unused_port()
+  process = subprocess.Popen([_worker_binary_path(), f'--port={port}'])
+  try:
+    _wait_for_port_ready(process, port, _WORKER_STARTUP_TIMEOUT_SECONDS)
+    channel = executor_bindings.create_insecure_grpc_channel(
+        f'{_WORKER_HOST}:{port}'
+    )
+    context = cpp_execution_contexts.create_sync_remote_cpp_execution_context(
+        channels=[channel], stream_structs=True
+    )
+    with federated_language.framework.get_context_stack().install(context):
+      yield context
+  finally:
+    process.terminate()
+    try:
+      process.wait(timeout=_WORKER_SHUTDOWN_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+      process.kill()
+      process.wait()
 
 
 def _make_federated(
@@ -51,9 +104,12 @@ def _make_federated(
   return compute
 
 
-class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
+class RemoteRuntimeStreamStructsTest(absltest.TestCase):
 
-  @test_contexts.with_contexts(*_CONTEXTS)
+  def setUp(self):
+    super().setUp()
+    self.enterContext(_remote_streaming_cpp_context())
+
   def test_large_unnamed_struct_identity(self):
     self.skipTest('b/410811127')
 
@@ -81,7 +137,6 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
       federated_identity = _make_federated(identity)
       federated_identity([large_struct])
 
-  @test_contexts.with_contexts(*_CONTEXTS)
   def test_large_named_struct_identity(self):
     self.skipTest('b/410811127')
 
@@ -135,7 +190,6 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
       federated_identity = _make_federated(identity)
       federated_identity([large_struct])
 
-  @test_contexts.with_contexts(*_CONTEXTS)
   def test_small_struct_identity(self):
     self.skipTest('b/410811127')
 
@@ -209,7 +263,6 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
       federated_identity = _make_federated(identity)
       federated_identity([small_struct])
 
-  @test_contexts.with_contexts(*_CONTEXTS)
   def test_deeply_nested_struct_identity(self):
     c_expected = np.arange(10, dtype=np.int32)
     d_expected = np.ones(shape=(2, 3), dtype=np.float32) * 5.0

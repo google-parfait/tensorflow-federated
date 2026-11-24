@@ -57,6 +57,12 @@ py_test(
 py_library(
     name = "cpp_execution_contexts",
     srcs = ["cpp_execution_contexts.py"],
+    visibility = [
+        ":native_packages",
+        "//tensorflow_federated/python/core:core_users",
+        "//tensorflow_federated/python/core/backends/test:test_packages",
+        "//tensorflow_federated/python/tests:tests_packages",
+    ],
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
