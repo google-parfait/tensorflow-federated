@@ -15,6 +15,7 @@
 import inspect
 from typing import NoReturn, Optional
 import unittest
+import warnings
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -383,6 +384,48 @@ class SecureSumMaxValueTest(
         np.testing.assert_array_equal(a, b)
       else:
         self.assertEqual(a, b)
+
+
+class StreamStructsTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      (
+          'sync_test',
+          cpp_execution_contexts.create_sync_test_cpp_execution_context,
+      ),
+      (
+          'async_test',
+          cpp_execution_contexts.create_async_test_cpp_execution_context,
+      ),
+  )
+  def test_local_test_context_warns_when_stream_structs_enabled(
+      self, context_fn
+  ):
+    with self.assertWarnsRegex(DeprecationWarning, 'stream_structs'):
+      context_fn(stream_structs=True)
+
+  @parameterized.named_parameters(
+      (
+          'sync_test',
+          cpp_execution_contexts.create_sync_test_cpp_execution_context,
+      ),
+      (
+          'async_test',
+          cpp_execution_contexts.create_async_test_cpp_execution_context,
+      ),
+  )
+  def test_local_test_context_does_not_warn_when_stream_structs_disabled(
+      self, context_fn
+  ):
+    with warnings.catch_warnings(record=True) as recorded_warnings:
+      warnings.simplefilter('always', DeprecationWarning)
+      context_fn(stream_structs=False)
+    deprecation_warnings = [
+        warning
+        for warning in recorded_warnings
+        if issubclass(warning.category, DeprecationWarning)
+    ]
+    self.assertEmpty(deprecation_warnings)
 
 
 if __name__ == '__main__':

@@ -14,6 +14,7 @@
 """Execution contexts for the native backend."""
 
 from collections.abc import Sequence
+import warnings
 
 import federated_language
 
@@ -22,6 +23,12 @@ from tensorflow_federated.python.core.environments.tensorflow_backend import ten
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
+
+_STREAM_STRUCTS_LOCAL_DEPRECATION_MESSAGE = (
+    'stream_structs is deprecated and has no effect on local in-process '
+    'execution contexts. Use a remote C++ execution context to enable struct '
+    'streaming.'
+)
 
 
 def _create_tensorflow_backend_execution_stack(
@@ -53,13 +60,18 @@ def create_sync_local_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the CPP runtime. If nonpositive, there is no
       limit.
-    stream_structs: The flag to enable decomposing and streaming struct values.
+    stream_structs: Deprecated. Ignored on local in-process contexts.
 
   Returns:
     An instance of `federated_language.framework.SyncContext` representing the
     TFF-C++ runtime.
   """
-  del stream_structs  # Unused.
+  if stream_structs:
+    warnings.warn(
+        _STREAM_STRUCTS_LOCAL_DEPRECATION_MESSAGE,
+        DeprecationWarning,
+        stacklevel=2,
+    )
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
@@ -88,7 +100,7 @@ def set_sync_local_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
-    stream_structs: The flag to enable decomposing and streaming struct values.
+    stream_structs: Deprecated. Ignored on local in-process contexts.
   """
   context = create_sync_local_cpp_execution_context(
       default_num_clients=default_num_clients,
@@ -112,13 +124,18 @@ def create_async_local_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
-    stream_structs: The flag to enable decomposing and streaming struct values.
+    stream_structs: Deprecated. Ignored on local in-process contexts.
 
   Returns:
     An instance of `federated_language.framework.AsyncContext` representing the
     TFF-C++ runtime.
   """
-  del stream_structs  # Unused.
+  if stream_structs:
+    warnings.warn(
+        _STREAM_STRUCTS_LOCAL_DEPRECATION_MESSAGE,
+        DeprecationWarning,
+        stacklevel=2,
+    )
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
@@ -147,7 +164,7 @@ def set_async_local_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the CPP runtime. If nonpositive, there is no
       limit.
-    stream_structs: The flag to enable decomposing and streaming struct values.
+    stream_structs: Deprecated. Ignored on local in-process contexts.
   """
   context = create_async_local_cpp_execution_context(
       default_num_clients=default_num_clients,
@@ -160,10 +177,24 @@ def set_async_local_cpp_execution_context(
 def create_sync_remote_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
+    stream_structs: bool = False,
 ) -> federated_language.framework.SyncExecutionContext:
-  """Creates a remote execution context backed by TFF-C++ runtime."""
+  """Creates a remote execution context backed by TFF-C++ runtime.
+
+  Args:
+    channels: A sequence of gRPC channels connected to remote TFF workers.
+    default_num_clients: The number of clients to use as the default cardinality
+      if it cannot be inferred from computation arguments.
+    stream_structs: If True, decomposes and streams struct values over gRPC.
+
+  Returns:
+    An instance of `federated_language.framework.SyncExecutionContext` backed by
+    the TFF-C++ runtime.
+  """
   factory = cpp_executor_factory.remote_cpp_executor_factory(
-      channels=channels, default_num_clients=default_num_clients
+      channels=channels,
+      default_num_clients=default_num_clients,
+      stream_structs=stream_structs,
   )
   context = federated_language.framework.SyncExecutionContext(
       executor_fn=factory,
@@ -177,9 +208,20 @@ def create_sync_remote_cpp_execution_context(
 def set_sync_remote_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
-):
+    stream_structs: bool = False,
+) -> None:
+  """Sets a default remote sync execution context backed by TFF-C++ runtime.
+
+  Args:
+    channels: A sequence of gRPC channels connected to remote TFF workers.
+    default_num_clients: The number of clients to use as the default cardinality
+      if it cannot be inferred from computation arguments.
+    stream_structs: If True, decomposes and streams struct values over gRPC.
+  """
   context = create_sync_remote_cpp_execution_context(
-      channels=channels, default_num_clients=default_num_clients
+      channels=channels,
+      default_num_clients=default_num_clients,
+      stream_structs=stream_structs,
   )
   federated_language.framework.set_default_context(context)
 
@@ -187,10 +229,24 @@ def set_sync_remote_cpp_execution_context(
 def create_async_remote_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
+    stream_structs: bool = False,
 ) -> federated_language.framework.AsyncExecutionContext:
-  """Creates a remote execution context backed by TFF-C++ runtime."""
+  """Creates an async remote execution context backed by TFF-C++ runtime.
+
+  Args:
+    channels: A sequence of gRPC channels connected to remote TFF workers.
+    default_num_clients: The number of clients to use as the default cardinality
+      if it cannot be inferred from computation arguments.
+    stream_structs: If True, decomposes and streams struct values over gRPC.
+
+  Returns:
+    An instance of `federated_language.framework.AsyncExecutionContext` backed
+    by the TFF-C++ runtime.
+  """
   factory = cpp_executor_factory.remote_cpp_executor_factory(
-      channels=channels, default_num_clients=default_num_clients
+      channels=channels,
+      default_num_clients=default_num_clients,
+      stream_structs=stream_structs,
   )
   context = federated_language.framework.AsyncExecutionContext(
       executor_fn=factory,

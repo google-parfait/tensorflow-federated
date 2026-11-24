@@ -16,8 +16,11 @@ import asyncio
 import collections
 import inspect
 import time
+from unittest import mock
+import warnings
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import federated_language
 import numpy as np
 import tensorflow as tf
@@ -25,6 +28,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
@@ -246,6 +250,118 @@ class LocalCPPExecutionContextTest(absltest.TestCase):
                 [0, 1, 2, 3, 4],
             ),
         )
+
+
+class StreamStructsTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      (
+          'sync_local',
+          cpp_execution_contexts.create_sync_local_cpp_execution_context,
+      ),
+      (
+          'async_local',
+          cpp_execution_contexts.create_async_local_cpp_execution_context,
+      ),
+  )
+  def test_local_context_warns_when_stream_structs_enabled(self, context_fn):
+    with self.assertWarnsRegex(DeprecationWarning, 'stream_structs'):
+      context_fn(stream_structs=True)
+
+  @parameterized.named_parameters(
+      (
+          'sync_local',
+          cpp_execution_contexts.create_sync_local_cpp_execution_context,
+      ),
+      (
+          'async_local',
+          cpp_execution_contexts.create_async_local_cpp_execution_context,
+      ),
+  )
+  def test_local_context_does_not_warn_when_stream_structs_disabled(
+      self, context_fn
+  ):
+    with warnings.catch_warnings(record=True) as recorded_warnings:
+      warnings.simplefilter('always', DeprecationWarning)
+      context_fn(stream_structs=False)
+    deprecation_warnings = [
+        warning
+        for warning in recorded_warnings
+        if issubclass(warning.category, DeprecationWarning)
+    ]
+    self.assertEmpty(deprecation_warnings)
+
+  @parameterized.named_parameters(
+      (
+          'sync_remote_true',
+          cpp_execution_contexts.create_sync_remote_cpp_execution_context,
+          True,
+      ),
+      (
+          'sync_remote_false',
+          cpp_execution_contexts.create_sync_remote_cpp_execution_context,
+          False,
+      ),
+      (
+          'async_remote_true',
+          cpp_execution_contexts.create_async_remote_cpp_execution_context,
+          True,
+      ),
+      (
+          'async_remote_false',
+          cpp_execution_contexts.create_async_remote_cpp_execution_context,
+          False,
+      ),
+  )
+  def test_remote_context_forwards_stream_structs(
+      self, context_fn, stream_structs
+  ):
+    channels = [executor_bindings.create_insecure_grpc_channel('fake_target')]
+    mock_executor_factory = mock.create_autospec(
+        federated_language.framework.ExecutorFactory, instance=True
+    )
+    with mock.patch.object(
+        cpp_executor_factory,
+        'remote_cpp_executor_factory',
+        return_value=mock_executor_factory,
+        autospec=True,
+    ) as mock_factory:
+      context_fn(channels=channels, stream_structs=stream_structs)
+    mock_factory.assert_called_once_with(
+        channels=channels,
+        default_num_clients=0,
+        stream_structs=stream_structs,
+    )
+
+  def test_set_sync_remote_context_forwards_stream_structs(self):
+    channels = [executor_bindings.create_insecure_grpc_channel('fake_target')]
+    mock_executor_factory = mock.create_autospec(
+        federated_language.framework.ExecutorFactory, instance=True
+    )
+    with (
+        mock.patch.object(
+            cpp_executor_factory,
+            'remote_cpp_executor_factory',
+            return_value=mock_executor_factory,
+            autospec=True,
+        ) as mock_factory,
+        mock.patch.object(
+            federated_language.framework,
+            'set_default_context',
+            autospec=True,
+        ) as mock_set_default_context,
+    ):
+      cpp_execution_contexts.set_sync_remote_cpp_execution_context(
+          channels=channels,
+          default_num_clients=2,
+          stream_structs=True,
+      )
+    mock_factory.assert_called_once_with(
+        channels=channels,
+        default_num_clients=2,
+        stream_structs=True,
+    )
+    mock_set_default_context.assert_called_once()
 
 
 if __name__ == '__main__':

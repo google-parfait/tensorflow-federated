@@ -18,6 +18,7 @@ import os.path
 import signal
 import subprocess
 import sys
+import warnings
 
 from absl import flags
 from absl import logging
@@ -33,6 +34,12 @@ from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
 FLAGS = flags.FLAGS
+
+_STREAM_STRUCTS_LOCAL_DEPRECATION_MESSAGE = (
+    'stream_structs is deprecated and has no effect on local in-process '
+    'execution contexts. Use a remote C++ execution context to enable struct '
+    'streaming.'
+)
 
 
 def _create_tensorflow_backend_execution_stack(
@@ -68,7 +75,7 @@ def create_async_test_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
-    stream_structs: The flag to enable decomposing and streaming struct values.
+    stream_structs: Deprecated. Ignored on local in-process contexts.
 
   Returns:
     An instance of `AsyncExecutionContext` for local testing of computations.
@@ -77,7 +84,12 @@ def create_async_test_cpp_execution_context(
     ValueError: If invalid parameters are provided to either the C++ or Python
       runtimes, as detailed above.
   """
-  del stream_structs  # Unused.
+  if stream_structs:
+    warnings.warn(
+        _STREAM_STRUCTS_LOCAL_DEPRECATION_MESSAGE,
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
   def _compile(comp):
     # Compile secure_sum and secure_sum_bitwidth intrinsics to insecure
@@ -118,7 +130,7 @@ def set_async_test_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
-    stream_structs: The flag to enable decomposing and streaming struct values.
+    stream_structs: Deprecated. Ignored on local in-process contexts.
 
   Raises:
     ValueError: If invalid parameters are provided to either the C++ or Python
@@ -254,7 +266,7 @@ def create_sync_test_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
-    stream_structs: The flag to enable decomposing and streaming struct values.
+    stream_structs: Deprecated. Ignored on local in-process contexts.
 
   Returns:
     An execution context for local testing of computations.
@@ -263,7 +275,12 @@ def create_sync_test_cpp_execution_context(
     ValueError: If invalid parameters are provided to either the C++ or Python
       runtimes, as detailed above.
   """
-  del stream_structs  # Unused.
+  if stream_structs:
+    warnings.warn(
+        _STREAM_STRUCTS_LOCAL_DEPRECATION_MESSAGE,
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
   def _compile(comp):
     # Compile secure_sum and secure_sum_bitwidth intrinsics to insecure
@@ -304,7 +321,7 @@ def set_sync_test_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
-    stream_structs: The flag to enable decomposing and streaming struct values.
+    stream_structs: Deprecated. Ignored on local in-process contexts.
 
   Raises:
     ValueError: If invalid parameters are provided to either the C++ or Python

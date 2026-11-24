@@ -74,6 +74,7 @@ py_test(
         ":cpp_execution_contexts",
         ":execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
         "@pypi//absl_py",
