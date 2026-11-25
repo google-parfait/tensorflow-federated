@@ -17,11 +17,13 @@ from collections.abc import Callable, Sequence
 import concurrent
 import math
 from typing import Optional
+import warnings
 
 from absl import logging
 import cachetools
 import federated_language
 
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.impl.executor_stacks import executor_stack_bindings
 from tensorflow_federated.python.core.impl.executors import cpp_to_python_executor
 from tensorflow_federated.python.core.impl.executors import executor_bindings
@@ -31,6 +33,12 @@ from tensorflow_federated.python.core.impl.executors import executors_errors
 # we special-case to warn users explicitly in this case, in addition to
 # logging in the case of any implied sequential execution.
 _CONCURRENCY_LEVEL_TO_WARN = 4
+
+_STREAM_STRUCTS_LOCAL_DEPRECATION_MESSAGE = (
+    'stream_structs is deprecated and has no effect on local in-process '
+    'executor factories. Use remote_cpp_executor_factory to enable struct '
+    'streaming.'
+)
 
 
 def _get_hashable_key(
@@ -112,17 +120,63 @@ def _check_num_clients_is_valid(default_num_clients: int):
     raise ValueError('Default number of clients must be nonnegative.')
 
 
+def _create_default_tensorflow_leaf_executor(
+    max_concurrent_computation_calls: int,
+) -> executor_bindings.Executor:
+  """Returns the default TensorFlow-backed leaf executor stack."""
+  tensorflow_executor = tensorflow_executor_bindings.create_tensorflow_executor(
+      max_concurrent_computation_calls
+  )
+  reference_resolving_executor = (
+      executor_bindings.create_reference_resolving_executor(tensorflow_executor)
+  )
+  return executor_bindings.create_sequence_executor(
+      reference_resolving_executor
+  )
+
+
 def local_cpp_executor_factory(
     *,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
-    leaf_executor_fn: Optional[Callable[[int], executor_bindings.Executor]],
+    stream_structs: bool = False,
+    leaf_executor_fn: Optional[
+        Callable[[int], executor_bindings.Executor]
+    ] = None,
     client_leaf_executor_fn: Optional[
         Callable[[int], executor_bindings.Executor]
     ] = None,
 ) -> federated_language.framework.ExecutorFactory:
-  """Local ExecutorFactory backed by C++ Executor bindings."""
+  """Local ExecutorFactory backed by C++ Executor bindings.
+
+  Args:
+    default_num_clients: The number of clients to use as the default cardinality
+      if it cannot be inferred from computation arguments.
+    max_concurrent_computation_calls: The maximum number of concurrent calls to
+      a single computation in the C++ runtime. If nonpositive, there is no
+      limit.
+    stream_structs: Deprecated. Ignored on local in-process executor factories.
+    leaf_executor_fn: An optional callable that creates the server leaf executor
+      for a given `max_concurrent_computation_calls`. If `None`, uses the
+      default TensorFlow leaf executor stack.
+    client_leaf_executor_fn: An optional callable that creates the client leaf
+      executor for a given `max_concurrent_computation_calls`. If `None`, shares
+      the server leaf executor stack.
+
+  Returns:
+    An `ExecutorFactory` backed by the C++ executor bindings.
+  """
   _check_num_clients_is_valid(default_num_clients)
+  if stream_structs:
+    warnings.warn(
+        _STREAM_STRUCTS_LOCAL_DEPRECATION_MESSAGE,
+        DeprecationWarning,
+        stacklevel=2,
+    )
+  if leaf_executor_fn is None:
+    resolved_leaf_executor_fn = _create_default_tensorflow_leaf_executor
+  else:
+    resolved_leaf_executor_fn = leaf_executor_fn
 
   def _executor_fn(
       cardinalities: federated_language.framework.CardinalitiesType,
@@ -143,7 +197,9 @@ def local_cpp_executor_factory(
           expected_concurrency_factor,
       )
 
-    server_leaf_executor = leaf_executor_fn(max_concurrent_computation_calls)  # pyrefly: ignore[not-callable]
+    server_leaf_executor = resolved_leaf_executor_fn(
+        max_concurrent_computation_calls
+    )
     sub_federating_reference_resolving_server_executor = (
         executor_bindings.create_reference_resolving_executor(
             server_leaf_executor

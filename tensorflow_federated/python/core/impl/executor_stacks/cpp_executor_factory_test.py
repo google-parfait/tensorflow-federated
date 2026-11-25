@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 from absl.testing import absltest
+from absl.testing import parameterized
 import federated_language
 
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
@@ -35,7 +38,7 @@ def _create_mock_execution_stack(
   )
 
 
-class CPPExecutorFactoryTest(absltest.TestCase):
+class CPPExecutorFactoryTest(parameterized.TestCase):
 
   def test_create_local_cpp_factory_constructs(self):
     local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
@@ -67,6 +70,51 @@ class CPPExecutorFactoryTest(absltest.TestCase):
         {federated_language.CLIENTS: 1}
     )
     self.assertIsInstance(executor, federated_language.framework.Executor)
+
+  @parameterized.named_parameters(
+      ('zero_args', {}),
+      ('explicit_none_leaf_executor_fn', {'leaf_executor_fn': None}),
+  )
+  def test_create_local_cpp_factory_defaults_leaf_executor_fn(self, kwargs):
+    local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
+        **kwargs
+    )
+    self.assertIsInstance(
+        local_cpp_factory, federated_language.framework.ExecutorFactory
+    )
+    executor = local_cpp_factory.create_executor(
+        {federated_language.CLIENTS: 1}
+    )
+    self.assertIsInstance(executor, federated_language.framework.Executor)
+
+  def test_create_local_cpp_factory_stream_structs_warns(self):
+    with self.assertWarnsRegex(
+        DeprecationWarning, 'stream_structs is deprecated'
+    ):
+      local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
+          stream_structs=True,
+          leaf_executor_fn=_create_mock_execution_stack,
+      )
+    self.assertIsInstance(
+        local_cpp_factory, federated_language.framework.ExecutorFactory
+    )
+
+  def test_create_local_cpp_factory_stream_structs_false_does_not_warn(self):
+    with warnings.catch_warnings(record=True) as caught_warnings:
+      warnings.simplefilter('always')
+      local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
+          stream_structs=False,
+          leaf_executor_fn=_create_mock_execution_stack,
+      )
+    self.assertIsInstance(
+        local_cpp_factory, federated_language.framework.ExecutorFactory
+    )
+    deprecation_warnings = [
+        warning_record
+        for warning_record in caught_warnings
+        if issubclass(warning_record.category, DeprecationWarning)
+    ]
+    self.assertEmpty(deprecation_warnings)
 
   def test_create_remote_cpp_factory_constructs(self):
     targets = ['localhost:8000', 'localhost:8001']

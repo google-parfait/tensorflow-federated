@@ -65,8 +65,9 @@ py_library(
     ],
     deps = [
         ":compiler",
-        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
+        ":mergeable_comp_compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
@@ -78,8 +79,9 @@ py_test(
     srcs = ["cpp_execution_contexts_test.py"],
     deps = [
         ":cpp_execution_contexts",
-        ":execution_contexts",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",

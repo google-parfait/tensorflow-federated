@@ -63,13 +63,9 @@ py_library(
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/backends/native:compiler",
-        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
-        "@pypi//absl_py",
-        "@pypi//portpicker",
     ],
 )
 

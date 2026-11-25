@@ -14,7 +14,6 @@
 
 import asyncio
 import collections
-import inspect
 import time
 from unittest import mock
 import warnings
@@ -26,35 +25,14 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
-def _assert_signature_equal(first_obj, second_obj):
-  first_signature = inspect.signature(first_obj)
-  second_signature = inspect.signature(second_obj)
-  # Only assert that the parameters and return type annotations are equal, the
-  # entire signature (e.g. the docstring) is not expected to be equal.
-  if first_signature.parameters != second_signature.parameters:
-    raise AssertionError(
-        f'{first_signature.parameters} != {second_signature.parameters}'
-    )
-  if first_signature.return_annotation != second_signature.return_annotation:
-    raise AssertionError(
-        f'{first_signature.return_annotation} != '
-        f'{second_signature.return_annotation}'
-    )
-
-
 class CreateAsyncLocalCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.create_async_local_cpp_execution_context,
-        execution_contexts.create_async_local_cpp_execution_context,
-    )
 
   def test_returns_async_context(self):
     context = cpp_execution_contexts.create_async_local_cpp_execution_context()
@@ -94,36 +72,12 @@ class CreateAsyncLocalCPPExecutionContextTest(absltest.TestCase):
       )
 
 
-class SetAsyncLocalCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.set_async_local_cpp_execution_context,
-        execution_contexts.set_async_local_cpp_execution_context,
-    )
-
-
 class CreateSyncLocalCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.create_sync_local_cpp_execution_context,
-        execution_contexts.create_sync_local_cpp_execution_context,
-    )
 
   def test_returns_sync_context(self):
     context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
     self.assertIsInstance(
         context, federated_language.framework.SyncExecutionContext
-    )
-
-
-class SetSyncLocalCPPExecutionContextTest(absltest.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.set_sync_local_cpp_execution_context,
-        execution_contexts.set_sync_local_cpp_execution_context,
     )
 
 
@@ -362,6 +316,137 @@ class StreamStructsTest(parameterized.TestCase):
         stream_structs=True,
     )
     mock_set_default_context.assert_called_once()
+
+
+class CreateMergeableCompExecutionContextTest(absltest.TestCase):
+
+  def test_returns_mergeable_comp_context(self):
+    async_context = (
+        cpp_execution_contexts.create_async_local_cpp_execution_context()
+    )
+    context = cpp_execution_contexts.create_mergeable_comp_execution_context(
+        [async_context]
+    )
+    self.assertIsInstance(
+        context,
+        mergeable_comp_execution_context.MergeableCompExecutionContext,
+    )
+
+
+class DatasetsTest(parameterized.TestCase):
+  """Tests for Datasets in a native backend.
+
+  These tests ensure that `tf.data.Datasets`s are passed through to TF without
+  TFF mutating or changing the data.
+  """
+
+  def setUp(self):
+    super().setUp()
+    cpp_execution_contexts.set_sync_local_cpp_execution_context()
+
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_takes_dataset(self):
+    @tensorflow_computation.tf_computation
+    def foo(ds):
+      return ds
+
+    ds = tf.data.Dataset.range(10)
+    actual_result = foo(ds)
+
+    expected_result = list(range(10))
+    self.assertEqual(actual_result, expected_result)
+
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_returns_sequence(self):
+    @tensorflow_computation.tf_computation
+    def foo():
+      return tf.data.Dataset.range(10)
+
+    actual_result = foo()
+
+    expected_result = list(range(10))
+    self.assertEqual(actual_result, expected_result)
+
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_returns_dataset_two(self):
+    @tensorflow_computation.tf_computation
+    def foo():
+      return [tf.data.Dataset.range(5), tf.data.Dataset.range(10)]
+
+    actual_result = foo()
+
+    expected_result = [list(range(5)), list(range(10))]
+    self.assertEqual(actual_result, expected_result)
+
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_returns_dataset_and_tensor(self):
+    @tensorflow_computation.tf_computation
+    def foo():
+      return [tf.data.Dataset.range(5), 5]
+
+    actual_result = foo()
+
+    expected_result = [list(range(5)), 5]
+    self.assertEqual(actual_result, expected_result)
+
+
+class AdditionalNativeCPPExecutionContextTest(absltest.TestCase):
+
+  def test_set_mergeable_comp_execution_context_sets_default_context(self):
+    context_stack = federated_language.framework.get_context_stack()
+    original_context = context_stack.current
+    self.addCleanup(context_stack.set_default_context, original_context)
+    async_context = (
+        cpp_execution_contexts.create_async_local_cpp_execution_context()
+    )
+    cpp_execution_contexts.set_mergeable_comp_execution_context([async_context])
+    self.assertIsInstance(
+        context_stack.current,
+        mergeable_comp_execution_context.MergeableCompExecutionContext,
+    )
+
+  def test_sync_local_context_uses_cardinality_inference_fn(self):
+    recorded_calls = []
+
+    def _infer_cardinalities(value, type_spec):
+      recorded_calls.append((value, type_spec))
+      return {federated_language.CLIENTS: 2}
+
+    context = cpp_execution_contexts.create_sync_local_cpp_execution_context(
+        cardinality_inference_fn=_infer_cardinalities
+    )
+
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
+    )
+    def identity(client_values):
+      return client_values
+
+    with federated_language.framework.get_context_stack().install(context):
+      result = identity([1, 2])
+    self.assertEqual(result, [1, 2])
+    self.assertLen(recorded_calls, 1)
+
+  def test_sync_local_context_cardinality_inference_fn_mismatch_raises(self):
+    def _infer_single_client(value, type_spec):
+      del value, type_spec  # Unused.
+      return {federated_language.CLIENTS: 1}
+
+    context = cpp_execution_contexts.create_sync_local_cpp_execution_context(
+        cardinality_inference_fn=_infer_single_client
+    )
+
+    @federated_language.federated_computation(
+        federated_language.FederatedType(np.int32, federated_language.CLIENTS)
+    )
+    def identity(client_values):
+      return client_values
+
+    with federated_language.framework.get_context_stack().install(context):
+      with self.assertRaisesRegex(
+          Exception, 'configured for 1 clients, but 2 values were provided'
+      ):
+        identity([1, 2])
 
 
 if __name__ == '__main__':

@@ -27,6 +27,7 @@ py_library(
     srcs = ["cpp_executor_factory.py"],
     deps = [
         ":executor_stack_bindings",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:cpp_to_python_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
