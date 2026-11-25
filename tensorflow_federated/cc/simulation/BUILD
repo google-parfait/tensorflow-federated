@@ -17,7 +17,6 @@ package_group(
 package_group(
     name = "simulation_users",
     includes = [
-        "//tensorflow_federated/data:data_packages",
         "//tensorflow_federated/python/simulation:simulation_packages",
         "//tensorflow_federated/python/tests:tests_packages",
         "//tools:tools_packages",
@@ -49,9 +48,17 @@ cc_library(
     deps = [
         ":servers",
         "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
-        "@tsl//tsl/platform:platform_port",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@pypi_tensorflow//:libtensorflow_cc",
+        "@pypi_tensorflow//:libtensorflow_framework",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 

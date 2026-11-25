@@ -16,71 +16,174 @@
 # Tool to test the TensorFlow Federated Python package.
 set -e
 
+# Initialize Bazel runfiles when running under Bazel; allow standalone runs.
+f=bazel_tools/tools/bash/runfiles/runfiles.bash
+# shellcheck source=/dev/null
+if source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
+   source "$(grep -sm1 "^$f " "${RUNFILES_MANIFEST_FILE:-/dev/null}" | cut -f2- -d' ')" 2>/dev/null || \
+   source "$0.runfiles/$f" 2>/dev/null || \
+   source "$(dirname "$0")/$f" 2>/dev/null || \
+   source "$(dirname "$(realpath "$0")")/$f" 2>/dev/null; then
+  if [[ -z "${RUNFILES_DIR:-}" ]]; then
+    if [[ -d "$0.runfiles" ]]; then
+      export RUNFILES_DIR="$0.runfiles"
+    elif [[ -d "$(dirname "$0")/.runfiles" ]]; then
+      export RUNFILES_DIR="$(dirname "$0")/.runfiles"
+    elif [[ -d "$(dirname "$(realpath "$0")").runfiles" ]]; then
+      export RUNFILES_DIR="$(dirname "$(realpath "$0")").runfiles"
+    fi
+  fi
+  runfiles_export_envvars
+fi
+unset f
+
 usage() {
-  local script_name=$(basename "${0}")
+  local script_name
+  script_name=$(basename "${0}")
   echo "usage: ${script_name} --package=<path>"
   echo "  --package=<path>  A path to a local Python package."
 }
 
-main() {
-  # Find hermetic Python in runfiles.
-  local hermetic_python=""
-  local runfiles_dir="${RUNFILES_DIR:-}"
+verify_linux_elf_symbols() {
+  local pkg_dir="$1"
+  if ! command -v readelf >/dev/null 2>&1 || ! command -v nm >/dev/null 2>&1; then
+    echo "error: readelf and nm (binutils) are required for Linux ELF checks" 1>&2
+    exit 1
+  fi
 
-  # Fallback runfiles resolution
+  local tf_so_matches=("${pkg_dir}/cc/core/impl/executors"/tensorflow_bindings*.so)
+  local exec_so_matches=("${pkg_dir}/cc/core/impl/executors"/executor_bindings*.so)
+  local stack_so_matches=("${pkg_dir}/cc/core/impl/executor_stacks"/executor_stack_bindings*.so)
+
+  if [[ "${#tf_so_matches[@]}" -ne 1 || ! -f "${tf_so_matches[0]}" ]]; then
+    echo "error: expected one tensorflow_bindings*.so under ${pkg_dir}" 1>&2
+    exit 1
+  fi
+  if [[ "${#exec_so_matches[@]}" -ne 1 || ! -f "${exec_so_matches[0]}" ]]; then
+    echo "error: expected one executor_bindings*.so under ${pkg_dir}" 1>&2
+    exit 1
+  fi
+  if [[ -e "${stack_so_matches[0]}" ]]; then
+    echo "error: unexpected executor_stack_bindings*.so under ${pkg_dir}" 1>&2
+    exit 1
+  fi
+
+  local tf_so="${tf_so_matches[0]}"
+  local exec_so="${exec_so_matches[0]}"
+
+  local dynamic_info
+  dynamic_info="$(readelf -d "${tf_so}")"
+  if ! grep -Eq '\((RUNPATH|RPATH)\).*\$ORIGIN/\.\./\.\./\.\./\.\./\.\./tensorflow' <<< "${dynamic_info}"; then
+    echo "error: ${tf_so} missing expected \$ORIGIN/../../../../../tensorflow RPATH/RUNPATH" 1>&2
+    echo "${dynamic_info}" 1>&2
+    exit 1
+  fi
+  if ! grep -Fq 'libtensorflow_framework.so.2' <<< "${dynamic_info}"; then
+    echo "error: ${tf_so} missing NEEDED libtensorflow_framework.so.2" 1>&2
+    echo "${dynamic_info}" 1>&2
+    exit 1
+  fi
+  if ! grep -Fq 'libtensorflow_cc.so.2' <<< "${dynamic_info}"; then
+    echo "error: ${tf_so} missing NEEDED libtensorflow_cc.so.2" 1>&2
+    echo "${dynamic_info}" 1>&2
+    exit 1
+  fi
+
+  local tf_undef_syms
+  tf_undef_syms="$(nm -D -C --undefined-only "${tf_so}")"
+  if ! grep -Eq 'MixingHashState.*kSeed' <<< "${tf_undef_syms}"; then
+    echo "error: ${tf_so} missing undefined MixingHashState::kSeed symbol" 1>&2
+    exit 1
+  fi
+  if grep -Fq 'DescriptorPool::generated_pool' <<< "${tf_undef_syms}"; then
+    echo "error: ${tf_so} unexpectedly has undefined DescriptorPool::generated_pool" 1>&2
+    exit 1
+  fi
+
+  local so_path
+  local init_sym
+  for so_path in "${exec_so}" "${tf_so}"; do
+    if [[ "${so_path}" == "${exec_so}" ]]; then
+      init_sym="PyInit_executor_bindings"
+    else
+      init_sym="PyInit_tensorflow_bindings"
+    fi
+    local defined_syms
+    defined_syms="$(nm -D -C --defined-only "${so_path}")"
+    if ! grep -Fq "${init_sym}" <<< "${defined_syms}"; then
+      echo "error: ${so_path} missing exported ${init_sym}" 1>&2
+      echo "${defined_syms}" 1>&2
+      exit 1
+    fi
+    if grep -Eq 'tensorflow_federated::|google::protobuf::' <<< "${defined_syms}"; then
+      echo "error: ${so_path} leaks hidden C++ symbols" 1>&2
+      grep -E 'tensorflow_federated::|google::protobuf::' <<< "${defined_syms}" | head -n 20 1>&2
+      exit 1
+    fi
+  done
+
+  echo "Verified Linux ELF RPATH, NEEDED, and symbol visibility checks."
+}
+
+main() {
+  local runfiles_dir="${RUNFILES_DIR:-}"
   if [[ -z "${runfiles_dir}" ]]; then
     if [[ -d "${0}.runfiles" ]]; then
       runfiles_dir="${0}.runfiles"
     elif [[ -d "${BASH_SOURCE[0]}.runfiles" ]]; then
       runfiles_dir="${BASH_SOURCE[0]}.runfiles"
     else
-      local dir_name=$(dirname "${BASH_SOURCE[0]}")
+      local dir_name
+      dir_name=$(dirname "${BASH_SOURCE[0]}")
       if [[ "${dir_name}" == *.runfiles* ]]; then
         runfiles_dir="${dir_name%%.runfiles*}.runfiles"
       fi
     fi
   fi
 
-  if [[ -d "${runfiles_dir}" ]]; then
-    # Search for python or python3 executable under python_3_12 directories.
-    # Restrict depth to 5 to avoid traversing deep into the python library.
-    local paths=$(find -L "${runfiles_dir}" -maxdepth 5 \( -name "python" -o -name "python3" \) -path "*python_3_12*" 2>/dev/null)
-    for path in ${paths}; do
-      if [[ -x "${path}" ]]; then
-        hermetic_python="${path}"
-        break
-      fi
-    done
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  local helper_path=""
+  local test_script=""
+  local verify_script=""
+  if declare -F rlocation >/dev/null 2>&1; then
+    helper_path="$(rlocation org_tensorflow_federated/tools/python_package/get_hermetic_python.sh || true)"
+    test_script="$(rlocation org_tensorflow_federated/tools/python_package/test_computation.py || true)"
+    verify_script="$(rlocation org_tensorflow_federated/tools/python_package/verify_python_package.py || true)"
+  fi
+  if [[ -z "${helper_path}" || ! -f "${helper_path}" ]]; then
+    helper_path="${script_dir}/get_hermetic_python.sh"
+  fi
+  if [[ -z "${test_script}" || ! -f "${test_script}" ]]; then
+    test_script="${script_dir}/test_computation.py"
+  fi
+  if [[ -z "${verify_script}" || ! -f "${verify_script}" ]]; then
+    verify_script="${script_dir}/verify_python_package.py"
   fi
 
-  local python_cmd="python"
-  if [[ -n "${hermetic_python}" ]]; then
-    python_cmd="${hermetic_python}"
-    echo "Using hermetic Python: ${python_cmd}"
-
-    # Determine PYTHONHOME based on executable location
-    if [[ "${python_cmd}" == */bin/python* ]]; then
-      export PYTHONHOME="$(dirname "$(dirname "${python_cmd}")")"
-    else
-      export PYTHONHOME="$(dirname "${python_cmd}")"
-    fi
-    echo "Set PYTHONHOME=${PYTHONHOME}"
-  fi
-
-  # Ensure Python 3.12 or newer is used.
-  local python_version=$("${python_cmd}" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')
-  local python_major="${python_version%.*}"
-  local python_minor="${python_version#*.}"
-  if (( python_major < 3 || (python_major == 3 && python_minor < 12) )); then
-    echo "error: This script requires Python 3.12 or newer. You are using Python ${python_version}." 1>&2
+  if [[ -z "${helper_path}" || ! -f "${helper_path}" ]]; then
+    echo "error: get_hermetic_python.sh not found" 1>&2
     exit 1
   fi
+  if [[ -z "${test_script}" || ! -f "${test_script}" ]]; then
+    echo "error: test_computation.py not found" 1>&2
+    exit 1
+  fi
+  if [[ -z "${verify_script}" || ! -f "${verify_script}" ]]; then
+    echo "error: verify_python_package.py not found" 1>&2
+    exit 1
+  fi
+  # shellcheck source=/dev/null
+  source "${helper_path}"
 
-  # Parse the arguments.
+  local python_cmd
+  python_cmd=$(setup_hermetic_python "${runfiles_dir}")
+
   local package=""
 
   while [[ "$#" -gt 0 ]]; do
-    option="$1"
+    local option="$1"
     case "${option}" in
       --package=*)
         package="${option#*=}"
@@ -105,25 +208,28 @@ main() {
   fi
 
   # Check Python package sizes.
-  local actual_size="$(du -b "${package}" | cut -f1)"
-  local maximum_size=80000000  # 80 MiB
+  local actual_size
+  actual_size=$(wc -c < "${package}" | tr -d ' ')
+  local maximum_size=20000000  # 20 MB
   if [[ "${actual_size}" -ge "${maximum_size}" ]]; then
     echo "error: expected '${package}' to be less than '${maximum_size}' bytes, it was '${actual_size}' bytes" 1>&2
     exit 1
   fi
 
+  # Verify wheel tags, metadata, and contents when testing a .whl file.
+  if [[ "${package}" == *.whl ]]; then
+    "${python_cmd}" "${verify_script}" wheel "${package}"
+  fi
+
   # Create a temp directory.
-  local temp_dir="$(mktemp --directory)"
-  trap "rm -rf ${temp_dir}" EXIT
+  local temp_dir
+  temp_dir="$(mktemp -d)"
+  trap "rm -rf \"${temp_dir}\"" EXIT
 
   # Create a Python environment.
   "${python_cmd}" -m venv "${temp_dir}/venv"
+  # shellcheck source=/dev/null
   source "${temp_dir}/venv/bin/activate"
-
-  # Unset PYTHONHOME to avoid conflicts with venv
-  if [[ -n "${hermetic_python}" ]]; then
-    unset PYTHONHOME
-  fi
 
   python --version
   pip install --upgrade "pip"
@@ -132,7 +238,16 @@ main() {
   # Test the Python package.
   pip install --upgrade "${package}"
   pip freeze
-  python -c "import tensorflow_federated as tff; print(tff.__version__)"
+
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    local tff_pkg_dir
+    tff_pkg_dir="$(python -I -c "import os, tensorflow_federated as tff; print(os.path.dirname(tff.__file__))")"
+    verify_linux_elf_symbols "${tff_pkg_dir}"
+  fi
+
+  python -I -c "import tensorflow_federated as tff; print(tff.__version__)"
+  python -I "${test_script}"
+  python -I "${verify_script}" bindings
 }
 
 main "$@"

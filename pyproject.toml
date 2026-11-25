@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "tensorflow_federated"
 description = "An open-source framework for machine learning and other computations on decentralized data."
 readme = "README.md"
-requires-python = ">=3.12,<4"
+requires-python = ">=3.12,<3.14"
 license = {file = "LICENSE"}
 authors = [
   { name="TensorFlow Federated Team", email="no-reply@google.com" },
@@ -51,10 +51,6 @@ dynamic = ["version"]
 "Source" = "https://github.com/google-parfait/tensorflow-federated"
 "Documentation" = "https://www.tensorflow.org/federated"
 
-[tool.distutils.bdist_wheel]
-# Should match the expected GLIBC version defined in `build_python_package.sh`.
-plat-name = "manylinux_2_27_x86_64"
-
 [tool.setuptools.dynamic]
 version = {attr = "tensorflow_federated.version.__version__"}
 
@@ -62,4 +58,4 @@ version = {attr = "tensorflow_federated.version.__version__"}
 include = ["tensorflow_federated*"]
 
 [tool.setuptools.package-data]
-"tensorflow_federated.data" = ["worker_binary"]
+tensorflow_federated = ["cc/**/*.so"]

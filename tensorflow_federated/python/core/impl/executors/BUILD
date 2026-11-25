@@ -93,6 +93,7 @@ py_test(
 py_library(
     name = "executor_bindings",
     srcs = ["executor_bindings.py"],
+    data = ["//tensorflow_federated/cc/core/impl/executors:executor_bindings"],
     visibility = [
         ":executors_packages",
         "//tensorflow_federated/python/core/impl:impl_users",
@@ -102,7 +103,6 @@ py_library(
     ],
     deps = [
         ":data_conversions",
-        "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
         "@federated_language//federated_language",
     ],
 )
@@ -127,7 +127,7 @@ py_test(
 py_library(
     name = "executor_test_utils_bindings",
     srcs = ["executor_test_utils_bindings.py"],
-    deps = ["//tensorflow_federated/cc/core/impl/executors:executor_test_utils_bindings"],
+    data = ["//tensorflow_federated/cc/core/impl/executors:executor_test_utils_bindings"],
 )
 
 py_library(

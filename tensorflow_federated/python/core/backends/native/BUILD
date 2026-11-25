@@ -24,7 +24,7 @@ py_library(
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
     deps = [
         ":compiler",
-        ":execution_contexts",
+        ":cpp_execution_contexts",
         ":mergeable_comp_compiler",
     ],
 )
@@ -87,34 +87,6 @@ py_test(
         "@federated_language//federated_language",
         "@pypi//absl_py",
         "@pypi//numpy",
-        "@pypi//tensorflow",
-    ],
-)
-
-py_library(
-    name = "execution_contexts",
-    srcs = ["execution_contexts.py"],
-    deps = [
-        ":compiler",
-        ":mergeable_comp_compiler",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
-        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
-        "@federated_language//federated_language",
-    ],
-)
-
-py_test(
-    name = "execution_contexts_test",
-    srcs = ["execution_contexts_test.py"],
-    deps = [
-        ":execution_contexts",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_test_utils",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
-        "@federated_language//federated_language",
-        "@pypi//absl_py",
         "@pypi//tensorflow",
     ],
 )

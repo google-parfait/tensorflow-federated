@@ -41,3 +41,4 @@ backends.native.set_sync_local_cpp_execution_context()
 # these to locals().
 del python  # pylint: disable=undefined-variable  # pyrefly: ignore[unbound-name]
 del proto  # pylint: disable=undefined-variable  # pyrefly: ignore[unbound-name]
+del cc  # pylint: disable=undefined-variable  # pyrefly: ignore[unbound-name]

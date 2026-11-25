@@ -24,3 +24,9 @@ filegroup(
     srcs = ["pyproject.toml"],
     visibility = ["//tools/python_package:python_package_tool"],
 )
+
+filegroup(
+    name = "setup_py",
+    srcs = ["setup.py"],
+    visibility = ["//tools/python_package:python_package_tool"],
+)

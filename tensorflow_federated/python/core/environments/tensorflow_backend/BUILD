@@ -230,10 +230,8 @@ py_test(
 py_library(
     name = "tensorflow_executor_bindings",
     srcs = ["tensorflow_executor_bindings.py"],
-    deps = [
-        "//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings",
-        "@pypi//tensorflow",
-    ],
+    data = ["//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings"],
+    deps = ["@pypi//tensorflow"],
 )
 
 py_test(

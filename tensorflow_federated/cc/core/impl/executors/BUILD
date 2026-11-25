@@ -23,6 +23,11 @@ package_group(
 
 licenses(["notice"])
 
+exports_files([
+    "pybind_exported_symbols.lds",
+    "pybind_version_script.lds",
+])
+
 cc_library(
     name = "array_shape_test_utils",
     hdrs = ["array_shape_test_utils.h"],
@@ -182,18 +187,18 @@ cc_library(
     deps = [
         ":session_provider",
         ":status_macros",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:cc_ops",
-        "@org_tensorflow//tensorflow/cc:ops",
-        "@org_tensorflow//tensorflow/cc:scope",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:graph",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@pypi_tensorflow//:libtensorflow_cc",
+        "@pypi_tensorflow//:libtensorflow_framework",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -202,7 +207,7 @@ cc_test(
     srcs = ["dataset_from_tensor_structures_test.cc"],
     args = [
         "--reduce_graph_path",
-        "$(location structural_reduce_test.pbtxt)",
+        "$(rootpath structural_reduce_test.pbtxt)",
     ],
     data = ["structural_reduce_test.pbtxt"],
     deps = [
@@ -215,10 +220,7 @@ cc_test(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:portable_gif_internal",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -232,16 +234,18 @@ cc_library(
         ":status_macros",
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/cc:scope",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:graph",
-        "@org_tensorflow//tensorflow/core:portable_gif_internal",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@pypi_tensorflow//:libtensorflow_cc",
+        "@pypi_tensorflow//:libtensorflow_framework",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -253,9 +257,7 @@ cc_test(
         ":value_test_utils",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -285,6 +287,20 @@ cc_library(
 pybind_extension(
     name = "executor_bindings",
     srcs = ["executor_bindings.cc"],
+    additional_linker_inputs = select({
+        "@platforms//os:osx": [":pybind_exported_symbols.lds"],
+        "@platforms//os:linux": [":pybind_version_script.lds"],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@platforms//os:osx": [
+            "-Wl,-exported_symbols_list,$(location :pybind_exported_symbols.lds)",
+        ],
+        "@platforms//os:linux": [
+            "-Wl,--version-script,$(location :pybind_version_script.lds)",
+        ],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
@@ -374,6 +390,20 @@ cc_library(
 pybind_extension(
     name = "executor_test_utils_bindings",
     srcs = ["executor_test_utils_bindings.cc"],
+    additional_linker_inputs = select({
+        "@platforms//os:osx": [":pybind_exported_symbols.lds"],
+        "@platforms//os:linux": [":pybind_version_script.lds"],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@platforms//os:osx": [
+            "-Wl,-exported_symbols_list,$(location :pybind_exported_symbols.lds)",
+        ],
+        "@platforms//os:linux": [
+            "-Wl,--version-script,$(location :pybind_version_script.lds)",
+        ],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
     deps = [":mock_executor"],
 )
@@ -437,7 +467,7 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -445,7 +475,7 @@ genrule(
     name = "reduce_lambda_test_graph",
     srcs = [],
     outs = ["reduce_lambda_test.pbtxt"],
-    cmd = "$(location :make_reduce_lambda_test_graph) --output \"$@\"",
+    cmd = "$(execpath :make_reduce_lambda_test_graph) --output \"$@\"",
     tools = [":make_reduce_lambda_test_graph"],
 )
 
@@ -464,7 +494,7 @@ genrule(
     name = "structural_reduce_test_graph",
     srcs = [],
     outs = ["structural_reduce_test.pbtxt"],
-    cmd = "$(location :make_structural_reduce_test_graph) --output \"$@\"",
+    cmd = "$(execpath :make_structural_reduce_test_graph) --output \"$@\"",
     tools = [":make_structural_reduce_test_graph"],
 )
 
@@ -563,10 +593,7 @@ cc_test(
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:math_ops",
-        "@org_tensorflow//tensorflow/core:core_cpu_base",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -653,8 +680,7 @@ cc_test(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:math_ops",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -724,7 +750,7 @@ cc_test(
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/status",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -747,18 +773,20 @@ cc_library(
     deps = [
         ":status_macros",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/common_runtime:device_mgr",
-        "@org_tensorflow//tensorflow/core/common_runtime:session",
-        "@org_tensorflow//tensorflow/core/common_runtime:session_options",
+        "@pypi_tensorflow//:libtensorflow_cc",
+        "@pypi_tensorflow//:libtensorflow_framework",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -769,7 +797,7 @@ cc_test(
         ":session_provider",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
-        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -872,8 +900,7 @@ cc_test(
         "@com_google_protobuf//:protobuf",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:math_ops",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -903,6 +930,30 @@ cc_test(
 pybind_extension(
     name = "tensorflow_bindings",
     srcs = ["tensorflow_bindings.cc"],
+    additional_linker_inputs = select({
+        "@platforms//os:osx": [":pybind_exported_symbols.lds"],
+        "@platforms//os:linux": [":pybind_version_script.lds"],
+        "//conditions:default": [],
+    }),
+    data = [
+        ":executor_bindings",
+    ],
+    linkopts = select({
+        "@platforms//os:osx": [
+            "-Wl,-exported_symbols_list,$(location :pybind_exported_symbols.lds)",
+            "-Wl,-rpath,@loader_path/../../../../../tensorflow",
+        ],
+        "@platforms//os:linux": [
+            "-Wl,--version-script,$(location :pybind_version_script.lds)",
+            "-Wl,-rpath,$$ORIGIN/../../../../../tensorflow",
+        ],
+        "//conditions:default": [],
+    }),
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/cc/core/impl:impl_users",
+        "//tools/python_package:python_package_tool",
+    ],
     deps = [
         ":executor",
         ":status_casters",
@@ -925,8 +976,11 @@ cc_library(
         ":threading",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -934,10 +988,9 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core:tensorflow",
-        "@org_tensorflow//tensorflow/core/common_runtime:session",
+        "@pypi_tensorflow//:libtensorflow_cc",
+        "@pypi_tensorflow//:libtensorflow_framework",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -946,7 +999,7 @@ tff_cc_cpu_gpu_test(
     srcs = ["tensorflow_executor_parameterized_test.cc"],
     args = [
         "--reduce_graph_path",
-        "$(location reduce_lambda_test.pbtxt)",
+        "$(rootpath reduce_lambda_test.pbtxt)",
     ],
     data = ["reduce_lambda_test.pbtxt"],
     env = {"TF_XLA_FLAGS": "--tf_mlir_enable_mlir_bridge=true"},
@@ -962,7 +1015,11 @@ tff_cc_cpu_gpu_test(
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/cc/testing:status_matchers",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -971,16 +1028,9 @@ tff_cc_cpu_gpu_test(
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/c:tf_status_headers",
-        "@org_tensorflow//tensorflow/c/eager:c_api",
-        "@org_tensorflow//tensorflow/c/eager:tfe_context_internal",
-        "@org_tensorflow//tensorflow/cc:cc_ops",
-        "@org_tensorflow//tensorflow/cc:ops",
-        "@org_tensorflow//tensorflow/cc:scope",
-        "@org_tensorflow//tensorflow/core:core_cpu_base",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@pypi_tensorflow//:libtensorflow_cc",
+        "@pypi_tensorflow//:libtensorflow_framework",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -994,6 +1044,10 @@ cc_library(
         ":tensorflow_utils",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -1002,8 +1056,9 @@ cc_library(
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@pypi_tensorflow//:libtensorflow_cc",
+        "@pypi_tensorflow//:libtensorflow_framework",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -1015,7 +1070,11 @@ cc_library(
     deps = [
         ":status_macros",
         "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -1025,10 +1084,9 @@ cc_library(
         "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:portable_gif_internal",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/platform:tensor_coding",
+        "@pypi_tensorflow//:libtensorflow_cc",
+        "@pypi_tensorflow//:libtensorflow_framework",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 
@@ -1051,9 +1109,7 @@ cc_test(
         "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:portable_gif_internal",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@pypi_tensorflow//:tf_header_lib",
     ],
 )
 

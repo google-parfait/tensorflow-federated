@@ -18,11 +18,14 @@ sh_binary(
     name = "build_python_package",
     srcs = ["build_python_package.sh"],
     data = [
+        "get_hermetic_python.sh",
         "//:LICENSE",
         "//:README.md",
         "//:pyproject_toml",
+        "//:setup_py",
         "//tensorflow_federated",
-        "//tensorflow_federated/data:worker_binary",
+        "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
+        "//tensorflow_federated/cc/core/impl/executors:tensorflow_bindings",
         "//tensorflow_federated/proto",
         "//tensorflow_federated/proto/v0",
         "//tensorflow_federated/python",
@@ -37,11 +40,19 @@ sh_binary(
         "//tensorflow_federated/python/core/impl/execution_contexts",
         "//tensorflow_federated/python/core/impl/executor_stacks",
         "//tensorflow_federated/python/core/impl/executors",
+        "@hermetic_python_version//:python_files",
     ],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
 )
 
 sh_binary(
     name = "test_python_package",
     srcs = ["test_python_package.sh"],
-    data = ["@hermetic_python_version//:python_files"],
+    data = [
+        "get_hermetic_python.sh",
+        "test_computation.py",
+        "verify_python_package.py",
+        "@hermetic_python_version//:python_files",
+    ],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
 )
