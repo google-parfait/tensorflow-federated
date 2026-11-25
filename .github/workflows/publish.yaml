@@ -98,7 +98,7 @@ jobs:
     name: Build Package (Python ${{ matrix.python-version }})
     needs: [publish-release]
     runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    container: quay.io/pypa/manylinux_2_28_x86_64
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -106,14 +106,9 @@ jobs:
         python-version: ["3.12", "3.13"]
     steps:
 
-    - name: Install prerequisites
-      run: |
-        apt-get update
-        apt-get install -y git curl tar
-
     - name: Install Bazelisk
       run: |
-        curl -L https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-amd64 -o /usr/local/bin/bazelisk
+        curl -L https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-linux-amd64 -o /usr/local/bin/bazelisk
         chmod +x /usr/local/bin/bazelisk
 
     - name: Checkout repository
@@ -132,20 +127,16 @@ jobs:
       uses: actions/cache@v4.0.2
       with:
         path: "~/.cache/bazel/"
-        key: ${{ runner.os }}-bazel-py${{ matrix.python-version }}-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'requirements_lock_*.txt') }}
+        key: ${{ runner.os }}-bazel-py${{ matrix.python-version }}-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel', 'requirements_lock_*.txt') }}
         restore-keys: |
           ${{ runner.os }}-bazel-py${{ matrix.python-version }}-
           ${{ runner.os }}-bazel-
 
     - name: Set up Python
-      uses: actions/setup-python@v5.1.0
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: "pip"
-
-    - name: Install Python dependencies
       run: |
-        pip install --upgrade "pip"
+        py_tag="cp$(echo "${{ matrix.python-version }}" | tr -d '.')"
+        echo "/opt/python/${py_tag}-${py_tag}/bin" >> "$GITHUB_PATH"
+        "/opt/python/${py_tag}-${py_tag}/bin/python" -m pip install --upgrade "pip"
 
     - name: Build Python package
       run: |

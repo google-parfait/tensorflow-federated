@@ -56,9 +56,9 @@ cc_library(
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 

@@ -42,7 +42,7 @@ sh_binary(
         "//tensorflow_federated/python/core/impl/execution_contexts",
         "//tensorflow_federated/python/core/impl/executor_stacks",
         "//tensorflow_federated/python/core/impl/executors",
-        "@hermetic_python_version//:python_files",
+        "@rules_python//python:current_py_toolchain",
     ],
     deps = ["@bazel_tools//tools/bash/runfiles"],
 )
@@ -54,7 +54,7 @@ sh_binary(
         "get_hermetic_python.sh",
         "test_computation.py",
         "verify_python_package.py",
-        "@hermetic_python_version//:python_files",
+        "@rules_python//python:current_py_toolchain",
     ],
     deps = ["@bazel_tools//tools/bash/runfiles"],
 )
