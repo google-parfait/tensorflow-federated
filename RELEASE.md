@@ -87,6 +87,18 @@ and this project adheres to
     indicating whether a previous state was loaded.
 *   Removed no longer needed round end timestamp metric in training program
     logic.
+*   Local native and test execution contexts now run in-process through C++
+    pybind bindings linked against TensorFlow 2.21 shared libraries instead of
+    launching a `worker_binary` subprocess. Bounds errors from `secure_sum` in
+    test contexts now raise `Exception` instead of `grpc.RpcError`.
+*   Python packages now ship CPython-tagged wheels for Python 3.12 and 3.13
+    (`requires-python = ">=3.12,<3.14"`).
+
+### Deprecated
+
+*   The `stream_structs` parameter on local in-process execution contexts and
+    `tff.framework.local_cpp_executor_factory`. Use remote C++ execution
+    contexts or `remote_cpp_executor_factory` to stream structs over gRPC.
 
 ### Removed
 

@@ -95,11 +95,15 @@ jobs:
         )"
 
   build-package:
-    name: Build Package
+    name: Build Package (Python ${{ matrix.python-version }})
     needs: [publish-release]
     runs-on: ubuntu-latest
     container: ubuntu:22.04
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
 
     - name: Install prerequisites
@@ -128,13 +132,15 @@ jobs:
       uses: actions/cache@v4.0.2
       with:
         path: "~/.cache/bazel/"
-        key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE') }}
-        restore-keys: ${{ runner.os }}-bazel-
+        key: ${{ runner.os }}-bazel-py${{ matrix.python-version }}-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'requirements_lock_*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-bazel-py${{ matrix.python-version }}-
+          ${{ runner.os }}-bazel-
 
     - name: Set up Python
       uses: actions/setup-python@v5.1.0
       with:
-        python-version: "3.12"
+        python-version: ${{ matrix.python-version }}
         cache: "pip"
 
     - name: Install Python dependencies
@@ -144,6 +150,7 @@ jobs:
     - name: Build Python package
       run: |
         bazelisk run //tools/python_package:build_python_package \
+            --repo_env=HERMETIC_PYTHON_VERSION=${{ matrix.python-version }} \
             --build_tag_filters="-nokokoro,-nopresubmit,-requires-gpu-sm90" \
             --google_credentials="${{ steps.auth.outputs.credentials_file_path }}" \
             --remote_cache="https://storage.googleapis.com/tensorflow-federated-bazel-cache/${{ github.job }}" \
@@ -153,14 +160,18 @@ jobs:
     - name: Upload Python package
       uses: actions/upload-artifact@v4.3.3
       with:
-        name: python-package-distributions
+        name: python-package-distributions-${{ matrix.python-version }}
         path: dist/*.whl
 
   test-package:
-    name: Test Package
+    name: Test Package (Python ${{ matrix.python-version }})
     needs: [build-package]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
 
     - name: Checkout repository
@@ -171,30 +182,26 @@ jobs:
     - name: Download Python package
       uses: actions/download-artifact@v4.1.7
       with:
-        name: python-package-distributions
+        name: python-package-distributions-${{ matrix.python-version }}
         path: dist/
 
     - name: Set up Python
       uses: actions/setup-python@v5.1.0
       with:
-        python-version: "3.12"
+        python-version: ${{ matrix.python-version }}
         cache: "pip"
 
-    - name: Install Python dependencies
+    - name: Ensure ELF inspection tools are installed
       run: |
-        pip install --upgrade "pip"
+        if ! command -v readelf >/dev/null 2>&1 || ! command -v nm >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y binutils
+        fi
 
     - name: Test Python package
       run: |
         package="$(ls "${{ github.workspace }}/dist/"*".whl" | head -n1)"
-        actual_size="$(du -b "${package}" | cut -f1)"
-        maximum_size=80000000  # 80 MiB
-        if [[ "${actual_size}" -ge "${maximum_size}" ]]; then
-          echo "error: expected '${package}' to be less than '${maximum_size}' bytes, it was '${actual_size}' bytes" 1>&2
-          exit 1
-        fi
-        pip install --upgrade "${package}"
-        python -I -c "import tensorflow_federated as tff; print(tff.__version__)"
+        bash tools/python_package/test_python_package.sh --package="${package}"
 
   publish-package:
     name: Publish Package
@@ -208,7 +215,8 @@ jobs:
     - name: Download Python package
       uses: actions/download-artifact@v4.1.7
       with:
-        name: python-package-distributions
+        pattern: python-package-distributions-*
+        merge-multiple: true
         path: dist/
 
     - name: Publish Python package
