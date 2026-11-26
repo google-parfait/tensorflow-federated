@@ -18,12 +18,33 @@ from typing import Any
 from absl.testing import absltest
 import tensorflow as tf
 
-from pybind11_abseil import status  # pylint:disable=unused-import
+from pybind11_abseil import status
 from tensorflow_federated.cc.core.impl.aggregation.core import tensor_pb2
 from tensorflow_federated.cc.core.impl.aggregation.protocol import aggregation_protocol_messages_pb2 as apm_pb2
 from tensorflow_federated.cc.core.impl.aggregation.protocol import configuration_pb2
 from tensorflow_federated.cc.core.impl.aggregation.protocol.python import aggregation_protocol  # pylint:disable=unused-import
 from tensorflow_federated.cc.core.impl.aggregation.tensorflow.python import aggregation_protocols
+
+_INVALID_CLIENT_COUNT = -1
+
+
+def _create_federated_sum_config(
+    input_tensor: tensor_pb2.TensorSpecProto,
+    output_tensor: tensor_pb2.TensorSpecProto,
+) -> configuration_pb2.Configuration:
+  return configuration_pb2.Configuration(
+      intrinsic_configs=[
+          configuration_pb2.Configuration.IntrinsicConfig(
+              intrinsic_uri='federated_sum',
+              intrinsic_args=[
+                  configuration_pb2.Configuration.IntrinsicConfig.IntrinsicArg(
+                      input_tensor=input_tensor
+                  ),
+              ],
+              output_tensors=[output_tensor],
+          ),
+      ]
+  )
 
 
 def create_client_input(tensors: dict[str, Any]) -> apm_pb2.ClientMessage:
@@ -47,19 +68,7 @@ class AggregationProtocolsTest(absltest.TestCase):
     output_tensor = tensor_pb2.TensorSpecProto(
         name='out', dtype=tensor_pb2.DT_INT32, shape={}
     )
-    config = configuration_pb2.Configuration(
-        intrinsic_configs=[
-            configuration_pb2.Configuration.IntrinsicConfig(
-                intrinsic_uri='federated_sum',
-                intrinsic_args=[
-                    configuration_pb2.Configuration.IntrinsicConfig.IntrinsicArg(
-                        input_tensor=input_tensor
-                    ),
-                ],
-                output_tensors=[output_tensor],
-            ),
-        ]
-    )
+    config = _create_federated_sum_config(input_tensor, output_tensor)
 
     agg_protocol = aggregation_protocols.create_simple_aggregation_protocol(
         config
@@ -83,6 +92,42 @@ class AggregationProtocolsTest(absltest.TestCase):
               file_pattern=tmpfile.name,
               tensor_name=output_tensor.name,
               dt=output_tensor.dtype), 8)
+
+  def test_invalid_configuration_raises_status_not_ok(self):
+    empty_arg = configuration_pb2.Configuration.IntrinsicConfig.IntrinsicArg()
+    invalid_config = configuration_pb2.Configuration(
+        intrinsic_configs=[
+            configuration_pb2.Configuration.IntrinsicConfig(
+                intrinsic_uri='federated_sum',
+                intrinsic_args=[empty_arg],
+            ),
+        ]
+    )
+    with self.assertRaisesRegex(
+        status.StatusNotOk, 'All intrinsic args must have an arg value'
+    ) as context:
+      aggregation_protocols.create_simple_aggregation_protocol(invalid_config)
+    self.assertEqual(
+        context.exception.status.code(), status.StatusCode.INVALID_ARGUMENT
+    )
+
+  def test_invalid_start_raises_status_not_ok(self):
+    input_tensor = tensor_pb2.TensorSpecProto(
+        name='in', dtype=tensor_pb2.DT_INT32, shape={}
+    )
+    output_tensor = tensor_pb2.TensorSpecProto(
+        name='out', dtype=tensor_pb2.DT_INT32, shape={}
+    )
+    agg_protocol = aggregation_protocols.create_simple_aggregation_protocol(
+        _create_federated_sum_config(input_tensor, output_tensor)
+    )
+    with self.assertRaisesRegex(
+        status.StatusNotOk, 'Number of clients cannot be negative'
+    ) as context:
+      agg_protocol.Start(_INVALID_CLIENT_COUNT)
+    self.assertEqual(
+        context.exception.status.code(), status.StatusCode.INVALID_ARGUMENT
+    )
 
 
 if __name__ == '__main__':

@@ -15,13 +15,15 @@
 
 Usage:
   verify_python_package.py wheel <wheel_path>
-  verify_python_package.py bindings
+  verify_python_package.py bindings [--max_glibc=<major.minor>]
 """
 
 from collections.abc import Sequence
 import importlib.util
 import os
 import platform
+import re
+import subprocess
 import sys
 import zipfile
 
@@ -39,12 +41,37 @@ _FORBIDDEN_WHEEL_SUBSTRINGS = (
 _CC_PACKAGE_PREFIX = 'tensorflow_federated/cc/'
 _WHEEL_METADATA_SUFFIX = '.dist-info/WHEEL'
 _PACKAGE_METADATA_SUFFIX = '.dist-info/METADATA'
-_LINUX_PLATFORM_PREFIX = 'manylinux_2_27_'
+_LINUX_PLATFORM_PREFIX = 'manylinux_2_28_'
 
 _INVALID_VALUE_REF = 999999
 _NOT_FOUND_STATUS_CODE = 5
 _UNAVAILABLE_STATUS_CODE = 14
 _SINGLE_CLIENT = 1
+_GLIBC_VERSION_PATTERN = re.compile(r'GLIBC_(\d+(?:\.\d+)+)')
+_MAX_GLIBC_FLAG_PREFIX = '--max_glibc='
+
+
+def parse_version_tuple(version_str: str) -> tuple[int, ...]:
+  """Parses a dotted numeric version string into a comparable integer tuple."""
+  return tuple(int(part) for part in version_str.split('.'))
+
+
+def verify_glibc_max(so_paths: Sequence[str], max_glibc: str) -> None:
+  """Verifies Linux shared libraries require no GLIBC version above max_glibc."""
+  max_tuple = parse_version_tuple(max_glibc)
+  for so_path in so_paths:
+    output = subprocess.check_output(
+        ['readelf', '--version-info', so_path], text=True
+    )
+    versions = sorted(
+        {m.group(1) for m in _GLIBC_VERSION_PATTERN.finditer(output)},
+        key=parse_version_tuple,
+    )
+    too_new = [v for v in versions if parse_version_tuple(v) > max_tuple]
+    assert (
+        not too_new
+    ), f'{so_path} requires GLIBC versions {too_new} above max {max_glibc}'
+  print(f'Verified GLIBC symbol versions <= {max_glibc}.')
 
 
 def verify_wheel(wheel_path: str) -> None:
@@ -136,7 +163,7 @@ def verify_wheel(wheel_path: str) -> None:
   print('Verified wheel tags, metadata, and contents.')
 
 
-def verify_bindings() -> None:
+def verify_bindings(max_glibc: str = '') -> None:
   """Verifies installed pybind11 extensions and status_casters error types."""
   # Import installed package dependencies lazily so `wheel` stays stdlib-only.
   # pylint: disable=g-import-not-at-top
@@ -218,6 +245,12 @@ def verify_bindings() -> None:
         'Expected UNAVAILABLE exception from create_remote_executor_stack()'
     )
 
+  if max_glibc and platform.system() == 'Linux':
+    verify_glibc_max(
+        [executor_bindings.__file__, tensorflow_bindings.__file__],
+        max_glibc,
+    )
+
   print('Verified pybind bindings and status_casters in pip package.')
 
 
@@ -226,8 +259,17 @@ def main(argv: Sequence[str]) -> None:
     verify_wheel(argv[2])
   elif len(argv) == 2 and argv[1] == 'bindings':
     verify_bindings()
+  elif (
+      len(argv) == 3
+      and argv[1] == 'bindings'
+      and argv[2].startswith(_MAX_GLIBC_FLAG_PREFIX)
+  ):
+    verify_bindings(max_glibc=argv[2].removeprefix(_MAX_GLIBC_FLAG_PREFIX))
   else:
-    raise SystemExit(f'usage: {argv[0]} (wheel <wheel_path> | bindings)')
+    raise SystemExit(
+        f'usage: {argv[0]} (wheel <wheel_path> | bindings'
+        ' [--max_glibc=<major.minor>])'
+    )
 
 
 if __name__ == '__main__':

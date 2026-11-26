@@ -26,11 +26,11 @@ pybind_extension(
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:aggregation_protocol",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:aggregation_protocol_messages_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:configuration_cc_proto",
+        "//tensorflow_federated/cc/core/impl/executors:status_casters",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
-        "@pybind11_abseil//pybind11_abseil:status_casters",
         "@pybind11_protobuf//pybind11_protobuf:native_proto_caster",
     ],
 )

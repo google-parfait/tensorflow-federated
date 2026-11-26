@@ -98,7 +98,7 @@ jobs:
     name: Build Package (Python ${{ matrix.python-version }})
     needs: [publish-release]
     runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    container: quay.io/pypa/manylinux_2_28_x86_64
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -106,14 +106,9 @@ jobs:
         python-version: ["3.12", "3.13"]
     steps:
 
-    - name: Install prerequisites
-      run: |
-        apt-get update
-        apt-get install -y git curl tar
-
     - name: Install Bazelisk
       run: |
-        curl -L https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-amd64 -o /usr/local/bin/bazelisk
+        curl -L https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-linux-amd64 -o /usr/local/bin/bazelisk
         chmod +x /usr/local/bin/bazelisk
 
     - name: Checkout repository
@@ -132,30 +127,23 @@ jobs:
       uses: actions/cache@v4.0.2
       with:
         path: "~/.cache/bazel/"
-        key: ${{ runner.os }}-bazel-py${{ matrix.python-version }}-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'requirements_lock_*.txt') }}
+        key: ${{ runner.os }}-bazel-py${{ matrix.python-version }}-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel', 'requirements_lock_*.txt') }}
         restore-keys: |
           ${{ runner.os }}-bazel-py${{ matrix.python-version }}-
           ${{ runner.os }}-bazel-
 
-    - name: Set up Python
-      uses: actions/setup-python@v5.1.0
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: "pip"
-
-    - name: Install Python dependencies
-      run: |
-        pip install --upgrade "pip"
-
     - name: Build Python package
       run: |
-        bazelisk run //tools/python_package:build_python_package \
-            --repo_env=HERMETIC_PYTHON_VERSION=${{ matrix.python-version }} \
-            --build_tag_filters="-nokokoro,-nopresubmit,-requires-gpu-sm90" \
-            --google_credentials="${{ steps.auth.outputs.credentials_file_path }}" \
-            --remote_cache="https://storage.googleapis.com/tensorflow-federated-bazel-cache/${{ github.job }}" \
-            -- \
-            --output_dir="${{ github.workspace }}/dist/"
+        flags=(
+            --repo_env=HERMETIC_PYTHON_VERSION=${{ matrix.python-version }}
+            --build_tag_filters="-nokokoro,-nopresubmit,-requires-gpu-sm90"
+            --google_credentials="${{ steps.auth.outputs.credentials_file_path }}"
+            --remote_cache="https://storage.googleapis.com/tensorflow-federated-bazel-cache/${{ github.job }}"
+        )
+        bazelisk build "${flags[@]}" //tools/python_package:wheel
+        wheel_path="$(bazelisk cquery "${flags[@]}" --output=files //tools/python_package:wheel)"
+        mkdir -p "${{ github.workspace }}/dist"
+        cp "${wheel_path}" "${{ github.workspace }}/dist/"
 
     - name: Upload Python package
       uses: actions/upload-artifact@v4.3.3
@@ -201,7 +189,9 @@ jobs:
     - name: Test Python package
       run: |
         package="$(ls "${{ github.workspace }}/dist/"*".whl" | head -n1)"
-        bash tools/python_package/test_python_package.sh --package="${package}"
+        bash tools/python_package/test_python_package.sh \
+            --package="${package}" \
+            --max_glibc=2.28
 
   publish-package:
     name: Publish Package

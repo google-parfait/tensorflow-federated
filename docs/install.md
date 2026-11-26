@@ -88,9 +88,9 @@ build tool used to compile Tensorflow Federated.
 ### 5. Build the TensorFlow Federated Python package.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">mkdir "/tmp/tensorflow_federated"</code>
-<code class="devsite-terminal">bazel run //tools/python_package:build_python_package -- \
-    --output_dir="/tmp/tensorflow_federated"</code>
+<code class="devsite-terminal">mkdir -p "/tmp/tensorflow_federated"</code>
+<code class="devsite-terminal">bazel build //tools/python_package:wheel</code>
+<code class="devsite-terminal">cp "$(bazel cquery --output=files //tools/python_package:wheel)" "/tmp/tensorflow_federated/"</code>
 </pre>
 
 ### 6. Exit the virtual environment

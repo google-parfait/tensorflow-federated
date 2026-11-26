@@ -1,8 +1,6 @@
-diff --git BUILD BUILD
-index 739d8df..892ee33 100644
---- BUILD
-+++ BUILD
-@@ -12,10 +12,6 @@
+--- a/BUILD
++++ b/BUILD
+@@ -12,11 +12,6 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
  
@@ -10,13 +8,16 @@ index 739d8df..892ee33 100644
 -load("@python//3.11:defs.bzl", compile_pip_requirements_3_11 = "compile_pip_requirements")
 -load("@python//3.12:defs.bzl", compile_pip_requirements_3_12 = "compile_pip_requirements")
 -load("@python//3.13:defs.bzl", compile_pip_requirements_3_13 = "compile_pip_requirements")
+-
  load("@rules_license//rules:license.bzl", "license")
  
  package(
-@@ -37,39 +33,3 @@ exports_files([
+@@ -38,41 +33,3 @@ exports_files([
      "README.md",
      "requirements.in",
  ])
+-
+-
 -
 -compile_pip_requirements_3_10(
 -    name = "requirements_3_10",

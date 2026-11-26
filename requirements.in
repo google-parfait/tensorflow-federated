@@ -40,9 +40,9 @@ tqdm>=4.64.0,==4.64.*
 wrapt==1.14.1  # https://github.com/tensorflow/tensorflow/issues/59869
 
 # The version of this dependency should match the version in
-# https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.
+# https://github.com/google-parfait/tensorflow-federated/blob/main/MODULE.bazel.
 federated_language~=0.5.4
 
 # The version of this dependency should match the version in
-# https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.
+# https://github.com/google-parfait/tensorflow-federated/blob/main/MODULE.bazel.
 tensorflow>=2.21.0,==2.21.*

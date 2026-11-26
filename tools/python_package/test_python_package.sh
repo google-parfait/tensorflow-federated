@@ -40,8 +40,9 @@ unset f
 usage() {
   local script_name
   script_name=$(basename "${0}")
-  echo "usage: ${script_name} --package=<path>"
-  echo "  --package=<path>  A path to a local Python package."
+  echo "usage: ${script_name} --package=<path> [--max_glibc=<major.minor>]"
+  echo "  --package=<path>          A path to a local Python package."
+  echo "  --max_glibc=<major.minor> Optional maximum Linux GLIBC symbol version."
 }
 
 verify_linux_elf_symbols() {
@@ -120,9 +121,13 @@ verify_linux_elf_symbols() {
       grep -E 'tensorflow_federated::|google::protobuf::' <<< "${defined_syms}" | head -n 20 1>&2
       exit 1
     fi
+    if readelf -S -W "${so_path}" | grep -Eq '\s\.symtab\s'; then
+      echo "error: ${so_path} was not stripped (.symtab still present)" 1>&2
+      exit 1
+    fi
   done
 
-  echo "Verified Linux ELF RPATH, NEEDED, and symbol visibility checks."
+  echo "Verified Linux ELF RPATH, NEEDED, visibility, and stripped symbol checks."
 }
 
 main() {
@@ -181,12 +186,17 @@ main() {
   python_cmd=$(setup_hermetic_python "${runfiles_dir}")
 
   local package=""
+  local max_glibc=""
 
   while [[ "$#" -gt 0 ]]; do
     local option="$1"
     case "${option}" in
       --package=*)
         package="${option#*=}"
+        shift
+        ;;
+      --max_glibc=*)
+        max_glibc="${option#*=}"
         shift
         ;;
       *)
@@ -247,7 +257,11 @@ main() {
 
   python -I -c "import tensorflow_federated as tff; print(tff.__version__)"
   python -I "${test_script}"
-  python -I "${verify_script}" bindings
+  if [[ -n "${max_glibc}" ]]; then
+    python -I "${verify_script}" bindings "--max_glibc=${max_glibc}"
+  else
+    python -I "${verify_script}" bindings
+  fi
 }
 
 main "$@"
