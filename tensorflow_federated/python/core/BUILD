@@ -19,6 +19,9 @@ package_group(
         "//tensorflow_federated/python/program:program_packages",
         "//tensorflow_federated/python/simulation:simulation_packages",
     ],
+    packages = [
+        "//inputmethod/keyboard/tensorflow/federated/fedrecon/...",
+    ],
 )
 
 licenses(["notice"])

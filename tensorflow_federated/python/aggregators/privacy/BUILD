@@ -2,7 +2,10 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
-    default_visibility = ["//tensorflow_federated:__subpackages__"],
+    default_visibility = [
+        "//inputmethod/keyboard/tensorflow/federated/fedrecon:__subpackages__",
+        "//tensorflow_federated:__subpackages__",
+    ],
 )
 
 licenses(["notice"])
