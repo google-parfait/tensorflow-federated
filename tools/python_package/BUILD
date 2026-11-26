@@ -1,3 +1,5 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = ["//visibility:private"],
