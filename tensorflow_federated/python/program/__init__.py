@@ -23,5 +23,7 @@ from tensorflow_federated.python.program.file_release_manager import CSVFileRele
 from tensorflow_federated.python.program.file_release_manager import CSVKeyFieldnameNotFoundError
 from tensorflow_federated.python.program.file_release_manager import CSVSaveMode
 from tensorflow_federated.python.program.file_release_manager import SavedModelFileReleaseManager
+from tensorflow_federated.python.program.min_sep_data_source import MinSepDataSource
+from tensorflow_federated.python.program.min_sep_data_source import MinSepDataSourceIterator
 from tensorflow_federated.python.program.tensorboard_release_manager import TensorBoardReleaseManager
 # pylint: enable=g-importing-member
