@@ -61,6 +61,11 @@ build:remote --remote_cache=grpcs://remotebuildexecution.googleapis.com
 build:remote --remote_instance_name=projects/tensorflow-federated/instances/default_instance
 build:remote --bes_instance_name=tensorflow-federated
 
+# Skip eager runfiles symlink trees and cached test output downloads during
+# `bazel test`; local test spawns still create runfiles on cache misses.
+test:remote --nobuild_runfile_links
+test:remote --remote_download_minimal
+
 #
 # Toolchain and C++ build options
 #
