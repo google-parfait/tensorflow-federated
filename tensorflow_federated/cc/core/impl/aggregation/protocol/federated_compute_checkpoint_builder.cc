@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -46,20 +47,21 @@ class FederatedComputeCheckpointBuilder final : public CheckpointBuilder {
       const FederatedComputeCheckpointBuilder&) = delete;
 
   absl::Status Add(const std::string& name, const Tensor& tensor) override {
+    google::protobuf::io::CordOutputStream content_out;
+    if (!tensor.ToProto().SerializeToZeroCopyStream(&content_out)) {
+      return absl::InternalError("Failed to add tensor for " + name);
+    }
+    absl::Cord content = content_out.Consume();
+
     std::string metadata;
     google::protobuf::io::StringOutputStream out(&metadata);
     google::protobuf::io::CodedOutputStream coded_out(&out);
     coded_out.WriteVarint64(name.size());
     coded_out.WriteString(name);
-
-    absl::Cord content(tensor.ToProto().SerializeAsString());
-    if (content.empty()) {
-      return absl::InternalError("Failed to add tensor for " + name);
-    }
     coded_out.WriteVarint64(content.size());
     coded_out.Trim();
     result_.Append(metadata);
-    result_.Append(content);
+    result_.Append(std::move(content));
     return absl::OkStatus();
   }
 
