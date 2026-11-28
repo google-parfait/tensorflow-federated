@@ -23,7 +23,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
-#include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/native_proto_caster.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/aggregation_protocol.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/configuration.pb.h"
@@ -31,6 +30,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/simple_aggregation/simple_aggregation_protocol.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tensorflow_checkpoint_builder_factory.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tensorflow_checkpoint_parser_factory.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_casters.h"
 
 using ::tensorflow_federated::aggregation::AggregationProtocol;
 using ::tensorflow_federated::aggregation::Configuration;

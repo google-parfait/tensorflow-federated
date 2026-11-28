@@ -1,0 +1,224 @@
+# Copyright 2026, The TensorFlow Federated Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Bazel module dependencies for TensorFlow Federated."""
+
+module(
+    name = "tensorflow_federated",
+    repo_name = "org_tensorflow_federated",
+)
+
+# Direct dependencies (preserving existing repository names).
+bazel_dep(name = "abseil-cpp", version = "20250814.1", repo_name = "com_google_absl")
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
+bazel_dep(name = "boringssl", version = "0.20241024.0")
+bazel_dep(name = "federated_language", version = "0.5.4")
+bazel_dep(name = "google_benchmark", version = "1.8.4", repo_name = "com_google_benchmark")
+bazel_dep(name = "googletest", version = "1.17.0", repo_name = "com_google_googletest")
+bazel_dep(name = "grpc", version = "1.74.1", repo_name = "com_github_grpc_grpc")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "protobuf", version = "31.1", repo_name = "com_google_protobuf")
+bazel_dep(name = "pybind11_abseil", version = "202402.0")
+bazel_dep(name = "pybind11_bazel", version = "2.13.6")
+bazel_dep(name = "pybind11_protobuf", version = "0.0.0-20250210-f02a2b7")
+bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "rules_license", version = "1.0.0")
+bazel_dep(name = "rules_proto", version = "7.1.0")
+bazel_dep(name = "rules_python", version = "2.0.1")
+bazel_dep(name = "rules_shell", version = "0.6.1")
+
+internal_configure = use_extension(
+    "@pybind11_bazel//:internal_configure.bzl",
+    "internal_configure_extension",
+)
+use_repo(internal_configure, "pybind11")
+
+# Remove duplicate gRPC ABSL_FLAG definitions that collide with libtensorflow_cc.so.2.
+single_version_override(
+    module_name = "grpc",
+    patch_strip = 1,
+    patches = ["//third_party/grpc:grpc.patch"],
+    version = "1.74.1",
+)
+
+# Align grpc-java with grpc 1.74.x (googleapis pulls 1.66.0).
+single_version_override(
+    module_name = "grpc-java",
+    version = "1.74.0",
+)
+
+# Use hermetic Python headers from rules_python instead of @system_python.
+single_version_override(
+    module_name = "protobuf",
+    patch_strip = 1,
+    patches = ["//third_party/protobuf:protobuf_hermetic_python_headers.patch"],
+    version = "31.1",
+)
+
+# Pin commit 2c4932ed (preserves :status, :status.so, and bypass_regular_import=true,
+# and avoids BCR 202402.0's non-dev pip.parse(hub_name = "pypi") collision).
+archive_override(
+    module_name = "pybind11_abseil",
+    integrity = "sha256-AiO2R7jMgXM2pR54eYDrwpnI1eZMBpgpvzS2nXIzdEk=",
+    patch_strip = 1,
+    patches = ["//third_party/pybind11_abseil:module_dot_bazel.patch"],
+    strip_prefix = "pybind11_abseil-2c4932ed6f6204f1656e245838f4f5eae69d2e29",
+    urls = [
+        "https://github.com/pybind/pybind11_abseil/archive/2c4932ed6f6204f1656e245838f4f5eae69d2e29.tar.gz",
+    ],
+)
+
+# Pin commit f02a2b76 directly (upstream MODULE.bazel keeps pip dev_dependency = True).
+archive_override(
+    module_name = "pybind11_protobuf",
+    integrity = "sha256-PPe/DyOVTFzmw38KIV9QbvowNcoG47OQ1n9MvmhNziM=",
+    strip_prefix = "pybind11_protobuf-f02a2b7653bc50eb5119d125842a3870db95d251",
+    urls = [
+        "https://github.com/pybind/pybind11_protobuf/archive/f02a2b7653bc50eb5119d125842a3870db95d251.zip",
+    ],
+)
+
+# BCR stops at federated_language 0.5.2; pin v0.5.4 release archive.
+archive_override(
+    module_name = "federated_language",
+    integrity = "sha256-2Z86TMiPgWORd3/FPNwJTZq9cr3Xpv4r3M+kMjXzUds=",
+    patch_strip = 1,
+    patches = [
+        "//third_party/federated_language:structure_visibility.patch",
+        "//third_party/federated_language:remove_compile_pip_requirements.patch",
+    ],
+    strip_prefix = "federated-language-0.5.4",
+    urls = [
+        "https://github.com/google-parfait/federated-language/archive/refs/tags/v0.5.4.tar.gz",
+    ],
+)
+
+non_module_deps = use_extension(
+    "//third_party:non_module_deps.bzl",
+    "non_module_deps",
+)
+use_repo(
+    non_module_deps,
+    "com_google_cc_differential_privacy",
+    "com_google_differential_privacy",
+)
+
+# Hermetic Python toolchains and pip dependencies.
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(
+    python_version = "3.12",
+    python_version_env = "HERMETIC_PYTHON_VERSION",
+)
+python.toolchain(python_version = "3.12")
+python.toolchain(python_version = "3.13")
+use_repo(python, "pythons_hub", python = "python_versions")
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.whl_mods(
+    additive_build_content = """\
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+cc_library(
+    name = "numpy_headers_2",
+    hdrs = glob(["site-packages/numpy/_core/include/**/*.h"]),
+    strip_include_prefix = "site-packages/numpy/_core/include/",
+)
+
+cc_library(
+    name = "numpy_headers_1",
+    hdrs = glob(["site-packages/numpy/core/include/**/*.h"]),
+    strip_include_prefix = "site-packages/numpy/core/include/",
+)
+
+cc_library(
+    name = "numpy_headers",
+    deps = [":numpy_headers_2", ":numpy_headers_1"],
+    # For the layering check to work we need to re-export the headers from the
+    # dependencies.
+    hdrs = glob(["site-packages/numpy/_core/include/**/*.h"]) +
+           glob(["site-packages/numpy/core/include/**/*.h"]),
+    visibility = ["//visibility:public"],
+)
+""",
+    hub_name = "pypi_mods",
+    whl_name = "numpy",
+)
+pip.whl_mods(
+    additive_build_content = """\
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+cc_library(
+    name = "tf_header_lib",
+    hdrs = glob(["site-packages/tensorflow/include/**/*"]),
+    strip_include_prefix = "site-packages/tensorflow/include/",
+    defines = ["EIGEN_MAX_ALIGN_BYTES=64"],
+    deps = [
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/log:vlog_is_on",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# Force `libtensorflow_framework` before `absl/hash` so TFF and TensorFlow
+# share one `MixingHashState::kSeed` while protobuf stays private.
+cc_library(
+    name = "libtensorflow_framework",
+    srcs = select({
+        "@platforms//os:linux": ["site-packages/tensorflow/libtensorflow_framework.so.2"],
+        "@platforms//os:macos": ["site-packages/tensorflow/libtensorflow_framework.2.dylib"],
+    }),
+    deps = ["@com_google_absl//absl/hash"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "libtensorflow_cc",
+    srcs = select({
+        "@platforms//os:linux": ["site-packages/tensorflow/libtensorflow_cc.so.2"],
+        "@platforms//os:macos": ["site-packages/tensorflow/libtensorflow_cc.2.dylib"],
+    }),
+    deps = [":libtensorflow_framework"],
+    visibility = ["//visibility:public"],
+)
+""",
+    hub_name = "pypi_mods",
+    whl_name = "tensorflow",
+)
+[
+    pip.parse(
+        extra_hub_aliases = {
+            "numpy": ["numpy_headers"],
+            "tensorflow": [
+                "tf_header_lib",
+                "libtensorflow_framework",
+                "libtensorflow_cc",
+            ],
+        },
+        hub_name = "pypi",
+        python_version = python_version,
+        requirements_lock = "//:requirements_lock_{}.txt".format(python_version.replace(".", "_")),
+        whl_modifications = {
+            "@pypi_mods//:numpy.json": "numpy",
+            "@pypi_mods//:tensorflow.json": "tensorflow",
+        },
+    )
+    for python_version in [
+        "3.12",
+        "3.13",
+    ]
+]
+use_repo(pip, "pypi", "pypi_mods")
+inject_repo(pip, "com_google_absl")
+override_repo(pip, federated_language_pypi = "pypi")

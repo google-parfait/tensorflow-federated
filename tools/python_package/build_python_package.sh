@@ -115,7 +115,7 @@ main() {
 
   # Check the GLIBC version on Linux.
   if [[ "$(uname -s)" == "Linux" ]]; then
-    local expected_glibc="2.27"
+    local expected_glibc="2.28"
     local current_glibc
     current_glibc=$(ldd --version | awk 'NR == 1 {print $NF}')
     if [[ -z "${current_glibc}" ]] || ! version_ge "${current_glibc}" "${expected_glibc}"; then
@@ -187,7 +187,7 @@ main() {
     local arch
     arch="$(uname -m)"
     build_args+=(
-        "--config-setting=--build-option=--plat-name=manylinux_2_27_${arch}"
+        "--config-setting=--build-option=--plat-name=manylinux_2_28_${arch}"
     )
   fi
   python -m build "${build_args[@]}"

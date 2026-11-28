@@ -1,12 +1,10 @@
-diff --git federated_language/common_libs/BUILD federated_language/common_libs/BUILD
-index a25796d..c4b9853 100644
---- federated_language/common_libs/BUILD
-+++ federated_language/common_libs/BUILD
-@@ -65,6 +65,7 @@ py_library(
+--- a/federated_language/common_libs/BUILD
++++ b/federated_language/common_libs/BUILD
+@@ -71,6 +71,7 @@ py_library(
  py_library(
      name = "structure",
      srcs = ["structure.py"],
 +    visibility = ["//visibility:public"],
-     deps = [":py_typecheck"],
- )
- 
+     deps = [
+         ":py_typecheck",
+         "@federated_language_pypi//attrs",

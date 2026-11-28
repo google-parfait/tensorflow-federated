@@ -37,9 +37,9 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -57,7 +57,7 @@ cc_test(
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -74,9 +74,9 @@ cc_library(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -96,9 +96,9 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:str_format",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",  # buildcleaner: keep
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",  # buildcleaner: keep
     ],
 )
 
@@ -130,9 +130,9 @@ cc_library(
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -167,9 +167,9 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -209,9 +209,9 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -227,6 +227,6 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )

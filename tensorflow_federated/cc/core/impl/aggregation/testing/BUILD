@@ -38,9 +38,9 @@ cc_library(
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_googletest//:gtest",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 

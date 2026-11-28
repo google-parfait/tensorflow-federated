@@ -3,8 +3,9 @@
 # See https://docs.bazel.build/versions/master/user-manual.html#config for
 # details on the various configuration options.
 
-# Disable Bzlmod for now, as TFF is not yet migrated to Bzlmod.
-common --noenable_bzlmod
+# Enable Bzlmod and disable legacy WORKSPACE evaluation.
+common --enable_bzlmod
+common --noenable_workspace
 
 # Enable verbose failures for testing only.
 build --verbose_failures
@@ -43,9 +44,7 @@ build --copt=-O3
 
 # Suppress C++ compiler warnings.
 build:linux --copt=-w
-build:linux --copt=-Wno-private-header
 build:linux --host_copt=-w
-build:linux --host_copt=-Wno-private-header
 
 #
 # Remote execution capabilities
@@ -78,22 +77,10 @@ build --config=short_logs
 
 # Default options should come above this line.
 
-# This config refers to building CUDA op kernels with nvcc.
-build:cuda --repo_env TF_NEED_CUDA=1
-build:cuda --crosstool_top=@local_config_cuda//crosstool:toolchain
-build:cuda --@local_config_cuda//:enable_cuda
-
-common:linux --define=with_cross_compiler_support=true
 common:linux --linkopt=-Wl,--undefined-version
-common:linux --copt=-Wno-gnu-offsetof-extensions
-common:linux --copt=-Wno-error=array-parameter
-common:linux --copt=-Wno-error=unused-command-line-argument
-common:linux --linkopt="-fuse-ld=lld"
 common:linux --linkopt="-lm"
 
 common --incompatible_enable_cc_toolchain_resolution
-common --repo_env USE_HERMETIC_CC_TOOLCHAIN=1
-build --repo_env=SYSROOT_DIST=linux_glibc_2_27
 
 # By default, build TF in C++ 17 mode.
 build:linux --cxxopt=-std=c++17
@@ -120,11 +107,6 @@ build:avx_linux --host_copt=-mavx
 common --experimental_repo_remote_exec
 
 # Config-specific options should come above this line.
-
-build:cuda --action_env=TF_CUDA_VERSION="12"
-build:cuda --action_env=TF_CUDNN_VERSION="8"
-build:cuda --repo_env=TF_CUDA_COMPUTE_CAPABILITIES="sm_60,sm_70,sm_75,compute_80"
-build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt9/usr/bin/gcc"
 
 build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1
 build --host_cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1
