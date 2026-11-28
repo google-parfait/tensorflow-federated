@@ -7,6 +7,11 @@ package(
 
 licenses(["notice"])
 
+exports_files(
+    ["version.py"],
+    visibility = ["//visibility:public"],
+)
+
 py_library(
     name = "tensorflow_federated",
     srcs = ["__init__.py"],

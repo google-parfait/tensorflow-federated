@@ -16,17 +16,12 @@ licenses(["notice"])
 exports_files([
     "LICENSE",
     "README.md",
+    "pyproject.toml",
     "requirements.txt",
 ])
 
 filegroup(
     name = "pyproject_toml",
     srcs = ["pyproject.toml"],
-    visibility = ["//tools/python_package:python_package_tool"],
-)
-
-filegroup(
-    name = "setup_py",
-    srcs = ["setup.py"],
-    visibility = ["//tools/python_package:python_package_tool"],
+    visibility = ["//visibility:public"],
 )

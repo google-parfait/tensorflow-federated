@@ -50,9 +50,9 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
-        "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -196,9 +196,9 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -220,7 +220,7 @@ cc_test(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -243,9 +243,9 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -257,7 +257,7 @@ cc_test(
         ":value_test_utils",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -297,6 +297,7 @@ pybind_extension(
             "-Wl,-exported_symbols_list,$(location :pybind_exported_symbols.lds)",
         ],
         "@platforms//os:linux": [
+            "-Wl,--exclude-libs,ALL",
             "-Wl,--version-script,$(location :pybind_version_script.lds)",
         ],
         "//conditions:default": [],
@@ -400,6 +401,7 @@ pybind_extension(
             "-Wl,-exported_symbols_list,$(location :pybind_exported_symbols.lds)",
         ],
         "@platforms//os:linux": [
+            "-Wl,--exclude-libs,ALL",
             "-Wl,--version-script,$(location :pybind_version_script.lds)",
         ],
         "//conditions:default": [],
@@ -467,7 +469,7 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -593,7 +595,7 @@ cc_test(
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -680,7 +682,7 @@ cc_test(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -750,7 +752,7 @@ cc_test(
         "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/status",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -784,9 +786,9 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -797,7 +799,7 @@ cc_test(
         ":session_provider",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -807,6 +809,7 @@ cc_library(
     features = ["-use_header_modules"],
     visibility = [
         ":executors_packages",
+        "//tensorflow_federated/cc/core/impl/aggregation:aggregation_packages",
         "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stacks_packages",
     ],
     deps = [
@@ -900,7 +903,7 @@ cc_test(
         "@com_google_protobuf//:protobuf",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -944,6 +947,7 @@ pybind_extension(
             "-Wl,-rpath,@loader_path/../../../../../tensorflow",
         ],
         "@platforms//os:linux": [
+            "-Wl,--exclude-libs,ALL",
             "-Wl,--version-script,$(location :pybind_version_script.lds)",
             "-Wl,-rpath,$$ORIGIN/../../../../../tensorflow",
         ],
@@ -988,9 +992,9 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -1028,9 +1032,9 @@ tff_cc_cpu_gpu_test(
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -1056,9 +1060,9 @@ cc_library(
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -1081,12 +1085,11 @@ cc_library(
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/types:span",
         "@com_google_protobuf//:protobuf_lite",
-        "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:data_type_cc_proto",
-        "@pypi_tensorflow//:libtensorflow_cc",
-        "@pypi_tensorflow//:libtensorflow_framework",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:libtensorflow_cc",
+        "@pypi//tensorflow:libtensorflow_framework",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
@@ -1106,10 +1109,9 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
-        "@eigen",
         "@federated_language//federated_language/proto:array_cc_proto",
         "@federated_language//federated_language/proto:computation_cc_proto",
-        "@pypi_tensorflow//:tf_header_lib",
+        "@pypi//tensorflow:tf_header_lib",
     ],
 )
 
